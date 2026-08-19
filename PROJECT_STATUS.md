@@ -18,6 +18,11 @@ The reference workflow now runs from source selection through normalized data, r
 - Font, image, binding, conflict, geometry, and overflow preflight
 - Approved-PDF visual baselines, CI diffs, and similarity reporting
 - Existing creative editor capabilities including crop, proportional group resize, page drag ordering, rulers/guides, and disk-backed development assets
+- Cross-platform Vitest/Playwright ownership isolation and diagnosable Quality workflow artifacts
+- Production-provider isolation with no sample fallback and explicit section completeness
+- Independent calculation scope/detail-page selection with auditable derived-metric lineage
+- Business constraints, request consistency, conflict/override rules, and computed publication readiness
+- Provider isolation, fixture-leak, cross-quarter, invalid-rate, negative-absorption, scope, and lifecycle tests
 
 ## Verified reference fidelity
 
@@ -32,6 +37,8 @@ The calibrated page similarity floors are cover 96%, table 95%, overview 88%, an
 - Database-backed templates/reports, permissions, and collaborative editing
 - Native chart replacement of every approved raster chart
 - Rich-text runs, accessibility audit, and cross-browser editor certification
+
+Partial Excel reports intentionally remain editable drafts. Their absent sections render explicit empty states and cannot be approved or published when the selected template requires those sections.
 
 ## Recommended next sequence
 

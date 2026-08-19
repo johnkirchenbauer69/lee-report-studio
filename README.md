@@ -6,7 +6,9 @@ LEE Report Studio is a browser-based report production system for building edita
 
 - Five-step report wizard for template, period, source, geography, and review
 - Strict Zod-based Industrial Market Report schema with raw numeric values
-- Sample, JSON, and Q2 workbook providers plus a server-only Ascendix adapter boundary
+- Isolated sample, JSON, Excel, and server-only Ascendix provider boundaries; production providers never fall back to fixtures
+- Explicit per-section completeness, imported-field provenance, calculation lineage, and publication readiness
+- Independent overall-market calculation scope and detailed-page selection
 - Central calculations, formatting, field provenance, reconciliation notes, and approved presentation overrides
 - Versioned report instances containing immutable generation parameters and source-data snapshots
 - Repeating pages and repeating components with local binding contexts
@@ -38,6 +40,8 @@ npm run build
 npm run test:visual
 ```
 
+`npm test` is explicitly limited to `src/**/*.test.*` through Vitest. `npm run test:visual` is explicitly limited to `tests/visual/**/*.spec.*` through Playwright. A cross-platform ownership check rejects files placed in the wrong suite.
+
 Update approved visual baselines only after intentional review:
 
 ```bash
@@ -51,8 +55,9 @@ Visual failures write actual, expected, and diff images to `test-results/` and t
 ```text
 Report request
   -> provider (sample / JSON / Excel / Ascendix)
-  -> strict normalized report schema
-  -> calculations + provenance reconciliation
+  -> strict normalized report schema + completeness envelope
+  -> scoped calculations + provenance reconciliation
+  -> readiness validation
   -> presentation adapter
   -> template bindings + repeat expansion
   -> versioned editable report instance
@@ -60,7 +65,7 @@ Report request
   -> Chromium PDF job (or browser fallback)
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
+See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [DATA_INTEGRITY.md](DATA_INTEGRITY.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
 
 ## Local storage
 
@@ -69,11 +74,20 @@ Templates and report editing state currently persist in LocalStorage. Uploaded a
 ## Current production boundaries
 
 - Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
-- Excel v1 maps the supplied Q2 submarket sheet. Sections absent from that workbook are populated from the Q2 reference fixture and labeled by provenance.
+- Excel v1 maps the supplied submarket sheet only. Sections absent from a workbook remain empty, are declared missing, appear as empty states, and block publication when required by the template.
+- Excel workbooks do not yet provide robust internal period metadata; the generation request supplies report period/market metadata while workbook name, sheet, cell, and import time remain traceable provenance.
 - The Ascendix provider is a server-only integration contract, not a configured production endpoint.
 - Approved raster chart exports remain in the four-page fixture until native SVG charts reach the same visual fidelity.
 - `/api/render/pdf` is a local transient job service without authentication, durable queues, or object storage.
 - LocalStorage and disk-backed assets require database/object-storage replacements for multi-user production.
+- `npm audit` currently reports 0 critical, 0 high, and 2 moderate advisories through `exceljs -> uuid@8.3.2`. The advisory affects name-based UUID v3/v5 buffer handling; this importer reaches ExcelJS's UUID v4 conditional-formatting helper, not the affected path. No non-breaking upstream fix is currently available.
+
+## Recommended main branch protection
+
+- Require a pull request before merge.
+- Require `Quality / validate` to pass.
+- Require branches to be up to date before merge.
+- Block merge whenever the Quality workflow is red.
 
 ## Keyboard shortcuts
 
