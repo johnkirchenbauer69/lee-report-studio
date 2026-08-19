@@ -1,5 +1,34 @@
 export type ElementType = 'text' | 'shape' | 'image' | 'table' | 'chart';
 export type PreviewMode = 'design' | 'data';
+export type Unit = 'px' | 'in';
+export type ShapeKind = 'rectangle' | 'rounded-rectangle' | 'circle' | 'ellipse' | 'line' | 'triangle' | 'diamond';
+
+export interface GradientStop { id: string; color: string; position: number; }
+export type Fill =
+  | { type: 'solid'; color: string }
+  | { type: 'linear-gradient'; angle: number; stops: GradientStop[] };
+
+export interface Stroke {
+  enabled: boolean;
+  color: string;
+  width: number;
+  opacity: number;
+  style: 'solid' | 'dashed' | 'dotted';
+}
+
+export interface Typography {
+  fontFamily: string;
+  fontWeight: number | string;
+  fontSize: number;
+  color: string;
+  letterSpacing: number;
+  lineHeight: number;
+  textAlign: 'left' | 'center' | 'right' | 'justify';
+  verticalAlign: 'top' | 'middle' | 'bottom';
+  italic: boolean;
+  underline: boolean;
+  uppercase?: boolean;
+}
 
 export interface Binding {
   path: string;
@@ -22,6 +51,12 @@ export interface ElementStyle {
   borderRadius?: number;
   padding?: number;
   opacity?: number;
+  fill?: Fill;
+  stroke?: Stroke;
+  typography?: Typography;
+  letterSpacing?: number;
+  lineHeight?: number;
+  textDecoration?: 'none' | 'underline';
 }
 
 export interface BaseElement {
@@ -35,6 +70,7 @@ export interface BaseElement {
   rotation?: number;
   locked?: boolean;
   hidden?: boolean;
+  groupId?: string;
   style: ElementStyle;
   binding?: Binding;
 }
@@ -46,12 +82,14 @@ export interface TextElement extends BaseElement {
 
 export interface ShapeElement extends BaseElement {
   type: 'shape';
+  shape?: ShapeKind;
 }
 
 export interface ImageElement extends BaseElement {
   type: 'image';
   src: string;
-  fit?: 'cover' | 'contain';
+  fit?: 'cover' | 'contain' | 'stretch' | 'original';
+  assetId?: string;
 }
 
 export interface TableColumn {
@@ -85,7 +123,30 @@ export interface ReportPage {
   width: number;
   height: number;
   background: string;
+  hidden?: boolean;
   elements: ReportElement[];
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  type: 'image' | 'logo' | 'font';
+  mimeType: string;
+  source: string;
+  createdAt: string;
+  fontFamily?: string;
+}
+
+export interface EditorSettings {
+  unit: Unit;
+  gridEnabled: boolean;
+  gridSpacingPx: number;
+  gridOpacity: number;
+  snapToGrid: boolean;
+  snapToElements: boolean;
+  snapToMargins: boolean;
+  marginPx: number;
+  marginsEnabled: boolean;
 }
 
 export interface ReportTemplate {
@@ -93,6 +154,8 @@ export interface ReportTemplate {
   name: string;
   version: string;
   pages: ReportPage[];
+  assets?: Asset[];
+  settings?: EditorSettings;
 }
 
 export interface ValidationItem {

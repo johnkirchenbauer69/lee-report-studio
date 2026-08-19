@@ -1,6 +1,6 @@
 # Project Status
 
-## Delivered in this package
+## Delivered in the current editor milestone
 
 This repository contains a functional front-end MVP of the proposed data-driven visual report editor and the architectural scaffolding for the production application.
 
@@ -11,7 +11,14 @@ This repository contains a functional front-end MVP of the proposed data-driven 
 - Element types: text, shape, image, table, chart
 - Visual canvas
 - Drag/reposition
-- Resize
+- Multi-selection, resize and rotation
+- Grid, margins, snapping and live alignment guides
+- Unit-aware precision editing in pixels and inches
+- Typed fills, gradients, strokes, opacity, corners and typography
+- Image, logo and font uploads with a local asset model
+- Undo/redo, context menu, keyboard shortcuts, grouping and layer order
+- Local persistence and expanded validation
+- Eight automated tests covering editor math, bindings, formatting and validation
 - Add/duplicate/delete text and shapes
 - Duplicate/delete/add pages
 - Layer/element list

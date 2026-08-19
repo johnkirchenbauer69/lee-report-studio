@@ -1,14 +1,21 @@
 # LEE Report Studio
 
-A functional MVP for a browser-based, data-aware report template editor designed to turn structured Salesforce/Ascendix data into editable, institutional-quality commercial real estate reports.
+A polished browser-based, data-aware report template editor designed to turn structured Salesforce/Ascendix data into editable, institutional-quality commercial real estate reports.
 
-## What is included now
+## Editor capabilities
 
 - React + TypeScript + Vite application
 - Multi-page report template schema
-- Canva-like editing shell with page rail, canvas, element layers, inspector, data browser, QA panel
-- Drag-to-move and resize handles
-- Add text / rectangle elements
+- Professional creative-tool shell with contextual sidebar, canvas, layer list, inspector, data browser and QA panel
+- Multi-select, four-corner resize handles, rotation, keyboard nudging and alignment/distribution controls
+- Rectangles, rounded rectangles, circles, ellipses, lines, triangles and diamonds
+- Grid, margin guides, element/page/grid snapping and visible snap guides
+- Pixel/inch unit switching using the documented `96px = 1in` CSS reference
+- Solid and two/three-stop linear-gradient fills, stroke styles, opacity and corner radius
+- Full typography controls plus workspace-local font upload
+- Image/logo upload, asset browser and contain/cover/stretch/original fit modes
+- Undo/redo history with drag/resize interactions recorded as one transaction
+- Copy/paste, duplicate, group/ungroup, z-order controls and custom context menu
 - Duplicate / delete elements and pages
 - Lock / hide element controls
 - Design Mode vs Data Preview Mode
@@ -19,6 +26,7 @@ A functional MVP for a browser-based, data-aware report template editor designed
 - Sample Chicago industrial report data
 - Sample cover, overall market page and submarket template page
 - Validation for unresolved bindings and out-of-page geometry
+- LocalStorage persistence behind a replaceable persistence service
 - JSON export of the current template
 - Browser Print / Save as PDF workflow
 - Clean separation between data, document schema, rendering, validation and editor UI
@@ -54,9 +62,22 @@ http://localhost:5173
 
 ```bash
 npm run typecheck
+npm test
 npm run build
 npm run preview
 ```
+
+## Keyboard shortcuts
+
+| Action | Shortcut |
+| --- | --- |
+| Delete selection | `Delete` / `Backspace` |
+| Copy / Paste | `Ctrl/Cmd+C` / `Ctrl/Cmd+V` |
+| Duplicate | `Ctrl/Cmd+D` |
+| Undo / Redo | `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` |
+| Nudge / large nudge | Arrow / `Shift+Arrow` |
+| Group / Ungroup | `Ctrl/Cmd+G` / `Ctrl/Cmd+Shift+G` |
+| Zoom in / out / reset | `Ctrl/Cmd++` / `Ctrl/Cmd+-` / `Ctrl/Cmd+0` |
 
 ## Push to a NEW GitHub repository
 
@@ -181,16 +202,17 @@ Then implement:
 
 The Ascendix provider should call the existing MCP/API layer and normalize results into the report data model before the UI sees them.
 
-## Current MVP limitations
+## Current limitations
 
 The current project proves the editor/data-binding architecture but is not yet a production replacement for Canva. Important next items include:
 
 - Persist templates/reports to a backend/database
 - Real authentication and permissions
-- Undo/redo history stack
-- Multi-select / snapping / alignment guides
-- Rich-text editing
-- Image uploads and asset storage
+- Local uploads are stored as browser data URLs; production storage still needs the asset-service adapter described in `ARCHITECTURE.md`.
+- Text supports professional box-level typography but not mixed rich-text runs inside one element.
+- Group movement is supported; proportional group resizing remains a future enhancement.
+- Page ordering uses explicit controls; draggable thumbnail reordering remains a future enhancement.
+- Image fit modes are supported; interactive crop handles remain a future enhancement.
 - Production chart library or richer SVG chart engine
 - Repeating components and repeating pages
 - Conditional visibility / conditional formatting UI
@@ -199,7 +221,7 @@ The current project proves the editor/data-binding architecture but is not yet a
 - Report instance snapshots
 - Data provenance and manual-override tracking
 - Ascendix/Salesforce integration
-- Full reconstruction of the current Industrial Market Report template
+- Full pixel-level reconstruction of the current Industrial Market Report template
 - Page-level export of an entire multipage report rather than only the current browser print view
 
 ## Recommended next milestone

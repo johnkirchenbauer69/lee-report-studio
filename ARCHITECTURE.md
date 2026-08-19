@@ -40,6 +40,19 @@ A direct mapping such as `Market_Data__c.Some_Field__c -> visual element` create
 - Auth: organizational SSO / OAuth
 - Ascendix: existing MCP/service boundary with a production HTTP/API adapter if required
 
+## Current editor architecture
+
+- `src/types/report.ts` owns the typed document, appearance, asset and editor-setting schemas.
+- `src/engine/editorMath.ts` owns DPI conversion, fill rendering, snapping and distribution math.
+- `src/engine/bindings.ts` remains the semantic data-resolution and formatting boundary.
+- `src/engine/validation.ts` performs data, geometry, asset, gradient and estimated text-overflow checks.
+- `src/services/persistence.ts` hides LocalStorage behind a replaceable persistence interface.
+- `src/components/CanvasElement.tsx` renders document elements and localized pointer interactions.
+- `src/components/Inspector.tsx` exposes unit-aware, type-specific property controls.
+- `src/App.tsx` coordinates pages, selection, command history, assets, keyboard shortcuts and export.
+
+All document geometry remains in CSS reference pixels. UI units are a presentation concern, converted with `96px = 1in`. Pointer interactions update rendering state continuously, while history captures a single transaction at pointer-up.
+
 ## Proposed entities
 
 ### Template
