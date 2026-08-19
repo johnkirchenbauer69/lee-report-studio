@@ -59,6 +59,7 @@ export interface ElementStyle {
   letterSpacing?: number;
   lineHeight?: number;
   textDecoration?: 'none' | 'underline';
+  mixBlendMode?: 'normal' | 'screen' | 'multiply';
 }
 
 export interface BaseElement {
@@ -95,6 +96,7 @@ export interface ImageElement extends BaseElement {
   fit?: 'cover' | 'contain' | 'stretch' | 'original';
   assetId?: string;
   crop?: ImageCrop;
+  sourceCrop?: { sourceWidth: number; sourceHeight: number; x: number; y: number; width: number; height: number };
 }
 
 export interface TableColumn {

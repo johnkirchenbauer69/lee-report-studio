@@ -1,15 +1,15 @@
 import type { PropertyHighlight } from '../types/marketReport';
-import type { ReportElement, ReportPage, ReportTemplate } from '../types/report';
+import type { ImageElement, ReportElement, ReportPage, ReportTemplate } from '../types/report';
 import { topAvailabilities, topConstruction, topDeliveries } from './overallMarketData';
 
 const crimson='#c4123f',navy='#003c50',blue='#0099d8',white='#ffffff',body='#32414b';
 const text=(id:string,name:string,x:number,y:number,width:number,height:number,value:string,fontSize:number,color=body,fontWeight=400,align:'left'|'center'|'right'='left'):ReportElement=>({id,type:'text',name,x,y,width,height,text:value,style:{fontFamily:'Avenir Next, Nunito Sans, Arial, sans-serif',fontSize,fontWeight,color,textAlign:align,lineHeight:1.14,opacity:1}});
 const shape=(id:string,name:string,x:number,y:number,width:number,height:number,background:string,borderRadius=0,opacity=1):ReportElement=>({id,type:'shape',shape:'rectangle',name,x,y,width,height,style:{background,borderRadius,opacity}});
-const image=(id:string,name:string,x:number,y:number,width:number,height:number,src:string,fit:'cover'|'contain'|'stretch'|'original'='cover'):ReportElement=>({id,type:'image',name,x,y,width,height,src,fit,crop:{x:50,y:50,zoom:1},style:{opacity:1}});
+const image=(id:string,name:string,x:number,y:number,width:number,height:number,src:string,fit:'cover'|'contain'|'stretch'|'original'='cover'):ImageElement=>({id,type:'image',name,x,y,width,height,src,fit,crop:{x:50,y:50,zoom:1},style:{opacity:1}});
 
 function standardHeader(pageNumber:number):ReportElement[]{return[
   {id:`header-${pageNumber}`,type:'shape',shape:'rectangle',name:'Header Gradient',x:0,y:0,width:816,height:110,style:{fill:{type:'linear-gradient',angle:180,stops:[{id:'red',color:'#cf123f',position:0},{id:'wine',color:'#3d0a16',position:100}]},opacity:1}},
-  image(`logo-${pageNumber}`,'LEE & Associates Logo',31,27,190,67,'/report-assets/lee-logo-white.png','contain'),
+  {...image(`logo-${pageNumber}`,'LEE & Associates Logo',31,27,190,67,'/report-assets/lee-logo-white.png','contain'),style:{opacity:1,mixBlendMode:'screen'}},
   text(`period-${pageNumber}`,'Quarter',598,22,184,41,'Q2 2026',35,white,800,'right'),
   text(`market-${pageNumber}`,'Market',597,67,184,25,'OVERALL MARKET',20,white,400,'right'),
   {id:`footer-${pageNumber}`,type:'shape',shape:'rectangle',name:'Footer Gradient',x:0,y:1020,width:816,height:36,style:{fill:{type:'linear-gradient',angle:90,stops:[{id:'wine',color:'#64101f',position:0},{id:'red',color:'#d21442',position:100}]},opacity:1}},
@@ -19,8 +19,8 @@ function standardHeader(pageNumber:number):ReportElement[]{return[
 
 const cover:ReportPage={id:'cover',name:'Cover',width:816,height:1056,background:'#ffffff',elements:[
   image('cover-photo','Chicago Skyline',0,0,816,1056,'/report-assets/cover-chicago.jpg','cover'),
-  shape('cover-wash','Image Wash',0,0,816,1056,'#ffffff',0,.16),
-  image('cover-logo','LEE & Associates Logo',31,31,220,86,'/report-assets/lee-logo-white.png','contain'),
+  shape('cover-wash','Image Wash',0,0,816,1056,'#ffffff',0,0),
+  {...image('cover-logo','LEE & Associates Logo',31,31,220,86,'/report-assets/lee-logo-white.png','contain'),style:{opacity:1,mixBlendMode:'screen'}},
   text('cover-office','Office Name',216,214,390,27,'LEE & ASSOCIATES OF ILLINOIS',24,white,400,'center'),
   text('cover-industrial','Industrial',204,250,410,55,'INDUSTRIAL',44,white,800,'center'),
   text('cover-title','Market Report',204,306,410,48,'MARKET REPORT',39,white,400,'center'),
@@ -59,7 +59,7 @@ const overviewPage:ReportPage={id:'market-overview',name:'Market Overview',width
   ...standardHeader(3),
   text('overview-title','Market Overview',32,122,360,26,'MARKET OVERVIEW',17,blue,700),
   {id:'overview-narrative',type:'text',name:'Market Narrative',x:32,y:149,width:374,height:212,text:'',binding:{path:'overallMarket.narrative',label:'Approved Market Narrative'},style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:8.2,fontWeight:300,color:'#66717a',lineHeight:1.18,opacity:1}},
-  image('market-map','Industrial Submarket Map',432,120,352,240,'/report-assets/market-map.svg','stretch'),
+  {...image('market-map','Industrial Submarket Map',432,120,352,240,'/report-assets/reference-page-3.png','stretch'),sourceCrop:{sourceWidth:1020,sourceHeight:1320,x:540,y:150,width:440,height:300}},
   {id:'indicator-table',type:'table',name:'Market Indicators',x:32,y:368,width:752,height:116,sourcePath:'indicatorRows',maxRows:5,variant:'indicators',columns:indicatorColumns,style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:9,color:'#123f55',opacity:1}},
   text('chart-1-title','Chart Title',48,496,350,23,'NET ABSORPTION, VACANCY & AVAILABILITY',13,blue,600,'center'),
   text('chart-2-title','Chart Title',426,496,350,23,'SALES VOLUME & MEDIAN SALES PRICE',13,blue,600,'center'),
