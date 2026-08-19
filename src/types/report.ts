@@ -75,6 +75,8 @@ export interface BaseElement {
   groupId?: string;
   style: ElementStyle;
   binding?: Binding;
+  bindingContext?: BindingContext;
+  repeat?: RepeatRule;
 }
 
 export interface TextElement extends BaseElement {
@@ -118,10 +120,30 @@ export interface ChartElement extends BaseElement {
   type: 'chart';
   sourcePath: string;
   categoryPath: string;
-  valuePath: string;
-  chartType: 'bar' | 'line';
+  valuePath?: string;
+  chartType: 'bar' | 'line' | 'area' | 'column' | 'combination';
   title?: string;
+  series?: ChartSeries[];
+  axes?: ChartAxis[];
+  legend?: ChartLegend;
+  chartStyle?: ChartStyle;
 }
+
+export interface BindingContext { name: string; path: string; }
+export interface RepeatRule {
+  sourcePath: string;
+  contextName?: string;
+  direction?: 'vertical' | 'horizontal';
+  maximumItems?: number;
+  spacing?: number;
+  sortBy?: string;
+  sortOrder?: 'ascending' | 'descending';
+}
+export interface RepeatingPageRule extends Omit<RepeatRule, 'direction' | 'spacing'> { contextName: string; }
+export interface ChartSeries { id: string; name: string; valuePath: string; type?: 'bar' | 'line' | 'area' | 'column'; color: string; lineWidth?: number; markerSize?: number; }
+export interface ChartAxis { id: string; position: 'left' | 'right' | 'bottom'; title?: string; minimum?: number; maximum?: number; format?: Binding['format']; decimals?: number; showGridlines?: boolean; }
+export interface ChartLegend { visible: boolean; position: 'top' | 'right' | 'bottom' | 'left'; }
+export interface ChartStyle { background?: string; gridColor?: string; labelColor?: string; fontFamily?: string; fontSize?: number; }
 
 export type ReportElement = TextElement | ShapeElement | ImageElement | TableElement | ChartElement;
 
@@ -132,6 +154,8 @@ export interface ReportPage {
   height: number;
   background: string;
   hidden?: boolean;
+  bindingContext?: BindingContext;
+  repeat?: RepeatingPageRule;
   elements: ReportElement[];
 }
 
