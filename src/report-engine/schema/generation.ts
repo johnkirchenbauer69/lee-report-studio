@@ -1,13 +1,17 @@
-import type { IndustrialMarketReport } from './industrialMarketReport';
-import type { ReportPage } from '../../types/report';
+import type { ReportPage } from "../../types/report";
+import type { ReportValidationIssue } from "../validation/reportValidation";
+import type { IndustrialMarketReport } from "./industrialMarketReport";
 
-export type ReportProviderId = 'sample' | 'json' | 'excel' | 'ascendix';
+export type ReportProviderId = "sample" | "json" | "excel" | "ascendix";
 
 export interface ReportGenerationRequest {
   templateId: string;
   market: string;
   period: string;
-  selectedSubmarkets?: string[];
+  calculationScope:
+    | { type: "all-submarkets" }
+    | { type: "selected-submarkets"; submarkets: string[] };
+  pageSelection: { submarkets: string[] };
   source: { provider: ReportProviderId; configuration?: unknown };
 }
 
@@ -19,15 +23,32 @@ export interface ManualOverride {
   createdAt: string;
 }
 
+export interface ProviderSourceMetadata {
+  importedAt: string;
+  sourceName?: string;
+  sourceVersion?: string;
+}
+
+export interface ReportReadiness {
+  canEdit: boolean;
+  canExportDraft: boolean;
+  canApprove: boolean;
+  canPublish: boolean;
+  blockers: ReportValidationIssue[];
+  issues: ReportValidationIssue[];
+}
+
 export interface ReportInstance {
   id: string;
   templateId: string;
   templateVersion: string;
   generationRequest: ReportGenerationRequest;
+  provider: ReportProviderId;
+  sourceMetadata: ProviderSourceMetadata;
   generatedAt: string;
   dataSnapshot: IndustrialMarketReport;
   pages: ReportPage[];
   manualOverrides: ManualOverride[];
-  status: 'draft' | 'approved' | 'published';
+  readiness: ReportReadiness;
+  status: "draft" | "approved" | "published";
 }
-

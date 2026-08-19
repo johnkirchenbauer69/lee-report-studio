@@ -127,19 +127,22 @@ function standardHeader(pageNumber: number): ReportElement[] {
       ),
       style: { opacity: 1, mixBlendMode: "screen" },
     },
-    text(
-      `period-${pageNumber}`,
-      "Quarter",
-      598,
-      22,
-      184,
-      41,
-      "Q2 2026",
-      35,
-      white,
-      800,
-      "right",
-    ),
+    {
+      ...text(
+        `period-${pageNumber}`,
+        "Quarter",
+        598,
+        22,
+        184,
+        41,
+        "Q2 2026",
+        35,
+        white,
+        800,
+        "right",
+      ),
+      binding: { path: "reportDisplay.period" },
+    },
     text(
       `market-${pageNumber}`,
       "Market",
@@ -305,32 +308,38 @@ const cover: ReportPage = {
       height: 276,
       style: { background: white, borderRadius: 999, opacity: 1 },
     },
-    text(
-      "cover-q2",
-      "Quarter",
-      541,
-      629,
-      204,
-      91,
-      "Q2",
-      82,
-      navy,
-      800,
-      "center",
-    ),
-    text(
-      "cover-year",
-      "Year",
-      548,
-      734,
-      190,
-      49,
-      "2026",
-      47,
-      navy,
-      200,
-      "center",
-    ),
+    {
+      ...text(
+        "cover-q2",
+        "Quarter",
+        541,
+        629,
+        204,
+        91,
+        "Q2",
+        82,
+        navy,
+        800,
+        "center",
+      ),
+      binding: { path: "reportDisplay.quarter" },
+    },
+    {
+      ...text(
+        "cover-year",
+        "Year",
+        548,
+        734,
+        190,
+        49,
+        "2026",
+        47,
+        navy,
+        200,
+        "center",
+      ),
+      binding: { path: "reportDisplay.year" },
+    },
     text(
       "cover-address",
       "Address",
@@ -598,6 +607,9 @@ const overviewPage: ReportPage = {
       sourcePath: "indicatorRows",
       maxRows: 5,
       variant: "indicators",
+      requiredDataSection: "historicalPeriods",
+      emptyMessage:
+        "Historical market indicators are unavailable from the selected source.",
       columns: indicatorColumns,
       style: {
         fontFamily: "Nunito Sans, Arial, sans-serif",
@@ -632,26 +644,32 @@ const overviewPage: ReportPage = {
       600,
       "center",
     ),
-    image(
-      "chart-net",
-      "Net Absorption Chart",
-      47,
-      520,
-      352,
-      216,
-      "/report-assets/chart-net-absorption.png",
-      "contain",
-    ),
-    image(
-      "chart-sales",
-      "Sales Volume Chart",
-      424,
-      520,
-      352,
-      216,
-      "/report-assets/chart-sales-volume.png",
-      "contain",
-    ),
+    {
+      ...image(
+        "chart-net",
+        "Net Absorption Chart",
+        47,
+        520,
+        352,
+        216,
+        "/report-assets/chart-net-absorption.png",
+        "contain",
+      ),
+      requiredDataSection: "historicalPeriods",
+    },
+    {
+      ...image(
+        "chart-sales",
+        "Sales Volume Chart",
+        424,
+        520,
+        352,
+        216,
+        "/report-assets/chart-sales-volume.png",
+        "contain",
+      ),
+      requiredDataSection: "historicalPeriods",
+    },
     shape("leases-side-bg", "Section Side Bar", 32, 762, 23, 114, "#7a0d26"),
     text(
       "leases-side",
@@ -737,6 +755,18 @@ function propertySection(
   y: number,
   items: PropertyHighlight[],
 ): ReportElement[] {
+  const section =
+    id === "availability"
+      ? "availabilities"
+      : id === "deliveries"
+        ? "deliveries"
+        : "construction";
+  const sourcePath =
+    section === "availabilities"
+      ? "topAvailabilities"
+      : section === "deliveries"
+        ? "topDeliveries"
+        : "topConstruction";
   const result: ReportElement[] = [
     shape(`${id}-bar`, `${title} Bar`, 32, y, 752, 27, crimson, 8),
     text(
@@ -756,10 +786,10 @@ function propertySection(
   items.forEach((item, index) => {
     const x = 32 + index * 257,
       width = index === 2 ? 238 : 239;
-    result.push(
-      image(
+    result.push({
+      ...image(
         `${id}-image-${index}`,
-        item.address,
+        "Property Image",
         x,
         y + 27,
         width,
@@ -767,9 +797,11 @@ function propertySection(
         item.image,
         "cover",
       ),
-    );
-    result.push(
-      shape(
+      binding: { path: "property.image" },
+      bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
+    });
+    result.push({
+      ...shape(
         `${id}-caption-${index}`,
         "Caption",
         x,
@@ -779,11 +811,12 @@ function propertySection(
         navy,
         index === 0 ? 8 : 0,
       ),
-    );
-    result.push(
-      text(
+      bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
+    });
+    result.push({
+      ...text(
         `${id}-text-${index}`,
-        item.address,
+        "Property Address",
         x + 7,
         y + 170,
         width - 14,
@@ -794,9 +827,11 @@ function propertySection(
         700,
         "center",
       ),
-    );
-    result.push(
-      text(
+      binding: { path: "property.address" },
+      bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
+    });
+    result.push({
+      ...text(
         `${id}-detail-${index}`,
         "Property Details",
         x + 7,
@@ -809,9 +844,13 @@ function propertySection(
         600,
         "center",
       ),
-    );
+      binding: { path: "property.detail" },
+      bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
+    });
   });
-  return result;
+  return result.map((element, index) =>
+    index < 2 ? element : { ...element, requiredDataSection: section },
+  );
 }
 
 const highlightsPage: ReportPage = {
@@ -848,26 +887,32 @@ const highlightsPage: ReportPage = {
       600,
       "center",
     ),
-    image(
-      "availability-chart",
-      "Availability by Size",
-      32,
-      151,
-      368,
-      220,
-      "/report-assets/chart-availability-size.png",
-      "contain",
-    ),
-    image(
-      "construction-chart",
-      "Under Construction and Deliveries",
-      416,
-      151,
-      368,
-      220,
-      "/report-assets/chart-construction-deliveries.png",
-      "contain",
-    ),
+    {
+      ...image(
+        "availability-chart",
+        "Availability by Size",
+        32,
+        151,
+        368,
+        220,
+        "/report-assets/chart-availability-size.png",
+        "contain",
+      ),
+      requiredDataSection: "availabilities",
+    },
+    {
+      ...image(
+        "construction-chart",
+        "Under Construction and Deliveries",
+        416,
+        151,
+        368,
+        220,
+        "/report-assets/chart-construction-deliveries.png",
+        "contain",
+      ),
+      requiredDataSection: "construction",
+    },
     ...propertySection(
       "availability",
       "TOP AVAILABILITIES",
@@ -888,6 +933,19 @@ export const sampleTemplate: ReportTemplate = {
   id: "industrial-market-report-q2-2026",
   name: "2026 Q2 Overall Market Report",
   version: "1.1.0",
+  requiredSections: [
+    "overallMarket",
+    "submarkets",
+    "historicalPeriods",
+    "leasing",
+    "sales",
+  ],
+  optionalSections: [
+    "availabilities",
+    "deliveries",
+    "construction",
+    "narrative",
+  ],
   pages: [cover, tablePage, overviewPage, highlightsPage],
   settings: {
     unit: "px",

@@ -1,18 +1,20 @@
 import type ExcelJSTypes from "exceljs";
 import { calculateMarketTotals } from "../../report-engine/calculations/marketCalculations";
-import type {
-  IndustrialMarketReport,
-  MarketMetrics,
-  ProvenanceRecord,
-  SubmarketMetrics,
+import {
+  describeReportSchemaError,
+  industrialMarketReportSchema,
+  type DatasetSectionStatus,
+  type MarketMetrics,
+  type ProvenanceRecord,
+  type SubmarketMetrics,
 } from "../../report-engine/schema/industrialMarketReport";
 import type { ReportGenerationRequest } from "../../report-engine/schema/generation";
 import type { ReportDataProvider } from "../ReportDataProvider";
 import { ReportImportError } from "../ReportDataProvider";
-import { q2SampleReport } from "../sample/q2SampleReport";
 
 type ExcelConfiguration = { data: ArrayBuffer | Uint8Array; fileName?: string };
 type CellValue = ExcelJSTypes.CellValue;
+
 const metricColumns: { key: keyof MarketMetrics; header: string }[] = [
   { key: "inventorySf", header: "inventory (sf)" },
   { key: "deliveredSf", header: "delivered (sf)" },
@@ -33,24 +35,49 @@ const scalarValue = (value: CellValue): unknown => {
   }
   return value;
 };
+
 const clean = (value: unknown) =>
   String(value ?? "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 
+const missingSections = (sourceId: string): DatasetSectionStatus[] => [
+  {
+    section: "overallMarket",
+    status: "complete",
+    sourceIds: [sourceId, "calculated-submarket-totals"],
+  },
+  { section: "submarkets", status: "complete", sourceIds: [sourceId] },
+  ...(
+    [
+      "historicalPeriods",
+      "leasing",
+      "sales",
+      "availabilities",
+      "deliveries",
+      "construction",
+      "narrative",
+    ] as const
+  ).map((section) => ({
+    section,
+    status: "missing" as const,
+    sourceIds: [],
+    note: "The selected workbook does not contain this report section.",
+  })),
+];
+
 export class ExcelDataProvider implements ReportDataProvider {
   readonly id = "excel" as const;
 
-  async loadReportData(
-    request: ReportGenerationRequest,
-  ): Promise<IndustrialMarketReport> {
+  async loadReportData(request: ReportGenerationRequest) {
     const config = request.source.configuration as
       Partial<ExcelConfiguration> | undefined;
-    if (!config?.data)
+    if (!config?.data) {
       throw new ReportImportError("Import failed.", [
         "Choose the Submarket Stats workbook.",
       ]);
+    }
 
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
@@ -63,10 +90,11 @@ export class ExcelDataProvider implements ReportDataProvider {
       workbook.worksheets.find(
         (item) => clean(item.name) === "submarket table",
       ) ?? workbook.worksheets[0];
-    if (!sheet)
+    if (!sheet) {
       throw new ReportImportError("Import failed.", [
         "The workbook contains no worksheets.",
       ]);
+    }
 
     const headers = Array.from({ length: sheet.columnCount }, (_, index) =>
       clean(scalarValue(sheet.getCell(1, index + 1).value)),
@@ -85,6 +113,7 @@ export class ExcelDataProvider implements ReportDataProvider {
     }
 
     const importedAt = new Date().toISOString();
+    const sourceId = config.fileName ?? "excel-workbook";
     const provenance: ProvenanceRecord[] = [];
     const submarkets: SubmarketMetrics[] = [];
     for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
@@ -117,47 +146,60 @@ export class ExcelDataProvider implements ReportDataProvider {
           selectedValue: values[index],
           sources: [
             {
-              sourceId: config.fileName ?? "excel-workbook",
+              sourceId,
               sourceType: "excel",
               value: values[index],
               reference: `${sheet.name}!${row.getCell(indexes[index]).address}`,
               importedAt,
             },
           ],
-          authority: config.fileName ?? "Imported workbook",
+          authority: sourceId,
           status: "matched",
         }),
       );
     }
 
-    if (!submarkets.length)
+    if (!submarkets.length) {
       throw new ReportImportError("Import failed.", [
         "No submarket rows were found.",
       ]);
-    const allowed = new Set(request.selectedSubmarkets ?? []);
-    const selected = allowed.size
-      ? submarkets.filter((item) => allowed.has(item.name))
-      : submarkets;
-    const base = structuredClone(q2SampleReport);
-    return {
-      ...base,
+    }
+
+    const report = {
       report: {
-        ...base.report,
+        id: `${request.market}-${request.period}`
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-"),
+        title: "Industrial Market Report",
+        templateId: request.templateId,
         market: request.market,
         period: request.period,
-        templateId: request.templateId,
+        preparedBy: "Lee & Associates",
       },
-      submarkets: selected,
-      overallMarket: {
-        ...base.overallMarket,
-        ...calculateMarketTotals(selected),
-      },
-      provenance: [
-        ...provenance,
-        ...base.provenance.filter(
-          (record) => !record.fieldPath.startsWith("submarkets."),
-        ),
-      ],
+      overallMarket: { ...calculateMarketTotals(submarkets), narrative: "" },
+      submarkets,
+      historicalPeriods: [],
+      leasing: [],
+      sales: [],
+      availabilities: [],
+      deliveries: [],
+      construction: [],
+      provenance,
+      presentationOverrides: [],
+      dataCompleteness: missingSections(sourceId),
+    };
+    const parsed = industrialMarketReportSchema.safeParse(report);
+    if (!parsed.success) {
+      throw new ReportImportError(
+        "Import failed.",
+        describeReportSchemaError(parsed.error, report),
+      );
+    }
+    return {
+      report: parsed.data,
+      provider: this.id,
+      sourceMetadata: { importedAt, sourceName: sourceId },
+      completeness: parsed.data.dataCompleteness,
     };
   }
 }

@@ -14,7 +14,7 @@ import type {
   ReportTemplate,
   TableElement,
 } from "../types/report";
-import { formatValue, getByPath } from "../engine/bindings";
+import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 
 const POINTS_PER_PIXEL = 72 / 96;
 const color = (value: string | undefined) => {
@@ -149,10 +149,13 @@ function wrapText(
   return lines;
 }
 
-async function croppedPng(element: ImageElement): Promise<Uint8Array> {
+async function croppedPng(
+  element: ImageElement,
+  resolvedSource = element.src,
+): Promise<Uint8Array> {
   const image = new Image();
   image.crossOrigin = "anonymous";
-  image.src = element.src;
+  image.src = resolvedSource;
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve();
     image.onerror = () =>
@@ -232,7 +235,11 @@ function drawTable(
   data: unknown,
   fonts: { regular: PDFFont; bold: PDFFont },
 ) {
-  const rows = getByPath(data, element.sourcePath),
+  const rows = getByContextPath(
+      data,
+      element.sourcePath,
+      element.bindingContext,
+    ),
     items = Array.isArray(rows)
       ? rows.slice(0, element.maxRows ?? rows.length)
       : [],
@@ -360,7 +367,14 @@ async function drawElement(
   if (element.type === "text") {
     const typography = element.style.typography,
       value = element.binding
-        ? formatValue(getByPath(data, element.binding.path), element.binding)
+        ? formatValue(
+            getByContextPath(
+              data,
+              element.binding.path,
+              element.bindingContext,
+            ),
+            element.binding,
+          )
         : element.text,
       font = typography?.italic
         ? fonts.italic
@@ -398,7 +412,14 @@ async function drawElement(
     try {
       if (typeof Image === "undefined")
         throw new Error("Browser image rendering unavailable");
-      const embedded = await pdf.embedPng(await croppedPng(element));
+      const dynamicSource = element.binding
+        ? getByContextPath(data, element.binding.path, element.bindingContext)
+        : undefined;
+      const resolvedSource =
+        typeof dynamicSource === "string" ? dynamicSource : element.src;
+      const embedded = await pdf.embedPng(
+        await croppedPng(element, resolvedSource),
+      );
       pdfPage.drawImage(embedded, {
         x,
         y,

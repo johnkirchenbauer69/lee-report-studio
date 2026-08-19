@@ -105,6 +105,7 @@ export interface BaseElement {
   binding?: Binding;
   bindingContext?: BindingContext;
   repeat?: RepeatRule;
+  requiredDataSection?: import("../report-engine/schema/industrialMarketReport").DatasetSection;
 }
 
 export interface TextElement extends BaseElement {
@@ -150,6 +151,7 @@ export interface TableElement extends BaseElement {
   maxRows?: number;
   variant?: "default" | "market-matrix" | "indicators" | "transactions";
   rowKindPath?: string;
+  emptyMessage?: string;
 }
 
 export interface ChartElement extends BaseElement {
@@ -260,13 +262,16 @@ export interface ReportTemplate {
   id: string;
   name: string;
   version: string;
+  requiredSections?: import("../report-engine/schema/industrialMarketReport").DatasetSection[];
+  optionalSections?: import("../report-engine/schema/industrialMarketReport").DatasetSection[];
   pages: ReportPage[];
   assets?: Asset[];
   settings?: EditorSettings;
 }
 
 export interface ValidationItem {
-  level: "ok" | "warning" | "error";
+  level: "ok" | "info" | "warning" | "error" | "blocking";
+  category?: "data" | "design" | "export";
   message: string;
   elementId?: string;
 }

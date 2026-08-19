@@ -1,27 +1,174 @@
-import { getReportDataProvider } from '../../data-providers/providerRegistry';
-import type { ReportTemplate } from '../../types/report';
-import { buildPresentationModel } from '../bindings/presentationModel';
-import type { ReportGenerationRequest, ReportInstance } from '../schema/generation';
-import { validateNormalizedReport } from '../validation/reportValidation';
-import { expandTemplatePages } from './repeaters';
+import { getReportDataProvider } from "../../data-providers/providerRegistry";
+import type { ReportDataProviderResult } from "../../data-providers/ReportDataProvider";
+import type { ReportTemplate } from "../../types/report";
+import { buildPresentationModel } from "../bindings/presentationModel";
+import { calculateOverallMarket } from "../calculations/marketCalculations";
+import { industrialMarketReportSchema } from "../schema/industrialMarketReport";
+import type {
+  ReportGenerationRequest,
+  ReportInstance,
+} from "../schema/generation";
+import {
+  evaluateReportReadiness,
+  validateRequestConsistency,
+} from "../validation/reportValidation";
+import { expandTemplatePages } from "./repeaters";
+import { prepareTemplateForReport } from "./prepareTemplate";
 
-export interface GenerationProgress { stage: 'loading'|'normalizing'|'calculating'|'reconciling'|'validating'|'expanding'|'complete'; message: string; }
-
-export async function generateReportInstance(template: ReportTemplate, request: ReportGenerationRequest, onProgress?: (progress: GenerationProgress)=>void): Promise<ReportInstance> {
-  onProgress?.({stage:'loading',message:`Loading ${request.source.provider} data`});
-  const normalized = await getReportDataProvider(request.source.provider).loadReportData(request);
-  onProgress?.({stage:'normalizing',message:'Normalized source records'});
-  onProgress?.({stage:'calculating',message:'Calculated market totals and weighted metrics'});
-  onProgress?.({stage:'reconciling',message:'Resolved approved presentation overrides'});
-  const issues = validateNormalizedReport(normalized);
-  const errors = issues.filter(issue=>issue.level==='error');
-  if (errors.length) throw new Error(`Report validation failed:\n${errors.map(issue=>`${issue.path}: ${issue.message}`).join('\n')}`);
-  onProgress?.({stage:'validating',message:`Validated report data${issues.length?` with ${issues.length} warning(s)`:''}`});
-  const presentationData = buildPresentationModel(normalized);
-  const pages = expandTemplatePages(template,presentationData);
-  onProgress?.({stage:'expanding',message:`Generated ${pages.length} editable page${pages.length===1?'':'s'}`});
-  const instance: ReportInstance = {id:`report-${crypto.randomUUID()}`,templateId:template.id,templateVersion:template.version,generationRequest:structuredClone(request),generatedAt:new Date().toISOString(),dataSnapshot:structuredClone(normalized),pages,manualOverrides:[],status:'draft'};
-  onProgress?.({stage:'complete',message:'Report ready to edit'});
-  return instance;
+export interface GenerationProgress {
+  stage:
+    | "loading"
+    | "normalizing"
+    | "calculating"
+    | "reconciling"
+    | "validating"
+    | "building-presentation"
+    | "expanding"
+    | "creating"
+    | "complete";
+  message: string;
 }
 
+const progress = (
+  callback: ((progress: GenerationProgress) => void) | undefined,
+  stage: GenerationProgress["stage"],
+  message: string,
+) => callback?.({ stage, message });
+
+export async function loadSourceData(request: ReportGenerationRequest) {
+  return getReportDataProvider(request.source.provider).loadReportData(request);
+}
+
+export function normalizeReportData(result: ReportDataProviderResult) {
+  return industrialMarketReportSchema.parse(result.report);
+}
+
+export function calculateDerivedMetrics(
+  report: ReturnType<typeof normalizeReportData>,
+  request: ReportGenerationRequest,
+) {
+  return calculateOverallMarket(report, request);
+}
+
+export function reconcileSources(
+  report: ReturnType<typeof normalizeReportData>,
+) {
+  const overrides = new Map(
+    report.presentationOverrides.map((override) => [
+      override.fieldPath,
+      override,
+    ]),
+  );
+  return {
+    ...report,
+    provenance: report.provenance.map((record) => {
+      const override = overrides.get(record.fieldPath);
+      if (record.status !== "conflict" || !override) return record;
+      return {
+        ...record,
+        status: "override" as const,
+        authority: override.authority,
+        note: override.reason,
+      };
+    }),
+  };
+}
+
+export async function generateReportInstance(
+  template: ReportTemplate,
+  request: ReportGenerationRequest,
+  onProgress?: (progress: GenerationProgress) => void,
+): Promise<ReportInstance> {
+  progress(
+    onProgress,
+    "loading",
+    `Loading ${request.source.provider} source data`,
+  );
+  const providerResult = await loadSourceData(request);
+
+  progress(onProgress, "normalizing", "Validating normalized source records");
+  const normalized = normalizeReportData(providerResult);
+  const consistencyIssues = validateRequestConsistency(normalized, request);
+  if (consistencyIssues.length) {
+    throw new Error(
+      `Source consistency validation failed:\n${consistencyIssues.map((issue) => `- ${issue.message}`).join("\n")}`,
+    );
+  }
+
+  progress(
+    onProgress,
+    "calculating",
+    "Calculating metrics from the declared analytical universe",
+  );
+  const calculated = calculateDerivedMetrics(normalized, request);
+
+  progress(
+    onProgress,
+    "reconciling",
+    "Applying explicit, auditable source reconciliations",
+  );
+  const reconciled = reconcileSources(calculated);
+
+  progress(onProgress, "validating", "Evaluating report readiness");
+  const readiness = evaluateReportReadiness(
+    reconciled,
+    template,
+    providerResult.provider,
+  );
+  const structuralErrors = readiness.issues.filter(
+    (issue) => issue.level === "error",
+  );
+  if (structuralErrors.length) {
+    throw new Error(
+      `Report validation failed:\n${structuralErrors.map((issue) => `${issue.path}: ${issue.message}`).join("\n")}`,
+    );
+  }
+
+  progress(
+    onProgress,
+    "building-presentation",
+    "Building formatted presentation values",
+  );
+  const presentationData = buildPresentationModel(reconciled);
+  const preparedTemplate = prepareTemplateForReport(
+    template,
+    reconciled,
+    presentationData,
+    providerResult.provider,
+  );
+
+  progress(
+    onProgress,
+    "expanding",
+    "Expanding selected detail pages and repeating components",
+  );
+  const pages = expandTemplatePages(
+    preparedTemplate,
+    presentationData,
+    request.pageSelection,
+  );
+
+  progress(onProgress, "creating", "Creating versioned report instance");
+  const instance: ReportInstance = {
+    id: `report-${crypto.randomUUID()}`,
+    templateId: template.id,
+    templateVersion: template.version,
+    generationRequest: structuredClone(request),
+    provider: providerResult.provider,
+    sourceMetadata: structuredClone(providerResult.sourceMetadata),
+    generatedAt: new Date().toISOString(),
+    dataSnapshot: structuredClone(reconciled),
+    pages,
+    manualOverrides: [],
+    readiness,
+    status: "draft",
+  };
+  progress(
+    onProgress,
+    "complete",
+    readiness.canPublish
+      ? "Report ready to edit and publish"
+      : `Draft ready with ${readiness.blockers.length} publication blocker${readiness.blockers.length === 1 ? "" : "s"}`,
+  );
+  return instance;
+}
