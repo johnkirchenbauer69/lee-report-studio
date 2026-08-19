@@ -1,64 +1,87 @@
-import type { ReportTemplate } from '../types/report';
+import type { PropertyHighlight } from '../types/marketReport';
+import type { ReportElement, ReportPage, ReportTemplate } from '../types/report';
+import { topAvailabilities, topConstruction, topDeliveries } from './overallMarketData';
 
-export const sampleTemplate: ReportTemplate = {
-  id: 'industrial-market-report',
-  name: 'Industrial Market Report',
-  version: '0.1.0',
-  pages: [
-    {
-      id: 'cover',
-      name: 'Cover',
-      width: 816,
-      height: 1056,
-      background: '#f8fafc',
-      elements: [
-        { id: 'cover-band', type: 'shape', name: 'Cover Band', x: 0, y: 0, width: 816, height: 280, style: { background: '#111827' } },
-        { id: 'cover-title', type: 'text', name: 'Report Title', x: 58, y: 88, width: 690, height: 92, text: '{{ report.title }}', binding: { path: 'report.title', label: 'Report Title' }, style: { fontFamily: 'Arial', fontSize: 38, fontWeight: 700, color: '#ffffff' } },
-        { id: 'cover-period', type: 'text', name: 'Period', x: 60, y: 188, width: 300, height: 38, text: '{{ report.period }}', binding: { path: 'report.period', label: 'Report Period' }, style: { fontFamily: 'Arial', fontSize: 20, fontWeight: 600, color: '#ffffff' } },
-        { id: 'cover-subtitle', type: 'text', name: 'Subtitle', x: 60, y: 360, width: 600, height: 110, text: 'Automated market intelligence, built from structured data.', style: { fontFamily: 'Arial', fontSize: 30, fontWeight: 700, color: '#101828' } },
-        { id: 'cover-by', type: 'text', name: 'Prepared By', x: 60, y: 930, width: 400, height: 30, text: '{{ report.preparedBy }}', binding: { path: 'report.preparedBy', label: 'Prepared By' }, style: { fontFamily: 'Arial', fontSize: 15, fontWeight: 600, color: '#344054' } },
-      ],
-    },
-    {
-      id: 'overall',
-      name: 'Overall Market',
-      width: 816,
-      height: 1056,
-      background: '#ffffff',
-      elements: [
-        { id: 'overall-title', type: 'text', name: 'Page Title', x: 50, y: 42, width: 500, height: 48, text: 'Chicago Overall Market', style: { fontFamily: 'Arial', fontSize: 28, fontWeight: 700, color: '#101828' } },
-        { id: 'metric-1-label', type: 'text', name: 'Vacancy Label', x: 50, y: 130, width: 150, height: 22, text: 'VACANCY', style: { fontFamily: 'Arial', fontSize: 11, fontWeight: 700, color: '#667085' } },
-        { id: 'metric-1', type: 'text', name: 'Vacancy', x: 50, y: 152, width: 160, height: 52, text: '{{ overall_market.vacancy_rate }}', binding: { path: 'overall_market.vacancy_rate', label: 'Overall Vacancy', format: 'percentage', decimals: 1 }, style: { fontFamily: 'Arial', fontSize: 36, fontWeight: 700, color: '#101828' } },
-        { id: 'metric-2-label', type: 'text', name: 'Availability Label', x: 250, y: 130, width: 150, height: 22, text: 'AVAILABILITY', style: { fontFamily: 'Arial', fontSize: 11, fontWeight: 700, color: '#667085' } },
-        { id: 'metric-2', type: 'text', name: 'Availability', x: 250, y: 152, width: 160, height: 52, text: '{{ overall_market.availability_rate }}', binding: { path: 'overall_market.availability_rate', label: 'Overall Availability', format: 'percentage', decimals: 1 }, style: { fontFamily: 'Arial', fontSize: 36, fontWeight: 700, color: '#101828' } },
-        { id: 'metric-3-label', type: 'text', name: 'Absorption Label', x: 450, y: 130, width: 180, height: 22, text: 'NET ABSORPTION', style: { fontFamily: 'Arial', fontSize: 11, fontWeight: 700, color: '#667085' } },
-        { id: 'metric-3', type: 'text', name: 'Net Absorption', x: 450, y: 152, width: 250, height: 52, text: '{{ overall_market.net_absorption }}', binding: { path: 'overall_market.net_absorption', label: 'Net Absorption', format: 'sf', decimals: 1 }, style: { fontFamily: 'Arial', fontSize: 34, fontWeight: 700, color: '#101828' } },
-        { id: 'market-table', type: 'table', name: 'Submarket Table', x: 50, y: 265, width: 716, height: 300, sourcePath: 'markets', maxRows: 8, columns: [
-          { key: 'name', label: 'Submarket', path: 'name', format: 'text' },
-          { key: 'inventory', label: 'Inventory', path: 'inventory_sf', format: 'sf' },
-          { key: 'vacancy', label: 'Vacancy', path: 'vacancy_rate', format: 'percentage' },
-          { key: 'availability', label: 'Availability', path: 'availability_rate', format: 'percentage' },
-          { key: 'absorption', label: 'Net Absorption', path: 'net_absorption', format: 'integer' }
-        ], style: { fontFamily: 'Arial', fontSize: 11, color: '#101828', borderColor: '#e4e7ec', borderWidth: 1 } },
-        { id: 'market-chart', type: 'chart', name: 'Net Absorption Chart', x: 50, y: 620, width: 716, height: 320, sourcePath: 'markets', categoryPath: 'name', valuePath: 'net_absorption', chartType: 'bar', title: 'Net Absorption by Submarket', style: { background: '#ffffff', borderColor: '#e4e7ec', borderWidth: 1, borderRadius: 8 } }
-      ],
-    },
-    {
-      id: 'submarket',
-      name: 'Submarket Template',
-      width: 816,
-      height: 1056,
-      background: '#ffffff',
-      elements: [
-        { id: 'submarket-name', type: 'text', name: 'Market Name', x: 50, y: 50, width: 550, height: 54, text: '{{ market.name }} Industrial', binding: { path: 'market.name', label: 'Market Name' }, style: { fontFamily: 'Arial', fontSize: 30, fontWeight: 700, color: '#101828' } },
-        { id: 'sub-vac-label', type: 'text', name: 'Vacancy Label', x: 50, y: 145, width: 120, height: 20, text: 'VACANCY', style: { fontFamily: 'Arial', fontSize: 10, fontWeight: 700, color: '#667085' } },
-        { id: 'sub-vac', type: 'text', name: 'Vacancy', x: 50, y: 166, width: 160, height: 52, text: '{{ market.vacancy_rate }}', binding: { path: 'market.vacancy_rate', format: 'percentage', decimals: 1, label: 'Market Vacancy' }, style: { fontFamily: 'Arial', fontSize: 34, fontWeight: 700, color: '#101828' } },
-        { id: 'top-leases', type: 'table', name: 'Top Leases', x: 50, y: 300, width: 716, height: 230, sourcePath: 'market.top_leases', maxRows: 3, columns: [
-          { key: 'tenant', label: 'Tenant', path: 'tenant', format: 'text' },
-          { key: 'address', label: 'Property', path: 'address', format: 'text' },
-          { key: 'size', label: 'Size', path: 'size_sf', format: 'sf' }
-        ], style: { fontFamily: 'Arial', fontSize: 12, color: '#101828', borderColor: '#e4e7ec', borderWidth: 1 } }
-      ],
-    }
-  ],
-};
+const crimson='#c4123f',navy='#003c50',blue='#0099d8',white='#ffffff',body='#32414b';
+const text=(id:string,name:string,x:number,y:number,width:number,height:number,value:string,fontSize:number,color=body,fontWeight=400,align:'left'|'center'|'right'='left'):ReportElement=>({id,type:'text',name,x,y,width,height,text:value,style:{fontFamily:'Avenir Next, Nunito Sans, Arial, sans-serif',fontSize,fontWeight,color,textAlign:align,lineHeight:1.14,opacity:1}});
+const shape=(id:string,name:string,x:number,y:number,width:number,height:number,background:string,borderRadius=0,opacity=1):ReportElement=>({id,type:'shape',shape:'rectangle',name,x,y,width,height,style:{background,borderRadius,opacity}});
+const image=(id:string,name:string,x:number,y:number,width:number,height:number,src:string,fit:'cover'|'contain'|'stretch'|'original'='cover'):ReportElement=>({id,type:'image',name,x,y,width,height,src,fit,crop:{x:50,y:50,zoom:1},style:{opacity:1}});
+
+function standardHeader(pageNumber:number):ReportElement[]{return[
+  {id:`header-${pageNumber}`,type:'shape',shape:'rectangle',name:'Header Gradient',x:0,y:0,width:816,height:110,style:{fill:{type:'linear-gradient',angle:180,stops:[{id:'red',color:'#cf123f',position:0},{id:'wine',color:'#3d0a16',position:100}]},opacity:1}},
+  image(`logo-${pageNumber}`,'LEE & Associates Logo',31,27,190,67,'/report-assets/lee-logo-white.png','contain'),
+  text(`period-${pageNumber}`,'Quarter',598,22,184,41,'Q2 2026',35,white,800,'right'),
+  text(`market-${pageNumber}`,'Market',597,67,184,25,'OVERALL MARKET',20,white,400,'right'),
+  {id:`footer-${pageNumber}`,type:'shape',shape:'rectangle',name:'Footer Gradient',x:0,y:1020,width:816,height:36,style:{fill:{type:'linear-gradient',angle:90,stops:[{id:'wine',color:'#64101f',position:0},{id:'red',color:'#d21442',position:100}]},opacity:1}},
+  text(`office-${pageNumber}`,'Office Footer',32,1029,620,17,'LEE & ASSOCIATES OF ILLINOIS  9450 W. BRYN MAWR AVE, SUITE 550 | ROSEMONT, IL 60018',9,white,400),
+  text(`page-${pageNumber}`,'Page Number',770,1029,14,17,String(pageNumber),9,white,400,'right'),
+]}
+
+const cover:ReportPage={id:'cover',name:'Cover',width:816,height:1056,background:'#ffffff',elements:[
+  image('cover-photo','Chicago Skyline',0,0,816,1056,'/report-assets/cover-chicago.jpg','cover'),
+  shape('cover-wash','Image Wash',0,0,816,1056,'#ffffff',0,.16),
+  image('cover-logo','LEE & Associates Logo',31,31,220,86,'/report-assets/lee-logo-white.png','contain'),
+  text('cover-office','Office Name',216,214,390,27,'LEE & ASSOCIATES OF ILLINOIS',24,white,400,'center'),
+  text('cover-industrial','Industrial',204,250,410,55,'INDUSTRIAL',44,white,800,'center'),
+  text('cover-title','Market Report',204,306,410,48,'MARKET REPORT',39,white,400,'center'),
+  shape('cover-right-block','Quarter Background',641,437,175,568,navy,26),
+  {id:'cover-circle',type:'shape',shape:'circle',name:'Quarter Circle',x:446,y:526,width:392,height:392,style:{background:navy,borderRadius:999,opacity:1}},
+  {id:'cover-white-circle',type:'shape',shape:'circle',name:'Quarter White Circle',x:504,y:583,width:276,height:276,style:{background:white,borderRadius:999,opacity:1}},
+  text('cover-q2','Quarter',541,629,204,91,'Q2',82,navy,800,'center'),
+  text('cover-year','Year',548,734,190,49,'2026',47,navy,200,'center'),
+  text('cover-address','Address',31,1014,650,18,'9450 W. BRYN MAWR AVENUE, SUITE 550 | ROSEMONT, IL 60018 | 773-355-3000 | WWW.LEE-ASSOCIATES.COM',8.7,white,500),
+]};
+
+const matrixColumns=[
+  {key:'name',label:'SUBMARKET',path:'name',width:12,align:'left' as const},{key:'inventory',label:'INVENTORY\n(SF)',path:'inventory',width:10,align:'center' as const},
+  {key:'delivered',label:'DELIVERED\n(SF)',path:'delivered',width:9,align:'center' as const},{key:'under',label:'UNDER\nCONSTRUCTION\n(SF)',path:'underConstruction',width:11,align:'center' as const},
+  {key:'spec',label:'CONSTRUCTION\nSPECULATIVE (%)',path:'speculative',width:11,align:'center' as const},{key:'abs',label:'NET\nABSORPTION\n(SF)',path:'absorption',width:11,align:'center' as const},
+  {key:'vac',label:'TOTAL VACANT\n(%)',path:'vacancy',width:8,align:'center' as const},{key:'avail',label:'TOTAL\nAVAILABLE (%)',path:'availability',width:9,align:'center' as const},
+  {key:'rent',label:'ASKING NET\nRENT ($/SF)',path:'rent',width:9,align:'center' as const},{key:'sales',label:'SALES VOLUME\n($)',path:'sales',width:10,align:'center' as const},
+];
+
+const tablePage:ReportPage={id:'overall-table',name:'Overall Market Table',width:816,height:1056,background:'#ffffff',elements:[
+  ...standardHeader(2),
+  {id:'submarket-matrix',type:'table',name:'Submarket Metrics',x:32,y:152,width:752,height:780,sourcePath:'submarketTableRows',maxRows:21,variant:'market-matrix',rowKindPath:'kind',columns:matrixColumns,style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:8,color:'#142b3a',opacity:1}},
+]};
+
+const indicatorColumns=[
+  {key:'metric',label:'MARKET INDICATORS',path:'metric',width:29,align:'left' as const},
+  {key:'q2',label:'Q2 2026',path:'q2',width:14.2,align:'center' as const},{key:'q1',label:'Q1 2026',path:'q1',width:14.2,align:'center' as const},
+  {key:'q4',label:'Q4 2025',path:'q4',width:14.2,align:'center' as const},{key:'q3',label:'Q3 2025',path:'q3',width:14.2,align:'center' as const},{key:'prior',label:'Q2 2025',path:'prior',width:14.2,align:'center' as const},
+];
+const transactionColumns=[
+  {key:'party',label:'PARTY',path:'party',width:26,align:'left' as const},{key:'amount',label:'AMOUNT',path:'amount',width:15,align:'left' as const},
+  {key:'address',label:'ADDRESS',path:'address',width:43,align:'left' as const},{key:'type',label:'TYPE',path:'type',width:16,align:'left' as const},
+];
+
+const overviewPage:ReportPage={id:'market-overview',name:'Market Overview',width:816,height:1056,background:'#ffffff',elements:[
+  ...standardHeader(3),
+  text('overview-title','Market Overview',32,122,360,26,'MARKET OVERVIEW',17,blue,700),
+  {id:'overview-narrative',type:'text',name:'Market Narrative',x:32,y:149,width:374,height:212,text:'',binding:{path:'overallMarket.narrative',label:'Approved Market Narrative'},style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:8.2,fontWeight:300,color:'#66717a',lineHeight:1.18,opacity:1}},
+  image('market-map','Industrial Submarket Map',432,120,352,240,'/report-assets/market-map.svg','stretch'),
+  {id:'indicator-table',type:'table',name:'Market Indicators',x:32,y:368,width:752,height:116,sourcePath:'indicatorRows',maxRows:5,variant:'indicators',columns:indicatorColumns,style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:9,color:'#123f55',opacity:1}},
+  text('chart-1-title','Chart Title',48,496,350,23,'NET ABSORPTION, VACANCY & AVAILABILITY',13,blue,600,'center'),
+  text('chart-2-title','Chart Title',426,496,350,23,'SALES VOLUME & MEDIAN SALES PRICE',13,blue,600,'center'),
+  image('chart-net','Net Absorption Chart',47,520,352,216,'/report-assets/chart-net-absorption.png','contain'),
+  image('chart-sales','Sales Volume Chart',424,520,352,216,'/report-assets/chart-sales-volume.png','contain'),
+  shape('leases-side-bg','Section Side Bar',32,762,23,114,'#7a0d26'),text('leases-side','Section Label',32,791,23,58,'TOP\nLEASES',7,white,700,'center'),
+  {id:'top-leases-table',type:'table',name:'Top Leases',x:55,y:762,width:729,height:114,sourcePath:'topLeaseRows',maxRows:3,variant:'transactions',columns:[{...transactionColumns[0],label:'TENANT'},{...transactionColumns[1],label:'SIZE (SF)'},transactionColumns[2],{...transactionColumns[3],label:'LEASE TYPE'}],style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:9,color:'#123f55',opacity:1}},
+  shape('sales-side-bg','Section Side Bar',32,890,23,114,'#7a0d26'),text('sales-side','Section Label',32,919,23,58,'TOP\nSALES',7,white,700,'center'),
+  {id:'top-sales-table',type:'table',name:'Top Sales',x:55,y:890,width:729,height:114,sourcePath:'topSaleRows',maxRows:3,variant:'transactions',columns:[{...transactionColumns[0],label:'BUYER'},{...transactionColumns[1],label:'PRICE ($)'},transactionColumns[2],{...transactionColumns[3],label:'SALE TYPE'}],style:{fontFamily:'Nunito Sans, Arial, sans-serif',fontSize:9,color:'#123f55',opacity:1}},
+]};
+
+function propertySection(id:string,title:string,y:number,items:PropertyHighlight[]):ReportElement[]{const result:ReportElement[]=[shape(`${id}-bar`,`${title} Bar`,32,y,752,27,crimson,8),text(`${id}-title`,title,32,y+2,752,23,title,17,white,800,'center')];items.forEach((item,index)=>{const x=32+index*257,width=index===2?238:239;result.push(image(`${id}-image-${index}`,item.address,x,y+27,width,137,item.image,'cover'));result.push(shape(`${id}-caption-${index}`,'Caption',x,y+164,width,47,navy,index===0?8:0));result.push(text(`${id}-text-${index}`,item.address,x+7,y+170,width-14,17,item.address,8.1,white,700,'center'));result.push(text(`${id}-detail-${index}`,'Property Details',x+7,y+188,width-14,18,`${item.sizeSf.toLocaleString('en-US')} SF - ${item.type}${item.sponsor?` - ${item.sponsor}`:''}`,7.5,white,600,'center'));});return result;}
+
+const highlightsPage:ReportPage={id:'market-highlights',name:'Market Highlights',width:816,height:1056,background:'#ffffff',elements:[
+  ...standardHeader(4),
+  text('availability-title','Chart Title',55,127,335,23,'AVAILABILITY BY SIZE RANGE',13,blue,600,'center'),
+  text('construction-title','Chart Title',426,127,335,23,'UNDER CONSTRUCTION & DELIVERIES',13,blue,600,'center'),
+  image('availability-chart','Availability by Size',32,151,368,220,'/report-assets/chart-availability-size.png','contain'),
+  image('construction-chart','Under Construction and Deliveries',416,151,368,220,'/report-assets/chart-construction-deliveries.png','contain'),
+  ...propertySection('availability','TOP AVAILABILITIES',390,topAvailabilities),
+  ...propertySection('deliveries','TOP DELIVERIES',602,topDeliveries),
+  ...propertySection('construction','UNDER CONSTRUCTION',808,topConstruction),
+]};
+
+export const sampleTemplate:ReportTemplate={id:'industrial-market-report-q2-2026',name:'2026 Q2 Overall Market Report',version:'1.0.0',pages:[cover,tablePage,overviewPage,highlightsPage],settings:{unit:'px',gridEnabled:false,gridSpacingPx:24,gridOpacity:.2,snapToGrid:false,snapToElements:true,snapToMargins:true,marginPx:32,marginsEnabled:false,rulersEnabled:true,customGuides:[]}};

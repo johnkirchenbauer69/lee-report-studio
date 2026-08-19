@@ -3,6 +3,7 @@ server/data/assets/*
 server/data/assets.json
 !server/data/assets/.gitkeep
 dist
+/tmp/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store

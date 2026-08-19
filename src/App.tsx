@@ -27,7 +27,7 @@ type LeftTab = 'templates'|'elements'|'text'|'images'|'uploads'|'data'|'pages'|'
 type ContextMenuState = { x:number; y:number; id:string } | undefined;
 
 export default function App() {
-  const [template, setTemplate] = useState<ReportTemplate>(() => hydrate(localPersistence.load() ?? sampleTemplate));
+  const [template, setTemplate] = useState<ReportTemplate>(() => {const saved=localPersistence.load();return hydrate(saved?.version===sampleTemplate.version?saved:sampleTemplate)});
   const latestTemplate = useRef(template);
   const [pageId, setPageId] = useState(() => template.pages[1]?.id ?? template.pages[0].id);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

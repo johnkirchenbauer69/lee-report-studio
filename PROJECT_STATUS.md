@@ -37,6 +37,8 @@ This repository contains a functional front-end MVP of the proposed data-driven 
 - Page validation
 - JSON template export
 - Deterministic multipage PDF compositor and one-click full-report export
+- Four-page Q2 2026 Overall Market reference template with original charts, photography, narrative and submarket table
+- Normalized Overall Market data model with additive/weighted reconciliation and source discrepancy tracking
 - Mock data provider contract
 - Detailed production architecture
 - Detailed phased roadmap
@@ -48,7 +50,7 @@ This is not yet a production Canva replacement. The major production items are d
 
 ## Validation performed in the build environment
 
-The current milestone is verified with:
+The current milestone is verified with 17 automated tests plus:
 
 ```bash
 npm install
