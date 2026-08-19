@@ -11,6 +11,8 @@ describe("generateReportInstance", () => {
         templateId: sampleTemplate.id,
         market: "Chicago",
         period: "2026 Q2",
+        calculationScope: { type: "all-submarkets" },
+        pageSelection: { submarkets: [] },
         source: { provider: "sample" },
       },
       progress,
@@ -22,7 +24,7 @@ describe("generateReportInstance", () => {
     expect(report.status).toBe("draft");
     expect(progress).toHaveBeenLastCalledWith({
       stage: "complete",
-      message: "Report ready to edit",
+      message: "Report ready to edit and publish",
     });
   });
 });
