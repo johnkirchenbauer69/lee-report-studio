@@ -7,23 +7,31 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run test:visual
-      - uses: actions/upload-artifact@v4
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Visual regression
+        run: npm run test:visual
+      - name: Upload test diagnostics
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: visual-regression-artifacts
+          name: quality-failure-artifacts
           path: |
-            test-results/visual
+            test-results
             visual-report
           if-no-files-found: ignore
-

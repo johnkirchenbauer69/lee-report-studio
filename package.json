@@ -11,9 +11,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
-    "test": "vitest run --exclude tests/visual/**",
-    "test:visual": "playwright test",
-    "test:visual:update": "cross-env UPDATE_VISUAL_BASELINES=1 playwright test"
+    "test": "npm run test:ownership && vitest run --config vitest.config.ts",
+    "test:ownership": "node scripts/check-test-ownership.mjs",
+    "test:visual": "playwright test --config playwright.config.ts",
+    "test:visual:update": "cross-env UPDATE_VISUAL_BASELINES=1 playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
