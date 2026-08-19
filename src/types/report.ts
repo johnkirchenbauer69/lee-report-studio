@@ -100,6 +100,9 @@ export interface TableColumn {
   label: string;
   path: string;
   format?: Binding['format'];
+  decimals?: number;
+  width?: number;
+  align?: 'left' | 'center' | 'right';
 }
 
 export interface TableElement extends BaseElement {
@@ -107,6 +110,8 @@ export interface TableElement extends BaseElement {
   sourcePath: string;
   columns: TableColumn[];
   maxRows?: number;
+  variant?: 'default' | 'market-matrix' | 'indicators' | 'transactions';
+  rowKindPath?: string;
 }
 
 export interface ChartElement extends BaseElement {

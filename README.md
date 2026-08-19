@@ -34,6 +34,8 @@ A polished browser-based, data-aware report template editor designed to turn str
 - LocalStorage persistence behind a replaceable persistence service
 - JSON export of the current template
 - Deterministic, full-document PDF export in template page order
+- Four-page Q2 2026 Overall Market production fixture reconstructed from the approved PDF, data workbook and original chart/property assets
+- Normalized typed market model with reconciliation tests and explicit source-discrepancy notes
 - Clean separation between data, document schema, rendering, validation and editor UI
 
 This is intentionally a focused report-production MVP, not a general-purpose Canva replacement.
@@ -214,6 +216,10 @@ Uploaded images, logos and fonts are written by the local API to `server/data/as
 ## PDF rendering
 
 Export PDF composes every visible page directly from the report schema with fixed metadata and stable object ordering. Text, fills, shapes, tables and images are rendered without depending on browser print layout. The current renderer uses PDF standard fonts; production brand-font embedding and richer chart output remain preflight items.
+
+## Q2 2026 reference implementation
+
+The included sample document now reproduces the supplied four-page Overall Market Report: cover, submarket matrix, market overview, and property highlights. `src/data/overallMarketData.ts` holds typed numeric source data and presentation-ready derived rows; `REFERENCE_REPORT.md` records the source hierarchy and known reconciliations.
 
 ## Current limitations
 
