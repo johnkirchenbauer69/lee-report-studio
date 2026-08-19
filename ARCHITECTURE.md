@@ -36,7 +36,7 @@ A direct mapping such as `Market_Data__c.Some_Field__c -> visual element` create
 - API: Node/TypeScript or existing organizational backend
 - Database: PostgreSQL for templates, versions, report instances, generation metadata
 - Asset storage: S3-compatible object storage
-- PDF: server-side Chromium/Playwright initially; evaluate dedicated PDF composition if stricter vector fidelity is required
+- PDF: the current dedicated `pdf-lib` compositor provides deterministic multipage output; production should move the same schema renderer behind an authenticated job API and embed approved brand fonts
 - Auth: organizational SSO / OAuth
 - Ascendix: existing MCP/service boundary with a production HTTP/API adapter if required
 
@@ -47,6 +47,9 @@ A direct mapping such as `Market_Data__c.Some_Field__c -> visual element` create
 - `src/engine/bindings.ts` remains the semantic data-resolution and formatting boundary.
 - `src/engine/validation.ts` performs data, geometry, asset, gradient and estimated text-overflow checks.
 - `src/services/persistence.ts` hides LocalStorage behind a replaceable persistence interface.
+- `src/services/assetStorage.ts` talks to the disk-backed development asset API and provides an offline browser fallback.
+- `src/services/pdfExport.ts` renders the ordered visible-page set directly from the schema into stable PDF bytes.
+- `server/index.ts` exposes development upload/list/content/delete endpoints and persists an atomic asset manifest.
 - `src/components/CanvasElement.tsx` renders document elements and localized pointer interactions.
 - `src/components/Inspector.tsx` exposes unit-aware, type-specific property controls.
 - `src/App.tsx` coordinates pages, selection, command history, assets, keyboard shortcuts and export.

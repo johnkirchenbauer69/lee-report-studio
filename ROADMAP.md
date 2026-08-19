@@ -19,6 +19,8 @@ Status: included in this repository.
 
 ## Phase 1 — Production document core
 
+Status: editor interaction scope substantially implemented; store/schema migration work remains.
+
 - Move editor state to reducer/store architecture
 - Command-pattern undo/redo
 - Multi-select
@@ -26,11 +28,11 @@ Status: included in this repository.
 - layer reordering
 - snapping and smart guides
 - alignment/distribution
-- page reorder via drag/drop
+- page reorder via drag/drop ✓
 - safe autosave
 - explicit template schema version/migrations
 - text overflow detection
-- asset model
+- asset model and local disk-backed API ✓
 
 Acceptance test: editing feels reliable enough for a designer to work for an hour without corrupting a document.
 
@@ -81,6 +83,8 @@ Acceptance test: user chooses report period + submarkets and receives a complete
 - Revision history
 
 ## Phase 6 — Production export and QA
+
+Status: deterministic client-side multipage composition is implemented; hosted jobs, brand fonts and production preflight remain.
 
 - Server-side PDF generation
 - Font embedding strategy

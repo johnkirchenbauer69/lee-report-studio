@@ -2,6 +2,8 @@ export type ElementType = 'text' | 'shape' | 'image' | 'table' | 'chart';
 export type PreviewMode = 'design' | 'data';
 export type Unit = 'px' | 'in';
 export type ShapeKind = 'rectangle' | 'rounded-rectangle' | 'circle' | 'ellipse' | 'line' | 'triangle' | 'diamond';
+export interface ImageCrop { x: number; y: number; zoom: number; }
+export interface EditorGuide { id: string; axis: 'x' | 'y'; position: number; }
 
 export interface GradientStop { id: string; color: string; position: number; }
 export type Fill =
@@ -90,6 +92,7 @@ export interface ImageElement extends BaseElement {
   src: string;
   fit?: 'cover' | 'contain' | 'stretch' | 'original';
   assetId?: string;
+  crop?: ImageCrop;
 }
 
 export interface TableColumn {
@@ -135,6 +138,8 @@ export interface Asset {
   source: string;
   createdAt: string;
   fontFamily?: string;
+  storage?: 'backend' | 'browser';
+  size?: number;
 }
 
 export interface EditorSettings {
@@ -147,6 +152,8 @@ export interface EditorSettings {
   snapToMargins: boolean;
   marginPx: number;
   marginsEnabled: boolean;
+  rulersEnabled?: boolean;
+  customGuides?: EditorGuide[];
 }
 
 export interface ReportTemplate {

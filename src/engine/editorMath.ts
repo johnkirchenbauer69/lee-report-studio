@@ -21,6 +21,7 @@ export function snapPosition(args: {
   x: number; y: number; width: number; height: number; pageWidth: number; pageHeight: number;
   others: ReportElement[]; threshold?: number; gridSpacing?: number; snapGrid?: boolean;
   snapElements?: boolean; margins?: number;
+  customXTargets?: number[]; customYTargets?: number[];
 }): SnapResult {
   const { width, height, pageWidth, pageHeight, others } = args;
   const threshold = args.threshold ?? 6;
@@ -33,6 +34,8 @@ export function snapPosition(args: {
   }
   const xTargets = [0, pageWidth / 2, pageWidth];
   const yTargets = [0, pageHeight / 2, pageHeight];
+  xTargets.push(...(args.customXTargets ?? []));
+  yTargets.push(...(args.customYTargets ?? []));
   if (args.margins != null) {
     xTargets.push(args.margins, pageWidth - args.margins);
     yTargets.push(args.margins, pageHeight - args.margins);
@@ -70,4 +73,23 @@ export function distribute(elements: ReportElement[], axis: 'x' | 'y'): Map<stri
   let cursor = start;
   ordered.forEach(item => { result.set(item.id, cursor); cursor += (axis === 'x' ? item.width : item.height) + gap; });
   return result;
+}
+
+/** Scales every member around the group's top-left bound when one member is resized. */
+export function scaleGroupedElements(elements: ReportElement[], sourceId: string, patch: Partial<ReportElement>): ReportElement[] {
+  const source = elements.find(element => element.id === sourceId);
+  if (!source?.groupId || (patch.width == null && patch.height == null)) return elements;
+  const group = elements.filter(element => element.groupId === source.groupId);
+  const minX = Math.min(...group.map(element => element.x));
+  const minY = Math.min(...group.map(element => element.y));
+  const ratio = patch.width != null ? patch.width / source.width : (patch.height ?? source.height) / source.height;
+  const originX = minX + (patch.x != null ? patch.x - source.x : 0);
+  const originY = minY + (patch.y != null ? patch.y - source.y : 0);
+  return elements.map(element => element.groupId === source.groupId ? {
+    ...element,
+    x: originX + (element.x - minX) * ratio,
+    y: originY + (element.y - minY) * ratio,
+    width: Math.max(1, element.width * ratio),
+    height: Math.max(1, element.height * ratio),
+  } : element);
 }
