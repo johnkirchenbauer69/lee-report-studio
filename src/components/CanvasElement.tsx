@@ -2,7 +2,8 @@ import React from 'react';
 import type { EditorSettings, PreviewMode, ReportElement } from '../types/report';
 import type { SnapGuide } from '../engine/editorMath';
 import { fillToCss, snapPosition } from '../engine/editorMath';
-import { formatValue, getByPath } from '../engine/bindings';
+import { formatValue, getByContextPath, getByPath } from '../engine/bindings';
+import { NativeChart } from '../report-engine/charts/NativeChart';
 
 interface Props {
   element: ReportElement; elements: ReportElement[]; pageSize: { width: number; height: number };
@@ -83,23 +84,23 @@ export function CanvasElement(props: Props) {
     textDecoration: typography?.underline ? 'underline' : element.style.textDecoration,
     textAlign: typography?.textAlign === 'justify' ? 'justify' : typography?.textAlign ?? element.style.textAlign,
     letterSpacing: typography?.letterSpacing ?? element.style.letterSpacing, lineHeight: typography?.lineHeight ?? element.style.lineHeight,
-    padding: element.style.padding, overflow: 'hidden', cursor: element.locked ? 'not-allowed' : 'move', ...strokeStyle(element) };
+    padding: element.style.padding, overflow: 'hidden', mixBlendMode:element.style.mixBlendMode, cursor: element.locked ? 'not-allowed' : 'move', ...strokeStyle(element) };
   if (element.type === 'shape' && element.shape === 'triangle') style.clipPath = 'polygon(50% 0, 100% 100%, 0 100%)';
   if (element.type === 'shape' && element.shape === 'diamond') style.clipPath = 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
   if (element.type === 'shape' && element.shape === 'line') { style.height = Math.max(2, element.style.stroke?.width ?? 2); style.background = element.style.stroke?.color ?? element.style.background ?? '#111827'; style.border = 0; }
 
   let content: React.ReactNode = null;
-  if (element.type === 'text') { const raw = mode === 'data' && element.binding ? formatValue(getByPath(data, element.binding.path), element.binding) : element.text;
+  if (element.type === 'text') { const raw = mode === 'data' && element.binding ? formatValue(getByContextPath(data, element.binding.path, element.bindingContext), element.binding) : element.text;
     content = <div className={`text-content vertical-${typography?.verticalAlign ?? 'top'}`}>{typography?.uppercase ? raw.toUpperCase() : raw}</div>;
-  } else if (element.type === 'image') { const dynamic = mode === 'data' && element.binding ? getByPath(data, element.binding.path) : undefined;
+  } else if (element.type === 'image') { const dynamic = mode === 'data' && element.binding ? getByContextPath(data, element.binding.path, element.bindingContext) : undefined;
     const src = typeof dynamic === 'string' ? dynamic : element.src, objectFit = element.fit === 'stretch' ? 'fill' : element.fit === 'original' ? 'none' : element.fit ?? 'cover';
     const crop=element.crop??{x:50,y:50,zoom:1};
-    content = src ? <img src={src} alt={element.name} style={{ width: `${crop.zoom*100}%`, height: `${crop.zoom*100}%`, objectFit, objectPosition:`${crop.x}% ${crop.y}%`, transform:`translate(${(1-crop.zoom)*crop.x/crop.zoom}%,${(1-crop.zoom)*crop.y/crop.zoom}%)`, pointerEvents: 'none', maxWidth:'none' }} /> : <div className="image-placeholder">Image</div>;
-  } else if (element.type === 'table') { const rows = getByPath(data, element.sourcePath), arr = Array.isArray(rows) ? rows.slice(0, element.maxRows ?? rows.length) : [];
+    const region=element.sourceCrop;
+    content = src ? <img src={src} alt={element.name} style={region?{position:'absolute',width:element.width*region.sourceWidth/region.width,height:element.height*region.sourceHeight/region.height,left:-region.x*element.width/region.width,top:-region.y*element.height/region.height,maxWidth:'none',pointerEvents:'none'}:{ width: `${crop.zoom*100}%`, height: `${crop.zoom*100}%`, objectFit, objectPosition:`${crop.x}% ${crop.y}%`, transform:`translate(${(1-crop.zoom)*crop.x/crop.zoom}%,${(1-crop.zoom)*crop.y/crop.zoom}%)`, pointerEvents: 'none', maxWidth:'none' }} /> : <div className="image-placeholder">Image</div>;
+  } else if (element.type === 'table') { const rows = getByContextPath(data, element.sourcePath, element.bindingContext), arr = Array.isArray(rows) ? rows.slice(0, element.maxRows ?? rows.length) : [];
     content = <table className={`report-table table-${element.variant??'default'}`}><colgroup>{element.columns.map(c=><col key={c.key} style={c.width?{width:`${c.width}%`}:undefined}/>)}</colgroup><thead><tr>{element.columns.map(c => <th key={c.key} style={{textAlign:c.align}}>{c.label}</th>)}</tr></thead><tbody>{arr.map((row, i) => <tr key={i} className={element.rowKindPath?`row-${String(getByPath(row,element.rowKindPath))}`:undefined}>{element.columns.map(c => <td key={c.key} style={{textAlign:c.align}}>{formatValue(getByPath(row, c.path), { path: c.path, format: c.format, decimals: c.decimals??1 })}</td>)}</tr>)}</tbody></table>;
-  } else if (element.type === 'chart') { const rows = getByPath(data, element.sourcePath), arr = Array.isArray(rows) ? rows : [];
-    const values = arr.map(row => Number(getByPath(row, element.valuePath)) || 0), max = Math.max(...values.map(Math.abs), 1);
-    content = <div className="chart-wrap"><div className="chart-title">{element.title}</div><svg viewBox={`0 0 ${Math.max(600, arr.length * 100)} 230`} preserveAspectRatio="none">{arr.map((row, i) => { const height = Math.abs(values[i]) / max * 145, x = 40 + i * 105; return <g key={i}><line x1={x} x2={x} y1="175" y2={values[i] >= 0 ? 175 - height : 175 + Math.min(height, 45)} stroke="#475467" strokeWidth="45"/><text x={x} y="218" textAnchor="middle" fontSize="12" fill="#475467">{String(getByPath(row, element.categoryPath)).slice(0, 14)}</text></g>; })}</svg></div>;
+  } else if (element.type === 'chart') {
+    content = <NativeChart element={element} data={data}/>;
   }
   if (element.hidden) return null;
   return <div className={`canvas-element ${selected ? 'is-selected' : ''} ${props.cropping?'is-cropping':''}`} style={style} onPointerDown={startDrag}

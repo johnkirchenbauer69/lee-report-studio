@@ -20,8 +20,9 @@ describe('normalized overall-market data',()=>{
   });
 
   it('preserves approved-versus-alternate source discrepancies',()=>{
-    expect(sourceNotes).toContainEqual(expect.objectContaining({field:'overallMarket.vacancyRate',approvedValue:.0496,alternateValue:.0484}));
-    expect(sourceNotes).toContainEqual(expect.objectContaining({field:'overallMarket.availabilityRate',approvedValue:.0853,alternateValue:.0846}));
+    expect(sourceNotes).toContainEqual(expect.objectContaining({fieldPath:'overallMarket.vacancyRate',status:'reconciled'}));
+    expect(sourceNotes.find(note=>note.fieldPath==='overallMarket.vacancyRate')?.sources).toContainEqual(expect.objectContaining({value:.0484}));
+    expect(sourceNotes).toContainEqual(expect.objectContaining({fieldPath:'overallMarket.availabilityRate',status:'reconciled'}));
   });
 
   it('builds detail, total, minimum and maximum presentation rows',()=>{

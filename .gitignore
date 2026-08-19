@@ -4,6 +4,8 @@ server/data/assets.json
 !server/data/assets/.gitkeep
 dist
 /tmp/
+test-results/
+visual-report/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store

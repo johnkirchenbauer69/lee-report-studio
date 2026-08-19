@@ -1,62 +1,42 @@
 # Project Status
 
-## Delivered in the current editor milestone
+## Productionization milestone
 
-This repository contains a functional front-end MVP of the proposed data-driven visual report editor and the architectural scaffolding for the production application.
+The reference workflow now runs from source selection through normalized data, reconciliation, editable report generation, preflight, visual comparison, and deterministic multipage PDF output.
 
-### Implemented
+### Delivered
 
-- Versioned report/template type model
-- Multi-page document support
-- Element types: text, shape, image, table, chart
-- Visual canvas
-- Drag/reposition
-- Multi-selection, resize and rotation
-- Grid, margins, snapping, rulers, custom draggable guides and live alignment guides
-- Unit-aware precision editing in pixels and inches
-- Typed fills, gradients, strokes, opacity, corners and typography
-- Image, logo and font uploads with a local asset model
-- Interactive image cropping with pan, zoom and coordinate controls
-- Proportional grouped-element resizing
-- Drag-and-drop page reordering
-- Disk-backed development asset API with browser fallback
-- Undo/redo, context menu, keyboard shortcuts, grouping and layer order
-- Local persistence and expanded validation
-- Twelve automated tests covering editor math, bindings, formatting, validation and deterministic PDF output
-- Add/duplicate/delete text and shapes
-- Duplicate/delete/add pages
-- Layer/element list
-- Property inspector
-- Design mode
-- Data preview mode
-- Semantic data paths
-- Value formatting
-- Business-friendly data browser
-- Dynamic table generation from arrays
-- Dynamic SVG chart generation
-- Page validation
-- JSON template export
-- Deterministic multipage PDF compositor and one-click full-report export
-- Four-page Q2 2026 Overall Market reference template with original charts, photography, narrative and submarket table
-- Normalized Overall Market data model with additive/weighted reconciliation and source discrepancy tracking
-- Mock data provider contract
-- Detailed production architecture
-- Detailed phased roadmap
-- GitHub/VS Code commands
+- Approved four-page Q2 2026 Overall Market reconstruction
+- Strict Industrial Market Report schema and central formatting/calculations
+- Auditable provenance records and non-destructive approved-value overrides
+- Sample, JSON, Excel, and Ascendix-boundary providers
+- Five-step creation wizard and progress-aware generation pipeline
+- Versioned report snapshots and manual-override tracking
+- Repeating component/page engine with contextual bindings
+- Native SVG chart primitives and chart-data inspector
+- Chromium PDF render-job API, print route, and `pdf-lib` fallback
+- Font, image, binding, conflict, geometry, and overflow preflight
+- Approved-PDF visual baselines, CI diffs, and similarity reporting
+- Existing creative editor capabilities including crop, proportional group resize, page drag ordering, rulers/guides, and disk-backed development assets
 
-## Intentionally not claimed as finished
+## Verified reference fidelity
 
-This is not yet a production Canva replacement. The major production items are documented in `ROADMAP.md`, especially database persistence, auth, rich text, production object storage, repeating page generation, exact recreation of the existing Industrial Market Report, brand-font embedding and authenticated server-hosted PDF jobs.
+The calibrated page similarity floors are cover 96%, table 95%, overview 88%, and highlights 88%. Differences are concentrated in unavailable licensed fonts, browser text rasterization, and approved raster chart content. See `VISUAL_REGRESSION.md` for the policy.
 
-## Validation performed in the build environment
+## Not yet production-complete
 
-The current milestone is verified with 17 automated tests plus:
+- Licensed brand font packaging and final typographic sign-off
+- Full Excel mapping for every report section and arbitrary workbook variants
+- Live Ascendix credentials, endpoint, retry policy, and record mapping
+- Authenticated/durable PDF queues and artifact storage
+- Database-backed templates/reports, permissions, and collaborative editing
+- Native chart replacement of every approved raster chart
+- Rich-text runs, accessibility audit, and cross-browser editor certification
 
-```bash
-npm install
-npm run typecheck
-npm run build
-npm run dev
-```
+## Recommended next sequence
 
-If any dependency API has changed because the package file currently uses `latest`, pin the resulting working versions in `package.json` and commit `package-lock.json`.
+1. Secure the service boundary and persist report/template/job entities.
+2. Complete the production Ascendix adapter and full workbook mapping.
+3. License and embed approved fonts, then tighten visual thresholds.
+4. Replace reference raster charts one at a time with native accessible SVG charts.
+5. Add approval/version publishing, role permissions, and audit history.

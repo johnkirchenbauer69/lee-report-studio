@@ -1,253 +1,88 @@
 # LEE Report Studio
 
-A polished browser-based, data-aware report template editor designed to turn structured Salesforce/Ascendix data into editable, institutional-quality commercial real estate reports.
+LEE Report Studio is a browser-based report production system for building editable, data-backed commercial real estate reports. The current reference workflow reproduces the approved four-page Q2 2026 Chicago Industrial Overall Market report and keeps source data, presentation exceptions, template geometry, editing, and export as separate concerns.
 
-## Editor capabilities
+## What works
 
-- React + TypeScript + Vite application
-- Multi-page report template schema
-- Professional creative-tool shell with contextual sidebar, canvas, layer list, inspector, data browser and QA panel
-- Multi-select, four-corner resize handles, rotation, keyboard nudging and alignment/distribution controls
-- Rectangles, rounded rectangles, circles, ellipses, lines, triangles and diamonds
-- Grid, margin guides, element/page/grid snapping and visible snap guides
-- Pixel/inch unit switching using the documented `96px = 1in` CSS reference
-- Solid and two/three-stop linear-gradient fills, stroke styles, opacity and corner radius
-- Full typography controls plus workspace-local font upload
-- Image/logo upload, asset browser and contain/cover/stretch/original fit modes
-- Interactive image crop mode with pan, zoom and numeric crop coordinates
-- Proportional resizing for grouped elements
-- Draggable page thumbnail reordering
-- Pixel/inch rulers with draggable custom guides and guide snapping
-- Disk-backed asset API with browser-local fallback when the API is unavailable
-- Undo/redo history with drag/resize interactions recorded as one transaction
-- Copy/paste, duplicate, group/ungroup, z-order controls and custom context menu
-- Duplicate / delete elements and pages
-- Lock / hide element controls
-- Design Mode vs Data Preview Mode
-- Structured data binding (`market.vacancy_rate`, etc.)
-- Formatting engine for percentages, SF, integers, decimals, currency and $/SF
-- Dynamic table renderer
-- Dynamic SVG bar chart renderer
-- Sample Chicago industrial report data
-- Sample cover, overall market page and submarket template page
-- Validation for unresolved bindings and out-of-page geometry
-- LocalStorage persistence behind a replaceable persistence service
-- JSON export of the current template
-- Deterministic, full-document PDF export in template page order
-- Four-page Q2 2026 Overall Market production fixture reconstructed from the approved PDF, data workbook and original chart/property assets
-- Normalized typed market model with reconciliation tests and explicit source-discrepancy notes
-- Clean separation between data, document schema, rendering, validation and editor UI
+- Five-step report wizard for template, period, source, geography, and review
+- Strict Zod-based Industrial Market Report schema with raw numeric values
+- Sample, JSON, and Q2 workbook providers plus a server-only Ascendix adapter boundary
+- Central calculations, formatting, field provenance, reconciliation notes, and approved presentation overrides
+- Versioned report instances containing immutable generation parameters and source-data snapshots
+- Repeating pages and repeating components with local binding contexts
+- Four-page editable Q2 reference template with native SVG chart infrastructure
+- Full editor interactions: crop, group resize, page reordering, rulers, custom guides, asset storage, undo/redo, and QA
+- Deterministic server-side Chromium PDF jobs with browser `pdf-lib` fallback
+- Export preflight for missing fonts/images, unresolved bindings, overflow, and data conflicts
+- Approved-PDF visual baselines with per-page regression scores and diff artifacts in CI
 
-This is intentionally a focused report-production MVP, not a general-purpose Canva replacement.
+This is a focused report-production application, not a general-purpose Canva replacement.
 
-## Run locally in VS Code
+## Run locally
 
-### Prerequisites
-
-Install:
-
-- Node.js 20+ (Node 22 recommended)
-- Git
-- Visual Studio Code
-
-### Commands
-
-Open the integrated VS Code terminal in the project root and run:
+Use Node.js 20 or newer (Node 22 recommended):
 
 ```bash
 npm install
 npm run dev
 ```
 
-The development command starts the editor and its local asset API together. Open:
+Open `http://localhost:3000`. The command starts both Vite on port 3000 and the local API on port 8787.
 
-```text
-http://localhost:3000
-```
-
-### Production build
+## Validate
 
 ```bash
 npm run typecheck
 npm test
 npm run build
-npm run preview
+npm run test:visual
 ```
+
+Update approved visual baselines only after intentional review:
+
+```bash
+npm run test:visual:update
+```
+
+Visual failures write actual, expected, and diff images to `test-results/` and the HTML report to `visual-report/`.
+
+## Production flow
+
+```text
+Report request
+  -> provider (sample / JSON / Excel / Ascendix)
+  -> strict normalized report schema
+  -> calculations + provenance reconciliation
+  -> presentation adapter
+  -> template bindings + repeat expansion
+  -> versioned editable report instance
+  -> preflight
+  -> Chromium PDF job (or browser fallback)
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
+
+## Local storage
+
+Templates and report editing state currently persist in LocalStorage. Uploaded assets are written by the local API to `server/data/assets`; generated files and the manifest are gitignored. Set `LEE_DATA_DIR` to relocate this development data root.
+
+## Current production boundaries
+
+- Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
+- Excel v1 maps the supplied Q2 submarket sheet. Sections absent from that workbook are populated from the Q2 reference fixture and labeled by provenance.
+- The Ascendix provider is a server-only integration contract, not a configured production endpoint.
+- Approved raster chart exports remain in the four-page fixture until native SVG charts reach the same visual fidelity.
+- `/api/render/pdf` is a local transient job service without authentication, durable queues, or object storage.
+- LocalStorage and disk-backed assets require database/object-storage replacements for multi-user production.
 
 ## Keyboard shortcuts
 
-| Action | Shortcut |
-| --- | --- |
-| Delete selection | `Delete` / `Backspace` |
-| Copy / Paste | `Ctrl/Cmd+C` / `Ctrl/Cmd+V` |
-| Duplicate | `Ctrl/Cmd+D` |
-| Undo / Redo | `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` |
-| Nudge / large nudge | Arrow / `Shift+Arrow` |
-| Group / Ungroup | `Ctrl/Cmd+G` / `Ctrl/Cmd+Shift+G` |
+| Action                | Shortcut                                   |
+| --------------------- | ------------------------------------------ |
+| Delete                | `Delete` / `Backspace`                     |
+| Copy / Paste          | `Ctrl/Cmd+C` / `Ctrl/Cmd+V`                |
+| Duplicate             | `Ctrl/Cmd+D`                               |
+| Undo / Redo           | `Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z`          |
+| Nudge / large nudge   | Arrow / `Shift+Arrow`                      |
+| Group / Ungroup       | `Ctrl/Cmd+G` / `Ctrl/Cmd+Shift+G`          |
 | Zoom in / out / reset | `Ctrl/Cmd++` / `Ctrl/Cmd+-` / `Ctrl/Cmd+0` |
-
-## Push to a NEW GitHub repository
-
-Create an empty repository in GitHub first. Do **not** initialize it with a README if you want the cleanest first push.
-
-Then, from the project root in VS Code:
-
-```bash
-git init
-git add .
-git commit -m "Initial LEE Report Studio MVP"
-git branch -M main
-git remote add origin https://github.com/YOUR-ORG/YOUR-REPO.git
-git push -u origin main
-```
-
-If GitHub prompts you to authenticate, use your normal GitHub authentication flow or GitHub CLI.
-
-### GitHub CLI alternative
-
-If `gh` is installed and authenticated:
-
-```bash
-git init
-git add .
-git commit -m "Initial LEE Report Studio MVP"
-git branch -M main
-gh repo create YOUR-ORG/YOUR-REPO --private --source=. --remote=origin --push
-```
-
-## If the GitHub repository already exists
-
-```bash
-git init
-git add .
-git commit -m "Initial LEE Report Studio MVP"
-git branch -M main
-git remote add origin https://github.com/YOUR-ORG/YOUR-REPO.git
-git pull origin main --rebase
-# Resolve any conflicts if Git reports them.
-git push -u origin main
-```
-
-## Project structure
-
-```text
-lee-report-studio/
-├─ src/
-│  ├─ components/
-│  │  ├─ CanvasElement.tsx
-│  │  ├─ DataBrowser.tsx
-│  │  ├─ Inspector.tsx
-│  │  └─ ValidationPanel.tsx
-│  ├─ data/
-│  │  ├─ sampleData.ts
-│  │  └─ sampleTemplate.ts
-│  ├─ engine/
-│  │  ├─ bindings.ts
-│  │  └─ validation.ts
-│  ├─ types/
-│  │  └─ report.ts
-│  ├─ styles/
-│  │  └─ app.css
-│  ├─ App.tsx
-│  └─ main.tsx
-├─ ARCHITECTURE.md
-├─ ROADMAP.md
-├─ package.json
-└─ README.md
-```
-
-## Architecture principle
-
-Do not bind the final visual template directly to arbitrary Salesforce fields.
-
-Use:
-
-```text
-Salesforce
-   ↓
-Ascendix / data services
-   ↓
-Normalized Report Data Model
-   ↓
-Binding engine
-   ↓
-Template
-   ↓
-Renderer / editor
-   ↓
-Report instance
-   ↓
-PDF / images
-```
-
-This keeps Salesforce implementation details separate from the report schema and allows the UI/template to survive backend field changes.
-
-## Replacing the mock data with Ascendix
-
-The current sample dataset is in:
-
-```text
-src/data/sampleData.ts
-```
-
-The next integration step should be to add a data-provider abstraction such as:
-
-```ts
-export interface ReportDataProvider {
-  getIndustrialMarketReport(params: {
-    period: string;
-    market: string;
-    submarkets: string[];
-  }): Promise<IndustrialMarketReportData>;
-}
-```
-
-Then implement:
-
-- `MockReportDataProvider` for local development
-- `AscendixReportDataProvider` for production
-
-The Ascendix provider should call the existing MCP/API layer and normalize results into the report data model before the UI sees them.
-
-## Asset storage
-
-Uploaded images, logos and fonts are written by the local API to `server/data/assets`; its generated manifest and files are intentionally gitignored. Set `LEE_DATA_DIR` to move this data root. If the API cannot be reached, the editor keeps uploads as browser data URLs so design work can continue.
-
-## PDF rendering
-
-Export PDF composes every visible page directly from the report schema with fixed metadata and stable object ordering. Text, fills, shapes, tables and images are rendered without depending on browser print layout. The current renderer uses PDF standard fonts; production brand-font embedding and richer chart output remain preflight items.
-
-## Q2 2026 reference implementation
-
-The included sample document now reproduces the supplied four-page Overall Market Report: cover, submarket matrix, market overview, and property highlights. `src/data/overallMarketData.ts` holds typed numeric source data and presentation-ready derived rows; `REFERENCE_REPORT.md` records the source hierarchy and known reconciliations.
-
-## Current limitations
-
-The current project proves the editor/data-binding architecture but is not yet a production replacement for Canva. Important next items include:
-
-- Persist templates/reports to a backend/database
-- Real authentication and permissions
-- The included backend asset service is local disk storage; production deployment still needs authenticated S3-compatible storage and access controls.
-- Text supports professional box-level typography but not mixed rich-text runs inside one element.
-- Production chart library or richer SVG chart engine
-- Repeating components and repeating pages
-- Conditional visibility / conditional formatting UI
-- Server-hosted PDF jobs, brand-font embedding and production preflight
-- Template versioning and immutable published versions
-- Report instance snapshots
-- Data provenance and manual-override tracking
-- Ascendix/Salesforce integration
-- Full pixel-level reconstruction of the current Industrial Market Report template
-
-## Recommended next milestone
-
-Do not add broad design features yet. The strongest next milestone is:
-
-1. Recreate the current Industrial Market Report template with pixel-level fidelity.
-2. Formalize the normalized Industrial Market Report data schema.
-3. Wire the existing Overall Market Table payload into the data-provider layer.
-4. Add repeat-page generation for selected submarkets.
-5. Add a production PDF renderer.
-6. Compare generated output side-by-side with the existing Canva report.
-
-That will determine whether the architecture can truly replace the production workflow before time is spent on secondary editor features.
