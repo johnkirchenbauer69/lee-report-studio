@@ -1,20 +1,68 @@
-import type { ReportElement } from '../types/report';
+import type { Fill, ReportElement, Stroke, Typography, Unit } from '../types/report';
+import { formatUnit, toPixels, unitStep } from '../engine/editorMath';
 
-interface Props { element?: ReportElement; onChange: (patch: Partial<ReportElement>) => void; }
+interface Props {
+  element?: ReportElement; unit: Unit; selectionCount: number;
+  fontFamilies?: string[];
+  onChange: (patch: Partial<ReportElement>) => void;
+  onAlign: (value: 'left'|'center'|'right'|'top'|'middle'|'bottom') => void;
+  onDistribute: (axis: 'x'|'y') => void;
+}
 
-export function Inspector({ element, onChange }: Props) {
-  if (!element) return <aside className="inspector"><div className="panel-title">Inspector</div><div className="empty-state">Select an element to edit its properties.</div></aside>;
-  const setStyle = (key: string, value: unknown) => onChange({ style: { ...element.style, [key]: value } } as Partial<ReportElement>);
+function Section({ title, children, open = true }: { title: string; children: React.ReactNode; open?: boolean }) {
+  return <details className="inspector-section" open={open}><summary>{title}<span>⌄</span></summary><div className="section-body">{children}</div></details>;
+}
+
+function ColorField({ label, value, onChange, allowNone = false }: { label: string; value: string; onChange: (value: string) => void; allowNone?: boolean }) {
+  return <label>{label}<div className="color-field"><input aria-label={`${label} picker`} type="color" value={value === 'transparent' ? '#ffffff' : value} onChange={e => onChange(e.target.value)}/><input value={value} onChange={e => onChange(e.target.value)} />{allowNone && <button type="button" title="No fill" onClick={() => onChange('transparent')}>∅</button>}</div></label>;
+}
+
+const typographyDefaults: Typography = { fontFamily: 'Inter', fontWeight: 400, fontSize: 16, color: '#111827', letterSpacing: 0, lineHeight: 1.2, textAlign: 'left', verticalAlign: 'top', italic: false, underline: false };
+const strokeDefaults: Stroke = { enabled: false, color: '#111827', width: 1, opacity: 1, style: 'solid' };
+
+export function Inspector({ element, unit, selectionCount, fontFamilies = [], onChange, onAlign, onDistribute }: Props) {
+  if (!element) return <aside className="inspector"><div className="inspector-header"><strong>Inspector</strong></div><div className="empty-state inspector-empty"><div className="empty-icon">◇</div><strong>Nothing selected</strong><span>Select an element on the canvas to edit its properties.</span></div></aside>;
+  const setStyle = (patch: Record<string, unknown>) => onChange({ style: { ...element.style, ...patch } } as Partial<ReportElement>);
+  const setUnitValue = (key: 'x'|'y'|'width'|'height', value: string) => onChange({ [key]: toPixels(Number(value), unit) } as Partial<ReportElement>);
+  const typography = { ...typographyDefaults, ...element.style.typography };
+  const setTypography = (patch: Partial<Typography>) => setStyle({ typography: { ...typography, ...patch } });
+  const fill: Fill = element.style.fill ?? { type: 'solid', color: element.style.background ?? '#E5E7EB' };
+  const setFill = (next: Fill) => setStyle({ fill: next, background: undefined });
+  const stroke = { ...strokeDefaults, ...element.style.stroke };
+  const setStroke = (patch: Partial<Stroke>) => setStyle({ stroke: { ...stroke, ...patch } });
   return <aside className="inspector">
-    <div className="panel-title">Inspector</div>
-    <label>Name<input value={element.name} onChange={e => onChange({ name: e.target.value } as Partial<ReportElement>)} /></label>
-    <div className="field-grid"><label>X<input type="number" value={element.x} onChange={e => onChange({ x: Number(e.target.value) } as Partial<ReportElement>)} /></label><label>Y<input type="number" value={element.y} onChange={e => onChange({ y: Number(e.target.value) } as Partial<ReportElement>)} /></label></div>
-    <div className="field-grid"><label>Width<input type="number" value={element.width} onChange={e => onChange({ width: Number(e.target.value) } as Partial<ReportElement>)} /></label><label>Height<input type="number" value={element.height} onChange={e => onChange({ height: Number(e.target.value) } as Partial<ReportElement>)} /></label></div>
-    {element.type === 'text' && <><label>Text<textarea value={element.text} onChange={e => onChange({ text: e.target.value } as Partial<ReportElement>)} /></label><div className="field-grid"><label>Font size<input type="number" value={element.style.fontSize ?? 14} onChange={e => setStyle('fontSize', Number(e.target.value))}/></label><label>Weight<input type="number" min="100" max="900" step="100" value={element.style.fontWeight ?? 400} onChange={e => setStyle('fontWeight', Number(e.target.value))}/></label></div><label>Text color<input type="color" value={element.style.color ?? '#101828'} onChange={e => setStyle('color', e.target.value)} /></label></>}
-    <hr />
-    <div className="panel-title small">Data binding</div>
-    <label>Data path<input placeholder="market.vacancy_rate" value={element.binding?.path ?? ''} onChange={e => onChange({ binding: e.target.value ? { ...(element.binding ?? { path: '' }), path: e.target.value } : undefined } as Partial<ReportElement>)} /></label>
-    {element.binding && <label>Format<select value={element.binding.format ?? 'text'} onChange={e => onChange({ binding: { ...element.binding!, format: e.target.value as never } } as Partial<ReportElement>)}><option value="text">Text</option><option value="percentage">Percentage</option><option value="integer">Integer</option><option value="decimal">Decimal</option><option value="sf">Square Feet</option><option value="currency">Currency</option><option value="currency_psf">$/SF</option></select></label>}
-    <div className="check-row"><label><input type="checkbox" checked={!!element.locked} onChange={e => onChange({ locked: e.target.checked } as Partial<ReportElement>)} /> Lock</label><label><input type="checkbox" checked={!!element.hidden} onChange={e => onChange({ hidden: e.target.checked } as Partial<ReportElement>)} /> Hide</label></div>
+    <div className="inspector-header"><div><strong>{selectionCount > 1 ? `${selectionCount} elements` : element.name}</strong><span>{selectionCount > 1 ? 'Multi-selection' : element.type}</span></div><span className="type-chip">{element.type}</span></div>
+    <Section title="Position & Size">
+      {selectionCount === 1 && <label>Layer name<input value={element.name} onChange={e => onChange({ name: e.target.value } as Partial<ReportElement>)}/></label>}
+      <div className="field-grid"><label>X <span>{unit}</span><input type="number" step={unitStep(unit)} value={formatUnit(element.x, unit)} onChange={e => setUnitValue('x', e.target.value)}/></label><label>Y <span>{unit}</span><input type="number" step={unitStep(unit)} value={formatUnit(element.y, unit)} onChange={e => setUnitValue('y', e.target.value)}/></label></div>
+      <div className="field-grid"><label>W <span>{unit}</span><input type="number" min="0" step={unitStep(unit)} value={formatUnit(element.width, unit)} onChange={e => setUnitValue('width', e.target.value)}/></label><label>H <span>{unit}</span><input type="number" min="0" step={unitStep(unit)} value={formatUnit(element.height, unit)} onChange={e => setUnitValue('height', e.target.value)}/></label></div>
+      <label>Rotation <span>°</span><input type="number" value={element.rotation ?? 0} onChange={e => onChange({ rotation: Number(e.target.value) } as Partial<ReportElement>)}/></label>
+      <div className="icon-grid six" aria-label="Alignment controls">{([['left','⇤'],['center','↔'],['right','⇥'],['top','↥'],['middle','↕'],['bottom','↧']] as const).map(([value, icon]) => <button key={value} title={`Align ${value}`} onClick={() => onAlign(value)}>{icon}</button>)}</div>
+      {selectionCount > 2 && <div className="segmented"><button onClick={() => onDistribute('x')}>Distribute H</button><button onClick={() => onDistribute('y')}>Distribute V</button></div>}
+    </Section>
+    {(element.type === 'shape' || element.type === 'text') && <Section title="Fill">
+      <div className="segmented"><button className={fill.type === 'solid' ? 'active' : ''} onClick={() => setFill({ type:'solid', color: fill.type === 'solid' ? fill.color : fill.stops[0]?.color ?? '#111827' })}>Solid</button><button className={fill.type === 'linear-gradient' ? 'active' : ''} onClick={() => setFill({ type:'linear-gradient', angle:90, stops:[{id:'a',color:'#0E2F5A',position:0},{id:'b',color:'#4B88C7',position:100}] })}>Gradient</button></div>
+      {fill.type === 'solid' ? <ColorField label="Color" value={fill.color} allowNone onChange={color => setFill({ ...fill, color })}/> : <>
+        {fill.stops.map((stop, index) => <div className="gradient-row" key={stop.id}><ColorField label={`Stop ${index + 1}`} value={stop.color} onChange={color => setFill({ ...fill, stops: fill.stops.map(s => s.id === stop.id ? {...s,color} : s) })}/><label>Pos <span>%</span><input type="number" min="0" max="100" value={stop.position} onChange={e => setFill({ ...fill, stops: fill.stops.map(s => s.id === stop.id ? {...s,position:Number(e.target.value)} : s) })}/></label></div>)}
+        <label>Angle <span>°</span><input type="range" min="0" max="360" value={fill.angle} onChange={e => setFill({...fill,angle:Number(e.target.value)})}/><input type="number" min="0" max="360" value={fill.angle} onChange={e => setFill({...fill,angle:Number(e.target.value)})}/></label>
+        <div className="segmented"><button disabled={fill.stops.length >= 3} onClick={() => setFill({...fill,stops:[...fill.stops,{id:crypto.randomUUID(),color:'#D4E8F8',position:50}]})}>+ Stop</button><button disabled={fill.stops.length <= 2} onClick={() => setFill({...fill,stops:fill.stops.slice(0,-1)})}>− Stop</button></div>
+      </>}
+    </Section>}
+    {element.type === 'shape' && <Section title="Stroke & Corners">
+      <label className="toggle-row"><input type="checkbox" checked={stroke.enabled} onChange={e => setStroke({enabled:e.target.checked})}/><span>Stroke</span></label>
+      {stroke.enabled && <><ColorField label="Color" value={stroke.color} onChange={color => setStroke({color})}/><div className="field-grid"><label>Width <span>px</span><input type="number" min="0" step=".5" value={stroke.width} onChange={e => setStroke({width:Number(e.target.value)})}/></label><label>Style<select value={stroke.style} onChange={e => setStroke({style:e.target.value as Stroke['style']})}><option>solid</option><option>dashed</option><option>dotted</option></select></label></div></>}
+      <label>Corner radius <span>px</span><input type="range" min="0" max="100" value={element.style.borderRadius ?? 0} onChange={e => setStyle({borderRadius:Number(e.target.value)})}/><input type="number" min="0" value={element.style.borderRadius ?? 0} onChange={e => setStyle({borderRadius:Number(e.target.value)})}/></label>
+    </Section>}
+    {element.type === 'text' && <Section title="Typography">
+      <label>Text<textarea value={element.text} onChange={e => onChange({ text:e.target.value } as Partial<ReportElement>)}/></label>
+      <label>Font<select value={typography.fontFamily} onChange={e => setTypography({fontFamily:e.target.value})}>{[...new Set(['Inter','Arial','Georgia','Times New Roman','Courier New',...fontFamilies])].map(font => <option key={font}>{font}</option>)}</select></label>
+      <div className="field-grid"><label>Weight<select value={typography.fontWeight} onChange={e => setTypography({fontWeight:Number(e.target.value)})}>{[300,400,500,600,700,800].map(weight => <option key={weight}>{weight}</option>)}</select></label><label>Size <span>px</span><input type="number" min="6" value={typography.fontSize} onChange={e => setTypography({fontSize:Number(e.target.value)})}/></label></div>
+      <ColorField label="Text color" value={typography.color} onChange={color => setTypography({color})}/>
+      <div className="field-grid"><label>Tracking <span>px</span><input type="number" step=".1" value={typography.letterSpacing} onChange={e => setTypography({letterSpacing:Number(e.target.value)})}/></label><label>Line height<input type="number" min=".5" step=".05" value={typography.lineHeight} onChange={e => setTypography({lineHeight:Number(e.target.value)})}/></label></div>
+      <div className="icon-grid"><button className={typography.italic?'active':''} title="Italic" onClick={() => setTypography({italic:!typography.italic})}><em>I</em></button><button className={typography.underline?'active':''} title="Underline" onClick={() => setTypography({underline:!typography.underline})}><u>U</u></button><button className={typography.uppercase?'active':''} title="Uppercase" onClick={() => setTypography({uppercase:!typography.uppercase})}>TT</button>{(['left','center','right','justify'] as const).map(value => <button key={value} className={typography.textAlign===value?'active':''} title={`Align ${value}`} onClick={() => setTypography({textAlign:value})}>{value[0].toUpperCase()}</button>)}</div>
+    </Section>}
+    {element.type === 'image' && <Section title="Image"><label>Fit<select value={element.fit ?? 'cover'} onChange={e => onChange({fit:e.target.value} as Partial<ReportElement>)}><option value="contain">Contain</option><option value="cover">Cover</option><option value="stretch">Stretch</option><option value="original">Original</option></select></label></Section>}
+    <Section title="Appearance"><label>Opacity <span>%</span><input type="range" min="0" max="100" value={Math.round((element.style.opacity ?? 1)*100)} onChange={e => setStyle({opacity:Number(e.target.value)/100})}/><input type="number" min="0" max="100" value={Math.round((element.style.opacity ?? 1)*100)} onChange={e => setStyle({opacity:Number(e.target.value)/100})}/></label><div className="check-row"><label><input type="checkbox" checked={!!element.locked} onChange={e => onChange({locked:e.target.checked} as Partial<ReportElement>)}/> Lock</label><label><input type="checkbox" checked={!!element.hidden} onChange={e => onChange({hidden:e.target.checked} as Partial<ReportElement>)}/> Hide</label></div></Section>
+    <Section title="Data Binding" open={!!element.binding}><label>Semantic path<input placeholder="market.vacancy_rate" value={element.binding?.path ?? ''} onChange={e => onChange({binding:e.target.value ? {...(element.binding ?? {path:''}),path:e.target.value} : undefined} as Partial<ReportElement>)}/></label>{element.binding && <><label>Format<select value={element.binding.format ?? 'text'} onChange={e => onChange({binding:{...element.binding!,format:e.target.value as never}} as Partial<ReportElement>)}><option value="text">Text</option><option value="percentage">Percentage</option><option value="integer">Integer</option><option value="decimal">Decimal</option><option value="sf">Square feet</option><option value="currency">Currency</option><option value="currency_psf">$/SF</option></select></label><label>Fallback<input value={element.binding.fallback ?? ''} onChange={e => onChange({binding:{...element.binding!,fallback:e.target.value}} as Partial<ReportElement>)}/></label></>}</Section>
   </aside>;
 }
