@@ -2,155 +2,50 @@
 
 ## Product boundary
 
-LEE Report Studio is a data-driven business document editor. It should emulate only the useful parts of a modern visual design application while making data binding, report generation, auditability and repeatability first-class concepts.
+LEE Report Studio is a data-driven business document editor. Source retrieval, normalization, calculation, presentation reconciliation, template layout, report instances, and rendering are deliberately independent domains.
 
-## Domain separation
+## Runtime layers
 
-### Source systems
-Salesforce / AscendixRE objects and other future sources.
+| Layer                | Primary location                                           | Responsibility                                                          |
+| -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Source adapters      | `src/data-providers`                                       | Retrieve and normalize sample, JSON, Excel, or Ascendix data            |
+| Report domain        | `src/report-engine/schema`                                 | Own strict semantic contracts and generation metadata                   |
+| Calculations         | `src/report-engine/calculations`                           | Compute additive totals, weighted rates, and extrema from raw values    |
+| Provenance           | `src/report-engine/provenance`                             | Preserve source choices, conflicts, and approved visible overrides      |
+| Presentation adapter | `src/report-engine/bindings`                               | Format semantic data for template consumption                           |
+| Generation           | `src/report-engine/generation`                             | Validate, expand repeaters, and create versioned report snapshots       |
+| Template/editor      | `src/types`, `src/components`, `src/App.tsx`               | Own geometry, styling, manual overrides, and creative-tool interactions |
+| Browser renderer     | `src/renderers/browser`                                    | Render fixed-size pages for editing, print, and visual tests            |
+| PDF renderers        | `server/renderers`, `src/renderers/pdf`                    | Produce server Chromium PDFs or invoke the browser fallback             |
+| Validation           | `src/report-engine/validation`, `src/engine/validation.ts` | Report-data validation plus export preflight                            |
 
-### Data service
-Ascendix tools retrieve and calculate the authoritative metrics.
+## Report instance boundary
 
-### Normalized report data model
-A stable, product-owned schema that translates source-system complexity into report concepts such as `overall_market.vacancy_rate` and `market.top_leases`.
+A generated report records the template ID/version, generation request, timestamp, normalized data snapshot, expanded pages, manual overrides, and lifecycle status. Editing an instance never mutates the normalized source snapshot or the master template.
 
-### Template schema
-Versioned JSON that owns page dimensions, element geometry, visual styling, data bindings and component rules.
+## Data flow
 
-### Report instance
-A snapshot produced from a template version + normalized dataset + generation parameters. Manual edits belong to the report instance, not the master template.
+1. The wizard creates a `ReportGenerationRequest`.
+2. The provider registry selects a provider and validates the normalized result.
+3. Central calculations produce totals and extrema from raw numeric fields.
+4. Provenance records describe authorities, conflicts, and approved visible exceptions.
+5. The presentation adapter applies formatting and approved overrides.
+6. Repeaters expand page and component collections with contextual binding paths.
+7. A versioned `ReportInstance` snapshot opens in the editor.
+8. Manual element edits are recorded separately from generated values.
+9. Preflight validates data, bindings, assets, fonts, geometry, and overflow.
+10. The server loads the fixed print route and Chromium writes US Letter PDF pages in document order.
 
-### Renderer
-Produces browser output and ultimately deterministic server-side PDF output.
+## Security boundary
 
-## Why the normalized report data model matters
+Credentials never belong in the browser. The Ascendix adapter intentionally requires a server endpoint. Before production, protect report and asset APIs with organizational SSO, authorization, tenant isolation, audit logging, encrypted persistence, and signed object-storage access.
 
-A direct mapping such as `Market_Data__c.Some_Field__c -> visual element` creates a brittle template. The visual layer should bind to semantic fields instead. A mapping/adaptor layer can change as Salesforce changes without forcing template redesign.
+## Target production services
 
-## Suggested production stack
+- PostgreSQL for templates, immutable template versions, report instances, jobs, and provenance
+- S3-compatible object storage for uploaded assets and rendered artifacts
+- Authenticated job queue/workers for Chromium rendering
+- Organization SSO/OAuth and role-based access
+- Ascendix/Salesforce service integration with server-managed credentials
 
-- Frontend: React + TypeScript
-- Editor state: dedicated document store with command history
-- Canvas: either enhanced DOM/SVG rendering or a mature canvas library after validating PDF fidelity
-- API: Node/TypeScript or existing organizational backend
-- Database: PostgreSQL for templates, versions, report instances, generation metadata
-- Asset storage: S3-compatible object storage
-- PDF: the current dedicated `pdf-lib` compositor provides deterministic multipage output; production should move the same schema renderer behind an authenticated job API and embed approved brand fonts
-- Auth: organizational SSO / OAuth
-- Ascendix: existing MCP/service boundary with a production HTTP/API adapter if required
-
-## Current editor architecture
-
-- `src/types/report.ts` owns the typed document, appearance, asset and editor-setting schemas.
-- `src/engine/editorMath.ts` owns DPI conversion, fill rendering, snapping and distribution math.
-- `src/engine/bindings.ts` remains the semantic data-resolution and formatting boundary.
-- `src/engine/validation.ts` performs data, geometry, asset, gradient and estimated text-overflow checks.
-- `src/services/persistence.ts` hides LocalStorage behind a replaceable persistence interface.
-- `src/services/assetStorage.ts` talks to the disk-backed development asset API and provides an offline browser fallback.
-- `src/services/pdfExport.ts` renders the ordered visible-page set directly from the schema into stable PDF bytes.
-- `server/index.ts` exposes development upload/list/content/delete endpoints and persists an atomic asset manifest.
-- `src/components/CanvasElement.tsx` renders document elements and localized pointer interactions.
-- `src/components/Inspector.tsx` exposes unit-aware, type-specific property controls.
-- `src/App.tsx` coordinates pages, selection, command history, assets, keyboard shortcuts and export.
-
-All document geometry remains in CSS reference pixels. UI units are a presentation concern, converted with `96px = 1in`. Pointer interactions update rendering state continuously, while history captures a single transaction at pointer-up.
-
-## Proposed entities
-
-### Template
-- id
-- name
-- report_type
-- status
-- current_draft_version
-
-### TemplateVersion
-- id
-- template_id
-- version
-- schema_version
-- document_json
-- published_at
-- published_by
-
-### ReportInstance
-- id
-- report_type
-- period
-- market
-- parameters_json
-- template_version_id
-- source_data_snapshot
-- document_json
-- status
-- generated_at
-- generated_by
-
-### Asset
-- id
-- type
-- storage_url
-- metadata
-
-### DataProvenance
-- report_instance_id
-- element_id
-- binding_path
-- source_object
-- source_record_ids
-- generated_value
-- overridden_value
-
-## Binding behavior
-
-A binding should include semantic path, display format, fallback and eventually transform/conditional rules.
-
-Example:
-
-```json
-{
-  "path": "market.vacancy_rate",
-  "format": "percentage",
-  "decimals": 1,
-  "fallback": "—"
-}
-```
-
-## Repeating components
-
-A component should have:
-
-- `sourcePath`
-- sort rule
-- maximum items
-- layout direction
-- gap
-- item template
-- empty state rule
-
-## Repeating pages
-
-A page/page group should be generated from a collection such as `markets[]`, with a local binding context assigned for each iteration.
-
-## Generation pipeline
-
-1. Receive report parameters.
-2. Query Ascendix/data services.
-3. Normalize response.
-4. Validate data contract.
-5. Select a published template version.
-6. Resolve global bindings.
-7. Expand repeated components.
-8. Expand repeated pages.
-9. Apply conditional visibility and formatting.
-10. Resolve images/assets.
-11. Snapshot source data.
-12. Create report instance.
-13. Run QA checks.
-14. Open report instance in editor.
-15. Approve/export.
-
-## Security
-
-Never place Salesforce credentials in the browser. All Salesforce/Ascendix calls that require secrets should occur server-side. Treat report data as potentially confidential and support organizational access controls before production rollout.
+The current local API, LocalStorage persistence, and disk asset store are development implementations of these boundaries.
