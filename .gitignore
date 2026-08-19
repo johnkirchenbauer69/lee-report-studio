@@ -6,3 +6,6 @@ dist
 .env
 .env.*
 *.local
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
