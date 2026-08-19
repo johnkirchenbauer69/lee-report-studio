@@ -579,6 +579,86 @@
 .geography-grid input {
   accent-color: #c4123f;
 }
+.wizard-scope-section {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e3e8eb;
+}
+.scope-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  margin: 7px 0;
+  border: 1px solid #dce3e7;
+  border-radius: 8px;
+  background: #fff;
+}
+.scope-radio span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scope-radio small {
+  color: #71808a;
+}
+.geography-grid.compact {
+  max-height: 145px;
+  margin-top: 10px;
+  overflow: auto;
+}
+.report-table .row-empty td {
+  padding: 18px !important;
+  text-align: center !important;
+  color: #76858e;
+  font-style: italic;
+}
+.validation-row.info {
+  color: #315d73;
+  background: #edf6fa;
+}
+.validation-row.blocking {
+  color: #a52e39;
+  background: #fff1f2;
+  border-left: 3px solid #a52e39;
+}
+.completeness-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #dce4e8;
+  border-radius: 8px;
+  background: #fff;
+}
+.completeness-card > strong {
+  margin-bottom: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.completeness-card > div {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+}
+.completeness-card em {
+  font-style: normal;
+}
+.completeness-card small {
+  color: #71808a;
+  text-transform: capitalize;
+}
+.completeness-card .complete span {
+  color: #14764d;
+}
+.completeness-card .missing span,
+.completeness-card .partial span {
+  color: #a86812;
+}
 .review-card {
   display: grid;
   grid-template-columns: 1fr 1fr;

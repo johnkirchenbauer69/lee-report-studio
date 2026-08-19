@@ -136,16 +136,22 @@ export default function App() {
   const settings = { ...defaultSettings, ...template.settings };
   const validations = useMemo(
     () => [
+      ...(reportInstance?.readiness.issues.map((issue) => ({
+        level: issue.level,
+        category: "data" as const,
+        message: issue.message,
+      })) ?? []),
       ...validatePage(page, reportData),
       ...preflightIssues
         .filter((issue) => issue.pageId === page.id)
         .map((issue) => ({
           level: issue.level,
+          category: "export" as const,
           message: issue.message,
           elementId: issue.elementId,
         })),
     ],
-    [page, reportData, preflightIssues],
+    [page, reportData, preflightIssues, reportInstance],
   );
 
   const mutate = useCallback(
@@ -721,6 +727,11 @@ export default function App() {
     notify("Template exported");
   };
   const downloadPdf = async () => {
+    if (reportInstance && !reportInstance.readiness.canExportDraft) {
+      setLeftTab("validate");
+      notify("Draft export is blocked by report validation errors.");
+      return;
+    }
     setExportingPdf(true);
     try {
       const issues = await runExportPreflight(template);
@@ -1165,6 +1176,7 @@ export default function App() {
     return (
       <ValidationPanel
         items={validations}
+        completeness={reportInstance?.dataSnapshot.dataCompleteness}
         onSelect={(id) => {
           setSelectedIds([id]);
           setLeftTab("elements");
@@ -1305,7 +1317,7 @@ export default function App() {
           onClick={() => setLeftTab("validate")}
         >
           <span
-            className={`status-dot ${validations.some((item) => item.level === "error") ? "error" : validations.some((item) => item.level === "warning") ? "warning" : ""}`}
+            className={`status-dot ${validations.some((item) => item.level === "error" || item.level === "blocking") ? "error" : validations.some((item) => item.level === "warning") ? "warning" : ""}`}
           />
           Validate
         </button>
@@ -1544,8 +1556,13 @@ export default function App() {
         </span>
         <span>
           {past.length} history steps ·{" "}
+          {validations.filter((item) => item.level === "blocking").length}{" "}
+          blockers ·{" "}
           {validations.filter((item) => item.level === "warning").length}{" "}
           warnings ·{" "}
+          {generationProgress?.message
+            ? `${generationProgress.message} · `
+            : ""}
           {reportInstance
             ? `${reportInstance.manualOverrides.length} manual overrides · `
             : ""}
