@@ -14,6 +14,11 @@ A polished browser-based, data-aware report template editor designed to turn str
 - Solid and two/three-stop linear-gradient fills, stroke styles, opacity and corner radius
 - Full typography controls plus workspace-local font upload
 - Image/logo upload, asset browser and contain/cover/stretch/original fit modes
+- Interactive image crop mode with pan, zoom and numeric crop coordinates
+- Proportional resizing for grouped elements
+- Draggable page thumbnail reordering
+- Pixel/inch rulers with draggable custom guides and guide snapping
+- Disk-backed asset API with browser-local fallback when the API is unavailable
 - Undo/redo history with drag/resize interactions recorded as one transaction
 - Copy/paste, duplicate, group/ungroup, z-order controls and custom context menu
 - Duplicate / delete elements and pages
@@ -28,7 +33,7 @@ A polished browser-based, data-aware report template editor designed to turn str
 - Validation for unresolved bindings and out-of-page geometry
 - LocalStorage persistence behind a replaceable persistence service
 - JSON export of the current template
-- Browser Print / Save as PDF workflow
+- Deterministic, full-document PDF export in template page order
 - Clean separation between data, document schema, rendering, validation and editor UI
 
 This is intentionally a focused report-production MVP, not a general-purpose Canva replacement.
@@ -52,10 +57,10 @@ npm install
 npm run dev
 ```
 
-Vite will print a local URL, normally:
+The development command starts the editor and its local asset API together. Open:
 
 ```text
-http://localhost:5173
+http://localhost:3000
 ```
 
 ### Production build
@@ -202,27 +207,31 @@ Then implement:
 
 The Ascendix provider should call the existing MCP/API layer and normalize results into the report data model before the UI sees them.
 
+## Asset storage
+
+Uploaded images, logos and fonts are written by the local API to `server/data/assets`; its generated manifest and files are intentionally gitignored. Set `LEE_DATA_DIR` to move this data root. If the API cannot be reached, the editor keeps uploads as browser data URLs so design work can continue.
+
+## PDF rendering
+
+Export PDF composes every visible page directly from the report schema with fixed metadata and stable object ordering. Text, fills, shapes, tables and images are rendered without depending on browser print layout. The current renderer uses PDF standard fonts; production brand-font embedding and richer chart output remain preflight items.
+
 ## Current limitations
 
 The current project proves the editor/data-binding architecture but is not yet a production replacement for Canva. Important next items include:
 
 - Persist templates/reports to a backend/database
 - Real authentication and permissions
-- Local uploads are stored as browser data URLs; production storage still needs the asset-service adapter described in `ARCHITECTURE.md`.
+- The included backend asset service is local disk storage; production deployment still needs authenticated S3-compatible storage and access controls.
 - Text supports professional box-level typography but not mixed rich-text runs inside one element.
-- Group movement is supported; proportional group resizing remains a future enhancement.
-- Page ordering uses explicit controls; draggable thumbnail reordering remains a future enhancement.
-- Image fit modes are supported; interactive crop handles remain a future enhancement.
 - Production chart library or richer SVG chart engine
 - Repeating components and repeating pages
 - Conditional visibility / conditional formatting UI
-- Server-side deterministic PDF rendering
+- Server-hosted PDF jobs, brand-font embedding and production preflight
 - Template versioning and immutable published versions
 - Report instance snapshots
 - Data provenance and manual-override tracking
 - Ascendix/Salesforce integration
 - Full pixel-level reconstruction of the current Industrial Market Report template
-- Page-level export of an entire multipage report rather than only the current browser print view
 
 ## Recommended next milestone
 

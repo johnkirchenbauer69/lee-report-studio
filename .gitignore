@@ -1,4 +1,7 @@
 node_modules
+server/data/assets/*
+server/data/assets.json
+!server/data/assets/.gitkeep
 dist
 .vscode/*
 !.vscode/extensions.json

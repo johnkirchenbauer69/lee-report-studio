@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distribute, fillToCss, fromPixels, snapPosition, toPixels } from './editorMath';
+import { distribute, fillToCss, fromPixels, scaleGroupedElements, snapPosition, toPixels } from './editorMath';
 import { formatValue, getByPath } from './bindings';
 import { validatePage } from './validation';
 import type { ReportElement, ReportPage } from '../types/report';
@@ -18,7 +18,9 @@ describe('binding and formatting', () => {
 describe('editor math', () => {
   it('snaps to page center and returns a visible guide', () => { const result=snapPosition({x:352,y:100,width:100,height:50,pageWidth:816,pageHeight:1056,others:[],snapElements:true}); expect(result.x).toBe(358); expect(result.guides).toContainEqual({axis:'x',position:408}); });
   it('snaps to the configured grid', () => expect(snapPosition({x:26,y:51,width:10,height:10,pageWidth:100,pageHeight:100,others:[],snapGrid:true,gridSpacing:24}).x).toBe(24));
+  it('snaps to a custom guide', () => { const result=snapPosition({x:117,y:10,width:20,height:20,pageWidth:400,pageHeight:400,others:[],customXTargets:[120]}); expect(result.x).toBe(120); expect(result.guides).toContainEqual({axis:'x',position:120}); });
   it('distributes three elements with equal spacing', () => { const result=distribute([shape('a',0,0),shape('b',130,0),shape('c',300,0)],'x'); expect(result.get('b')).toBe(150); });
+  it('resizes grouped elements proportionally', () => { const elements=[{...shape('a',10,20,100,50),groupId:'g'},{...shape('b',130,80,50,25),groupId:'g'},shape('c',300,0)]; const result=scaleGroupedElements(elements,'a',{width:200}); expect(result[0]).toMatchObject({x:10,y:20,width:200,height:100}); expect(result[1]).toMatchObject({x:250,y:140,width:100,height:50}); expect(result[2]).toEqual(elements[2]); });
   it('renders two and three stop gradients', () => { const css=fillToCss({type:'linear-gradient',angle:90,stops:[{id:'a',color:'#000000',position:0},{id:'b',color:'#777777',position:50},{id:'c',color:'#ffffff',position:100}]}); expect(css).toContain('linear-gradient(90deg'); expect(css).toContain('#777777 50%'); });
 });
 
