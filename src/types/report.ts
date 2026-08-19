@@ -1,21 +1,40 @@
-export type ElementType = 'text' | 'shape' | 'image' | 'table' | 'chart';
-export type PreviewMode = 'design' | 'data';
-export type Unit = 'px' | 'in';
-export type ShapeKind = 'rectangle' | 'rounded-rectangle' | 'circle' | 'ellipse' | 'line' | 'triangle' | 'diamond';
-export interface ImageCrop { x: number; y: number; zoom: number; }
-export interface EditorGuide { id: string; axis: 'x' | 'y'; position: number; }
+export type ElementType = "text" | "shape" | "image" | "table" | "chart";
+export type PreviewMode = "design" | "data";
+export type Unit = "px" | "in";
+export type ShapeKind =
+  | "rectangle"
+  | "rounded-rectangle"
+  | "circle"
+  | "ellipse"
+  | "line"
+  | "triangle"
+  | "diamond";
+export interface ImageCrop {
+  x: number;
+  y: number;
+  zoom: number;
+}
+export interface EditorGuide {
+  id: string;
+  axis: "x" | "y";
+  position: number;
+}
 
-export interface GradientStop { id: string; color: string; position: number; }
+export interface GradientStop {
+  id: string;
+  color: string;
+  position: number;
+}
 export type Fill =
-  | { type: 'solid'; color: string }
-  | { type: 'linear-gradient'; angle: number; stops: GradientStop[] };
+  | { type: "solid"; color: string }
+  | { type: "linear-gradient"; angle: number; stops: GradientStop[] };
 
 export interface Stroke {
   enabled: boolean;
   color: string;
   width: number;
   opacity: number;
-  style: 'solid' | 'dashed' | 'dotted';
+  style: "solid" | "dashed" | "dotted";
 }
 
 export interface Typography {
@@ -25,8 +44,8 @@ export interface Typography {
   color: string;
   letterSpacing: number;
   lineHeight: number;
-  textAlign: 'left' | 'center' | 'right' | 'justify';
-  verticalAlign: 'top' | 'middle' | 'bottom';
+  textAlign: "left" | "center" | "right" | "justify";
+  verticalAlign: "top" | "middle" | "bottom";
   italic: boolean;
   underline: boolean;
   uppercase?: boolean;
@@ -35,7 +54,14 @@ export interface Typography {
 export interface Binding {
   path: string;
   label?: string;
-  format?: 'text' | 'percentage' | 'integer' | 'decimal' | 'sf' | 'currency' | 'currency_psf';
+  format?:
+    | "text"
+    | "percentage"
+    | "integer"
+    | "decimal"
+    | "sf"
+    | "currency"
+    | "currency_psf";
   decimals?: number;
   fallback?: string;
 }
@@ -45,7 +71,7 @@ export interface ElementStyle {
   fontSize?: number;
   fontWeight?: number;
   italic?: boolean;
-  textAlign?: 'left' | 'center' | 'right';
+  textAlign?: "left" | "center" | "right";
   color?: string;
   background?: string;
   borderColor?: string;
@@ -58,8 +84,8 @@ export interface ElementStyle {
   typography?: Typography;
   letterSpacing?: number;
   lineHeight?: number;
-  textDecoration?: 'none' | 'underline';
-  mixBlendMode?: 'normal' | 'screen' | 'multiply';
+  textDecoration?: "none" | "underline";
+  mixBlendMode?: "normal" | "screen" | "multiply";
 }
 
 export interface BaseElement {
@@ -73,6 +99,7 @@ export interface BaseElement {
   rotation?: number;
   locked?: boolean;
   hidden?: boolean;
+  allowOverflow?: boolean;
   groupId?: string;
   style: ElementStyle;
   binding?: Binding;
@@ -81,49 +108,56 @@ export interface BaseElement {
 }
 
 export interface TextElement extends BaseElement {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface ShapeElement extends BaseElement {
-  type: 'shape';
+  type: "shape";
   shape?: ShapeKind;
 }
 
 export interface ImageElement extends BaseElement {
-  type: 'image';
+  type: "image";
   src: string;
-  fit?: 'cover' | 'contain' | 'stretch' | 'original';
+  fit?: "cover" | "contain" | "stretch" | "original";
   assetId?: string;
   crop?: ImageCrop;
-  sourceCrop?: { sourceWidth: number; sourceHeight: number; x: number; y: number; width: number; height: number };
+  sourceCrop?: {
+    sourceWidth: number;
+    sourceHeight: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface TableColumn {
   key: string;
   label: string;
   path: string;
-  format?: Binding['format'];
+  format?: Binding["format"];
   decimals?: number;
   width?: number;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
 }
 
 export interface TableElement extends BaseElement {
-  type: 'table';
+  type: "table";
   sourcePath: string;
   columns: TableColumn[];
   maxRows?: number;
-  variant?: 'default' | 'market-matrix' | 'indicators' | 'transactions';
+  variant?: "default" | "market-matrix" | "indicators" | "transactions";
   rowKindPath?: string;
 }
 
 export interface ChartElement extends BaseElement {
-  type: 'chart';
+  type: "chart";
   sourcePath: string;
   categoryPath: string;
   valuePath?: string;
-  chartType: 'bar' | 'line' | 'area' | 'column' | 'combination';
+  chartType: "bar" | "line" | "area" | "column" | "combination";
   title?: string;
   series?: ChartSeries[];
   axes?: ChartAxis[];
@@ -131,23 +165,58 @@ export interface ChartElement extends BaseElement {
   chartStyle?: ChartStyle;
 }
 
-export interface BindingContext { name: string; path: string; }
+export interface BindingContext {
+  name: string;
+  path: string;
+}
 export interface RepeatRule {
   sourcePath: string;
   contextName?: string;
-  direction?: 'vertical' | 'horizontal';
+  direction?: "vertical" | "horizontal";
   maximumItems?: number;
   spacing?: number;
   sortBy?: string;
-  sortOrder?: 'ascending' | 'descending';
+  sortOrder?: "ascending" | "descending";
 }
-export interface RepeatingPageRule extends Omit<RepeatRule, 'direction' | 'spacing'> { contextName: string; }
-export interface ChartSeries { id: string; name: string; valuePath: string; type?: 'bar' | 'line' | 'area' | 'column'; color: string; lineWidth?: number; markerSize?: number; }
-export interface ChartAxis { id: string; position: 'left' | 'right' | 'bottom'; title?: string; minimum?: number; maximum?: number; format?: Binding['format']; decimals?: number; showGridlines?: boolean; }
-export interface ChartLegend { visible: boolean; position: 'top' | 'right' | 'bottom' | 'left'; }
-export interface ChartStyle { background?: string; gridColor?: string; labelColor?: string; fontFamily?: string; fontSize?: number; }
+export interface RepeatingPageRule extends Omit<
+  RepeatRule,
+  "direction" | "spacing"
+> {
+  contextName: string;
+}
+export interface ChartSeries {
+  id: string;
+  name: string;
+  valuePath: string;
+  type?: "bar" | "line" | "area" | "column";
+  color: string;
+  lineWidth?: number;
+  markerSize?: number;
+}
+export interface ChartAxis {
+  id: string;
+  position: "left" | "right" | "bottom";
+  title?: string;
+  minimum?: number;
+  maximum?: number;
+  format?: Binding["format"];
+  decimals?: number;
+  showGridlines?: boolean;
+}
+export interface ChartLegend {
+  visible: boolean;
+  position: "top" | "right" | "bottom" | "left";
+}
+export interface ChartStyle {
+  background?: string;
+  gridColor?: string;
+  labelColor?: string;
+  fontFamily?: string;
+  fontSize?: number;
+}
 
-export type ReportElement = TextElement | ShapeElement | ImageElement | TableElement | ChartElement;
+export type ReportElement =
+  TextElement | ShapeElement | ImageElement | TableElement | ChartElement;
 
 export interface ReportPage {
   id: string;
@@ -164,12 +233,12 @@ export interface ReportPage {
 export interface Asset {
   id: string;
   name: string;
-  type: 'image' | 'logo' | 'font';
+  type: "image" | "logo" | "font";
   mimeType: string;
   source: string;
   createdAt: string;
   fontFamily?: string;
-  storage?: 'backend' | 'browser';
+  storage?: "backend" | "browser";
   size?: number;
 }
 
@@ -197,7 +266,7 @@ export interface ReportTemplate {
 }
 
 export interface ValidationItem {
-  level: 'ok' | 'warning' | 'error';
+  level: "ok" | "warning" | "error";
   message: string;
   elementId?: string;
 }

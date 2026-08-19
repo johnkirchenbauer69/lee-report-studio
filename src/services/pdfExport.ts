@@ -1,31 +1,502 @@
-import { PDFDocument, StandardFonts, degrees, rgb, type PDFPage, type PDFFont } from 'pdf-lib';
-import type { Fill, ImageElement, ReportElement, ReportPage, ReportTemplate, TableElement } from '../types/report';
-import { formatValue, getByPath } from '../engine/bindings';
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFPage,
+  type PDFFont,
+} from "pdf-lib";
+import type {
+  Fill,
+  ImageElement,
+  ReportElement,
+  ReportPage,
+  ReportTemplate,
+  TableElement,
+} from "../types/report";
+import { formatValue, getByPath } from "../engine/bindings";
 
-const POINTS_PER_PIXEL=72/96;
-const color=(value:string|undefined)=>{const normalized=(value??'#000000').replace('#','');if(normalized==='transparent'||normalized.length<6)return rgb(0,0,0);const full=normalized.length===3?normalized.split('').map(character=>character.repeat(2)).join(''):normalized;return rgb(parseInt(full.slice(0,2),16)/255,parseInt(full.slice(2,4),16)/255,parseInt(full.slice(4,6),16)/255)};
-const pdfSafe=(value:string)=>value.replace(/▼/g,'v').replace(/▲/g,'^').replace(/[–—]/g,'-').replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g,'');
-const lerp=(a:number,b:number,t:number)=>Math.round(a+(b-a)*t);
-const interpolateColor=(a:string,b:string,t:number)=>{const from=a.replace('#',''),to=b.replace('#','');return`#${[0,2,4].map(index=>lerp(parseInt(from.slice(index,index+2),16),parseInt(to.slice(index,index+2),16),t).toString(16).padStart(2,'0')).join('')}`};
+const POINTS_PER_PIXEL = 72 / 96;
+const color = (value: string | undefined) => {
+  const normalized = (value ?? "#000000").replace("#", "");
+  if (normalized === "transparent" || normalized.length < 6)
+    return rgb(0, 0, 0);
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((character) => character.repeat(2))
+          .join("")
+      : normalized;
+  return rgb(
+    parseInt(full.slice(0, 2), 16) / 255,
+    parseInt(full.slice(2, 4), 16) / 255,
+    parseInt(full.slice(4, 6), 16) / 255,
+  );
+};
+const pdfSafe = (value: string) =>
+  value
+    .replace(/▼/g, "v")
+    .replace(/▲/g, "^")
+    .replace(/[–—]/g, "-")
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "");
+const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+const interpolateColor = (a: string, b: string, t: number) => {
+  const from = a.replace("#", ""),
+    to = b.replace("#", "");
+  return `#${[0, 2, 4]
+    .map((index) =>
+      lerp(
+        parseInt(from.slice(index, index + 2), 16),
+        parseInt(to.slice(index, index + 2), 16),
+        t,
+      )
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+};
 
-function drawFill(page:PDFPage,reportPage:ReportPage,element:ReportElement,fill:Fill|undefined){const x=element.x*POINTS_PER_PIXEL,y=(reportPage.height-element.y-element.height)*POINTS_PER_PIXEL,width=element.width*POINTS_PER_PIXEL,height=element.height*POINTS_PER_PIXEL,opacity=element.style.opacity??1;if(!fill||fill.type==='solid'){page.drawRectangle({x,y,width,height,color:color(fill?.type==='solid'?fill.color:element.style.background),opacity});return}const stops=[...fill.stops].sort((a,b)=>a.position-b.position);const slices=48;for(let index=0;index<slices;index++){const t=index/(slices-1),position=t*100;let left=stops[0],right=stops.at(-1)!;for(let stop=0;stop<stops.length-1;stop++)if(position>=stops[stop].position&&position<=stops[stop+1].position){left=stops[stop];right=stops[stop+1];break}const local=(position-left.position)/Math.max(1,right.position-left.position),shade=interpolateColor(left.color,right.color,Math.max(0,Math.min(1,local)));const vertical=Math.abs(Math.sin(fill.angle*Math.PI/180))>.7;page.drawRectangle(vertical?{x,y:y+height*t,width,height:height/slices+1,color:color(shade),opacity}:{x:x+width*t,y,width:width/slices+1,height,color:color(shade),opacity})}}
-
-function wrapText(value:string,font:PDFFont,size:number,maxWidth:number){const lines:string[]=[];for(const paragraph of pdfSafe(value).split('\n')){let line='';for(const word of paragraph.split(/\s+/)){const candidate=line?`${line} ${word}`:word;if(font.widthOfTextAtSize(candidate,size)>maxWidth&&line){lines.push(line);line=word}else line=candidate}lines.push(line)}return lines}
-
-async function croppedPng(element:ImageElement):Promise<Uint8Array>{const image=new Image();image.crossOrigin='anonymous';image.src=element.src;await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error(`Image ${element.name} could not be loaded for PDF export.`))});const width=Math.max(1,Math.min(2000,Math.round(element.width*2))),height=Math.max(1,Math.min(2000,Math.round(element.height*2))),canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const context=canvas.getContext('2d');if(!context)throw new Error('Canvas rendering is unavailable.');const fit=element.fit??'cover',crop=element.crop??{x:50,y:50,zoom:1};let drawWidth=width,drawHeight=height;if(fit==='contain'){const scale=Math.min(width/image.naturalWidth,height/image.naturalHeight);drawWidth=image.naturalWidth*scale;drawHeight=image.naturalHeight*scale}else if(fit==='cover'){const scale=Math.max(width/image.naturalWidth,height/image.naturalHeight)*crop.zoom;drawWidth=image.naturalWidth*scale;drawHeight=image.naturalHeight*scale}else if(fit==='original'){drawWidth=image.naturalWidth*crop.zoom;drawHeight=image.naturalHeight*crop.zoom}const x=(width-drawWidth)*(crop.x/100),y=(height-drawHeight)*(crop.y/100);context.drawImage(image,x,y,drawWidth,drawHeight);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Image conversion failed.')),'image/png'));return new Uint8Array(await blob.arrayBuffer())}
-
-function drawTable(pdfPage:PDFPage,reportPage:ReportPage,element:TableElement,data:unknown,fonts:{regular:PDFFont;bold:PDFFont}){const rows=getByPath(data,element.sourcePath),items=Array.isArray(rows)?rows.slice(0,element.maxRows??rows.length):[],x=element.x*POINTS_PER_PIXEL,y=(reportPage.height-element.y-element.height)*POINTS_PER_PIXEL,width=element.width*POINTS_PER_PIXEL,height=element.height*POINTS_PER_PIXEL,rowHeight=height/(items.length+1),weights=element.columns.map(column=>column.width??1),weightTotal=weights.reduce((sum,value)=>sum+value,0),fontSize=(element.variant==='market-matrix'?5.6:7)*POINTS_PER_PIXEL;let cursor=x;pdfPage.drawRectangle({x,y:y+height-rowHeight,width,height:rowHeight,color:color(element.variant==='market-matrix'?'#003c50':'#c4123f')});element.columns.forEach((column,index)=>{const columnWidth=width*weights[index]/weightTotal,lines=column.label.split('\n');lines.slice(0,3).forEach((line,lineIndex)=>pdfPage.drawText(line,{x:cursor+3,y:y+height-fontSize-3-lineIndex*(fontSize+1),size:fontSize,font:fonts.bold,color:rgb(1,1,1),maxWidth:columnWidth-5}));cursor+=columnWidth});items.forEach((row,rowIndex)=>{const kind=element.rowKindPath?String(getByPath(row,element.rowKindPath)):'';const fill=kind==='total'?'#8f9194':kind==='minimum'||kind==='maximum'?'#003c50':rowIndex%2===0?'#d4d6d7':'#ffffff',ink=kind==='total'||kind==='minimum'||kind==='maximum'?'#ffffff':'#142b3a',font=kind==='total'?fonts.bold:fonts.regular;const rowY=y+height-(rowIndex+2)*rowHeight;pdfPage.drawRectangle({x,y:rowY,width,height:rowHeight,color:color(fill)});let columnX=x;element.columns.forEach((column,columnIndex)=>{const columnWidth=width*weights[columnIndex]/weightTotal,value=formatValue(getByPath(row,column.path),{path:column.path,format:column.format,decimals:column.decimals??1}),lines=wrapText(value,font,fontSize,columnWidth-6);lines.slice(0,2).forEach((line,lineIndex)=>pdfPage.drawText(line,{x:columnX+3,y:rowY+rowHeight-fontSize-3-lineIndex*(fontSize+1),size:fontSize,font,color:color(ink),maxWidth:columnWidth-6}));columnX+=columnWidth})})}
-
-async function drawElement(pdf:PDFDocument,pdfPage:PDFPage,reportPage:ReportPage,element:ReportElement,data:unknown,fonts:{regular:PDFFont;bold:PDFFont;italic:PDFFont}){
-  if(element.hidden)return;
-  const x=element.x*POINTS_PER_PIXEL,y=(reportPage.height-element.y-element.height)*POINTS_PER_PIXEL,width=element.width*POINTS_PER_PIXEL,height=element.height*POINTS_PER_PIXEL,opacity=element.style.opacity??1,rotation=degrees(-(element.rotation??0));
-  if(element.type==='shape'){if(element.shape==='circle')pdfPage.drawEllipse({x:x+width/2,y:y+height/2,xScale:width/2,yScale:height/2,color:color(element.style.background),opacity});else drawFill(pdfPage,reportPage,element,element.style.fill);const stroke=element.style.stroke;if(stroke?.enabled)pdfPage.drawRectangle({x,y,width,height,borderColor:color(stroke.color),borderWidth:stroke.width*POINTS_PER_PIXEL,borderOpacity:stroke.opacity,opacity:0});return}
-  if(element.type==='text'){const typography=element.style.typography,value=element.binding?formatValue(getByPath(data,element.binding.path),element.binding):element.text,font=typography?.italic?fonts.italic:Number(typography?.fontWeight??element.style.fontWeight??400)>=600?fonts.bold:fonts.regular,size=(typography?.fontSize??element.style.fontSize??14)*POINTS_PER_PIXEL,lineHeight=size*(typography?.lineHeight??1.2),lines=wrapText(typography?.uppercase?value.toUpperCase():value,font,size,width);lines.slice(0,Math.max(1,Math.floor(height/lineHeight))).forEach((line,index)=>pdfPage.drawText(line,{x,y:y+height-size-index*lineHeight,size,font,color:color(typography?.color??element.style.color),opacity,rotate:rotation,maxWidth:width}));return}
-  if(element.type==='image'&&element.src){try{if(typeof Image==='undefined')throw new Error('Browser image rendering unavailable');const embedded=await pdf.embedPng(await croppedPng(element));pdfPage.drawImage(embedded,{x,y,width,height,opacity,rotate:rotation})}catch(error){if(typeof Image!=='undefined')console.warn(error);pdfPage.drawRectangle({x,y,width,height,color:rgb(.92,.94,.96)});pdfPage.drawText('Image unavailable',{x:x+8,y:y+height/2,size:9,font:fonts.regular,color:rgb(.4,.45,.52)})}return}
-  if(element.type==='table'){drawTable(pdfPage,reportPage,element,data,fonts);return}
-  if(element.type==='chart'){pdfPage.drawRectangle({x,y,width,height,borderColor:rgb(.85,.87,.9),borderWidth:.75});pdfPage.drawText(element.title??'Chart',{x:x+10,y:y+height-16,size:10,font:fonts.bold,color:rgb(.12,.16,.22)})}
+function drawFill(
+  page: PDFPage,
+  reportPage: ReportPage,
+  element: ReportElement,
+  fill: Fill | undefined,
+) {
+  const x = element.x * POINTS_PER_PIXEL,
+    y = (reportPage.height - element.y - element.height) * POINTS_PER_PIXEL,
+    width = element.width * POINTS_PER_PIXEL,
+    height = element.height * POINTS_PER_PIXEL,
+    opacity = element.style.opacity ?? 1;
+  if (!fill || fill.type === "solid") {
+    page.drawRectangle({
+      x,
+      y,
+      width,
+      height,
+      color: color(
+        fill?.type === "solid" ? fill.color : element.style.background,
+      ),
+      opacity,
+    });
+    return;
+  }
+  const stops = [...fill.stops].sort((a, b) => a.position - b.position);
+  const slices = 48;
+  for (let index = 0; index < slices; index++) {
+    const t = index / (slices - 1),
+      position = t * 100;
+    let left = stops[0],
+      right = stops.at(-1)!;
+    for (let stop = 0; stop < stops.length - 1; stop++)
+      if (
+        position >= stops[stop].position &&
+        position <= stops[stop + 1].position
+      ) {
+        left = stops[stop];
+        right = stops[stop + 1];
+        break;
+      }
+    const local =
+        (position - left.position) /
+        Math.max(1, right.position - left.position),
+      shade = interpolateColor(
+        left.color,
+        right.color,
+        Math.max(0, Math.min(1, local)),
+      );
+    const vertical = Math.abs(Math.sin((fill.angle * Math.PI) / 180)) > 0.7;
+    page.drawRectangle(
+      vertical
+        ? {
+            x,
+            y: y + height * t,
+            width,
+            height: height / slices + 1,
+            color: color(shade),
+            opacity,
+          }
+        : {
+            x: x + width * t,
+            y,
+            width: width / slices + 1,
+            height,
+            color: color(shade),
+            opacity,
+          },
+    );
+  }
 }
 
-export async function createReportPdfBytes(template:ReportTemplate,data:unknown){const pdf=await PDFDocument.create();pdf.setTitle(template.name);pdf.setCreator('LEE Report Studio');pdf.setProducer('LEE Report Studio deterministic renderer');pdf.setCreationDate(new Date(0));pdf.setModificationDate(new Date(0));const fonts={regular:await pdf.embedFont(StandardFonts.Helvetica),bold:await pdf.embedFont(StandardFonts.HelveticaBold),italic:await pdf.embedFont(StandardFonts.HelveticaOblique)};for(const reportPage of template.pages.filter(page=>!page.hidden)){const page=pdf.addPage([reportPage.width*POINTS_PER_PIXEL,reportPage.height*POINTS_PER_PIXEL]);page.drawRectangle({x:0,y:0,width:reportPage.width*POINTS_PER_PIXEL,height:reportPage.height*POINTS_PER_PIXEL,color:color(reportPage.background)});for(const element of reportPage.elements)await drawElement(pdf,page,reportPage,element,data,fonts)}return pdf.save({useObjectStreams:false,addDefaultPage:false,objectsPerTick:25})}
+function wrapText(
+  value: string,
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+) {
+  const lines: string[] = [];
+  for (const paragraph of pdfSafe(value).split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (font.widthOfTextAtSize(candidate, size) > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else line = candidate;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
 
-export async function exportReportPdf(template:ReportTemplate,data:unknown,fileName='lee-report.pdf'){const bytes=await createReportPdfBytes(template,data);const blob=new Blob([new Uint8Array(bytes)],{type:'application/pdf'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=fileName;anchor.click();URL.revokeObjectURL(url)}
+async function croppedPng(element: ImageElement): Promise<Uint8Array> {
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+  image.src = element.src;
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () =>
+      reject(
+        new Error(`Image ${element.name} could not be loaded for PDF export.`),
+      );
+  });
+  const width = Math.max(1, Math.min(2000, Math.round(element.width * 2))),
+    height = Math.max(1, Math.min(2000, Math.round(element.height * 2))),
+    canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas rendering is unavailable.");
+  if (element.sourceCrop) {
+    const region = element.sourceCrop;
+    context.drawImage(
+      image,
+      region.x,
+      region.y,
+      region.width,
+      region.height,
+      0,
+      0,
+      width,
+      height,
+    );
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (value) =>
+          value
+            ? resolve(value)
+            : reject(new Error("Image conversion failed.")),
+        "image/png",
+      ),
+    );
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+  const fit = element.fit ?? "cover",
+    crop = element.crop ?? { x: 50, y: 50, zoom: 1 };
+  let drawWidth = width,
+    drawHeight = height;
+  if (fit === "contain") {
+    const scale = Math.min(
+      width / image.naturalWidth,
+      height / image.naturalHeight,
+    );
+    drawWidth = image.naturalWidth * scale;
+    drawHeight = image.naturalHeight * scale;
+  } else if (fit === "cover") {
+    const scale =
+      Math.max(width / image.naturalWidth, height / image.naturalHeight) *
+      crop.zoom;
+    drawWidth = image.naturalWidth * scale;
+    drawHeight = image.naturalHeight * scale;
+  } else if (fit === "original") {
+    drawWidth = image.naturalWidth * crop.zoom;
+    drawHeight = image.naturalHeight * crop.zoom;
+  }
+  const x = (width - drawWidth) * (crop.x / 100),
+    y = (height - drawHeight) * (crop.y / 100);
+  context.drawImage(image, x, y, drawWidth, drawHeight);
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob(
+      (value) =>
+        value ? resolve(value) : reject(new Error("Image conversion failed.")),
+      "image/png",
+    ),
+  );
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+function drawTable(
+  pdfPage: PDFPage,
+  reportPage: ReportPage,
+  element: TableElement,
+  data: unknown,
+  fonts: { regular: PDFFont; bold: PDFFont },
+) {
+  const rows = getByPath(data, element.sourcePath),
+    items = Array.isArray(rows)
+      ? rows.slice(0, element.maxRows ?? rows.length)
+      : [],
+    x = element.x * POINTS_PER_PIXEL,
+    y = (reportPage.height - element.y - element.height) * POINTS_PER_PIXEL,
+    width = element.width * POINTS_PER_PIXEL,
+    height = element.height * POINTS_PER_PIXEL,
+    rowHeight = height / (items.length + 1),
+    weights = element.columns.map((column) => column.width ?? 1),
+    weightTotal = weights.reduce((sum, value) => sum + value, 0),
+    fontSize =
+      (element.variant === "market-matrix" ? 5.6 : 7) * POINTS_PER_PIXEL;
+  let cursor = x;
+  pdfPage.drawRectangle({
+    x,
+    y: y + height - rowHeight,
+    width,
+    height: rowHeight,
+    color: color(element.variant === "market-matrix" ? "#003c50" : "#c4123f"),
+  });
+  element.columns.forEach((column, index) => {
+    const columnWidth = (width * weights[index]) / weightTotal,
+      lines = column.label.split("\n");
+    lines.slice(0, 3).forEach((line, lineIndex) =>
+      pdfPage.drawText(line, {
+        x: cursor + 3,
+        y: y + height - fontSize - 3 - lineIndex * (fontSize + 1),
+        size: fontSize,
+        font: fonts.bold,
+        color: rgb(1, 1, 1),
+        maxWidth: columnWidth - 5,
+      }),
+    );
+    cursor += columnWidth;
+  });
+  items.forEach((row, rowIndex) => {
+    const kind = element.rowKindPath
+      ? String(getByPath(row, element.rowKindPath))
+      : "";
+    const fill =
+        kind === "total"
+          ? "#8f9194"
+          : kind === "minimum" || kind === "maximum"
+            ? "#003c50"
+            : rowIndex % 2 === 0
+              ? "#d4d6d7"
+              : "#ffffff",
+      ink =
+        kind === "total" || kind === "minimum" || kind === "maximum"
+          ? "#ffffff"
+          : "#142b3a",
+      font = kind === "total" ? fonts.bold : fonts.regular;
+    const rowY = y + height - (rowIndex + 2) * rowHeight;
+    pdfPage.drawRectangle({
+      x,
+      y: rowY,
+      width,
+      height: rowHeight,
+      color: color(fill),
+    });
+    let columnX = x;
+    element.columns.forEach((column, columnIndex) => {
+      const columnWidth = (width * weights[columnIndex]) / weightTotal,
+        value = formatValue(getByPath(row, column.path), {
+          path: column.path,
+          format: column.format,
+          decimals: column.decimals ?? 1,
+        }),
+        lines = wrapText(value, font, fontSize, columnWidth - 6);
+      lines.slice(0, 2).forEach((line, lineIndex) =>
+        pdfPage.drawText(line, {
+          x: columnX + 3,
+          y: rowY + rowHeight - fontSize - 3 - lineIndex * (fontSize + 1),
+          size: fontSize,
+          font,
+          color: color(ink),
+          maxWidth: columnWidth - 6,
+        }),
+      );
+      columnX += columnWidth;
+    });
+  });
+}
+
+async function drawElement(
+  pdf: PDFDocument,
+  pdfPage: PDFPage,
+  reportPage: ReportPage,
+  element: ReportElement,
+  data: unknown,
+  fonts: { regular: PDFFont; bold: PDFFont; italic: PDFFont },
+) {
+  if (element.hidden) return;
+  const x = element.x * POINTS_PER_PIXEL,
+    y = (reportPage.height - element.y - element.height) * POINTS_PER_PIXEL,
+    width = element.width * POINTS_PER_PIXEL,
+    height = element.height * POINTS_PER_PIXEL,
+    opacity = element.style.opacity ?? 1,
+    rotation = degrees(-(element.rotation ?? 0));
+  if (element.type === "shape") {
+    if (element.shape === "circle")
+      pdfPage.drawEllipse({
+        x: x + width / 2,
+        y: y + height / 2,
+        xScale: width / 2,
+        yScale: height / 2,
+        color: color(element.style.background),
+        opacity,
+      });
+    else drawFill(pdfPage, reportPage, element, element.style.fill);
+    const stroke = element.style.stroke;
+    if (stroke?.enabled)
+      pdfPage.drawRectangle({
+        x,
+        y,
+        width,
+        height,
+        borderColor: color(stroke.color),
+        borderWidth: stroke.width * POINTS_PER_PIXEL,
+        borderOpacity: stroke.opacity,
+        opacity: 0,
+      });
+    return;
+  }
+  if (element.type === "text") {
+    const typography = element.style.typography,
+      value = element.binding
+        ? formatValue(getByPath(data, element.binding.path), element.binding)
+        : element.text,
+      font = typography?.italic
+        ? fonts.italic
+        : Number(typography?.fontWeight ?? element.style.fontWeight ?? 400) >=
+            600
+          ? fonts.bold
+          : fonts.regular,
+      size =
+        (typography?.fontSize ?? element.style.fontSize ?? 14) *
+        POINTS_PER_PIXEL,
+      lineHeight = size * (typography?.lineHeight ?? 1.2),
+      lines = wrapText(
+        typography?.uppercase ? value.toUpperCase() : value,
+        font,
+        size,
+        width,
+      );
+    lines
+      .slice(0, Math.max(1, Math.floor(height / lineHeight)))
+      .forEach((line, index) =>
+        pdfPage.drawText(line, {
+          x,
+          y: y + height - size - index * lineHeight,
+          size,
+          font,
+          color: color(typography?.color ?? element.style.color),
+          opacity,
+          rotate: rotation,
+          maxWidth: width,
+        }),
+      );
+    return;
+  }
+  if (element.type === "image" && element.src) {
+    try {
+      if (typeof Image === "undefined")
+        throw new Error("Browser image rendering unavailable");
+      const embedded = await pdf.embedPng(await croppedPng(element));
+      pdfPage.drawImage(embedded, {
+        x,
+        y,
+        width,
+        height,
+        opacity,
+        rotate: rotation,
+      });
+    } catch (error) {
+      if (typeof Image !== "undefined") console.warn(error);
+      pdfPage.drawRectangle({
+        x,
+        y,
+        width,
+        height,
+        color: rgb(0.92, 0.94, 0.96),
+      });
+      pdfPage.drawText("Image unavailable", {
+        x: x + 8,
+        y: y + height / 2,
+        size: 9,
+        font: fonts.regular,
+        color: rgb(0.4, 0.45, 0.52),
+      });
+    }
+    return;
+  }
+  if (element.type === "table") {
+    drawTable(pdfPage, reportPage, element, data, fonts);
+    return;
+  }
+  if (element.type === "chart") {
+    pdfPage.drawRectangle({
+      x,
+      y,
+      width,
+      height,
+      borderColor: rgb(0.85, 0.87, 0.9),
+      borderWidth: 0.75,
+    });
+    pdfPage.drawText(element.title ?? "Chart", {
+      x: x + 10,
+      y: y + height - 16,
+      size: 10,
+      font: fonts.bold,
+      color: rgb(0.12, 0.16, 0.22),
+    });
+  }
+}
+
+export async function createReportPdfBytes(
+  template: ReportTemplate,
+  data: unknown,
+) {
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(template.name);
+  pdf.setCreator("LEE Report Studio");
+  pdf.setProducer("LEE Report Studio deterministic renderer");
+  pdf.setCreationDate(new Date(0));
+  pdf.setModificationDate(new Date(0));
+  const fonts = {
+    regular: await pdf.embedFont(StandardFonts.Helvetica),
+    bold: await pdf.embedFont(StandardFonts.HelveticaBold),
+    italic: await pdf.embedFont(StandardFonts.HelveticaOblique),
+  };
+  for (const reportPage of template.pages.filter((page) => !page.hidden)) {
+    const page = pdf.addPage([
+      reportPage.width * POINTS_PER_PIXEL,
+      reportPage.height * POINTS_PER_PIXEL,
+    ]);
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: reportPage.width * POINTS_PER_PIXEL,
+      height: reportPage.height * POINTS_PER_PIXEL,
+      color: color(reportPage.background),
+    });
+    for (const element of reportPage.elements)
+      await drawElement(pdf, page, reportPage, element, data, fonts);
+  }
+  return pdf.save({
+    useObjectStreams: false,
+    addDefaultPage: false,
+    objectsPerTick: 25,
+  });
+}
+
+export async function exportReportPdf(
+  template: ReportTemplate,
+  data: unknown,
+  fileName = "lee-report.pdf",
+) {
+  const bytes = await createReportPdfBytes(template, data);
+  const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
+    url = URL.createObjectURL(blob),
+    anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
