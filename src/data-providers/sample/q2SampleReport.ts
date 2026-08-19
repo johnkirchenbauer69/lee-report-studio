@@ -387,7 +387,7 @@ export const q2SampleReport: IndustrialMarketReport = {
     title: "Industrial Market Report",
     templateId: "industrial-market-report",
     period: "2026 Q2",
-    market: "Overall Market",
+    market: "Chicago",
     preparedBy: "Lee & Associates of Illinois",
   },
   overallMarket: { ...calculatedTotals, narrative },
@@ -527,16 +527,35 @@ export const q2SampleReport: IndustrialMarketReport = {
     {
       fieldPath: "overallMarket.speculativeShare",
       value: 0.3381477655,
-      source: "approved-q2-pdf",
+      authority: "Approved Q2 2026 market report",
       reason:
         "Preserve the approved 34% market total without replacing the normalized calculation from submarket rows.",
+      sourceReference: "approved-q2-pdf, page 2",
+      createdAt: "2026-07-22T00:00:00.000Z",
     },
     {
       fieldPath: "submarkets.Southeast Wisconsin.netAbsorptionSf",
       value: 891615,
-      source: "approved-q2-pdf",
+      authority: "Approved Q2 2026 market report",
       reason:
         "Preserve the approved visible Page 2 value while retaining 891,612 in the normalized data.",
+      sourceReference: "approved-q2-pdf, page 2",
+      createdAt: "2026-07-22T00:00:00.000Z",
     },
   ],
+  dataCompleteness: [
+    "overallMarket",
+    "submarkets",
+    "historicalPeriods",
+    "leasing",
+    "sales",
+    "availabilities",
+    "deliveries",
+    "construction",
+    "narrative",
+  ].map((section) => ({
+    section,
+    status: "complete",
+    sourceIds: ["approved-q2-fixture"],
+  })) as IndustrialMarketReport["dataCompleteness"],
 };

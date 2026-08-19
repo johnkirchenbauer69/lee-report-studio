@@ -8,7 +8,7 @@ LEE Report Studio is a data-driven business document editor. Source retrieval, n
 
 | Layer                | Primary location                                           | Responsibility                                                          |
 | -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Source adapters      | `src/data-providers`                                       | Retrieve and normalize sample, JSON, Excel, or Ascendix data            |
+| Source adapters      | `src/data-providers`                                       | Retrieve isolated source data plus metadata and completeness            |
 | Report domain        | `src/report-engine/schema`                                 | Own strict semantic contracts and generation metadata                   |
 | Calculations         | `src/report-engine/calculations`                           | Compute additive totals, weighted rates, and extrema from raw values    |
 | Provenance           | `src/report-engine/provenance`                             | Preserve source choices, conflicts, and approved visible overrides      |
@@ -26,15 +26,21 @@ A generated report records the template ID/version, generation request, timestam
 ## Data flow
 
 1. The wizard creates a `ReportGenerationRequest`.
-2. The provider registry selects a provider and validates the normalized result.
-3. Central calculations produce totals and extrema from raw numeric fields.
-4. Provenance records describe authorities, conflicts, and approved visible exceptions.
-5. The presentation adapter applies formatting and approved overrides.
-6. Repeaters expand page and component collections with contextual binding paths.
-7. A versioned `ReportInstance` snapshot opens in the editor.
-8. Manual element edits are recorded separately from generated values.
-9. Preflight validates data, bindings, assets, fonts, geometry, and overflow.
-10. The server loads the fixed print route and Chromium writes US Letter PDF pages in document order.
+2. The selected provider returns only its own source content, metadata, provenance, and section-completeness declarations.
+3. Strict normalization enforces rates, non-negative metrics, signed absorption, and request period/market consistency.
+4. Central calculations use the explicit calculation universe and attach formula/input lineage.
+5. Reconciliation preserves conflicts unless an explicit authorized override resolves them.
+6. Readiness evaluates template requirements, provenance, and publication blockers.
+7. The presentation adapter formats values and removes unavailable or fixture-only template content.
+8. Repeaters expand only the independently selected detail pages.
+9. A versioned `ReportInstance` snapshot opens for draft editing; approval and publishing remain gated by readiness.
+10. Preflight and deterministic renderers produce pages in document order.
+
+The generation stages (`loading`, `normalizing`, `calculating`, `reconciling`, `validating`, `building-presentation`, `expanding`, and `creating`) correspond to real execution boundaries.
+
+## CI architecture
+
+Vitest owns `src/**/*.test.ts(x)` through `vitest.config.ts`; Playwright owns `tests/visual/**/*.spec.ts(x)` through `playwright.config.ts`. `scripts/check-test-ownership.mjs` enforces the naming/location contract without shell globs so Windows and Linux discover the same tests. GitHub's `Quality / validate` job runs install, Chromium setup, typecheck, Vitest, build, visual regression, and failure-artifact upload.
 
 ## Security boundary
 

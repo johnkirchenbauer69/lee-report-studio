@@ -16,9 +16,13 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
     [period, setPeriod] = useState("2026 Q2"),
     [market, setMarket] = useState("Chicago"),
     [provider, setProvider] = useState<ReportProviderId>("sample");
-  const [selected, setSelected] = useState(() =>
+  const [calculationMode, setCalculationMode] = useState<
+      "all-submarkets" | "selected-submarkets"
+    >("all-submarkets"),
+    [calculationSelected, setCalculationSelected] = useState(() =>
       q2Submarkets.map((item) => item.name),
     ),
+    [detailedSelected, setDetailedSelected] = useState<string[]>([]),
     [file, setFile] = useState<File>(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string>();
@@ -27,13 +31,19 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
     provider === "sample" || provider === "ascendix" || !!file;
   const selectedLabel = useMemo(
     () =>
-      selected.length === q2Submarkets.length
-        ? "All 18 submarkets"
-        : `${selected.length} submarket${selected.length === 1 ? "" : "s"}`,
-    [selected],
+      detailedSelected.length === 0
+        ? "No detailed pages"
+        : `${detailedSelected.length} detailed page${detailedSelected.length === 1 ? "" : "s"}`,
+    [detailedSelected],
   );
-  const toggle = (name: string) =>
-    setSelected((items) =>
+  const toggleDetailed = (name: string) =>
+    setDetailedSelected((items) =>
+      items.includes(name)
+        ? items.filter((item) => item !== name)
+        : [...items, name],
+    );
+  const toggleCalculation = (name: string) =>
+    setCalculationSelected((items) =>
       items.includes(name)
         ? items.filter((item) => item !== name)
         : [...items, name],
@@ -54,7 +64,14 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
         templateId: "industrial-market-report-q2-2026",
         market,
         period,
-        selectedSubmarkets: selected,
+        calculationScope:
+          calculationMode === "all-submarkets"
+            ? { type: "all-submarkets" }
+            : {
+                type: "selected-submarkets",
+                submarkets: calculationSelected,
+              },
+        pageSelection: { submarkets: detailedSelected },
         source: { provider, configuration },
       });
     } catch (reason) {
@@ -229,21 +246,67 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
           )}
           {step === 3 && (
             <div>
+              <div className="wizard-scope-section">
+                <div className="geography-toolbar">
+                  <div>
+                    <strong>Overall Market Calculation</strong>
+                    <span>
+                      Defines the analytical universe for market totals.
+                    </span>
+                  </div>
+                </div>
+                <label className="scope-radio">
+                  <input
+                    type="radio"
+                    checked={calculationMode === "all-submarkets"}
+                    onChange={() => setCalculationMode("all-submarkets")}
+                  />
+                  <span>
+                    <strong>All Chicago submarkets</strong>
+                    <small>Recommended for the Overall Market report.</small>
+                  </span>
+                </label>
+                <label className="scope-radio">
+                  <input
+                    type="radio"
+                    checked={calculationMode === "selected-submarkets"}
+                    onChange={() => setCalculationMode("selected-submarkets")}
+                  />
+                  <span>
+                    <strong>Selected submarkets only</strong>
+                    <small>Use only for intentionally scoped analysis.</small>
+                  </span>
+                </label>
+                {calculationMode === "selected-submarkets" && (
+                  <div className="geography-grid compact">
+                    {q2Submarkets.map((item) => (
+                      <label key={`calculation-${item.name}`}>
+                        <input
+                          type="checkbox"
+                          checked={calculationSelected.includes(item.name)}
+                          onChange={() => toggleCalculation(item.name)}
+                        />
+                        <span>{item.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="geography-toolbar">
                 <div>
-                  <strong>Select geographies</strong>
+                  <strong>Detailed Submarket Pages</strong>
                   <span>{selectedLabel}</span>
                 </div>
                 <button
                   onClick={() =>
-                    setSelected(
-                      selected.length === q2Submarkets.length
+                    setDetailedSelected(
+                      detailedSelected.length === q2Submarkets.length
                         ? []
                         : q2Submarkets.map((item) => item.name),
                     )
                   }
                 >
-                  {selected.length === q2Submarkets.length
+                  {detailedSelected.length === q2Submarkets.length
                     ? "Clear all"
                     : "Select all"}
                 </button>
@@ -253,8 +316,8 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                   <label key={item.name}>
                     <input
                       type="checkbox"
-                      checked={selected.includes(item.name)}
-                      onChange={() => toggle(item.name)}
+                      checked={detailedSelected.includes(item.name)}
+                      onChange={() => toggleDetailed(item.name)}
                     />
                     <span>{item.name}</span>
                   </label>
@@ -289,7 +352,15 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                 </strong>
               </div>
               <div>
-                <span>Geographies</span>
+                <span>Calculation scope</span>
+                <strong>
+                  {calculationMode === "all-submarkets"
+                    ? "All Chicago submarkets"
+                    : `${calculationSelected.length} selected submarkets`}
+                </strong>
+              </div>
+              <div>
+                <span>Detailed pages</span>
                 <strong>{selectedLabel}</strong>
               </div>
               <div className="pipeline-preview">
@@ -324,7 +395,9 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                 className="primary"
                 disabled={
                   (step === 2 && !canContinue) ||
-                  (step === 3 && !selected.length)
+                  (step === 3 &&
+                    calculationMode === "selected-submarkets" &&
+                    !calculationSelected.length)
                 }
                 onClick={() => setStep((value) => value + 1)}
               >

@@ -1069,6 +1069,15 @@ export function Inspector({
                         .join(" · ")}
                     </strong>
                   </div>
+                  {provenance.calculation && (
+                    <div>
+                      <span>Calculation lineage</span>
+                      <strong>{provenance.calculation.formula}</strong>
+                      <small>
+                        {provenance.calculation.inputCount} submarket inputs
+                      </small>
+                    </div>
+                  )}
                   {provenance.note && <p>{provenance.note}</p>}
                 </>
               )}
@@ -1077,6 +1086,12 @@ export function Inspector({
                   <span>Approved presentation value</span>
                   <strong>{String(presentationOverride.value)}</strong>
                   <small>{presentationOverride.reason}</small>
+                  <small>
+                    {presentationOverride.authority} ·{" "}
+                    {new Date(
+                      presentationOverride.createdAt,
+                    ).toLocaleDateString()}
+                  </small>
                 </div>
               )}
             </div>

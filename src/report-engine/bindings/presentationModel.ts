@@ -30,6 +30,14 @@ const metricKeys: (keyof MarketMetrics)[] = [
 ];
 
 export function buildPresentationModel(report: IndustrialMarketReport) {
+  const periodMatch = report.report.period.match(/^(\d{4})\s+(Q[1-4])$/i);
+  const reportDisplay = {
+    period: periodMatch
+      ? `${periodMatch[2].toUpperCase()} ${periodMatch[1]}`
+      : report.report.period,
+    year: periodMatch?.[1] ?? report.report.period,
+    quarter: periodMatch?.[2].toUpperCase() ?? report.report.period,
+  };
   const totals = calculateMarketTotals(report.submarkets);
   const extremes = Object.fromEntries(
     metricKeys.map((key) => [
@@ -110,50 +118,58 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     key: keyof IndustrialMarketReport["historicalPeriods"][number],
     formatter: (value: number) => string,
   ) => formatter(Number(report.historicalPeriods[index]?.[key] ?? 0));
-  const indicatorRows = [
-    {
-      metric: "▼  12 Month Net Absorption (SF)",
-      q2: period(0, "netAbsorption12MonthSf", integer),
-      q1: period(1, "netAbsorption12MonthSf", integer),
-      q4: period(2, "netAbsorption12MonthSf", integer),
-      q3: period(3, "netAbsorption12MonthSf", integer),
-      prior: period(4, "netAbsorption12MonthSf", integer),
-    },
-    {
-      metric: "▼  Vacancy Rate",
-      q2: period(0, "vacancyRate", (value) => percent(value, 2)),
-      q1: period(1, "vacancyRate", (value) => percent(value, 2)),
-      q4: period(2, "vacancyRate", (value) => percent(value, 2)),
-      q3: period(3, "vacancyRate", (value) => percent(value, 2)),
-      prior: period(4, "vacancyRate", (value) => percent(value, 2)),
-    },
-    {
-      metric: "▼  Availability Rate",
-      q2: period(0, "availabilityRate", (value) => percent(value, 2)),
-      q1: period(1, "availabilityRate", (value) => percent(value, 2)),
-      q4: period(2, "availabilityRate", (value) => percent(value, 2)),
-      q3: period(3, "availabilityRate", (value) => percent(value, 2)),
-      prior: period(4, "availabilityRate", (value) => percent(value, 2)),
-    },
-    {
-      metric: "▲  Under Construction (SF)",
-      q2: period(0, "underConstructionSf", integer),
-      q1: period(1, "underConstructionSf", integer),
-      q4: period(2, "underConstructionSf", integer),
-      q3: period(3, "underConstructionSf", integer),
-      prior: period(4, "underConstructionSf", integer),
-    },
-    {
-      metric: "▼  Total Leasing Activity (SF)",
-      q2: period(0, "leasingActivitySf", integer),
-      q1: period(1, "leasingActivitySf", integer),
-      q4: period(2, "leasingActivitySf", integer),
-      q3: period(3, "leasingActivitySf", integer),
-      prior: period(4, "leasingActivitySf", integer),
-    },
-  ];
+  const indicatorRows = report.historicalPeriods.length
+    ? [
+        {
+          metric: "▼  12 Month Net Absorption (SF)",
+          q2: period(0, "netAbsorption12MonthSf", integer),
+          q1: period(1, "netAbsorption12MonthSf", integer),
+          q4: period(2, "netAbsorption12MonthSf", integer),
+          q3: period(3, "netAbsorption12MonthSf", integer),
+          prior: period(4, "netAbsorption12MonthSf", integer),
+        },
+        {
+          metric: "▼  Vacancy Rate",
+          q2: period(0, "vacancyRate", (value) => percent(value, 2)),
+          q1: period(1, "vacancyRate", (value) => percent(value, 2)),
+          q4: period(2, "vacancyRate", (value) => percent(value, 2)),
+          q3: period(3, "vacancyRate", (value) => percent(value, 2)),
+          prior: period(4, "vacancyRate", (value) => percent(value, 2)),
+        },
+        {
+          metric: "▼  Availability Rate",
+          q2: period(0, "availabilityRate", (value) => percent(value, 2)),
+          q1: period(1, "availabilityRate", (value) => percent(value, 2)),
+          q4: period(2, "availabilityRate", (value) => percent(value, 2)),
+          q3: period(3, "availabilityRate", (value) => percent(value, 2)),
+          prior: period(4, "availabilityRate", (value) => percent(value, 2)),
+        },
+        {
+          metric: "▲  Under Construction (SF)",
+          q2: period(0, "underConstructionSf", integer),
+          q1: period(1, "underConstructionSf", integer),
+          q4: period(2, "underConstructionSf", integer),
+          q3: period(3, "underConstructionSf", integer),
+          prior: period(4, "underConstructionSf", integer),
+        },
+        {
+          metric: "▼  Total Leasing Activity (SF)",
+          q2: period(0, "leasingActivitySf", integer),
+          q1: period(1, "leasingActivitySf", integer),
+          q4: period(2, "leasingActivitySf", integer),
+          q3: period(3, "leasingActivitySf", integer),
+          prior: period(4, "leasingActivitySf", integer),
+        },
+      ]
+    : [];
+  const presentProperties = (items: IndustrialMarketReport["availabilities"]) =>
+    items.map((item) => ({
+      ...item,
+      detail: `${item.sizeSf.toLocaleString("en-US")} SF - ${item.type}${item.sponsor ? ` - ${item.sponsor}` : ""}`,
+    }));
   return {
     ...report,
+    reportDisplay,
     overallMarket: { ...totals, narrative: report.overallMarket.narrative },
     periods: report.historicalPeriods,
     sourceNotes: report.provenance,
@@ -173,8 +189,8 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
       address: item.address,
       type: item.saleType,
     })),
-    topAvailabilities: report.availabilities,
-    topDeliveries: report.deliveries,
-    topConstruction: report.construction,
+    topAvailabilities: presentProperties(report.availabilities),
+    topDeliveries: presentProperties(report.deliveries),
+    topConstruction: presentProperties(report.construction),
   };
 }
