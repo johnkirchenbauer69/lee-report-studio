@@ -1,3 +1,4 @@
+import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
@@ -5,6 +6,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createReportDataRouter } from "./api/reportDataRoutes.ts";
+import {
+  createReportMcpHandler,
+  requireMcpAuthentication,
+} from "./mcp/server.ts";
+import { createReportDataService } from "./report-data-service/createReportDataService.ts";
 import { ChromiumPdfRenderer } from "./renderers/chromiumPdfRenderer.ts";
 
 interface StoredAsset {
@@ -25,6 +32,7 @@ const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetDirectory = path.join(dataRoot, "assets");
 const manifestPath = path.join(dataRoot, "assets.json");
+const reportDataService = createReportDataService();
 await mkdir(assetDirectory, { recursive: true });
 
 async function loadManifest(): Promise<StoredAsset[]> {
@@ -60,10 +68,16 @@ const upload = multer({
 });
 
 app.use(cors({ origin: true }));
+app.all(
+  "/mcp",
+  requireMcpAuthentication,
+  createReportMcpHandler(reportDataService),
+);
 app.use(express.json({ limit: "10mb" }));
 app.get("/api/health", (_request, response) =>
   response.json({ ok: true, storage: "disk", assetDirectory }),
 );
+app.use("/api", createReportDataRouter(reportDataService));
 app.get("/api/assets", async (_request, response) =>
   response.json({ assets: await loadManifest() }),
 );
