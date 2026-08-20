@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const visualPort = process.env.PLAYWRIGHT_PORT ?? "3000";
+const visualBaseUrl = `http://127.0.0.1:${visualPort}`;
+
 export default defineConfig({
   testDir: "./tests/visual",
   testMatch: "**/*.spec.{ts,tsx}",
@@ -13,7 +16,7 @@ export default defineConfig({
   outputDir: "test-results/visual",
   use: {
     ...devices["Desktop Chrome"],
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: visualBaseUrl,
     viewport: { width: 900, height: 1120 },
     deviceScaleFactor: 1,
     locale: "en-US",
@@ -24,8 +27,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev:client -- --host 127.0.0.1",
-    url: "http://127.0.0.1:3000",
+    command: `npm run dev:client -- --host 127.0.0.1 --port ${visualPort}`,
+    url: visualBaseUrl,
     reuseExistingServer: true,
     timeout: 120_000,
   },

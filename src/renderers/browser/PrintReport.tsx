@@ -3,6 +3,7 @@ import { CanvasElement } from "../../components/CanvasElement";
 import type { EditorSettings, ReportTemplate } from "../../types/report";
 import { sampleTemplate } from "../../data/sampleTemplate";
 import { sampleData } from "../../data/sampleData";
+import { installManagedFonts } from "../../services/fontRegistry";
 
 const settings: EditorSettings = {
   unit: "px",
@@ -53,8 +54,27 @@ function PrintPages({
   template: ReportTemplate;
   data: unknown;
 }) {
+  const [fontsReady, setFontsReady] = useState(false);
+  const [fontError, setFontError] = useState<string>();
+  useEffect(() => {
+    setFontsReady(false);
+    installManagedFonts(template.assets ?? [])
+      .then(() => setFontsReady(true))
+      .catch((error) =>
+        setFontError(error instanceof Error ? error.message : String(error)),
+      );
+  }, [template.assets]);
+  if (fontError)
+    return (
+      <main className="print-error">
+        Managed fonts could not be loaded: {fontError}
+      </main>
+    );
   return (
-    <main className="print-document" data-render-ready="true">
+    <main
+      className="print-document"
+      data-render-ready={fontsReady ? "true" : "false"}
+    >
       {template.pages
         .filter((page) => !page.hidden)
         .map((page) => (

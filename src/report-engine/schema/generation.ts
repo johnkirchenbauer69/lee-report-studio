@@ -1,4 +1,4 @@
-import type { ReportPage } from "../../types/report";
+import type { FontReference, ReportPage } from "../../types/report";
 import type { ReportValidationIssue } from "../validation/reportValidation";
 import type { IndustrialMarketReport } from "./industrialMarketReport";
 
@@ -51,6 +51,7 @@ export interface ReportInstance {
   generatedAt: string;
   dataSnapshot: IndustrialMarketReport;
   pages: ReportPage[];
+  fontReferences: FontReference[];
   manualOverrides: ManualOverride[];
   readiness: ReportReadiness;
   status: "draft" | "approved" | "published";

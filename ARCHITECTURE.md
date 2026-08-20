@@ -22,10 +22,12 @@ LEE Report Studio is a data-driven business document editor. Source retrieval, n
 | Browser renderer      | `src/renderers/browser`                                    | Render fixed-size pages for editing, print, and visual tests            |
 | PDF renderers         | `server/renderers`, `src/renderers/pdf`                    | Produce server Chromium PDFs or invoke the browser fallback             |
 | Validation            | `src/report-engine/validation`, `src/engine/validation.ts` | Report-data validation plus export preflight                            |
+| Transform geometry    | `src/engine/geometry.ts`                                   | Normalize rotation, corners, visual bounds, hit tests, and angle snaps  |
+| Asset/font service    | `server/assets`, `src/services/fontRegistry.ts`            | Validate, checksum, store, serve, register, and pin managed font faces  |
 
 ## Report instance boundary
 
-A generated report records the template ID/version, generation request, timestamp, normalized data snapshot, source snapshot ID/hash/definition (for live Ascendix data), expanded pages, manual overrides, and lifecycle status. Editing an instance never mutates the normalized source snapshot or the master template.
+A generated report records the template ID/version, generation request, timestamp, normalized data snapshot, source snapshot ID/hash/definition (for live Ascendix data), expanded pages, checksum-pinned font references, manual overrides, and lifecycle status. Editing an instance never mutates the normalized source snapshot or the master template.
 
 For live data the dependency direction is `SalesforceClient -> AscendixReportAdapter -> ReportDataService -> normalized schema -> generation engine`. Both HTTP and MCP call the same `ReportDataService`; neither contains Salesforce mapping or metric calculations.
 
@@ -60,4 +62,4 @@ Credentials never belong in the browser. The Ascendix adapter intentionally requ
 - Organization SSO/OAuth and role-based access
 - Ascendix/Salesforce service integration with server-managed credentials
 
-The current local API, LocalStorage persistence, and disk asset store are development implementations of these boundaries.
+The current local API, LocalStorage persistence, and disk asset store are development implementations of these boundaries. See `EDITOR_TRANSFORMS.md` and `FONT_ASSETS.md` for the rotation and private font-asset contracts.

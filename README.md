@@ -16,7 +16,8 @@ LEE Report Studio is a browser-based report production system for building edita
 - Versioned report instances containing immutable generation parameters and source-data snapshots
 - Repeating pages and repeating components with local binding contexts
 - Four-page editable Q2 reference template with native SVG chart infrastructure
-- Full editor interactions: crop, group resize, page reordering, rulers, custom guides, asset storage, undo/redo, and QA
+- Full editor interactions: center-based element rotation, crop, group resize, page reordering, rulers, custom guides, managed asset storage, undo/redo, and QA
+- Secure ZIP/direct font import with embedded metadata, SHA-256 deduplication, real family/weight/style controls, license status, and checksum-pinned report references
 - Deterministic server-side Chromium PDF jobs with browser `pdf-lib` fallback
 - Export preflight for missing fonts/images, unresolved bindings, overflow, and data conflicts
 - Approved-PDF visual baselines with per-page regression scores and diff artifacts in CI
@@ -72,15 +73,15 @@ Report request
   -> Chromium PDF job (or browser fallback)
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_SERVICE.md](REPORT_DATA_SERVICE.md), [SALESFORCE_INTEGRATION.md](SALESFORCE_INTEGRATION.md), [MCP_INTEGRATION.md](MCP_INTEGRATION.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [DATA_INTEGRITY.md](DATA_INTEGRITY.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
+See [ARCHITECTURE.md](ARCHITECTURE.md), [EDITOR_TRANSFORMS.md](EDITOR_TRANSFORMS.md), [FONT_ASSETS.md](FONT_ASSETS.md), [REPORT_DATA_SERVICE.md](REPORT_DATA_SERVICE.md), [SALESFORCE_INTEGRATION.md](SALESFORCE_INTEGRATION.md), [MCP_INTEGRATION.md](MCP_INTEGRATION.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [DATA_INTEGRITY.md](DATA_INTEGRITY.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
 
 ## Local storage
 
-Templates and report editing state currently persist in LocalStorage. Uploaded assets are written by the local API to `server/data/assets`; generated files and the manifest are gitignored. Set `LEE_DATA_DIR` to relocate this development data root.
+Templates and report editing state currently persist in LocalStorage. Uploaded assets are validated and written by the local API under `server/data/assets`; generated binaries and the manifest are gitignored. Set `LEE_DATA_DIR` to relocate this development data root. Import organization fonts through the Fonts panel; never commit private uploads.
 
 ## Current production boundaries
 
-- Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
+- Approved Avenir/Nunito files are not distributed in this repository. The managed font system accepts the licensed organization bundle locally; brand typography still requires an approved license/source policy before deployment.
 - Excel v1 maps the supplied submarket sheet only. Sections absent from a workbook remain empty, are declared missing, appear as empty states, and block publication when required by the template.
 - Excel workbooks do not yet provide robust internal period metadata; the generation request supplies report period/market metadata while workbook name, sheet, cell, and import time remain traceable provenance.
 - The Chicago Salesforce source hierarchy is live-verified: 18 Market_Data submarkets, Property_Data Overall headline, Market_Data historical trends, pooled/scoped contributor snapshots, and verified-derived speculative construction. Local permissions remain confirmable with `npm run salesforce:check`.
