@@ -39,5 +39,5 @@ if (violations.length) {
 }
 
 console.log(
-  "Test ownership contract passed: src/**/*.test.* → Vitest; tests/visual/**/*.spec.* → Playwright.",
+  "Test ownership contract passed: src|server/**/*.test.* → Vitest; tests/visual/**/*.spec.* → Playwright.",
 );
