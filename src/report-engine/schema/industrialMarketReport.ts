@@ -88,7 +88,7 @@ export const propertyHighlightSchema = z.object({
   sizeSf: nonNegativeNumber,
   type: z.string().min(1),
   sponsor: z.string(),
-  image: z.string().min(1),
+  image: z.string(),
 });
 
 export const provenanceRecordSchema = z.object({

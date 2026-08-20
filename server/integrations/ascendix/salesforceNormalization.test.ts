@@ -15,6 +15,10 @@ describe("verified Salesforce normalization", () => {
       0.0496,
     );
     expect(
+      normalizeSalesforcePercent("Total_Vacant_Percent__c", 4.5318549447),
+    ).toBeCloseTo(0.045318549447);
+    expect(normalizeSalesforcePercent("Total_Vacant_Percent__c", 100)).toBe(1);
+    expect(
       normalizeSalesforcePercent("Total_Vacant_Available_Percent__c", 85.3),
     ).toBe(0.0853);
     const once = normalizeSalesforceMarketDataRecord({
@@ -34,6 +38,7 @@ describe("verified Salesforce normalization", () => {
       quarter: 2,
     });
     expect(normalizeQuarterBounds("2026 Q2").label).toBe("2026 Q2");
+    expect(normalizeQuarterBounds("Q2 2026").label).toBe("2026 Q2");
   });
   it("uses explicit 20k+ availability buckets", () => {
     expect(availabilitySizeBucket(19_999)).toBeUndefined();

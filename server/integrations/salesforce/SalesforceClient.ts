@@ -12,6 +12,7 @@ export interface SalesforceHealth {
 export interface SalesforceClient {
   query<T extends SalesforceRecord>(soql: string): Promise<T[]>;
   health(): Promise<SalesforceHealth>;
+  getApiCallCount?(): number;
 }
 interface SalesforceQueryResponse<T> {
   records: T[];
@@ -123,9 +124,13 @@ export interface SalesforceRestConfig {
 }
 export class SalesforceRestClient implements SalesforceClient {
   private session?: SalesforceAuthSession;
+  private apiCallCount = 0;
   constructor(private readonly config: SalesforceRestConfig) {}
   private async authenticate() {
-    this.session ??= await this.config.authStrategy.authenticate();
+    if (!this.session) {
+      this.apiCallCount += 1;
+      this.session = await this.config.authStrategy.authenticate();
+    }
     return this.session;
   }
   async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
@@ -133,6 +138,7 @@ export class SalesforceRestClient implements SalesforceClient {
     const records: T[] = [];
     let url = `${session.instanceUrl}/services/data/v${this.config.apiVersion}/query?q=${encodeURIComponent(soql)}`;
     do {
+      this.apiCallCount += 1;
       const response = await fetch(url, {
         headers: { authorization: `Bearer ${session.accessToken}` },
       });
@@ -164,5 +170,8 @@ export class SalesforceRestClient implements SalesforceClient {
         apiVersion: this.config.apiVersion,
       };
     }
+  }
+  getApiCallCount() {
+    return this.apiCallCount;
   }
 }

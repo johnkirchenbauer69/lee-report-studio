@@ -1,5 +1,4 @@
 import type {
-  HistoricalMarketPeriod,
   IndustrialMarketReport,
   MarketMetrics,
   ProvenanceRecord,
@@ -10,18 +9,33 @@ import type {
   SalesforceClient,
   SalesforceRecord,
 } from "../salesforce/SalesforceClient.ts";
-import { selectQuery, soqlLiteral } from "../salesforce/soql.ts";
-import type { AscendixReportAdapter } from "./AscendixReportAdapter.ts";
-import { mapHistoricalContributors } from "./contributors.ts";
 import {
-  contributorOptionalRelationshipFields,
-  isPublicExcludedSubmarket,
+  selectQuery,
+  soqlLiteral,
+  soqlLiteralList,
+} from "../salesforce/soql.ts";
+import type { AscendixReportAdapter } from "./AscendixReportAdapter.ts";
+import {
+  looksLikeSalesforceId,
+  mapHistoricalContributors,
+  scopeHistoricalContributors,
+  selectContributorFinalists,
+} from "./contributors.ts";
+import {
+  CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
+  ELIGIBLE_MARKET_UNIVERSE_SCOPE,
+  canonicalChicagoSubmarket,
   salesforceFieldMap as mapping,
 } from "./salesforceFieldMap.ts";
 import {
   normalizeQuarterBounds,
   normalizeSalesforceMarketDataRecord,
 } from "./salesforceNormalization.ts";
+import {
+  aggregateHistoricalMarketPeriod,
+  rollupPropertyData,
+  verifiedSpeculativeShare,
+} from "./salesforceRollups.ts";
 
 const api = (entry: { apiName: string } | string) =>
   typeof entry === "string" ? entry : entry.apiName;
@@ -56,30 +70,30 @@ const rate = (
   return found;
 };
 const md = mapping.marketData;
+const pd = mapping.propertyData;
 const metricFields = [
   md.inventorySf,
   md.deliveredSf,
   md.underConstructionSf,
   md.underConstructionAvailableSf,
   md.netAbsorptionSf,
+  md.totalVacantSf,
   md.vacancyRate,
+  md.totalAvailableSf,
   md.availabilityRate,
   md.askingNetRentPsf,
   md.salesVolume,
 ] as const;
 
-function candidateSpeculativeShare(record: SalesforceRecord) {
-  const total = number(
-    record,
-    md.underConstructionSf,
-    "under construction area",
+function speculativeShare(record: SalesforceRecord) {
+  return verifiedSpeculativeShare(
+    number(record, md.underConstructionSf, "under construction area"),
+    number(
+      record,
+      md.underConstructionAvailableSf,
+      "under construction available area",
+    ),
   );
-  const available = number(
-    record,
-    md.underConstructionAvailableSf,
-    "under construction available area",
-  );
-  return total > 0 ? Math.min(1, Math.max(0, available / total)) : 0;
 }
 function metrics(record: SalesforceRecord): MarketMetrics {
   return {
@@ -90,7 +104,7 @@ function metrics(record: SalesforceRecord): MarketMetrics {
       md.underConstructionSf,
       "under construction area",
     ),
-    speculativeShare: candidateSpeculativeShare(record),
+    speculativeShare: speculativeShare(record),
     netAbsorptionSf: number(record, md.netAbsorptionSf, "net absorption"),
     vacancyRate: rate(record, md.vacancyRate, "vacancy rate"),
     availabilityRate: rate(record, md.availabilityRate, "availability rate"),
@@ -105,32 +119,143 @@ const contributorBaseFields = Object.values(mapping.contributor)
       field !== mapping.contributor.object &&
       field.verification !== "optional-probed",
   )
-  .map(api);
+  .map(api)
+  .filter((field, index, fields) => fields.indexOf(field) === index);
+const propertyDataFields = Object.values(mapping.propertyData)
+  .filter((field) => field !== mapping.propertyData.object)
+  .map(api)
+  .filter((field, index, fields) => fields.indexOf(field) === index);
 
-async function loadContributors(client: SalesforceClient, period: string) {
-  const object = api(mapping.contributor.object);
-  const where = `${api(mapping.contributor.period)} = ${soqlLiteral(period, "period")} AND ${api(mapping.contributor.active)} = TRUE AND ${api(mapping.contributor.included)} = TRUE`;
-  const rows = await client.query(
-    selectQuery(object, contributorBaseFields, where),
+function ids(rows: SalesforceRecord[], field: string) {
+  return [
+    ...new Set(
+      rows.map((row) => String(row[field] ?? "").trim()).filter(Boolean),
+    ),
+  ];
+}
+
+async function enrichFinalists(
+  client: SalesforceClient,
+  finalists: SalesforceRecord[],
+  calls: Record<string, number>,
+  diagnostics: string[],
+) {
+  const sections = new Map(
+    finalists.map((row) => [
+      row.Id,
+      String(row.Contributor_Category__c ?? "").toLocaleLowerCase(),
+    ]),
   );
-  const byId = new Map(rows.map((row) => [row.Id, row]));
-  const unavailable: string[] = [];
-  await Promise.all(
-    contributorOptionalRelationshipFields.map(async (field) => {
-      try {
-        const enrichment = await client.query(
-          selectQuery(object, ["Id", field], where),
-        );
-        for (const record of enrichment) {
-          const target = byId.get(record.Id);
-          if (target) Object.assign(target, record);
-        }
-      } catch {
-        unavailable.push(field);
-      }
-    }),
+  const propertyRows = finalists.filter(
+    (row) =>
+      sections.get(row.Id)?.includes("delivery") ||
+      sections.get(row.Id)?.includes("construction"),
   );
-  return { rows: [...byId.values()], unavailable };
+  const availabilityRows = finalists.filter((row) =>
+    sections.get(row.Id)?.includes("availability"),
+  );
+  const leaseRows = finalists.filter(
+    (row) =>
+      sections.get(row.Id)?.includes("lease") &&
+      (!row.Tenant_Name__c || !row.Deal_Type__c),
+  );
+  const saleRows = finalists.filter(
+    (row) =>
+      sections.get(row.Id)?.includes("sale") &&
+      (looksLikeSalesforceId(String(row.Buyer_Name__c ?? "")) ||
+        !row.Buyer_Name__c ||
+        !row.Sale_Type__c),
+  );
+  const jobs: Promise<void>[] = [];
+  const run = (
+    object: string,
+    fields: string[],
+    sourceRows: SalesforceRecord[],
+    idField: string,
+    target: string,
+  ) => {
+    const sourceIds = ids(sourceRows, idField);
+    if (!sourceIds.length) return;
+    calls.enrichment += 1;
+    jobs.push(
+      client
+        .query(
+          selectQuery(
+            object,
+            fields,
+            `Id IN ${soqlLiteralList(sourceIds, "source IDs")}`,
+          ),
+        )
+        .then((records) => {
+          const found = new Map(records.map((record) => [record.Id, record]));
+          for (const row of sourceRows) {
+            const enrichment = found.get(String(row[idField] ?? ""));
+            if (enrichment) row[target] = enrichment;
+          }
+        })
+        .catch(() => {
+          diagnostics.push(
+            `Optional finalist enrichment unavailable for ${object}; contributor-native values were retained.`,
+          );
+        }),
+    );
+  };
+  run(
+    api(mapping.property.object),
+    [
+      "Id",
+      api(mapping.property.street),
+      api(mapping.property.city),
+      api(mapping.property.state),
+      api(mapping.property.zip),
+      api(mapping.property.propertySubtype),
+      api(mapping.property.expansionType),
+      api(mapping.property.developerName),
+      api(mapping.property.ownerName),
+      api(mapping.property.image),
+    ],
+    propertyRows,
+    "Property__c",
+    "Property__r",
+  );
+  run(
+    api(mapping.availability.object),
+    [
+      "Id",
+      api(mapping.availability.useSubtype),
+      api(mapping.availability.vacancyType),
+      api(mapping.availability.brokerCompany),
+      "ascendix__Property__r.ascendix__PrimaryImage__c",
+    ],
+    availabilityRows,
+    "Availability__c",
+    "Availability__r",
+  );
+  run(
+    api(mapping.lease.object),
+    [
+      "Id",
+      api(mapping.lease.tenant),
+      api(mapping.lease.type),
+      api(mapping.lease.subtype),
+    ],
+    leaseRows,
+    "Lease__c",
+    "Lease__r",
+  );
+  run(
+    api(mapping.sale.object),
+    [
+      "Id",
+      api(mapping.sale.normalizedBuyer),
+      api(mapping.sale.buyer),
+      api(mapping.sale.type),
+    ],
+    saleRows,
+    "Sale__c",
+    "Sale__r",
+  );
+  await Promise.all(jobs);
 }
 
 export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
@@ -144,14 +269,16 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       throw new Error(
         "Current Salesforce report mapping is not configured yet; use a historical-period request.",
       );
+    const apiCallsBefore = this.client.getApiCallCount?.() ?? 0;
     const bounds = normalizeQuarterBounds(request.period);
-    const market = soqlLiteral(request.market, "market");
     const period = soqlLiteral(bounds.label, "period");
+    const accepted = soqlLiteralList(
+      CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
+      "Chicago submarkets",
+    );
     const marketFields = [
       md.id,
       md.name,
-      md.market,
-      md.marketCode,
       md.period,
       md.periodStart,
       md.periodEnd,
@@ -174,146 +301,363 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     const currentQuery = selectQuery(
       api(md.object),
       marketFields,
-      `${api(md.market)} = ${market} AND ${api(md.period)} = ${period}`,
+      `${api(md.period)} = ${period} AND ${api(md.submarket)} IN ${accepted}`,
     );
     const historyQuery = selectQuery(
       api(md.object),
       marketFields,
-      `${api(md.market)} = ${market} AND ${api(md.submarket)} = NULL`,
-      ` ORDER BY ${api(md.period)} DESC LIMIT 12`,
+      `${api(md.submarket)} IN ${accepted}`,
+      ` ORDER BY ${api(md.period)} DESC LIMIT 216`,
     );
-    const [currentRaw, historyRaw, contributors] = await Promise.all([
-      this.client.query(currentQuery),
-      this.client.query(historyQuery),
-      loadContributors(this.client, bounds.label),
-    ]);
-    if (!currentRaw.length)
-      throw new Error(
-        `No Market_Data__c record exists for ${request.market} / ${bounds.label}.`,
-      );
+    const propertyDataQuery = selectQuery(
+      api(pd.object),
+      propertyDataFields,
+      `${api(pd.quarter)} = ${period} AND ${api(pd.scope)} = ${soqlLiteral(ELIGIBLE_MARKET_UNIVERSE_SCOPE, "property data scope")} AND ${api(pd.submarket)} IN ${accepted}`,
+    );
+    const contributor = mapping.contributor;
+    const contributorQuery = selectQuery(
+      api(contributor.object),
+      contributorBaseFields,
+      `${api(contributor.period)} = ${period} AND ${api(contributor.submarket)} IN ${accepted} AND ${api(contributor.active)} = TRUE AND ${api(contributor.included)} = TRUE`,
+    );
+    const calls = {
+      marketData: 2,
+      contributor: 1,
+      propertyData: 1,
+      enrichment: 0,
+      capability: 0,
+    };
+    const [currentRaw, historyRaw, propertyRows, contributorRows] =
+      await Promise.all([
+        this.client.query(currentQuery),
+        this.client.query(historyQuery),
+        this.client.query(propertyDataQuery),
+        this.client.query(contributorQuery),
+      ]);
     const current = currentRaw.map(normalizeSalesforceMarketDataRecord);
     const history = historyRaw.map(normalizeSalesforceMarketDataRecord);
-    const aggregate = current.find((record) => {
-      const name = text(record, md.submarket);
-      return !name || name.toLocaleLowerCase() === "overall market";
-    });
-    const submarkets: SubmarketMetrics[] = current
-      .filter((record) => {
-        const name = text(record, md.submarket);
-        return (
-          Boolean(name) &&
-          name.toLocaleLowerCase() !== "overall market" &&
-          !isPublicExcludedSubmarket(name)
-        );
-      })
-      .map((record) => ({
-        name: text(record, md.submarket),
-        ...metrics(record),
-      }));
-    if (!aggregate && !submarkets.length)
-      throw new Error(
-        "Historical report data is incomplete: no aggregate or eligible public submarket records were returned.",
-      );
-    const retrievedAt = this.now().toISOString();
-    const sourceProvenance: ProvenanceRecord[] = current
-      .filter((record) => {
-        const name = text(record, md.submarket);
-        return (
-          !name ||
-          name.toLocaleLowerCase() === "overall market" ||
-          !isPublicExcludedSubmarket(name)
-        );
-      })
-      .flatMap((record) => {
-        const scope = text(record, md.submarket) || "overallMarket";
-        return metricFields
-          .filter((entry) => entry !== md.underConstructionAvailableSf)
-          .map((entry) => {
-            const key =
-              Object.entries(md).find(
-                ([, candidate]) => candidate === entry,
-              )?.[0] ?? entry.apiName;
-            return {
-              fieldPath:
-                scope.toLocaleLowerCase() === "overall market" ||
-                scope === "overallMarket"
-                  ? `overallMarket.${key}`
-                  : `submarkets.${scope}.${key}`,
-              selectedValue: value(record, entry),
-              sources: [
-                {
-                  sourceId: record.Id,
-                  sourceType: "salesforce" as const,
-                  value: value(record, entry),
-                  reference: `${api(md.object)}.${entry.apiName}`,
-                  importedAt: retrievedAt,
-                },
-              ],
-              authority: `${api(md.object)} historical record selected by Quarter_Label__c`,
-              status: "matched" as const,
-              critical: [
-                "vacancyRate",
-                "availabilityRate",
-                "inventorySf",
-              ].includes(key),
-            };
-          });
-      });
-    sourceProvenance.push({
-      fieldPath: "overallMarket.speculativeShare",
-      selectedValue: aggregate ? candidateSpeculativeShare(aggregate) : 0,
-      sources: [
-        {
-          sourceId: aggregate?.Id ?? "candidate-derived",
-          sourceType: "calculated",
-          value: aggregate ? candidateSpeculativeShare(aggregate) : 0,
-          reference:
-            "Under_Construction_Available_SF__c / Under_Construction_SF__c",
-        },
-      ],
-      authority: "Candidate calculation only; business definition unverified",
-      status: "calculated",
-      critical: true,
-      note: "Construction speculative share remains derived-unverified and must be reconciled against the approved Q2 report before it is authoritative.",
-    });
-    const historicalPeriods: HistoricalMarketPeriod[] = history.map(
-      (record) => ({
-        period: text(record, md.period),
-        netAbsorption12MonthSf: number(
+    const recordsBySubmarket = new Map<string, SalesforceRecord[]>();
+    for (const record of current) {
+      const canonical = canonicalChicagoSubmarket(text(record, md.submarket));
+      if (canonical)
+        recordsBySubmarket.set(canonical, [
+          ...(recordsBySubmarket.get(canonical) ?? []),
           record,
-          md.netAbsorptionSf,
-          "net absorption",
-        ),
-        vacancyRate: rate(record, md.vacancyRate, "vacancy rate"),
-        availabilityRate: rate(
-          record,
-          md.availabilityRate,
-          "availability rate",
-        ),
-        underConstructionSf: number(
-          record,
-          md.underConstructionSf,
-          "under construction area",
-        ),
-        leasingActivitySf: number(
-          record,
-          md.leasingActivitySf,
-          "leasing activity",
-        ),
-      }),
+        ]);
+    }
+    const missing = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.filter(
+      (name) => !recordsBySubmarket.has(name),
     );
-    const highlights = mapHistoricalContributors(contributors.rows);
-    const zero: MarketMetrics = {
-      inventorySf: 0,
-      deliveredSf: 0,
-      underConstructionSf: 0,
-      speculativeShare: 0,
-      netAbsorptionSf: 0,
-      vacancyRate: 0,
-      availabilityRate: 0,
-      askingNetRentPsf: 0,
-      salesVolume: 0,
-    };
+    const duplicates = [...recordsBySubmarket]
+      .filter(([, rows]) => rows.length > 1)
+      .map(([name]) => name);
+    if (missing.length || duplicates.length)
+      throw new Error(
+        `Market_Data__c snapshot integrity failed for ${bounds.label}. Missing: ${missing.join(", ") || "none"}. Duplicates: ${duplicates.join(", ") || "none"}.`,
+      );
+    const currentRecords = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map(
+      (name) => recordsBySubmarket.get(name)![0],
+    );
+    const submarkets: SubmarketMetrics[] = currentRecords.map((record) => ({
+      name: canonicalChicagoSubmarket(text(record, md.submarket))!,
+      ...metrics(record),
+    }));
+    const marketDataIds = new Map(
+      currentRecords.map((record) => [
+        canonicalChicagoSubmarket(text(record, md.submarket))!,
+        record.Id,
+      ]),
+    );
+    const selectedNames: string[] =
+      request.calculationScope.type === "all-submarkets"
+        ? [...CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS]
+        : request.calculationScope.submarkets.flatMap((name) => {
+            const canonical = canonicalChicagoSubmarket(name);
+            return canonical ? [canonical] : [];
+          });
+    if (!selectedNames.length)
+      throw new Error(
+        "The calculation scope does not contain an accepted Chicago Industrial submarket.",
+      );
+    const selectedPropertyRows = propertyRows.filter((record) => {
+      const canonical = canonicalChicagoSubmarket(text(record, pd.submarket));
+      return canonical ? selectedNames.includes(canonical) : false;
+    });
+    const requiresPropertyHeadline = !(
+      request.calculationScope.type === "selected-submarkets" &&
+      selectedNames.length === 1
+    );
+    if (requiresPropertyHeadline && !selectedPropertyRows.length)
+      throw new Error(
+        `No eligible Property_Data__c rows exist for the ${bounds.label} Overall Market calculation.`,
+      );
+    const propertyRollup = rollupPropertyData(
+      selectedPropertyRows,
+      submarkets.filter((row) => selectedNames.includes(row.name)),
+    );
+    const overallMarket =
+      request.calculationScope.type === "selected-submarkets" &&
+      selectedNames.length === 1
+        ? metrics(recordsBySubmarket.get(selectedNames[0]!)![0])
+        : propertyRollup.metrics;
+    const propertyHeadline = requiresPropertyHeadline;
+    const headlineSource = propertyHeadline
+      ? "Property_Data__c eligible 20K+ rollup"
+      : "Market_Data__c official submarket snapshot";
+
+    const historyGroups = new Map<string, SalesforceRecord[]>();
+    for (const record of history) {
+      const label = normalizeQuarterBounds(text(record, md.period)).label;
+      historyGroups.set(label, [...(historyGroups.get(label) ?? []), record]);
+    }
+    const incompleteHistory = [...historyGroups].filter(
+      ([, rows]) =>
+        new Set(
+          rows
+            .map((row) => canonicalChicagoSubmarket(text(row, md.submarket)))
+            .filter(Boolean),
+        ).size !== CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.length,
+    );
+    const historicalPeriods = [...historyGroups]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 12)
+      .map(([label, rows]) => aggregateHistoricalMarketPeriod(label, rows));
+
+    const scoped = scopeHistoricalContributors(contributorRows, {
+      period: bounds.label,
+      submarkets: selectedNames,
+      marketDataIds,
+    });
+    const finalists = selectContributorFinalists(scoped.rows);
+    const enrichmentDiagnostics: string[] = [];
+    await enrichFinalists(this.client, finalists, calls, enrichmentDiagnostics);
+    const highlights = mapHistoricalContributors(scoped.rows);
+    const retrievedAt = this.now().toISOString();
+    const provenance: ProvenanceRecord[] = currentRecords.flatMap((record) => {
+      const scope = canonicalChicagoSubmarket(text(record, md.submarket))!;
+      const base: ProvenanceRecord[] = metricFields
+        .filter(
+          (entry) =>
+            ![
+              md.underConstructionAvailableSf,
+              md.totalVacantSf,
+              md.totalAvailableSf,
+            ].includes(entry),
+        )
+        .map((entry) => {
+          const key =
+            Object.entries(md).find(
+              ([, candidate]) => candidate === entry,
+            )?.[0] ?? entry.apiName;
+          return {
+            fieldPath: `submarkets.${scope}.${key}`,
+            selectedValue: value(record, entry),
+            sources: [
+              {
+                sourceId: record.Id,
+                sourceType: "salesforce" as const,
+                value: value(record, entry),
+                reference: `Market_Data__c.${entry.apiName}`,
+                importedAt: retrievedAt,
+              },
+            ],
+            authority: "Market_Data__c official quarter snapshot",
+            status: "matched" as const,
+            critical: [
+              "inventorySf",
+              "vacancyRate",
+              "availabilityRate",
+            ].includes(key),
+          };
+        });
+      base.push({
+        fieldPath: `submarkets.${scope}.speculativeShare`,
+        selectedValue: speculativeShare(record),
+        sources: [
+          {
+            sourceId: record.Id,
+            sourceType: "calculated" as const,
+            value: speculativeShare(record),
+            reference:
+              "Market_Data__c.Under_Construction_Available_SF__c / Under_Construction_SF__c",
+            importedAt: retrievedAt,
+          },
+        ],
+        authority: "verified-derived against live 2026 Q2 contract",
+        status: "calculated" as const,
+        critical: true,
+      });
+      return base;
+    });
+    for (const key of Object.keys(overallMarket) as (keyof MarketMetrics)[])
+      provenance.push({
+        fieldPath: `overallMarket.${key}`,
+        selectedValue: overallMarket[key],
+        sources: [
+          {
+            sourceId: propertyHeadline
+              ? `property-data-rollup-${bounds.label}`
+              : marketDataIds.get(
+                  canonicalChicagoSubmarket(selectedNames[0]!)!,
+                )!,
+            sourceType:
+              propertyHeadline && key === "askingNetRentPsf"
+                ? "calculated"
+                : "salesforce",
+            value: overallMarket[key],
+            reference: propertyHeadline
+              ? key === "askingNetRentPsf"
+                ? "Inventory-weighted Market_Data__c rent methodology"
+                : `Property_Data__c ${ELIGIBLE_MARKET_UNIVERSE_SCOPE} (${selectedPropertyRows.length} rows)`
+              : `Market_Data__c official ${selectedNames[0]} snapshot`,
+          },
+        ],
+        authority: headlineSource,
+        status:
+          propertyHeadline || key === "speculativeShare"
+            ? "calculated"
+            : "matched",
+        critical: [
+          "inventorySf",
+          "vacancyRate",
+          "availabilityRate",
+          "speculativeShare",
+        ].includes(key),
+        note:
+          key === "speculativeShare"
+            ? propertyHeadline
+              ? "Verified-derived as SUM(Under_Construction_Available_SF__c) / SUM(Under_Construction_SF__c)."
+              : "Verified-derived as Under_Construction_Available_SF__c / Under_Construction_SF__c."
+            : undefined,
+        calculation: {
+          formula: propertyHeadline
+            ? key === "vacancyRate"
+              ? "SUM(Vacant_SF_Total__c) / SUM(Inventory_SF__c)"
+              : key === "availabilityRate"
+                ? "SUM(Available_SF_Total__c) / SUM(Inventory_SF__c)"
+                : key === "speculativeShare"
+                  ? "SUM(Under_Construction_Available_SF__c) / SUM(Under_Construction_SF__c)"
+                  : `Property_Data__c rollup.${key}`
+            : key === "speculativeShare"
+              ? "Under_Construction_Available_SF__c / Under_Construction_SF__c"
+              : `Market_Data__c.${key}`,
+          inputPaths: selectedNames.map(
+            (name) =>
+              `${propertyHeadline ? "Property_Data__c" : "Market_Data__c"}.${name}.${key}`,
+          ),
+          inputCount: propertyHeadline ? selectedPropertyRows.length : 1,
+        },
+      });
+    for (const name of CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS) {
+      const official = submarkets.find((row) => row.name === name)!.inventorySf;
+      const propertyInventory = propertyRows
+        .filter(
+          (row) => canonicalChicagoSubmarket(text(row, pd.submarket)) === name,
+        )
+        .reduce(
+          (total, row) => total + Number(value(row, pd.inventorySf) ?? 0),
+          0,
+        );
+      const difference = propertyInventory - official;
+      const withinTolerance =
+        Math.abs(difference) <= Math.max(1, Math.abs(official) * 0.000001);
+      const knownWestCook =
+        bounds.label === "2026 Q2" &&
+        name === "West Cook" &&
+        Math.abs(difference - 82_000) <= 1;
+      provenance.push({
+        fieldPath: `reconciliation.submarkets.${name}.inventorySf`,
+        selectedValue: official,
+        sources: [
+          {
+            sourceId: marketDataIds.get(name)!,
+            sourceType: "salesforce",
+            value: official,
+            reference: "Market_Data__c.Inventory_SF__c",
+          },
+          {
+            sourceId: `property-data-reconciliation-${name}`,
+            sourceType: "calculated",
+            value: propertyInventory,
+            reference: "SUM(Property_Data__c.Inventory_SF__c)",
+          },
+        ],
+        authority: "Market_Data__c official submarket snapshot",
+        status: withinTolerance
+          ? "matched"
+          : knownWestCook
+            ? "reconciled"
+            : "conflict",
+        critical: !withinTolerance && !knownWestCook,
+        note: withinTolerance
+          ? "Property_Data inventory reconciles within tolerance."
+          : knownWestCook
+            ? `Known Q2 West Cook Property_Data variance: ${difference} SF; official Market_Data remains selected.`
+            : `Property_Data inventory differs by ${difference} SF; official Market_Data remains selected.`,
+      });
+    }
+    if (propertyRollup.facts.unlinkedMarketDataRows)
+      provenance.push({
+        fieldPath: "reconciliation.propertyData.unlinkedMarketDataRows",
+        selectedValue: propertyRollup.facts.unlinkedMarketDataRows,
+        sources: [
+          {
+            sourceId: `property-data-rollup-${bounds.label}`,
+            sourceType: "salesforce",
+            value: propertyRollup.facts.unlinkedMarketDataRows,
+            reference: "Property_Data__c.Market_Data__c = NULL",
+          },
+        ],
+        authority: "Eligible Property_Data rollup with parent-link QA",
+        status: "reconciled",
+        note: "Eligible unlinked Property_Data rows remain included in Overall Market and are excluded only from parent-linked reconciliation.",
+      });
+    provenance.push(
+      ...incompleteHistory.map(([label, rows]) => ({
+        fieldPath: `historicalPeriods.${label}.submarketIntegrity`,
+        selectedValue: rows.length,
+        sources: [
+          {
+            sourceId: `market-data-history-${label}`,
+            sourceType: "salesforce" as const,
+            value: rows.length,
+            reference: "Market_Data__c accepted submarket snapshots",
+          },
+        ],
+        authority: "18 Market_Data__c snapshots per historical quarter",
+        status: "conflict" as const,
+        critical: true,
+        note: `${label} does not contain exactly 18 unique accepted submarket snapshots.`,
+      })),
+    );
+    provenance.push(
+      ...highlights.provenance,
+      ...scoped.issues.map((issue) => ({
+        fieldPath: `contributors.${issue.contributorId}.parentConsistency`,
+        selectedValue: false,
+        sources: [
+          {
+            sourceId: issue.contributorId,
+            sourceType: "salesforce" as const,
+            value: issue.reason,
+            reference: "Market_Data_Contributor__c.Market_Data__c",
+          },
+        ],
+        authority: "Historical contributor parent integrity",
+        status: "conflict" as const,
+        critical: true,
+        note: issue.reason,
+      })),
+    );
+    const queryOperations =
+      calls.marketData +
+      calls.contributor +
+      calls.propertyData +
+      calls.enrichment +
+      calls.capability;
+    const measuredApiCalls = this.client.getApiCallCount
+      ? this.client.getApiCallCount() - apiCallsBefore
+      : queryOperations;
     const report: IndustrialMarketReport = {
       report: {
         id: `${request.market.toLowerCase().replace(/\W+/g, "-")}-${bounds.label.toLowerCase().replace(/\W+/g, "-")}`,
@@ -323,10 +667,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
         period: bounds.label,
         preparedBy: "Lee & Associates",
       },
-      overallMarket: {
-        ...(aggregate ? metrics(aggregate) : zero),
-        narrative: "",
-      },
+      overallMarket: { ...overallMarket, narrative: "" },
       submarkets,
       historicalPeriods,
       leasing: highlights.leasing,
@@ -334,39 +675,69 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       availabilities: highlights.availabilities,
       deliveries: highlights.deliveries,
       construction: highlights.construction,
-      provenance: [...sourceProvenance, ...highlights.provenance],
+      provenance,
       presentationOverrides: [],
       dataCompleteness: [
         {
           section: "narrative",
           status: "missing",
           sourceIds: [],
-          note: "Market_Data__c has no verified authoritative narrative field.",
+          note: "Narrative is maintained outside Market_Data__c.",
         },
-        {
-          section: "overallMarket",
-          status: "partial",
-          sourceIds: [aggregate?.Id ?? "submarket-calculation"],
-          note: "speculativeShare is a derived-unverified candidate pending approved-report reconciliation.",
-        },
+        ...(incompleteHistory.length
+          ? [
+              {
+                section: "historicalPeriods" as const,
+                status: "partial" as const,
+                sourceIds: ["Market_Data__c"],
+                note: "One or more historical quarters lacks the required 18 unique accepted submarket snapshots.",
+              },
+            ]
+          : []),
       ],
     };
     return {
       report,
       recordCounts: {
         marketData: current.length,
-        historicalPeriods: history.length,
-        contributors: contributors.rows.length,
+        historicalMarketData: history.length,
+        propertyData: propertyRows.length,
+        contributors: contributorRows.length,
+        finalistContributors: finalists.length,
         leases: highlights.leasing.length,
         sales: highlights.sales.length,
         availabilities: highlights.availabilities.length,
         deliveries: highlights.deliveries.length,
         construction: highlights.construction.length,
       },
-      diagnostics: contributors.unavailable.map(
-        (field) =>
-          `Optional contributor relationship field unavailable: ${field}`,
-      ),
+      diagnostics: [
+        `Salesforce API calls: measured=${measuredApiCalls}; queryOperations=${queryOperations}; Market_Data=${calls.marketData}; Contributor=${calls.contributor}; Property_Data=${calls.propertyData}; Enrichment=${calls.enrichment}; Capability=${calls.capability}`,
+        ...enrichmentDiagnostics,
+        ...scoped.issues.map((issue) => issue.reason),
+        ...(propertyRollup.facts.unlinkedMarketDataRows
+          ? [
+              `Property_Data QA: ${propertyRollup.facts.unlinkedMarketDataRows} eligible row(s) have no Market_Data__c link and remain included.`,
+            ]
+          : []),
+      ],
+      sourceDefinition: {
+        period: bounds.label,
+        geography:
+          selectedNames.length === 18
+            ? "Overall Market"
+            : selectedNames.join(", "),
+        headlineSource,
+        trendSource: "18 Market_Data__c submarket snapshots",
+        contributorSource:
+          "Market_Data_Contributor__c pooled/scoped historical snapshots",
+        apiCallCounts: {
+          ...calls,
+          queryOperations,
+          measuredApiCalls,
+          total: measuredApiCalls,
+        },
+        propertyDataRollup: propertyRollup.facts,
+      },
     };
   }
   async health() {

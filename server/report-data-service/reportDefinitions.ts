@@ -9,7 +9,7 @@ export interface MetricDefinition {
 }
 
 export const INDUSTRIAL_MARKET_REPORT_DEFINITION_VERSION =
-  "industrial-market-report-data-v2-verified-salesforce";
+  "industrial-market-report-data-v3-live-verified-chicago";
 
 export const industrialMarketMetricDefinitions: readonly MetricDefinition[] = [
   {
@@ -17,8 +17,10 @@ export const industrialMarketMetricDefinitions: readonly MetricDefinition[] = [
     version: "v1",
     sourceObject: "Market_Data__c",
     sourceField: "Total_Vacant_Percent__c",
-    calculation: "inventory-weighted submarket cross-check",
-    authority: "historical Market_Data aggregate",
+    calculation:
+      "current headline: Property_Data vacant-SF ratio of sums; trend: 18 Market_Data snapshots",
+    authority:
+      "Property_Data Overall Market rollup / Market_Data submarket snapshot",
     timeContext: "historical-period",
   },
   {
@@ -26,8 +28,10 @@ export const industrialMarketMetricDefinitions: readonly MetricDefinition[] = [
     version: "v1",
     sourceObject: "Market_Data__c",
     sourceField: "Total_Available_Percent__c",
-    calculation: "inventory-weighted submarket cross-check",
-    authority: "historical Market_Data aggregate",
+    calculation:
+      "current headline: Property_Data available-SF ratio of sums; trend: 18 Market_Data snapshots",
+    authority:
+      "Property_Data Overall Market rollup / Market_Data submarket snapshot",
     timeContext: "historical-period",
   },
   {

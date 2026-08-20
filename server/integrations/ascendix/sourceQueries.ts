@@ -4,7 +4,10 @@ import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
 
 const api = (entry: { apiName: string }) => entry.apiName;
 const relatedPropertyFields = [
-  "ascendix__Property__r.Full_Address__c",
+  "ascendix__Property__r.ascendix__Street__c",
+  "ascendix__Property__r.ascendix__City__c",
+  "ascendix__Property__r.State__c",
+  "ascendix__Property__r.Zip_Code__c",
   "ascendix__Property__r.Submarket_Picklist__c",
   "ascendix__Property__r.Property_Type__c",
   "ascendix__Property__r.ascendix__PropertySubType__c",

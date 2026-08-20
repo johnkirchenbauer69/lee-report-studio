@@ -6,6 +6,15 @@ export interface AscendixAdapterResult {
   recordCounts: Record<string, number>;
   salesforceOrg?: string;
   diagnostics?: string[];
+  sourceDefinition?: {
+    period: string;
+    geography: string;
+    headlineSource: string;
+    trendSource: string;
+    contributorSource: string;
+    apiCallCounts: Record<string, number>;
+    propertyDataRollup?: Record<string, number>;
+  };
 }
 
 export interface AscendixReportAdapter {

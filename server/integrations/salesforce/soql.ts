@@ -1,4 +1,4 @@
-const SAFE_VALUE = /^[\p{L}\p{N} .,&'()\-/]+$/u;
+const SAFE_VALUE = /^[\p{L}\p{N} .,&'()+\-/]+$/u;
 
 export function soqlLiteral(value: string, label: string): string {
   const normalized = value.trim();
@@ -6,6 +6,11 @@ export function soqlLiteral(value: string, label: string): string {
     throw new Error(`${label} contains unsupported characters.`);
   }
   return `'${normalized.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+export function soqlLiteralList(values: readonly string[], label: string) {
+  if (!values.length) throw new Error(`${label} must not be empty.`);
+  return `(${values.map((value) => soqlLiteral(value, label)).join(", ")})`;
 }
 
 export function selectQuery(

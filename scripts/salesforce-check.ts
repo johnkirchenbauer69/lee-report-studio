@@ -35,25 +35,62 @@ else {
       process.exitCode = 1;
     }
   }
-  const required = [
-    mapping.marketData.period,
-    mapping.marketData.inventorySf,
-    mapping.marketData.vacancyRate,
-    mapping.marketData.availabilityRate,
-    mapping.marketData.netAbsorptionSf,
-    mapping.marketData.askingNetRentPsf,
-    mapping.marketData.salesVolume,
+  const requiredGroups = [
+    {
+      object: mapping.marketData.object.apiName,
+      fields: [
+        mapping.marketData.period,
+        mapping.marketData.submarket,
+        mapping.marketData.inventorySf,
+        mapping.marketData.totalVacantSf,
+        mapping.marketData.vacancyRate,
+        mapping.marketData.totalAvailableSf,
+        mapping.marketData.availabilityRate,
+        mapping.marketData.netAbsorptionSf,
+        mapping.marketData.askingNetRentPsf,
+        mapping.marketData.salesVolume,
+      ],
+    },
+    {
+      object: mapping.propertyData.object.apiName,
+      fields: [
+        mapping.propertyData.quarter,
+        mapping.propertyData.scope,
+        mapping.propertyData.submarket,
+        mapping.propertyData.marketDataId,
+        mapping.propertyData.inventorySf,
+        mapping.propertyData.vacantSf,
+        mapping.propertyData.availableSf,
+        mapping.propertyData.underConstructionSf,
+        mapping.propertyData.underConstructionAvailableSf,
+      ],
+    },
+    {
+      object: mapping.contributor.object.apiName,
+      fields: [
+        mapping.contributor.period,
+        mapping.contributor.submarket,
+        mapping.contributor.marketDataId,
+        mapping.contributor.category,
+        mapping.contributor.sortValue,
+        mapping.contributor.rank,
+        mapping.contributor.active,
+        mapping.contributor.included,
+      ],
+    },
   ];
-  console.log("\nMarket_Data__c field capability");
-  for (const field of required) {
-    try {
-      await client.query(
-        `SELECT Id, ${field.apiName} FROM ${mapping.marketData.object.apiName} WHERE Id != NULL LIMIT 1`,
-      );
-      console.log(`✓ ${field.apiName}`);
-    } catch {
-      console.log(`⚠ ${field.apiName} unavailable`);
-      process.exitCode = 1;
+  for (const group of requiredGroups) {
+    console.log(`\n${group.object} field capability`);
+    for (const field of group.fields) {
+      try {
+        await client.query(
+          `SELECT Id, ${field.apiName} FROM ${group.object} WHERE Id != NULL LIMIT 1`,
+        );
+        console.log(`✓ ${field.apiName}`);
+      } catch {
+        console.log(`⚠ ${field.apiName} unavailable`);
+        process.exitCode = 1;
+      }
     }
   }
   console.log("\nOptional contributor relationship capability");
@@ -67,4 +104,7 @@ else {
       console.log(`⚠ ${field} unavailable`);
     }
   }
+  console.log(
+    `\nCapability-check Salesforce API calls: ${client.getApiCallCount()}`,
+  );
 }

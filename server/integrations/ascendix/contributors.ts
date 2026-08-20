@@ -5,6 +5,8 @@ import type {
   SaleRecord,
 } from "../../../src/report-engine/schema/industrialMarketReport.ts";
 import type { SalesforceRecord } from "../salesforce/SalesforceClient.ts";
+import { canonicalChicagoSubmarket } from "./salesforceFieldMap.ts";
+import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
 
 export type ContributorSection =
   | "availabilities"
@@ -12,10 +14,14 @@ export type ContributorSection =
   | "deliveries"
   | "construction"
   | "leasing"
-  | "sales";
+  | "sales"
+  | "highestVacancy"
+  | "positiveAbsorption"
+  | "negativeAbsorption";
 const categories: Record<ContributorSection, readonly string[]> = {
   availabilities: ["Largest Availability", "Top Availability", "Availability"],
   featuredListings: [
+    "Featured Lee Availability",
     "Featured Listing",
     "Featured Listings",
     "Featured Availability",
@@ -37,6 +43,9 @@ const categories: Record<ContributorSection, readonly string[]> = {
     "Lease",
   ],
   sales: ["Largest Sale", "Largest Sales", "Top Sale", "Sale"],
+  highestVacancy: ["Highest Vacancy"],
+  positiveAbsorption: ["Largest Positive Net Absorption"],
+  negativeAbsorption: ["Largest Negative Net Absorption"],
 };
 const normalized = (value: unknown) =>
   String(value ?? "")
@@ -120,11 +129,10 @@ const address = (
   record: SalesforceRecord,
   source: "Lease" | "Sale" | "Availability" | "Property",
 ) =>
-  text(record, `${source}__r.ascendix__Property__r.Full_Address__c`) ||
+  text(record, "Address__c", "Property_Name__c") ||
   composedAddress(record, `${source}__r.ascendix__Property__r`) ||
-  text(record, "Property__r.Full_Address__c") ||
   composedAddress(record, "Property__r") ||
-  text(record, "Address__c", "Property_Name__c", "Display_Title__c");
+  text(record, "Display_Title__c");
 const image = (
   record: SalesforceRecord,
   source: "Lease" | "Sale" | "Availability" | "Property",
@@ -157,6 +165,75 @@ export function rankContributors(
     .slice(0, limit);
 }
 
+export const looksLikeSalesforceId = (value?: string) =>
+  Boolean(value && /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(value.trim()));
+
+export function scopeHistoricalContributors(
+  rows: SalesforceRecord[],
+  options: {
+    period: string;
+    submarkets: readonly string[];
+    marketDataIds?: ReadonlyMap<string, string>;
+  },
+) {
+  const period = normalizeQuarterBounds(options.period).label;
+  const allowed = new Set(
+    options.submarkets.map((name) => name.trim().toLocaleLowerCase()),
+  );
+  const issues: { contributorId: string; reason: string }[] = [];
+  const scoped = rows.filter((row) => {
+    if (row.Active_In_Run__c !== true || row.Included_In_Report__c !== true)
+      return false;
+    const rowPeriod = text(row, "Quarter_Label__c");
+    const parentPeriod = text(row, "Market_Data__r.Quarter_Label__c");
+    const rowSubmarket = text(row, "Submarket__c");
+    const parentSubmarket = text(row, "Market_Data__r.Submarket__c");
+    const canonical = canonicalChicagoSubmarket(rowSubmarket);
+    if (!canonical || !allowed.has(canonical.toLocaleLowerCase())) return false;
+    if (normalizeQuarterBounds(rowPeriod).label !== period) return false;
+    if (parentPeriod && normalizeQuarterBounds(parentPeriod).label !== period) {
+      issues.push({
+        contributorId: row.Id,
+        reason: `Parent quarter ${parentPeriod} does not match ${period}.`,
+      });
+      return false;
+    }
+    if (
+      parentSubmarket &&
+      parentSubmarket.trim().toLocaleLowerCase() !==
+        canonical.toLocaleLowerCase()
+    ) {
+      issues.push({
+        contributorId: row.Id,
+        reason: `Contributor submarket ${canonical} conflicts with parent ${parentSubmarket}.`,
+      });
+      return false;
+    }
+    const expectedParent = options.marketDataIds?.get(canonical);
+    const actualParent = text(row, "Market_Data__c");
+    if (expectedParent && actualParent && expectedParent !== actualParent) {
+      issues.push({
+        contributorId: row.Id,
+        reason: `Contributor Market_Data__c ${actualParent} does not match ${expectedParent}.`,
+      });
+      return false;
+    }
+    return true;
+  });
+  return { rows: scoped, issues };
+}
+
+export function selectContributorFinalists(rows: SalesforceRecord[]) {
+  const selected = [
+    "leasing",
+    "sales",
+    "availabilities",
+    "deliveries",
+    "construction",
+  ].flatMap((section) => rankContributors(rows, section as ContributorSection));
+  return [...new Map(selected.map((row) => [row.Id, row])).values()];
+}
+
 const highlight = (
   record: SalesforceRecord,
   section: "availabilities" | "deliveries" | "construction",
@@ -187,17 +264,17 @@ const highlight = (
     section === "availabilities"
       ? text(
           record,
-          "Availability__r.ascendix__UseSubType__c",
-          "Property__r.ascendix__PropertySubType__c",
           "Property_Type__c",
           "Building_Class__c",
+          "Availability__r.ascendix__UseSubType__c",
+          "Property__r.ascendix__PropertySubType__c",
         )
       : text(
           record,
-          "Property__r.ascendix__ExpansionType__c",
-          "Property__r.ascendix__PropertySubType__c",
           "Property_Type__c",
           "Building_Status__c",
+          "Property__r.ascendix__ExpansionType__c",
+          "Property__r.ascendix__PropertySubType__c",
         );
   return {
     address: address(record, source),
@@ -222,9 +299,9 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
   const leasing: LeaseRecord[] = leaseRows.map((record) => ({
     tenant: text(
       record,
-      "Lease__r.ascendix__Tenant__r.Name",
       "Tenant_Name__c",
       "Display_Title__c",
+      "Lease__r.ascendix__Tenant__r.Name",
     ),
     sizeSf: numeric(
       record,
@@ -235,12 +312,12 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
     ),
     address: address(record, "Lease"),
     leaseType: [
-      text(record, "Lease__r.Deal_Type__c", "Deal_Type__c"),
+      text(record, "Deal_Type__c", "Lease__r.Deal_Type__c"),
       text(
         record,
-        "Lease__r.Deal_Sub_Type__c",
         "Deal_Sub_Type__c",
         "Source_Status__c",
+        "Lease__r.Deal_Sub_Type__c",
       ),
     ]
       .filter(Boolean)
@@ -249,13 +326,13 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
   const sales: SaleRecord[] = saleRows.map((record) => {
     const preferredBuyer = text(
       record,
-      "Sale__r.ascendix__Buyer__r.Normalized_Name__c",
-      "Sale__r.ascendix__Buyer__r.Name",
       "Buyer_Name__c",
       "Display_Title__c",
+      "Sale__r.ascendix__Buyer__r.Normalized_Name__c",
+      "Sale__r.ascendix__Buyer__r.Name",
     );
     return {
-      buyer: /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(preferredBuyer)
+      buyer: looksLikeSalesforceId(preferredBuyer)
         ? "Buyer not published"
         : preferredBuyer,
       price: numeric(
@@ -268,10 +345,10 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
       address: address(record, "Sale"),
       saleType: text(
         record,
-        "Sale__r.Sale_Type__c",
         "Sale_Type__c",
         "Deal_Type__c",
         "Source_Status__c",
+        "Sale__r.Sale_Type__c",
       ),
     };
   });
@@ -291,11 +368,16 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
       fieldPath: `${section}.${index}`,
       selectedValue: {
         contributorId: row.Id,
+        marketDataId: row.Market_Data__c,
+        quarter: row.Quarter_Label__c,
+        submarket: row.Submarket__c,
         category: row.Contributor_Category__c,
         rank: row.Rank__c,
         sortValue: row.Sort_Value__c,
+        metricValue: row.Metric_Value__c,
         sourceObject: row.Source_Object__c,
         sourceRecordId: row.Source_Record_ID__c,
+        sourceRecordName: row.Source_Record_Name__c,
         propertyId: row.Property__c,
         availabilityId: row.Availability__c,
         leaseId: row.Lease__c,

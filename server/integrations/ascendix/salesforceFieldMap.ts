@@ -1,6 +1,7 @@
 export type FieldVerification =
   | "verified-production-dashboard"
   | "verified-live-org"
+  | "verified-derived"
   | "derived-unverified"
   | "optional-probed";
 export interface FieldMapping {
@@ -35,6 +36,44 @@ export const isPublicExcludedSubmarket = (name: string) =>
   excluded.has(name.trim().toLocaleLowerCase());
 export const ELIGIBLE_MARKET_UNIVERSE_SCOPE =
   "Eligible 20K+ Market Universe" as const;
+
+export const verifiedDerivedMetrics = {
+  speculativeShare: {
+    verification: "verified-derived" as const,
+    formula: "Under_Construction_Available_SF__c / Under_Construction_SF__c",
+    validatedAgainst: "live Chicago 2026 Q2 report contract",
+  },
+};
+
+export const CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS = [
+  "Central DuPage",
+  "Chicago South",
+  "Fox Valley",
+  "I-55 Corridor",
+  "I-57 Corridor",
+  "I-80 Corridor/Joliet",
+  "I-88 Corridor",
+  "Lake County",
+  "North Cook",
+  "North DuPage",
+  "North Kane",
+  "Northwest Cook",
+  "Northwest Indiana",
+  "O'Hare",
+  "South Cook",
+  "Southeast Wisconsin",
+  "Southwest Cook",
+  "West Cook",
+] as const;
+
+const chicagoSubmarkets = new Map(
+  CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name) => [
+    name.trim().toLocaleLowerCase(),
+    name,
+  ]),
+);
+export const canonicalChicagoSubmarket = (name: string) =>
+  chicagoSubmarkets.get(name.trim().toLocaleLowerCase());
 
 export const salesforceFieldMap = {
   marketData: {
@@ -141,12 +180,23 @@ export const salesforceFieldMap = {
     quarter: verified("Quarter__c"),
     periodEnd: verified("Period_End__c"),
     scope: verified("Property_Data_Scope__c"),
+    marketDataId: verified("Market_Data__c"),
+    periodStart: verified("Period_Start__c"),
+    inventorySf: verified("Inventory_SF__c"),
+    vacantSf: verified("Vacant_SF_Total__c"),
+    netAbsorptionSf: verified("Net_Absorption_SF__c"),
+    leasingActivitySf: verified("Leasing_Activity_SF__c"),
+    deliveredSf: verified("Delivered_SF__c"),
+    underConstructionSf: verified("Under_Construction_SF__c"),
+    underConstructionAvailableSf: verified(
+      "Under_Construction_Available_SF__c",
+    ),
+    salesVolume: verified("Sales_Volume_USD__c"),
   },
   property: {
     object: verified("ascendix__Property__c"),
     id: verified("Id"),
     name: verified("Name"),
-    fullAddress: verified("Full_Address__c"),
     street: verified("ascendix__Street__c"),
     city: verified("ascendix__City__c"),
     state: verified("State__c"),
@@ -268,6 +318,9 @@ export const salesforceFieldMap = {
     availabilityId: verified("Availability__c"),
     leaseId: verified("Lease__c"),
     saleId: verified("Sale__c"),
+    marketDataId: verified("Market_Data__c"),
+    marketDataSubmarket: verified("Market_Data__r.Submarket__c"),
+    marketDataPeriod: verified("Market_Data__r.Quarter_Label__c"),
     saleType: optional("Sale_Type__c"),
   },
 } as const;
@@ -275,7 +328,6 @@ export const salesforceFieldMap = {
 export const contributorOptionalRelationshipFields = [
   "Sale_Type__c",
   "Property__r.Id",
-  "Property__r.Full_Address__c",
   "Property__r.ascendix__Street__c",
   "Property__r.ascendix__City__c",
   "Property__r.State__c",
@@ -290,7 +342,6 @@ export const contributorOptionalRelationshipFields = [
   "Property__r.ascendix__PrimaryImage__c",
   "Lease__r.ascendix__Tenant__r.Name",
   "Lease__r.ascendix__Property__c",
-  "Lease__r.ascendix__Property__r.Full_Address__c",
   "Lease__r.ascendix__Property__r.ascendix__Street__c",
   "Lease__r.ascendix__Property__r.ascendix__City__c",
   "Lease__r.ascendix__Property__r.State__c",
@@ -304,7 +355,6 @@ export const contributorOptionalRelationshipFields = [
   "Sale__r.ascendix__Buyer__r.Name",
   "Sale__r.ascendix__Buyer__r.Normalized_Name__c",
   "Sale__r.ascendix__Property__c",
-  "Sale__r.ascendix__Property__r.Full_Address__c",
   "Sale__r.ascendix__Property__r.ascendix__Street__c",
   "Sale__r.ascendix__Property__r.ascendix__City__c",
   "Sale__r.ascendix__Property__r.State__c",
@@ -317,7 +367,6 @@ export const contributorOptionalRelationshipFields = [
   "Sale__r.ascendix__ListingBrokerCompany__c",
   "Sale__r.Procuring_Broker_1_Company__c",
   "Availability__r.ascendix__Property__c",
-  "Availability__r.ascendix__Property__r.Full_Address__c",
   "Availability__r.ascendix__Property__r.ascendix__Street__c",
   "Availability__r.ascendix__Property__r.ascendix__City__c",
   "Availability__r.ascendix__Property__r.State__c",
@@ -329,6 +378,5 @@ export const contributorOptionalRelationshipFields = [
 ] as const;
 
 export const unverifiedSalesforceMappings = () => [
-  "marketData.speculativeShare (derived-unverified candidate)",
   "contributor.saleType (optional-probed)",
 ];

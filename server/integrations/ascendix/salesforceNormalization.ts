@@ -46,7 +46,12 @@ export interface QuarterBounds {
   quarter: number;
 }
 export function normalizeQuarterBounds(input: string): QuarterBounds {
-  const match = input.trim().match(/^(\d{4})\s*Q([1-4])$/i);
+  const value = input.trim();
+  const yearFirst = value.match(/^(\d{4})\s*Q([1-4])$/i);
+  const quarterFirst = value.match(/^Q([1-4])\s*(\d{4})$/i);
+  const match =
+    yearFirst ??
+    (quarterFirst ? [quarterFirst[0], quarterFirst[2], quarterFirst[1]] : null);
   if (!match)
     throw new Error(`Unsupported Salesforce quarter label: ${input}.`);
   const year = Number(match[1]);
