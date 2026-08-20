@@ -45,6 +45,9 @@ export interface ReportInstance {
   generationRequest: ReportGenerationRequest;
   provider: ReportProviderId;
   sourceMetadata: ProviderSourceMetadata;
+  sourceSnapshotId?: string;
+  sourceSnapshotHash?: string;
+  reportDefinitionVersion?: string;
   generatedAt: string;
   dataSnapshot: IndustrialMarketReport;
   pages: ReportPage[];

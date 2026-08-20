@@ -46,7 +46,9 @@ export function normalizeReportData(result: ReportDataProviderResult) {
 export function calculateDerivedMetrics(
   report: ReturnType<typeof normalizeReportData>,
   request: ReportGenerationRequest,
+  provider?: ReportDataProviderResult["provider"],
 ) {
+  if (provider === "ascendix") return report;
   return calculateOverallMarket(report, request);
 }
 
@@ -82,11 +84,19 @@ export async function generateReportInstance(
   progress(
     onProgress,
     "loading",
-    `Loading ${request.source.provider} source data`,
+    request.source.provider === "ascendix"
+      ? "Connecting to Salesforce, loading market data, and creating a source snapshot"
+      : `Loading ${request.source.provider} source data`,
   );
   const providerResult = await loadSourceData(request);
 
-  progress(onProgress, "normalizing", "Validating normalized source records");
+  progress(
+    onProgress,
+    "normalizing",
+    request.source.provider === "ascendix"
+      ? "Validating the shared Report Data Service snapshot"
+      : "Validating normalized source records",
+  );
   const normalized = normalizeReportData(providerResult);
   const consistencyIssues = validateRequestConsistency(normalized, request);
   if (consistencyIssues.length) {
@@ -100,7 +110,11 @@ export async function generateReportInstance(
     "calculating",
     "Calculating metrics from the declared analytical universe",
   );
-  const calculated = calculateDerivedMetrics(normalized, request);
+  const calculated = calculateDerivedMetrics(
+    normalized,
+    request,
+    providerResult.provider,
+  );
 
   progress(
     onProgress,
@@ -156,6 +170,9 @@ export async function generateReportInstance(
     generationRequest: structuredClone(request),
     provider: providerResult.provider,
     sourceMetadata: structuredClone(providerResult.sourceMetadata),
+    sourceSnapshotId: providerResult.snapshot?.id,
+    sourceSnapshotHash: providerResult.snapshot?.hash,
+    reportDefinitionVersion: providerResult.snapshot?.reportDefinitionVersion,
     generatedAt: new Date().toISOString(),
     dataSnapshot: structuredClone(reconciled),
     pages,

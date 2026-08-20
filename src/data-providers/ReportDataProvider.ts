@@ -13,6 +13,12 @@ export interface ReportDataProviderResult {
   provider: ReportProviderId;
   sourceMetadata: ProviderSourceMetadata;
   completeness: DatasetSectionStatus[];
+  snapshot?: {
+    id: string;
+    hash: string;
+    generatedAt: string;
+    reportDefinitionVersion: string;
+  };
 }
 
 export interface ReportDataProvider {

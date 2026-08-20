@@ -1009,7 +1009,8 @@ export default function App() {
           )}
         </>
       );
-    if (leftTab === "data") return <DataBrowser onBind={bind} />;
+    if (leftTab === "data")
+      return <DataBrowser onBind={bind} reportInstance={reportInstance} />;
     if (leftTab === "pages" || leftTab === "templates")
       return (
         <>
