@@ -3,6 +3,7 @@ import { sampleTemplate } from "../../../src/data/sampleTemplate.ts";
 import { evaluateReportReadiness } from "../../../src/report-engine/validation/reportValidation.ts";
 import type { ReportDataService } from "../../report-data-service/ReportDataService.ts";
 import { reportDataRequestSchema } from "../../report-data-service/contracts.ts";
+import { INDUSTRIAL_MARKET_REPORT_DEFINITION_VERSION } from "../../report-data-service/reportDefinitions.ts";
 
 export const snapshotIdSchema = z.object({ snapshotId: z.string().min(1) });
 export const provenanceInputSchema = snapshotIdSchema.extend({
@@ -25,6 +26,12 @@ export class ReportMcpTools {
         market: result.report.report.market,
         period: result.report.report.period,
         submarketCount: result.report.submarkets.length,
+        quarterlyNetAbsorptionSf:
+          result.report.overallMarket.quarterlyNetAbsorptionSf,
+        trailing12MonthNetAbsorptionSf:
+          result.report.historicalPeriods.find(
+            (period) => period.period === result.report.report.period,
+          )?.trailing12MonthNetAbsorptionSf ?? null,
       },
       snapshot: result.snapshot,
       sourceMetadata: result.sourceMetadata,
@@ -85,7 +92,7 @@ export class ReportMcpTools {
   async getReportServiceStatus() {
     return {
       ...(await this.service.getStatus()),
-      reportDefinitionVersion: "industrial-market-report-data-v1",
+      reportDefinitionVersion: INDUSTRIAL_MARKET_REPORT_DEFINITION_VERSION,
       availableReportTypes: ["industrial-market-report"],
       capabilities: [
         "get_market_report_data",

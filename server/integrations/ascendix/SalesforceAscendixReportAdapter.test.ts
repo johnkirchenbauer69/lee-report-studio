@@ -3,67 +3,139 @@ import type {
   SalesforceClient,
   SalesforceRecord,
 } from "../salesforce/SalesforceClient.ts";
+import {
+  CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
+  salesforceFieldMap,
+} from "./salesforceFieldMap.ts";
 import { SalesforceAscendixReportAdapter } from "./SalesforceAscendixReportAdapter.ts";
+import { ReportDataService } from "../../report-data-service/ReportDataService.ts";
+import { InMemoryReportSnapshotStore } from "../../report-data-service/reportSnapshots.ts";
 
-const metricRecord = (
+const marketRecord = (
+  submarket: string,
+  index: number,
   overrides: Partial<SalesforceRecord> = {},
 ): SalesforceRecord => ({
-  Id: "market-aggregate",
-  Market__c: "Chicago",
-  Period__c: "2026 Q2",
-  Submarket__c: null,
+  Id: `market-${index}`,
+  Name: `Q2 ${submarket}`,
+  Market__c: null,
+  Market_Code__c: null,
+  Quarter_Label__c: "2026 Q2",
+  Submarket__c: submarket,
   Inventory_SF__c: 1000,
   Delivered_SF__c: 10,
   Under_Construction_SF__c: 20,
-  Speculative_Share__c: 0.5,
-  Net_Absorption_SF__c: -25,
-  Vacancy_Rate__c: 0.1,
-  Availability_Rate__c: 0.2,
-  Asking_Net_Rent_PSF__c: 9.5,
-  Sales_Volume__c: 1_000_000,
-  Leasing_Activity_SF__c: 400,
-  Narrative__c: "Historical narrative",
+  Under_Construction_Available_SF__c: 10,
+  Total_Net_Absorption_SF__c: -25,
+  Total_Vacant_SF__c: 49.6,
+  Total_Vacant_Percent__c: 4.96,
+  Total_Available_SF__c: 85.3,
+  Total_Available_Percent__c: 8.53,
+  Overall_Net_Rent_SF__c: 9.5,
+  Sales_Volume_USD__c: 1_000_000,
+  Total_Leasing_Activity_SF__c: 400,
+  ...overrides,
+});
+const propertyRecord = (
+  overrides: Partial<SalesforceRecord> = {},
+): SalesforceRecord => ({
+  Id: "property-data-1",
+  Quarter__c: "2026 Q2",
+  Property_Data_Scope__c: "Eligible 20K+ Market Universe",
+  Submarket__c: "O'Hare",
+  Market_Data__c: "market-13",
+  Inventory_SF__c: 1000,
+  Vacant_SF_Total__c: 50,
+  Available_SF_Total__c: 100,
+  Net_Absorption_SF_Total__c: 20,
+  Leasing_Activity_SF_Total__c: 30,
+  Deliveries_SF__c: 40,
+  Under_Construction_SF__c: 200,
+  Under_Construction_Available_SF__c: 50,
+  Sales_Volume_USD__c: 500,
   ...overrides,
 });
 
+const quarterlyTotals = new Map([
+  ["2026 Q2", 5_206_811],
+  ["2026 Q1", 4_000_000],
+  ["2025 Q4", 4_000_000],
+  ["2025 Q3", 4_448_018],
+  ["2025 Q2", 5_227_397],
+  ["2025 Q1", 4_411_480],
+  ["2024 Q4", -1_429_367],
+  ["2024 Q3", -3_662_366],
+]);
+const centralQuarterly = new Map([
+  ["2026 Q2", 126_800],
+  ["2026 Q1", 50_000],
+  ["2025 Q4", 50_000],
+  ["2025 Q3", 38_671],
+]);
+const chicagoSouthQuarterly = new Map([
+  ["2026 Q2", 37_457],
+  ["2026 Q1", 100_000],
+  ["2025 Q4", 100_000],
+  ["2025 Q3", 171_747],
+]);
+const recordsForPeriod = (period: string) => {
+  const total = quarterlyTotals.get(period)!;
+  const central = centralQuarterly.get(period) ?? 0;
+  const chicagoSouth = chicagoSouthQuarterly.get(period) ?? 0;
+  const remainder = total - central - chicagoSouth;
+  const base = Math.trunc(remainder / 16);
+  return CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name, index) =>
+    marketRecord(name, index, {
+      Id:
+        period === "2026 Q2"
+          ? `market-${index}`
+          : `market-${period.replace(/\W/g, "-")}-${index}`,
+      Name: `${period} ${name}`,
+      Quarter_Label__c: period,
+      Total_Net_Absorption_SF__c:
+        name === "Central DuPage"
+          ? central
+          : name === "Chicago South"
+            ? chicagoSouth
+            : index === CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.length - 1
+              ? remainder - base * 15
+              : base,
+    }),
+  );
+};
+
 class FakeSalesforceClient implements SalesforceClient {
   readonly queries: string[] = [];
-  constructor(private readonly invalidRate = false) {}
+  constructor(
+    private options: {
+      invalidRate?: boolean;
+      missingInventory?: boolean;
+      missingSubmarket?: boolean;
+    } = {},
+  ) {}
   async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
     this.queries.push(soql);
-    if (
-      soql.includes("FROM Market_Data__c") &&
-      soql.includes("ORDER BY Period__c")
-    ) {
-      return [metricRecord()] as T[];
-    }
+    if (soql.includes("FROM Market_Data_Contributor__c")) return [];
+    if (soql.includes("FROM Property_Data__c"))
+      return CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name, index) =>
+        propertyRecord({
+          Id: `property-data-${index}`,
+          Submarket__c: name,
+          Market_Data__c: name === "Chicago South" ? null : `market-${index}`,
+          Inventory_SF__c: name === "West Cook" ? 83_000 : 1000,
+          Net_Absorption_SF_Total__c: index === 0 ? 5_206_471 : 20,
+        }),
+      ) as T[];
     if (soql.includes("FROM Market_Data__c")) {
-      return [
-        metricRecord({ Vacancy_Rate__c: this.invalidRate ? 1.4 : 0.1 }),
-        metricRecord({ Id: "market-ohare", Submarket__c: "O'Hare" }),
-      ] as T[];
-    }
-    if (soql.includes("FROM Lease__c")) {
-      return [
-        {
-          Id: "lease-1",
-          Tenant_Name__c: "Tenant",
-          Size_SF__c: 250,
-          Property_Address__c: "1 Main St",
-          Lease_Type__c: "New",
-        },
-      ] as unknown as T[];
-    }
-    if (soql.includes("FROM Property_Data__c")) {
-      return [
-        {
-          Id: "sale-1",
-          Buyer__c: "Buyer",
-          Sale_Price__c: 500000,
-          Property_Address__c: "2 Main St",
-          Sale_Type__c: "Investment",
-        },
-      ] as unknown as T[];
+      const rows = soql.includes("ORDER BY")
+        ? [...quarterlyTotals.keys()].flatMap(recordsForPeriod)
+        : recordsForPeriod("2026 Q2");
+      Object.assign(rows[0], {
+        Total_Vacant_Percent__c: this.options.invalidRate ? 140 : 4.5318549447,
+      });
+      if (this.options.missingInventory) delete rows[0].Inventory_SF__c;
+      if (this.options.missingSubmarket) rows.pop();
+      return rows as T[];
     }
     return [];
   }
@@ -71,64 +143,159 @@ class FakeSalesforceClient implements SalesforceClient {
     return { configured: true, connected: true };
   }
 }
-
-class MissingFieldSalesforceClient extends FakeSalesforceClient {
-  override async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
-    const records = await super.query<T>(soql);
-    if (
-      soql.includes("FROM Market_Data__c") &&
-      !soql.includes("ORDER BY Period__c")
-    ) {
-      delete records[0].Inventory_SF__c;
-    }
-    return records;
-  }
-}
-
 const request = {
   reportType: "industrial-market-report" as const,
   market: "Chicago",
-  period: "2026 Q2",
+  period: "2026Q2",
   calculationScope: { type: "all-submarkets" as const },
-  timeContext: { type: "historical-period" as const, period: "2026 Q2" },
+  timeContext: { type: "historical-period" as const, period: "2026Q2" },
 };
 
-describe("Salesforce Ascendix adapter contract", () => {
-  it("maps period records, details, provenance, and market filters", async () => {
+describe("Salesforce Ascendix live-verified contract", () => {
+  it("uses exact production API names", () => {
+    expect(salesforceFieldMap.marketData.period.apiName).toBe(
+      "Quarter_Label__c",
+    );
+    expect(salesforceFieldMap.marketData.quarterlyNetAbsorptionSf.apiName).toBe(
+      "Total_Net_Absorption_SF__c",
+    );
+    expect(salesforceFieldMap.marketData.vacancyRate.apiName).toBe(
+      "Total_Vacant_Percent__c",
+    );
+    expect(
+      salesforceFieldMap.propertyData.quarterlyNetAbsorptionSf.apiName,
+    ).toBe("Net_Absorption_SF_Total__c");
+    expect(salesforceFieldMap.propertyData.leasingActivitySf.apiName).toBe(
+      "Leasing_Activity_SF_Total__c",
+    );
+    expect(salesforceFieldMap.propertyData.deliveredSf.apiName).toBe(
+      "Deliveries_SF__c",
+    );
+    expect(salesforceFieldMap.lease.object.apiName).toBe("ascendix__Lease__c");
+    expect(salesforceFieldMap.sale.object.apiName).toBe("ascendix__Sale__c");
+  });
+  it("loads exactly 18 Market_Data snapshots without Market__c and derives Overall Market from Property_Data", async () => {
     const client = new FakeSalesforceClient();
     const result = await new SalesforceAscendixReportAdapter(
       client,
-      () => new Date("2026-08-20T12:00:00.000Z"),
+      () => new Date("2026-08-20T12:00:00Z"),
     ).loadReportSource(request);
-    expect(result.report.submarkets[0]).toMatchObject({
-      name: "O'Hare",
-      netAbsorptionSf: -25,
+    expect(result.report.report.period).toBe("2026 Q2");
+    expect(result.report.submarkets.map((row) => row.name)).toEqual(
+      CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
+    );
+    expect(result.report.submarkets[0].vacancyRate).toBeCloseTo(0.045318549447);
+    expect(result.report.overallMarket.inventorySf).toBe(100_000);
+    expect(result.report.overallMarket.vacancyRate).toBeCloseTo(900 / 100_000);
+    expect(result.report.overallMarket.speculativeShare).toBeCloseTo(
+      900 / 3600,
+    );
+    expect(result.report.overallMarket.quarterlyNetAbsorptionSf).toBe(
+      5_206_811,
+    );
+    expect(result.report.historicalPeriods[0]).toMatchObject({
+      period: "2026 Q2",
+      quarterlyNetAbsorptionSf: 5_206_811,
+      trailing12MonthNetAbsorptionSf: 17_654_829,
+      trailing12MonthNetAbsorptionStatus: "complete",
     });
-    expect(result.report.historicalPeriods[0].period).toBe("2026 Q2");
-    expect(result.report.leasing[0].tenant).toBe("Tenant");
-    expect(result.report.sales[0].buyer).toBe("Buyer");
-    expect(result.report.provenance).toContainEqual(
-      expect.objectContaining({
-        fieldPath: "submarkets.O'Hare.vacancyRate",
-        sources: [
-          expect.objectContaining({
-            sourceId: "market-ohare",
-            sourceType: "salesforce",
-            importedAt: "2026-08-20T12:00:00.000Z",
-          }),
-        ],
-      }),
+    expect(
+      result.report.historicalPeriods
+        .slice(0, 5)
+        .map((period) => period.trailing12MonthNetAbsorptionSf),
+    ).toEqual([17_654_829, 17_675_415, 18_086_895, 12_657_528, 4_547_144]);
+    expect(
+      result.report.provenance.find(
+        (item) =>
+          item.fieldPath ===
+          "historicalPeriods.2026 Q2.trailing12MonthNetAbsorptionSf",
+      ),
+    ).toMatchObject({
+      metricType: "trailing-12-month",
+      status: "calculated",
+      calculation: {
+        inputPeriods: ["2026 Q2", "2026 Q1", "2025 Q4", "2025 Q3"],
+        inputCount: 4,
+        sourceObjects: ["Market_Data__c"],
+      },
+    });
+    expect(result.sourceDefinition?.headlineSource).toContain(
+      "Property_Data__c",
     );
     expect(
-      client.queries.every(
-        (query) =>
-          query.includes("Market__c = 'Chicago'") ||
-          !query.includes("Market_Data__c"),
+      result.sourceDefinition?.propertyDataRollup?.unlinkedMarketDataRows,
+    ).toBe(1);
+    expect(
+      result.report.submarkets.find((row) => row.name === "West Cook")
+        ?.inventorySf,
+    ).toBe(1000);
+    expect(
+      result.report.provenance.find(
+        (item) =>
+          item.fieldPath === "reconciliation.submarkets.West Cook.inventorySf",
       ),
-    ).toBe(true);
+    ).toMatchObject({
+      status: "reconciled",
+      selectedValue: 1000,
+      critical: false,
+    });
+    const currentQuery = client.queries.find(
+      (query) =>
+        query.includes("FROM Market_Data__c") && !query.includes("ORDER BY"),
+    )!;
+    expect(currentQuery).toContain("Quarter_Label__c = '2026 Q2'");
+    expect(currentQuery).toContain("Submarket__c IN");
+    expect(currentQuery).not.toContain("Market__c =");
+    expect(client.queries.length).toBeLessThan(10);
   });
+  it("keeps approved submarket quarterly and trailing-12-month values distinct", async () => {
+    const adapter = new SalesforceAscendixReportAdapter(
+      new FakeSalesforceClient(),
+    );
+    const central = await adapter.loadReportSource({
+      ...request,
+      calculationScope: {
+        type: "selected-submarkets",
+        submarkets: ["Central DuPage"],
+      },
+    });
+    expect(central.report.overallMarket.quarterlyNetAbsorptionSf).toBe(126_800);
+    expect(
+      central.report.historicalPeriods[0].trailing12MonthNetAbsorptionSf,
+    ).toBe(265_471);
 
-  it("keeps current and historical pathways explicit", async () => {
+    const chicagoSouth = await adapter.loadReportSource({
+      ...request,
+      calculationScope: {
+        type: "selected-submarkets",
+        submarkets: ["Chicago South"],
+      },
+    });
+    expect(chicagoSouth.report.overallMarket.quarterlyNetAbsorptionSf).toBe(
+      37_457,
+    );
+    expect(
+      chicagoSouth.report.historicalPeriods[0].trailing12MonthNetAbsorptionSf,
+    ).toBe(409_204);
+  });
+  it("fails explicitly for a missing standard snapshot and invalid metrics", async () => {
+    await expect(
+      new SalesforceAscendixReportAdapter(
+        new FakeSalesforceClient({ missingSubmarket: true }),
+      ).loadReportSource(request),
+    ).rejects.toThrow("Missing: West Cook");
+    await expect(
+      new SalesforceAscendixReportAdapter(
+        new FakeSalesforceClient({ invalidRate: true }),
+      ).loadReportSource(request),
+    ).rejects.toThrow("invalid vacancy rate");
+    await expect(
+      new SalesforceAscendixReportAdapter(
+        new FakeSalesforceClient({ missingInventory: true }),
+      ).loadReportSource(request),
+    ).rejects.toThrow("missing inventory");
+  });
+  it("keeps current mode unsupported", async () => {
     await expect(
       new SalesforceAscendixReportAdapter(
         new FakeSalesforceClient(),
@@ -138,20 +305,33 @@ describe("Salesforce Ascendix adapter contract", () => {
       }),
     ).rejects.toThrow("Current Salesforce report mapping is not configured");
   });
-
-  it("rejects invalid source rates instead of substituting data", async () => {
-    await expect(
-      new SalesforceAscendixReportAdapter(
-        new FakeSalesforceClient(true),
-      ).loadReportSource(request),
-    ).rejects.toThrow("invalid vacancy rate");
-  });
-
-  it("rejects missing required metric fields instead of coercing them to zero", async () => {
-    await expect(
-      new SalesforceAscendixReportAdapter(
-        new MissingFieldSalesforceClient(),
-      ).loadReportSource(request),
-    ).rejects.toThrow("missing inventory");
+  it("passes strict service validation and snapshots source-definition metadata", async () => {
+    const service = new ReportDataService({
+      ascendixAdapter: new SalesforceAscendixReportAdapter(
+        new FakeSalesforceClient(),
+      ),
+      snapshotStore: new InMemoryReportSnapshotStore(),
+      mode: "salesforce",
+      now: () => new Date("2026-08-20T12:00:00.000Z"),
+    });
+    const result = await service.getIndustrialMarketReport({
+      market: "Chicago",
+      period: "Q2 2026",
+      calculationScope: { type: "all-submarkets" },
+    });
+    expect(result.report.report.period).toBe("2026 Q2");
+    expect(result.sourceMetadata.sourceDefinition).toMatchObject({
+      headlineSource: "Property_Data__c eligible 20K+ rollup",
+      trendSource: "18 Market_Data__c submarket snapshots",
+    });
+    expect(
+      result.report.provenance.find(
+        (item) => item.fieldPath === "overallMarket.speculativeShare",
+      ),
+    ).toMatchObject({
+      authority: "verified-derived Property_Data__c ratio-of-sums",
+      critical: true,
+    });
+    expect(result.snapshot.hash).toMatch(/^[a-f0-9]{64}$/);
   });
 });

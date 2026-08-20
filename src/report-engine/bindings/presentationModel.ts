@@ -22,7 +22,7 @@ const metricKeys: (keyof MarketMetrics)[] = [
   "deliveredSf",
   "underConstructionSf",
   "speculativeShare",
-  "netAbsorptionSf",
+  "quarterlyNetAbsorptionSf",
   "vacancyRate",
   "availabilityRate",
   "askingNetRentPsf",
@@ -55,8 +55,8 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     absorption: integer(
       resolvePresentationValue(
         report,
-        `submarkets.${item.name}.netAbsorptionSf`,
-        item.netAbsorptionSf,
+        `submarkets.${item.name}.quarterlyNetAbsorptionSf`,
+        item.quarterlyNetAbsorptionSf,
       ),
     ),
     vacancy: percent(item.vacancyRate),
@@ -80,7 +80,13 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
         ),
         0,
       ),
-      absorption: integer(totals.netAbsorptionSf),
+      absorption: integer(
+        resolvePresentationValue(
+          report,
+          "overallMarket.quarterlyNetAbsorptionSf",
+          report.overallMarket.quarterlyNetAbsorptionSf,
+        ),
+      ),
       vacancy: percent(totals.vacancyRate),
       availability: percent(totals.availabilityRate),
       rent: rent(totals.askingNetRentPsf),
@@ -93,7 +99,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
       delivered: extremes.deliveredSf.minimum?.name,
       underConstruction: extremes.underConstructionSf.minimum?.name,
       speculative: extremes.speculativeShare.minimum?.name,
-      absorption: extremes.netAbsorptionSf.minimum?.name,
+      absorption: extremes.quarterlyNetAbsorptionSf.minimum?.name,
       vacancy: extremes.vacancyRate.minimum?.name,
       availability: extremes.availabilityRate.minimum?.name,
       rent: extremes.askingNetRentPsf.minimum?.name,
@@ -106,7 +112,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
       delivered: extremes.deliveredSf.maximum?.name,
       underConstruction: extremes.underConstructionSf.maximum?.name,
       speculative: extremes.speculativeShare.maximum?.name,
-      absorption: extremes.netAbsorptionSf.maximum?.name,
+      absorption: extremes.quarterlyNetAbsorptionSf.maximum?.name,
       vacancy: extremes.vacancyRate.maximum?.name,
       availability: extremes.availabilityRate.maximum?.name,
       rent: extremes.askingNetRentPsf.maximum?.name,
@@ -117,16 +123,19 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     index: number,
     key: keyof IndustrialMarketReport["historicalPeriods"][number],
     formatter: (value: number) => string,
-  ) => formatter(Number(report.historicalPeriods[index]?.[key] ?? 0));
+  ) => {
+    const value = report.historicalPeriods[index]?.[key];
+    return typeof value === "number" ? formatter(value) : "—";
+  };
   const indicatorRows = report.historicalPeriods.length
     ? [
         {
           metric: "▼  12 Month Net Absorption (SF)",
-          q2: period(0, "netAbsorption12MonthSf", integer),
-          q1: period(1, "netAbsorption12MonthSf", integer),
-          q4: period(2, "netAbsorption12MonthSf", integer),
-          q3: period(3, "netAbsorption12MonthSf", integer),
-          prior: period(4, "netAbsorption12MonthSf", integer),
+          q2: period(0, "trailing12MonthNetAbsorptionSf", integer),
+          q1: period(1, "trailing12MonthNetAbsorptionSf", integer),
+          q4: period(2, "trailing12MonthNetAbsorptionSf", integer),
+          q3: period(3, "trailing12MonthNetAbsorptionSf", integer),
+          prior: period(4, "trailing12MonthNetAbsorptionSf", integer),
         },
         {
           metric: "▼  Vacancy Rate",
@@ -170,7 +179,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
   return {
     ...report,
     reportDisplay,
-    overallMarket: { ...totals, narrative: report.overallMarket.narrative },
+    overallMarket: { ...report.overallMarket },
     periods: report.historicalPeriods,
     sourceNotes: report.provenance,
     submarketTableRows,

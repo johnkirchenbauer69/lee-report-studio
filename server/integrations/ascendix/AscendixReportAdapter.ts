@@ -5,6 +5,16 @@ export interface AscendixAdapterResult {
   report: IndustrialMarketReport;
   recordCounts: Record<string, number>;
   salesforceOrg?: string;
+  diagnostics?: string[];
+  sourceDefinition?: {
+    period: string;
+    geography: string;
+    headlineSource: string;
+    trendSource: string;
+    contributorSource: string;
+    apiCallCounts: Record<string, number>;
+    propertyDataRollup?: Record<string, number>;
+  };
 }
 
 export interface AscendixReportAdapter {
@@ -13,5 +23,8 @@ export interface AscendixReportAdapter {
     configured: boolean;
     connected: boolean;
     mode: "mock" | "salesforce";
+    instanceUrl?: string;
+    authMode?: "client-credentials" | "soap-login";
+    apiVersion?: string;
   }>;
 }

@@ -10,6 +10,8 @@ visual-report/
 !.vscode/extensions.json
 .DS_Store
 .env
+.env.local
+.env.*.local
 .env.*
 !.env.example
 *.local

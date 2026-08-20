@@ -25,7 +25,7 @@ const metricKeys: (keyof MarketMetrics)[] = [
   "deliveredSf",
   "underConstructionSf",
   "speculativeShare",
-  "netAbsorptionSf",
+  "quarterlyNetAbsorptionSf",
   "vacancyRate",
   "availabilityRate",
   "askingNetRentPsf",

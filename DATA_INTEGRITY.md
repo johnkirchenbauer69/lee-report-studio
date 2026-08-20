@@ -13,6 +13,11 @@ LEE Report Studio treats missing or disputed data as visible report state, never
 5. **Presentation overrides are explicit and auditable.** Overrides require field path, value, authority, reason, and creation time, with an optional source reference. They do not mutate normalized source values.
 6. **Calculation scope is independent from page selection.** Overall metrics use the declared analytical universe. Choosing detailed pages cannot implicitly change market totals.
 7. **Cross-period and cross-market contamination is blocked.** Request period/market must match normalized source metadata, and production page snapshots are scanned by regression tests for fixture-only values.
+8. **Historical quarter identity is stable.** `Quarter_Label__c` is authoritative even if a stored period-end date drifts.
+9. **The report universe is explicit.** The versioned 18-submarket Chicago list—not every org picklist value—defines the standard geography.
+10. **Speculative construction is verified-derived.** Submarkets use available-UC / total-UC; Overall Market uses ratio-of-sums. Required inputs and calculated provenance remain mandatory.
+11. **Source differences remain classified.** Missing data, conflicts, known reconciled differences, and optional enrichment gaps are distinct states. The Chicago South unlinked row and West Cook 82,000-SF variance are retained as QA findings, not silent replacements.
+12. **Absorption periods are never conflated.** Quarterly absorption is a current-quarter signed source metric. Market Indicators absorption is a verified-derived signed sum of four consecutive quarterly inputs. Missing quarters yield `null`/`insufficient_history`, and quarterly-versus-T12 differences are not integrity conflicts.
 
 ## Validation and readiness
 
@@ -30,6 +35,7 @@ Template `requiredSections` and `optionalSections` define publication expectatio
 - Authorized override reconciliation
 - Full-market calculation with independently selected detail pages
 - JSON, Excel, and Ascendix provider isolation
+- Quarterly/T12 semantic separation, signed rolling windows, missing-history behavior, calendar-year boundaries, four-period provenance, and Overall/submarket benchmarks
 
 ## Known audit status
 

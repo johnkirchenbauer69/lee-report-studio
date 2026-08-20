@@ -14,7 +14,9 @@
     "test": "npm run test:ownership && vitest run --config vitest.config.ts",
     "test:ownership": "node scripts/check-test-ownership.mjs",
     "test:visual": "playwright test --config playwright.config.ts",
-    "test:visual:update": "cross-env UPDATE_VISUAL_BASELINES=1 playwright test --config playwright.config.ts"
+    "test:visual:update": "cross-env UPDATE_VISUAL_BASELINES=1 playwright test --config playwright.config.ts",
+    "salesforce:check": "tsx scripts/salesforce-check.ts",
+    "salesforce:benchmark:q2": "tsx scripts/salesforce-benchmark-q2.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",

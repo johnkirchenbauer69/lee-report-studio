@@ -4,6 +4,24 @@ import {
   type DatasetSectionStatus,
   type IndustrialMarketReport,
 } from "../../src/report-engine/schema/industrialMarketReport.ts";
+import { normalizeQuarterBounds } from "../integrations/ascendix/salesforceNormalization.ts";
+
+const canonicalQuarterSchema = z
+  .string()
+  .min(1)
+  .max(40)
+  .transform((value, context) => {
+    try {
+      return normalizeQuarterBounds(value).label;
+    } catch (error) {
+      context.addIssue({
+        code: "custom",
+        message:
+          error instanceof Error ? error.message : "Invalid quarter label.",
+      });
+      return z.NEVER;
+    }
+  });
 
 const calculationScopeSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("all-submarkets") }),
@@ -14,7 +32,10 @@ const calculationScopeSchema = z.discriminatedUnion("type", [
 ]);
 
 const timeContextSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("historical-period"), period: z.string().min(1) }),
+  z.object({
+    type: z.literal("historical-period"),
+    period: canonicalQuarterSchema,
+  }),
   z.object({ type: z.literal("current"), asOf: z.string().datetime() }),
 ]);
 
@@ -24,7 +45,7 @@ export const reportDataRequestSchema = z
       .literal("industrial-market-report")
       .default("industrial-market-report"),
     market: z.string().min(1).max(120),
-    period: z.string().min(1).max(40),
+    period: canonicalQuarterSchema,
     calculationScope: calculationScopeSchema,
     requestedSections: z.array(datasetSectionSchema).optional(),
     timeContext: timeContextSchema.optional(),
@@ -55,6 +76,16 @@ export interface ReportSourceMetadata {
   requestId: string;
   salesforceOrg?: string;
   recordCounts: Record<string, number>;
+  diagnostics?: string[];
+  sourceDefinition?: {
+    period: string;
+    geography: string;
+    headlineSource: string;
+    trendSource: string;
+    contributorSource: string;
+    apiCallCounts: Record<string, number>;
+    propertyDataRollup?: Record<string, number>;
+  };
 }
 
 export interface ReportDataResult {

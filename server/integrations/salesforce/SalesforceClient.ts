@@ -2,41 +2,48 @@ export interface SalesforceRecord {
   Id: string;
   [field: string]: unknown;
 }
-
+export interface SalesforceHealth {
+  configured: boolean;
+  connected: boolean;
+  instanceUrl?: string;
+  authMode?: SalesforceAuthMode;
+  apiVersion?: string;
+}
 export interface SalesforceClient {
   query<T extends SalesforceRecord>(soql: string): Promise<T[]>;
-  health(): Promise<{
-    configured: boolean;
-    connected: boolean;
-    instanceUrl?: string;
-  }>;
+  health(): Promise<SalesforceHealth>;
+  getApiCallCount?(): number;
 }
-
 interface SalesforceQueryResponse<T> {
   records: T[];
   done: boolean;
   nextRecordsUrl?: string;
 }
-
-export interface SalesforceRestConfig {
-  loginUrl: string;
-  clientId: string;
-  clientSecret: string;
-  instanceUrl?: string;
-  apiVersion: string;
+export type SalesforceAuthMode = "client-credentials" | "soap-login";
+export interface SalesforceAuthSession {
+  accessToken: string;
+  instanceUrl: string;
 }
+export interface SalesforceAuthStrategy {
+  readonly mode: SalesforceAuthMode;
+  authenticate(): Promise<SalesforceAuthSession>;
+}
+const safeError = (kind: string, status: number) =>
+  new Error(
+    `Salesforce ${kind} failed (${status}). No alternate authentication mode was attempted.`,
+  );
 
-export class SalesforceRestClient implements SalesforceClient {
-  private accessToken?: string;
-  private resolvedInstanceUrl?: string;
-  private readonly config: SalesforceRestConfig;
-
-  constructor(config: SalesforceRestConfig) {
-    this.config = config;
-  }
-
-  private async authenticate() {
-    if (this.accessToken && this.resolvedInstanceUrl) return;
+export class ClientCredentialsAuthStrategy implements SalesforceAuthStrategy {
+  readonly mode = "client-credentials" as const;
+  constructor(
+    private readonly config: {
+      loginUrl: string;
+      clientId: string;
+      clientSecret: string;
+      instanceUrl?: string;
+    },
+  ) {}
+  async authenticate(): Promise<SalesforceAuthSession> {
     const body = new URLSearchParams({
       grant_type: "client_credentials",
       client_id: this.config.clientId,
@@ -50,55 +57,121 @@ export class SalesforceRestClient implements SalesforceClient {
         body,
       },
     );
-    if (!response.ok) {
-      throw new Error(`Salesforce authentication failed (${response.status}).`);
-    }
+    if (!response.ok)
+      throw safeError("client-credentials authentication", response.status);
     const token = (await response.json()) as {
       access_token?: string;
       instance_url?: string;
     };
-    if (
-      !token.access_token ||
-      !(token.instance_url || this.config.instanceUrl)
-    ) {
+    const instanceUrl = token.instance_url ?? this.config.instanceUrl;
+    if (!token.access_token || !instanceUrl)
       throw new Error(
-        "Salesforce authentication returned an incomplete response.",
+        "Salesforce client-credentials authentication returned an incomplete response.",
       );
-    }
-    this.accessToken = token.access_token;
-    this.resolvedInstanceUrl = token.instance_url ?? this.config.instanceUrl;
+    return {
+      accessToken: token.access_token,
+      instanceUrl: instanceUrl.replace(/\/$/, ""),
+    };
   }
+}
 
+const xmlEscape = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+const xmlValue = (xml: string, name: string) =>
+  xml.match(
+    new RegExp(`<(?:\\w+:)?${name}>([^<]+)</(?:\\w+:)?${name}>`, "i"),
+  )?.[1];
+export class SoapLoginAuthStrategy implements SalesforceAuthStrategy {
+  readonly mode = "soap-login" as const;
+  constructor(
+    private readonly config: {
+      username: string;
+      password: string;
+      securityToken: string;
+      domain: "login" | "test";
+      apiVersion: string;
+    },
+  ) {}
+  async authenticate(): Promise<SalesforceAuthSession> {
+    const endpoint = `https://${this.config.domain}.salesforce.com/services/Soap/u/${this.config.apiVersion}`;
+    const envelope = `<?xml version="1.0" encoding="utf-8"?><env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/" xmlns:n1="urn:partner.soap.sforce.com"><env:Body><n1:login><n1:username>${xmlEscape(this.config.username)}</n1:username><n1:password>${xmlEscape(this.config.password + this.config.securityToken)}</n1:password></n1:login></env:Body></env:Envelope>`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "text/xml; charset=UTF-8",
+        SOAPAction: "login",
+      },
+      body: envelope,
+    });
+    if (!response.ok) throw safeError("SOAP login", response.status);
+    const xml = await response.text();
+    const accessToken = xmlValue(xml, "sessionId");
+    const serverUrl = xmlValue(xml, "serverUrl");
+    if (!accessToken || !serverUrl)
+      throw new Error("Salesforce SOAP login returned an incomplete response.");
+    return { accessToken, instanceUrl: new URL(serverUrl).origin };
+  }
+}
+
+export interface SalesforceRestConfig {
+  authStrategy: SalesforceAuthStrategy;
+  apiVersion: string;
+}
+export class SalesforceRestClient implements SalesforceClient {
+  private session?: SalesforceAuthSession;
+  private apiCallCount = 0;
+  constructor(private readonly config: SalesforceRestConfig) {}
+  private async authenticate() {
+    if (!this.session) {
+      this.apiCallCount += 1;
+      this.session = await this.config.authStrategy.authenticate();
+    }
+    return this.session;
+  }
   async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
-    await this.authenticate();
+    const session = await this.authenticate();
     const records: T[] = [];
-    let url = `${this.resolvedInstanceUrl}/services/data/v${this.config.apiVersion}/query?q=${encodeURIComponent(soql)}`;
+    let url = `${session.instanceUrl}/services/data/v${this.config.apiVersion}/query?q=${encodeURIComponent(soql)}`;
     do {
+      this.apiCallCount += 1;
       const response = await fetch(url, {
-        headers: { authorization: `Bearer ${this.accessToken}` },
+        headers: { authorization: `Bearer ${session.accessToken}` },
       });
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`Salesforce query failed (${response.status}).`);
-      }
       const page = (await response.json()) as SalesforceQueryResponse<T>;
       records.push(...page.records);
       url = page.nextRecordsUrl
-        ? `${this.resolvedInstanceUrl}${page.nextRecordsUrl}`
+        ? `${session.instanceUrl}${page.nextRecordsUrl}`
         : "";
     } while (url);
     return records;
   }
-
-  async health() {
+  async health(): Promise<SalesforceHealth> {
     try {
-      await this.authenticate();
+      const session = await this.authenticate();
       return {
         configured: true,
         connected: true,
-        instanceUrl: this.resolvedInstanceUrl,
+        instanceUrl: session.instanceUrl,
+        authMode: this.config.authStrategy.mode,
+        apiVersion: this.config.apiVersion,
       };
     } catch {
-      return { configured: true, connected: false };
+      return {
+        configured: true,
+        connected: false,
+        authMode: this.config.authStrategy.mode,
+        apiVersion: this.config.apiVersion,
+      };
     }
+  }
+  getApiCallCount() {
+    return this.apiCallCount;
   }
 }
