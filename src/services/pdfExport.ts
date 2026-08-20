@@ -15,6 +15,7 @@ import type {
   TableElement,
 } from "../types/report";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
+import { resolveTypography } from "../engine/typography";
 
 const POINTS_PER_PIXEL = 72 / 96;
 const rotatedBoxOrigin = (
@@ -32,6 +33,30 @@ const rotatedBoxOrigin = (
   return {
     x: x + halfX - (cosine * halfX - sine * halfY),
     y: y + halfY - (sine * halfX + cosine * halfY),
+  };
+};
+/**
+ * Given a point's unrotated (px, py) position and the box center it belongs
+ * to, returns the anchor pdf-lib needs so that, after rotating around that
+ * anchor by `rotation` degrees, the point lands where it would sit on a box
+ * rotated about its own center — matching how `rotatedBoxOrigin` positions
+ * shape corners.
+ */
+const rotatedPointOrigin = (
+  px: number,
+  py: number,
+  centerX: number,
+  centerY: number,
+  rotation: number,
+) => {
+  const radians = (-rotation * Math.PI) / 180;
+  const cosine = Math.cos(radians),
+    sine = Math.sin(radians);
+  const dx = px - centerX,
+    dy = py - centerY;
+  return {
+    x: centerX + (cosine * dx - sine * dy),
+    y: centerY + (sine * dx + cosine * dy),
   };
 };
 const color = (value: string | undefined) => {
@@ -385,7 +410,7 @@ async function drawElement(
     return;
   }
   if (element.type === "text") {
-    const typography = element.style.typography,
+    const typography = resolveTypography(element.style),
       value = element.binding
         ? formatValue(
             getByContextPath(
@@ -396,42 +421,59 @@ async function drawElement(
             element.binding,
           )
         : element.text,
-      font = typography?.italic
+      font = typography.italic
         ? fonts.italic
-        : Number(typography?.fontWeight ?? element.style.fontWeight ?? 400) >=
-            600
+        : Number(typography.fontWeight) >= 600
           ? fonts.bold
           : fonts.regular,
-      size =
-        (typography?.fontSize ?? element.style.fontSize ?? 14) *
-        POINTS_PER_PIXEL,
-      lineHeight = size * (typography?.lineHeight ?? 1.2),
+      size = typography.fontSize * POINTS_PER_PIXEL,
+      lineHeight = size * typography.lineHeight,
       lines = wrapText(
-        typography?.uppercase ? value.toUpperCase() : value,
+        typography.uppercase ? value.toUpperCase() : value,
         font,
         size,
         width,
-      );
-    lines
-      .slice(0, Math.max(1, Math.floor(height / lineHeight)))
-      .forEach((line, index) =>
+      ),
+      visibleLines = lines.slice(
+        0,
+        Math.max(1, Math.floor(height / lineHeight)),
+      ),
+      blockHeight = visibleLines.length * lineHeight,
+      firstBaseline =
+        typography.verticalAlign === "middle"
+          ? y + (height + blockHeight) / 2 - size
+          : typography.verticalAlign === "bottom"
+            ? y + blockHeight - size
+            : y + height - size;
+    const centerX = x + width / 2,
+      centerY = y + height / 2;
+    visibleLines.forEach((line, index) => {
+      const lineWidth = font.widthOfTextAtSize(line, size),
+        lineX =
+          typography.textAlign === "center"
+            ? x + (width - lineWidth) / 2
+            : typography.textAlign === "right"
+              ? x + width - lineWidth
+              : x,
+        baselineY = firstBaseline - index * lineHeight,
+        anchor = rotatedPointOrigin(
+          lineX,
+          baselineY,
+          centerX,
+          centerY,
+          element.rotation ?? 0,
+        );
         pdfPage.drawText(line, {
-          x:
-            origin.x +
-            Math.sin(((element.rotation ?? 0) * Math.PI) / 180) *
-              (height - size - index * lineHeight),
-          y:
-            origin.y +
-            Math.cos(((element.rotation ?? 0) * Math.PI) / 180) *
-              (height - size - index * lineHeight),
+          x: anchor.x,
+          y: anchor.y,
           size,
           font,
-          color: color(typography?.color ?? element.style.color),
+          color: color(typography.color),
           opacity,
           rotate: rotation,
           maxWidth: width,
-        }),
-      );
+        });
+    });
     return;
   }
   if (element.type === "image" && element.src) {
