@@ -107,6 +107,30 @@ describe("FileSystemAssetStore.importBuffer", () => {
     expect(second.checksum).toBe(first.checksum);
   });
 
+  it("does not lose entries when multiple imports run concurrently (Promise.all)", async () => {
+    // Regression test: mapHistoricalContributors resolves several
+    // Salesforce images in parallel via Promise.all. Without a write
+    // queue, each importBuffer() call reads the same manifest snapshot,
+    // appends its own asset, and saves -- the last write wins and
+    // silently drops every asset imported by calls in between.
+    const distinctBuffers = Array.from({ length: 8 }, (_, index) =>
+      Buffer.concat([PNG_BYTES, Buffer.from([index])]),
+    );
+    const imported = await Promise.all(
+      distinctBuffers.map((buffer, index) =>
+        store.importBuffer({
+          buffer,
+          mimeType: "image/png",
+          name: `concurrent-${index}.png`,
+        }),
+      ),
+    );
+    const listed = await store.list();
+    for (const asset of imported)
+      expect(listed.map((item) => item.id)).toContain(asset.id);
+    expect(listed).toHaveLength(imported.length);
+  });
+
   it("rejects a disallowed MIME type", async () => {
     await expect(
       store.importBuffer({

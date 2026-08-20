@@ -255,7 +255,6 @@ export function CanvasElement(props: Props) {
     letterSpacing: typography?.letterSpacing ?? element.style.letterSpacing,
     lineHeight: typography?.lineHeight ?? element.style.lineHeight,
     padding: element.style.padding,
-    overflow: "hidden",
     mixBlendMode: element.style.mixBlendMode,
     cursor: element.locked ? "not-allowed" : "move",
     ...strokeStyle(element),
@@ -411,7 +410,7 @@ export function CanvasElement(props: Props) {
       }}
       onContextMenu={(e) => props.onContextMenu(e, element.id)}
     >
-      {content}
+      <div className="element-content-clip">{content}</div>
       {selected && <div className="selection-outline" />}
       {props.cropping && (
         <div className="crop-overlay">
