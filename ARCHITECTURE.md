@@ -6,22 +6,28 @@ LEE Report Studio is a data-driven business document editor. Source retrieval, n
 
 ## Runtime layers
 
-| Layer                | Primary location                                           | Responsibility                                                          |
-| -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Source adapters      | `src/data-providers`                                       | Retrieve isolated source data plus metadata and completeness            |
-| Report domain        | `src/report-engine/schema`                                 | Own strict semantic contracts and generation metadata                   |
-| Calculations         | `src/report-engine/calculations`                           | Compute additive totals, weighted rates, and extrema from raw values    |
-| Provenance           | `src/report-engine/provenance`                             | Preserve source choices, conflicts, and approved visible overrides      |
-| Presentation adapter | `src/report-engine/bindings`                               | Format semantic data for template consumption                           |
-| Generation           | `src/report-engine/generation`                             | Validate, expand repeaters, and create versioned report snapshots       |
-| Template/editor      | `src/types`, `src/components`, `src/App.tsx`               | Own geometry, styling, manual overrides, and creative-tool interactions |
-| Browser renderer     | `src/renderers/browser`                                    | Render fixed-size pages for editing, print, and visual tests            |
-| PDF renderers        | `server/renderers`, `src/renderers/pdf`                    | Produce server Chromium PDFs or invoke the browser fallback             |
-| Validation           | `src/report-engine/validation`, `src/engine/validation.ts` | Report-data validation plus export preflight                            |
+| Layer                 | Primary location                                           | Responsibility                                                          |
+| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Source adapters       | `src/data-providers`                                       | Retrieve isolated source data plus metadata and completeness            |
+| Salesforce client     | `server/integrations/salesforce`                           | Authenticate and execute controlled read-only SOQL server-side          |
+| Ascendix adapter      | `server/integrations/ascendix`                             | Translate centralized Salesforce mappings into domain records           |
+| Report data service   | `server/report-data-service`                               | Own retrieval, calculations, provenance, completeness, and snapshots    |
+| HTTP / MCP interfaces | `server/api`, `server/mcp`                                 | Validate, call shared services, and serialize without business logic    |
+| Report domain         | `src/report-engine/schema`                                 | Own strict semantic contracts and generation metadata                   |
+| Calculations          | `src/report-engine/calculations`                           | Compute additive totals, weighted rates, and extrema from raw values    |
+| Provenance            | `src/report-engine/provenance`                             | Preserve source choices, conflicts, and approved visible overrides      |
+| Presentation adapter  | `src/report-engine/bindings`                               | Format semantic data for template consumption                           |
+| Generation            | `src/report-engine/generation`                             | Validate, expand repeaters, and create versioned report snapshots       |
+| Template/editor       | `src/types`, `src/components`, `src/App.tsx`               | Own geometry, styling, manual overrides, and creative-tool interactions |
+| Browser renderer      | `src/renderers/browser`                                    | Render fixed-size pages for editing, print, and visual tests            |
+| PDF renderers         | `server/renderers`, `src/renderers/pdf`                    | Produce server Chromium PDFs or invoke the browser fallback             |
+| Validation            | `src/report-engine/validation`, `src/engine/validation.ts` | Report-data validation plus export preflight                            |
 
 ## Report instance boundary
 
-A generated report records the template ID/version, generation request, timestamp, normalized data snapshot, expanded pages, manual overrides, and lifecycle status. Editing an instance never mutates the normalized source snapshot or the master template.
+A generated report records the template ID/version, generation request, timestamp, normalized data snapshot, source snapshot ID/hash/definition (for live Ascendix data), expanded pages, manual overrides, and lifecycle status. Editing an instance never mutates the normalized source snapshot or the master template.
+
+For live data the dependency direction is `SalesforceClient -> AscendixReportAdapter -> ReportDataService -> normalized schema -> generation engine`. Both HTTP and MCP call the same `ReportDataService`; neither contains Salesforce mapping or metric calculations.
 
 ## Data flow
 

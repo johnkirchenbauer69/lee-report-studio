@@ -22,7 +22,9 @@ Workbook parsing uses `exceljs`, loaded only for Excel import. The current audit
 
 ## Ascendix
 
-The Ascendix provider is a server-only adapter boundary. It refuses direct browser credential usage and uses only the authenticated endpoint response. Completeness is inferred when absent and response fields receive source-path provenance. Production work still includes authentication, pagination, retries, durable source-record identifiers, mapping tests, and monitoring.
+The browser's Ascendix provider is a thin client for `POST /api/report-data/industrial-market`. It accepts only the strict service envelope and carries snapshot metadata into the `ReportInstance`; it contains no Salesforce credentials, mappings, calculations, or fixture fallback.
+
+The backend chooses the explicit mock or Salesforce Ascendix adapter. Live queries are controlled and mapped through one configuration module. The service adds cross-check lineage, completeness, definition version, and an immutable hash-addressed snapshot before returning data. See `SALESFORCE_INTEGRATION.md` and `REPORT_DATA_SERVICE.md`.
 
 ## Adding a provider
 

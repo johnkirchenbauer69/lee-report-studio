@@ -189,15 +189,26 @@ describe("report data providers", () => {
     payload.historicalPeriods = [];
     payload.provenance = [];
     payload.presentationOverrides = [];
-    delete payload.dataCompleteness;
+    payload.dataCompleteness = [];
     (payload.overallMarket as Record<string, unknown>).narrative = "";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(payload), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+        new Response(
+          JSON.stringify({
+            report: payload,
+            sourceMetadata: {
+              generatedAt: "2026-08-20T12:00:00.000Z",
+              reportDefinitionVersion: "industrial-market-report-data-v1",
+            },
+            completeness: [],
+            snapshot: { id: "snapshot-test", hash: "abc123" },
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
       ),
     );
 
@@ -206,6 +217,10 @@ describe("report data providers", () => {
     );
     expect(result.report.report.period).toBe("2026 Q3");
     expect(result.report.leasing).toEqual([]);
+    expect(result.snapshot).toMatchObject({
+      id: "snapshot-test",
+      hash: "abc123",
+    });
     expect(JSON.stringify(result.report)).not.toContain("Hyundai Translead");
   });
 });

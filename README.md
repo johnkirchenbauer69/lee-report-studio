@@ -7,6 +7,9 @@ LEE Report Studio is a browser-based report production system for building edita
 - Five-step report wizard for template, period, source, geography, and review
 - Strict Zod-based Industrial Market Report schema with raw numeric values
 - Isolated sample, JSON, Excel, and server-only Ascendix provider boundaries; production providers never fall back to fixtures
+- One deterministic Report Data Service shared by the web API and semantic MCP tools
+- Server-only Salesforce OAuth client, configurable Ascendix mapping, historical/current time contexts, and versioned query definitions
+- Immutable normalized source snapshots with canonical SHA-256 change-detection hashes
 - Explicit per-section completeness, imported-field provenance, calculation lineage, and publication readiness
 - Independent overall-market calculation scope and detailed-page selection
 - Central calculations, formatting, field provenance, reconciliation notes, and approved presentation overrides
@@ -26,6 +29,7 @@ Use Node.js 20 or newer (Node 22 recommended):
 
 ```bash
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
@@ -40,7 +44,7 @@ npm run build
 npm run test:visual
 ```
 
-`npm test` is explicitly limited to `src/**/*.test.*` through Vitest. `npm run test:visual` is explicitly limited to `tests/visual/**/*.spec.*` through Playwright. A cross-platform ownership check rejects files placed in the wrong suite.
+`npm test` runs browser-domain tests under `src/**/*.test.*` and server integration tests under `server/**/*.test.*` through Vitest. `npm run test:visual` is explicitly limited to `tests/visual/**/*.spec.*` through Playwright.
 
 Update approved visual baselines only after intentional review:
 
@@ -54,7 +58,8 @@ Visual failures write actual, expected, and diff images to `test-results/` and t
 
 ```text
 Report request
-  -> provider (sample / JSON / Excel / Ascendix)
+  -> provider (sample / JSON / Excel / Ascendix HTTP client)
+  -> shared Report Data Service -> Ascendix adapter -> Salesforce
   -> strict normalized report schema + completeness envelope
   -> scoped calculations + provenance reconciliation
   -> readiness validation
@@ -65,7 +70,7 @@ Report request
   -> Chromium PDF job (or browser fallback)
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [DATA_INTEGRITY.md](DATA_INTEGRITY.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
+See [ARCHITECTURE.md](ARCHITECTURE.md), [REPORT_DATA_SERVICE.md](REPORT_DATA_SERVICE.md), [SALESFORCE_INTEGRATION.md](SALESFORCE_INTEGRATION.md), [MCP_INTEGRATION.md](MCP_INTEGRATION.md), [REPORT_DATA_MODEL.md](REPORT_DATA_MODEL.md), [DATA_PROVIDERS.md](DATA_PROVIDERS.md), [DATA_INTEGRITY.md](DATA_INTEGRITY.md), [RENDERING.md](RENDERING.md), and [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md).
 
 ## Local storage
 
@@ -76,7 +81,9 @@ Templates and report editing state currently persist in LocalStorage. Uploaded a
 - Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
 - Excel v1 maps the supplied submarket sheet only. Sections absent from a workbook remain empty, are declared missing, appear as empty states, and block publication when required by the template.
 - Excel workbooks do not yet provide robust internal period metadata; the generation request supplies report period/market metadata while workbook name, sheet, cell, and import time remain traceable provenance.
-- The Ascendix provider is a server-only integration contract, not a configured production endpoint.
+- Salesforce field names are centralized but unverified placeholders until confirmed against the production Ascendix org; live mode fails clearly instead of using the mock fixture.
+- Report snapshots are process-local and require durable persistence before multi-instance production deployment.
+- MCP implements the read/validate/provenance subset; durable report-instance persistence is required before `create_market_report`.
 - Approved raster chart exports remain in the four-page fixture until native SVG charts reach the same visual fidelity.
 - `/api/render/pdf` is a local transient job service without authentication, durable queues, or object storage.
 - LocalStorage and disk-backed assets require database/object-storage replacements for multi-user production.

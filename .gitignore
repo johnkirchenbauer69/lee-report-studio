@@ -11,6 +11,7 @@ visual-report/
 .DS_Store
 .env
 .env.*
+!.env.example
 *.local
 *.tsbuildinfo
 vite.config.js
