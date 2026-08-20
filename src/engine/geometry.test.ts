@@ -40,6 +40,29 @@ describe("rotation geometry", () => {
     expect(snapRotation(88, { bypass: true })).toBe(88);
   });
 
+  it("drag rotation snaps to 90 within the ~5 degree threshold", () => {
+    expect(snapRotation(92)).toBe(90);
+    expect(snapRotation(86)).toBe(90);
+  });
+
+  it("drag rotation snaps to 45 within the ~5 degree threshold", () => {
+    expect(snapRotation(47)).toBe(45);
+    expect(snapRotation(41)).toBe(45);
+  });
+
+  it("free rotation with Alt bypass never snaps, even near a stop angle", () => {
+    expect(snapRotation(43, { bypass: true })).toBe(43);
+    expect(snapRotation(91, { bypass: true })).toBe(91);
+  });
+
+  it("resolves the full 0/45/90/.../360 stop set via normalized 360<->0 wrap", () => {
+    [0, 45, 90, 135, 180, 225, 270, 315].forEach((stop) => {
+      expect(snapRotation(stop + 3)).toBe(stop === 0 ? 0 : stop);
+      expect(snapRotation(stop - 3)).toBe(stop);
+    });
+    expect(snapRotation(358)).toBe(0);
+  });
+
   it("snaps using rotated visual bounds", () => {
     const result = snapPosition({
       x: 48,

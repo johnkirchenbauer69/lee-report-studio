@@ -50,7 +50,7 @@ describe("historical contributors", () => {
       "metric",
     ]);
   });
-  it("maps all production card families with relationship fallbacks", () => {
+  it("maps all production card families with relationship fallbacks", async () => {
     const common = {
       Rank__c: 1,
       Sort_Value__c: 100,
@@ -60,7 +60,7 @@ describe("historical contributors", () => {
         ascendix__PrimaryImage__c: "/img.png",
       },
     };
-    const mapped = mapHistoricalContributors([
+    const mapped = await mapHistoricalContributors([
       row({
         ...common,
         Id: "l",
@@ -111,6 +111,54 @@ describe("historical contributors", () => {
       mapped.construction.length,
     ]).toEqual([1, 1, 1, 1, 1]);
     expect(mapped.provenance).toHaveLength(5);
+    // Non-Salesforce-id image values (already a real URL) pass through unchanged.
+    expect(mapped.availabilities[0].image).toBe("/img.png");
+    expect(mapped.imageWarnings).toHaveLength(0);
+  });
+
+  it("never emits a bare Salesforce Attachment id as an image URL, even without a resolver wired up", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "a",
+        Contributor_Category__c: "Largest Availability",
+        Available_SF__c: 100,
+        Address__c: "1 Main",
+        Availability__r: {
+          ascendix__Property__r: {
+            ascendix__PrimaryImage__c: "00PVy00000AbCdEfGh",
+          },
+        },
+      }),
+    ]);
+    expect(mapped.availabilities[0].image).toBe("");
+    expect(mapped.imageWarnings).toHaveLength(1);
+    expect(mapped.imageWarnings[0]).toMatch(/00PVy00000AbCdEfGh/);
+  });
+
+  it("resolves a bare Salesforce Attachment id through a supplied image resolver into a Studio asset URL", async () => {
+    const mapped = await mapHistoricalContributors(
+      [
+        row({
+          Id: "a",
+          Contributor_Category__c: "Largest Availability",
+          Available_SF__c: 100,
+          Address__c: "1 Main",
+          Availability__r: {
+            ascendix__Property__r: {
+              ascendix__PrimaryImage__c: "00PVy00000AbCdEfGh",
+            },
+          },
+        }),
+      ],
+      async (value) =>
+        value === "00PVy00000AbCdEfGh"
+          ? { url: "/api/assets/resolved-asset-id/content" }
+          : { url: value },
+    );
+    expect(mapped.availabilities[0].image).toBe(
+      "/api/assets/resolved-asset-id/content",
+    );
+    expect(mapped.imageWarnings).toHaveLength(0);
   });
   it("scopes standard submarkets, excludes non-report rows, and flags parent conflicts", () => {
     const rows = [
@@ -183,8 +231,8 @@ describe("historical contributors", () => {
       rankContributors(rows, "availabilities").map((item) => item.Id),
     ).toEqual(["i80", "i55", "ohare"]);
   });
-  it("prefers frozen contributor-native values over mutable enrichment", () => {
-    const mapped = mapHistoricalContributors([
+  it("prefers frozen contributor-native values over mutable enrichment", async () => {
+    const mapped = await mapHistoricalContributors([
       row({
         Id: "lease",
         Contributor_Category__c: "Largest New Lease",

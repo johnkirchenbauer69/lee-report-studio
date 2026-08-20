@@ -756,6 +756,22 @@ button {
   cursor: grab;
   z-index: 1003;
 }
+.rotation-tooltip {
+  position: absolute;
+  left: 50%;
+  top: -66px;
+  transform: translateX(-50%);
+  background: var(--selected);
+  color: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  padding: 0 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 1005;
+  pointer-events: none;
+}
 .element-badge {
   position: absolute;
   left: -2px;
@@ -1144,6 +1160,7 @@ button {
   .resize-handle,
   .rotation-handle,
   .rotation-stem,
+  .rotation-tooltip,
   .element-badge {
     display: none !important;
   }

@@ -17,6 +17,7 @@ import {
   distribute,
   formatUnit,
   PX_PER_INCH,
+  rotateGroupedElements,
   scaleGroupedElements,
 } from "./engine/editorMath";
 import { CanvasElement } from "./components/CanvasElement";
@@ -29,6 +30,10 @@ import { localPersistence } from "./services/persistence";
 import { assetStorage } from "./services/assetStorage";
 import { exportReportPdf } from "./services/pdfExport";
 import { exportChromiumPdf } from "./renderers/pdf/ChromiumPdfClient";
+import {
+  classifyExportError,
+  describeExportFailure,
+} from "./services/pdfExportDiagnostics";
 import {
   runExportPreflight,
   type ExportPreflightIssue,
@@ -238,6 +243,16 @@ export default function App() {
           return {
             ...current,
             elements: scaleGroupedElements(current.elements, id, patch),
+          };
+        }
+        if (source?.groupId && patch.rotation != null) {
+          return {
+            ...current,
+            elements: rotateGroupedElements(
+              current.elements,
+              id,
+              patch.rotation,
+            ),
           };
         }
         return {
@@ -765,23 +780,45 @@ export default function App() {
       const issues = await runExportPreflight(template);
       setPreflightIssues(issues);
       const errors = issues.filter((issue) => issue.level === "error");
-      if (errors.length)
-        throw new Error(errors.map((issue) => issue.message).join("\n"));
+      if (errors.length) {
+        const failure = classifyExportError(
+          "preflight",
+          new Error(errors.map((issue) => issue.message).join(" ")),
+        );
+        console.error("PDF export blocked by preflight errors.", failure);
+        notify(describeExportFailure(failure));
+        return;
+      }
       const fileName = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+      let chromiumFailure: ReturnType<typeof classifyExportError> | undefined;
       try {
         await exportChromiumPdf(template, reportData, fileName);
       } catch (chromiumError) {
+        chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
           "Chromium renderer unavailable; using deterministic fallback.",
-          chromiumError,
+          chromiumFailure,
         );
-        await exportReportPdf(template, reportData, fileName);
+        try {
+          await exportReportPdf(template, reportData, fileName);
+        } catch (fallbackError) {
+          const fallbackFailure = classifyExportError(
+            "fallback",
+            fallbackError,
+          );
+          console.error(
+            "PDF export failed on both the Chromium and fallback renderers.",
+            { chromiumFailure, fallbackFailure },
+          );
+          notify(describeExportFailure(chromiumFailure, fallbackFailure));
+          return;
+        }
       }
       notify(
         `${template.pages.filter((item) => !item.hidden).length}-page PDF exported${issues.length ? ` · ${issues.length} preflight warning${issues.length === 1 ? "" : "s"}` : ""}`,
       );
     } catch (error) {
-      console.error(error);
+      console.error("PDF export failed unexpectedly.", error);
       notify("The PDF could not be generated.");
     } finally {
       setExportingPdf(false);

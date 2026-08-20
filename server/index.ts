@@ -18,7 +18,7 @@ const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
-const reportDataService = createReportDataService();
+const reportDataService = createReportDataService({ assetStore, dataRoot });
 await assetStore.initialize();
 
 const upload = multer({
