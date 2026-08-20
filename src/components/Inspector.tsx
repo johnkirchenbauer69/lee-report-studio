@@ -12,6 +12,7 @@ import {
   BUILTIN_FONT_FAMILIES,
   groupFontAssets,
 } from "../services/fontRegistry";
+import { resolveTypography, withTypography } from "../engine/typography";
 import {
   formatValue,
   getByContextPath,
@@ -78,7 +79,7 @@ function ColorField({
           aria-label={`${label} picker`}
           type="color"
           value={value === "transparent" ? "#ffffff" : value}
-          onChange={(e) => onChange(e.target.value)}
+          onInput={(e) => onChange(e.currentTarget.value)}
         />
         <input value={value} onChange={(e) => onChange(e.target.value)} />
         {allowNone && (
@@ -95,18 +96,6 @@ function ColorField({
   );
 }
 
-const typographyDefaults: Typography = {
-  fontFamily: "Inter",
-  fontWeight: 400,
-  fontSize: 16,
-  color: "#111827",
-  letterSpacing: 0,
-  lineHeight: 1.2,
-  textAlign: "left",
-  verticalAlign: "top",
-  italic: false,
-  underline: false,
-};
 const strokeDefaults: Stroke = {
   enabled: false,
   color: "#111827",
@@ -149,9 +138,9 @@ export function Inspector({
     onChange({
       [key]: toPixels(Number(value), unit),
     } as Partial<ReportElement>);
-  const typography = { ...typographyDefaults, ...element.style.typography };
+  const typography = resolveTypography(element.style);
   const setTypography = (patch: Partial<Typography>) =>
-    setStyle({ typography: { ...typography, ...patch } });
+    onChange({ style: withTypography(element.style, patch) });
   const managedFamilies = groupFontAssets(fontAssets);
   const activeManagedFaces = managedFamilies.get(typography.fontFamily) ?? [];
   const activeBuiltin = BUILTIN_FONT_FAMILIES.find(
@@ -290,7 +279,10 @@ export function Inspector({
             }
           />
         </label>
-        <div className="icon-grid six" aria-label="Alignment controls">
+        <span className="control-label">
+          {selectionCount === 1 ? "Align box to page" : "Align selected boxes"}
+        </span>
+        <div className="icon-grid six" aria-label="Box alignment controls">
           {(
             [
               ["left", "⇤"],
@@ -303,7 +295,11 @@ export function Inspector({
           ).map(([value, icon]) => (
             <button
               key={value}
-              title={`Align ${value}`}
+              title={
+                selectionCount === 1
+                  ? `Align box ${value} to page`
+                  : `Align selected boxes ${value}`
+              }
               onClick={() => onAlign(value)}
             >
               {icon}
@@ -545,6 +541,7 @@ export function Inspector({
             >
               {[
                 ...new Set([
+                  typography.fontFamily,
                   ...BUILTIN_FONT_FAMILIES.map((font) => font.family),
                   ...managedFamilies.keys(),
                 ]),
@@ -614,7 +611,7 @@ export function Inspector({
               />
             </label>
           </div>
-          <div className="icon-grid">
+          <div className="icon-grid text-style-controls">
             <button
               className={
                 (typography.fontStyle ??
@@ -657,16 +654,39 @@ export function Inspector({
             >
               TT
             </button>
-            {(["left", "center", "right", "justify"] as const).map((value) => (
-              <button
-                key={value}
-                className={typography.textAlign === value ? "active" : ""}
-                title={`Align ${value}`}
-                onClick={() => setTypography({ textAlign: value })}
-              >
-                {value[0].toUpperCase()}
-              </button>
-            ))}
+          </div>
+          <div className="text-alignment-groups">
+            <span>Text alignment</span>
+            <div className="segmented" aria-label="Horizontal text alignment">
+              {(["left", "center", "right", "justify"] as const).map(
+                (value) => (
+                  <button
+                    key={`horizontal-${value}`}
+                    className={typography.textAlign === value ? "active" : ""}
+                    title={`Text align ${value}`}
+                    onClick={() => setTypography({ textAlign: value })}
+                  >
+                    {value === "justify"
+                      ? "Justify"
+                      : value[0].toUpperCase() + value.slice(1)}
+                  </button>
+                ),
+              )}
+            </div>
+            <div className="segmented" aria-label="Vertical text alignment">
+              {(["top", "middle", "bottom"] as const).map((value) => (
+                <button
+                  key={`vertical-${value}`}
+                  className={
+                    typography.verticalAlign === value ? "active" : ""
+                  }
+                  title={`Vertically align text ${value}`}
+                  onClick={() => setTypography({ verticalAlign: value })}
+                >
+                  {value[0].toUpperCase() + value.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </Section>
       )}

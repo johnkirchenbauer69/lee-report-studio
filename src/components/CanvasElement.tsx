@@ -9,6 +9,10 @@ import { fillToCss, snapPosition } from "../engine/editorMath";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 import { NativeChart } from "../report-engine/charts/NativeChart";
 import { normalizeRotation, snapRotation } from "../engine/geometry";
+import {
+  resolveTypography,
+  verticalAlignmentClass,
+} from "../engine/typography";
 
 interface Props {
   element: ReportElement;
@@ -210,7 +214,10 @@ export function CanvasElement(props: Props) {
     window.addEventListener("pointerup", up);
   };
 
-  const typography = element.style.typography;
+  const typography =
+    element.type === "text"
+      ? resolveTypography(element.style)
+      : element.style.typography;
   const style: React.CSSProperties = {
     position: "absolute",
     left: element.x,
@@ -275,7 +282,7 @@ export function CanvasElement(props: Props) {
         : element.text;
     content = (
       <div
-        className={`text-content vertical-${typography?.verticalAlign ?? "top"}`}
+        className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}
       >
         {typography?.uppercase ? raw.toUpperCase() : raw}
       </div>

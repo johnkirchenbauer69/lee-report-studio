@@ -215,6 +215,32 @@
     display: none !important;
   }
 }
+
+.text-alignment-groups {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.control-label {
+  display: block;
+  margin-top: 8px;
+  color: #697585;
+  font-size: 9px;
+}
+
+.icon-grid.text-style-controls {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.text-alignment-groups > span {
+  color: #697585;
+  font-size: 9px;
+}
+
+.text-alignment-groups .segmented button {
+  font-size: 9px;
+}
 .table-market-matrix {
   table-layout: fixed;
   font-size: 8px;
