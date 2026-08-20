@@ -27,4 +27,49 @@ describe("generateReportInstance", () => {
       message: "Report ready to edit and publish",
     });
   });
+
+  it("preserves rotation and checksum-pins managed font faces", async () => {
+    const template = structuredClone(sampleTemplate);
+    template.assets = [
+      {
+        id: "nunito-bold",
+        name: "Nunito Sans Bold",
+        type: "font",
+        mimeType: "font/ttf",
+        source: "/api/assets/nunito-bold/content",
+        createdAt: "2026-08-20T00:00:00.000Z",
+        fontFamily: "Nunito Sans",
+        fontWeight: 700,
+        fontStyle: "normal",
+        checksum: "abc123",
+        storage: "backend",
+      },
+    ];
+    const report = await generateReportInstance(template, {
+      templateId: template.id,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarkets: [] },
+      source: { provider: "sample" },
+    });
+    expect(report.fontReferences).toEqual([
+      {
+        assetId: "nunito-bold",
+        family: "Nunito Sans",
+        weight: 700,
+        style: "normal",
+        checksum: "abc123",
+      },
+    ]);
+    expect(
+      report.pages
+        .flatMap((page) => page.elements)
+        .filter(
+          (element) =>
+            element.id === "leases-side" || element.id === "sales-side",
+        )
+        .map((element) => element.rotation),
+    ).toEqual([90, 90]);
+  });
 });

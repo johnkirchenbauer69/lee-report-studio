@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:client": "vite",
+    "dev:client": "vite --config vite.config.ts",
     "dev:server": "tsx watch server/index.ts",
     "start": "tsx server/index.ts",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --config vite.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "test": "npm run test:ownership && vitest run --config vitest.config.ts",
@@ -26,6 +26,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "fontkit": "^2.0.4",
     "multer": "^2.2.0",
     "pdf-lib": "^1.17.1",
     "playwright": "^1.62.1",
@@ -33,23 +34,28 @@
     "react-dom": "latest",
     "typescript": "latest",
     "vite": "latest",
+    "yauzl": "^3.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/fontkit": "^2.0.9",
     "@types/multer": "^2.2.0",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
     "prettier": "^3.9.6",
     "tsx": "^4.23.12",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yazl": "^3.3.1"
   }
 }

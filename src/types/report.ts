@@ -40,6 +40,10 @@ export interface Stroke {
 export interface Typography {
   fontFamily: string;
   fontWeight: number | string;
+  fontStyle?: "normal" | "italic";
+  /** Stable references keep a generated report tied to the exact managed face. */
+  fontAssetId?: string;
+  fontChecksum?: string;
   fontSize: number;
   color: string;
   letterSpacing: number;
@@ -240,8 +244,24 @@ export interface Asset {
   source: string;
   createdAt: string;
   fontFamily?: string;
+  fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  postScriptName?: string;
+  checksum?: string;
+  scope?: "builtin" | "organization" | "template";
+  storageKey?: string;
+  license?: { type?: string; fileName?: string };
+  version?: number;
   storage?: "backend" | "browser";
   size?: number;
+}
+
+export interface FontReference {
+  assetId: string;
+  family: string;
+  weight: number;
+  style: "normal" | "italic";
+  checksum: string;
 }
 
 export interface EditorSettings {

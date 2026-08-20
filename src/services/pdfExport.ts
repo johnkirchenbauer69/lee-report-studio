@@ -17,6 +17,23 @@ import type {
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 
 const POINTS_PER_PIXEL = 72 / 96;
+const rotatedBoxOrigin = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  rotation: number,
+) => {
+  const radians = (-rotation * Math.PI) / 180;
+  const cosine = Math.cos(radians),
+    sine = Math.sin(radians);
+  const halfX = width / 2,
+    halfY = height / 2;
+  return {
+    x: x + halfX - (cosine * halfX - sine * halfY),
+    y: y + halfY - (sine * halfX + cosine * halfY),
+  };
+};
 const color = (value: string | undefined) => {
   const normalized = (value ?? "#000000").replace("#", "");
   if (normalized === "transparent" || normalized.length < 6)
@@ -69,15 +86,16 @@ function drawFill(
     height = element.height * POINTS_PER_PIXEL,
     opacity = element.style.opacity ?? 1;
   if (!fill || fill.type === "solid") {
+    const origin = rotatedBoxOrigin(x, y, width, height, element.rotation ?? 0);
     page.drawRectangle({
-      x,
-      y,
+      ...origin,
       width,
       height,
       color: color(
         fill?.type === "solid" ? fill.color : element.style.background,
       ),
       opacity,
+      rotate: degrees(-(element.rotation ?? 0)),
     });
     return;
   }
@@ -338,7 +356,8 @@ async function drawElement(
     width = element.width * POINTS_PER_PIXEL,
     height = element.height * POINTS_PER_PIXEL,
     opacity = element.style.opacity ?? 1,
-    rotation = degrees(-(element.rotation ?? 0));
+    rotation = degrees(-(element.rotation ?? 0)),
+    origin = rotatedBoxOrigin(x, y, width, height, element.rotation ?? 0);
   if (element.type === "shape") {
     if (element.shape === "circle")
       pdfPage.drawEllipse({
@@ -348,19 +367,20 @@ async function drawElement(
         yScale: height / 2,
         color: color(element.style.background),
         opacity,
+        rotate: rotation,
       });
     else drawFill(pdfPage, reportPage, element, element.style.fill);
     const stroke = element.style.stroke;
     if (stroke?.enabled)
       pdfPage.drawRectangle({
-        x,
-        y,
+        ...origin,
         width,
         height,
         borderColor: color(stroke.color),
         borderWidth: stroke.width * POINTS_PER_PIXEL,
         borderOpacity: stroke.opacity,
         opacity: 0,
+        rotate: rotation,
       });
     return;
   }
@@ -396,8 +416,14 @@ async function drawElement(
       .slice(0, Math.max(1, Math.floor(height / lineHeight)))
       .forEach((line, index) =>
         pdfPage.drawText(line, {
-          x,
-          y: y + height - size - index * lineHeight,
+          x:
+            origin.x +
+            Math.sin(((element.rotation ?? 0) * Math.PI) / 180) *
+              (height - size - index * lineHeight),
+          y:
+            origin.y +
+            Math.cos(((element.rotation ?? 0) * Math.PI) / 180) *
+              (height - size - index * lineHeight),
           size,
           font,
           color: color(typography?.color ?? element.style.color),
@@ -421,8 +447,7 @@ async function drawElement(
         await croppedPng(element, resolvedSource),
       );
       pdfPage.drawImage(embedded, {
-        x,
-        y,
+        ...origin,
         width,
         height,
         opacity,
@@ -474,6 +499,21 @@ export async function createReportPdfBytes(
   template: ReportTemplate,
   data: unknown,
 ) {
+  if ((template.assets ?? []).some((asset) => asset.type === "font"))
+    throw new Error(
+      "Managed-font reports require the Chromium PDF renderer so editor and PDF typography remain identical.",
+    );
+  const rotatedComplex = template.pages
+    .flatMap((page) => page.elements)
+    .find(
+      (element) =>
+        (element.type === "table" || element.type === "chart") &&
+        (element.rotation ?? 0) !== 0,
+    );
+  if (rotatedComplex)
+    throw new Error(
+      `Rotated ${rotatedComplex.type} elements require the Chromium PDF renderer.`,
+    );
   const pdf = await PDFDocument.create();
   pdf.setTitle(template.name);
   pdf.setCreator("LEE Report Studio");

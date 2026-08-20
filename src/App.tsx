@@ -45,6 +45,12 @@ import type {
 } from "./report-engine/schema/generation";
 import type { IndustrialMarketReport } from "./report-engine/schema/industrialMarketReport";
 import { getByContextPath } from "./engine/bindings";
+import {
+  elementRect,
+  getRotatedAabb,
+  normalizeRotation,
+} from "./engine/geometry";
+import { groupFontAssets, installManagedFonts } from "./services/fontRegistry";
 import "./styles/app.css";
 import "./styles/advanced.css";
 
@@ -73,7 +79,18 @@ function hydrate(input: ReportTemplate): ReportTemplate {
       ...page,
       elements: page.elements.map((element) => ({
         ...element,
-        style: { ...element.style },
+        rotation: normalizeRotation(element.rotation),
+        style: {
+          ...element.style,
+          typography: element.style.typography
+            ? {
+                ...element.style.typography,
+                fontStyle:
+                  element.style.typography.fontStyle ??
+                  (element.style.typography.italic ? "italic" : "normal"),
+              }
+            : undefined,
+        },
       })),
     })),
   };
@@ -85,6 +102,7 @@ type LeftTab =
   | "text"
   | "images"
   | "uploads"
+  | "fonts"
   | "data"
   | "pages"
   | "validate";
@@ -178,18 +196,10 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [template]);
   useEffect(() => {
-    (template.assets ?? [])
-      .filter((asset) => asset.type === "font" && asset.fontFamily)
-      .forEach(async (asset) => {
-        try {
-          const face = new FontFace(asset.fontFamily!, `url(${asset.source})`);
-          await face.load();
-          document.fonts.add(face);
-        } catch (error) {
-          console.warn("A saved font could not be restored.", error);
-        }
-      });
-  }, []);
+    installManagedFonts(template.assets ?? []).catch((error) =>
+      console.warn("Saved managed fonts could not be restored.", error),
+    );
+  }, [template.assets]);
   useEffect(() => {
     assetStorage
       .list()
@@ -366,31 +376,21 @@ export default function App() {
     }
   };
   const undo = useCallback(() => {
-    setPast((items) => {
-      const previous = items.at(-1);
-      if (!previous) return items;
-      setFuture((next) => [
-        clone(latestTemplate.current),
-        ...next.slice(0, 49),
-      ]);
-      latestTemplate.current = clone(previous);
-      setTemplate(clone(previous));
-      return items.slice(0, -1);
-    });
-  }, []);
+    const previous = past.at(-1);
+    if (!previous) return;
+    setFuture([clone(latestTemplate.current), ...future.slice(0, 49)]);
+    setPast(past.slice(0, -1));
+    latestTemplate.current = clone(previous);
+    setTemplate(clone(previous));
+  }, [future, past]);
   const redo = useCallback(() => {
-    setFuture((items) => {
-      const next = items[0];
-      if (!next) return items;
-      setPast((previous) => [
-        ...previous.slice(-49),
-        clone(latestTemplate.current),
-      ]);
-      latestTemplate.current = clone(next);
-      setTemplate(clone(next));
-      return items.slice(1);
-    });
-  }, []);
+    const next = future[0];
+    if (!next) return;
+    setPast([...past.slice(-49), clone(latestTemplate.current)]);
+    setFuture(future.slice(1));
+    latestTemplate.current = clone(next);
+    setTemplate(clone(next));
+  }, [future, past]);
 
   const select = (id: string, additive: boolean) => {
     if (croppingId && croppingId !== id) setCroppingId(undefined);
@@ -607,30 +607,58 @@ export default function App() {
         selectedIds.includes(element.id),
       );
       if (!chosen.length) return current;
+      const chosenBounds = chosen.map((element) => ({
+        element,
+        bounds: getRotatedAabb(elementRect(element)),
+      }));
       const minX =
-          chosen.length === 1 ? 0 : Math.min(...chosen.map((e) => e.x)),
+          chosen.length === 1
+            ? 0
+            : Math.min(...chosenBounds.map(({ bounds }) => bounds.x)),
         maxX =
           chosen.length === 1
             ? page.width
-            : Math.max(...chosen.map((e) => e.x + e.width));
+            : Math.max(
+                ...chosenBounds.map(({ bounds }) => bounds.x + bounds.width),
+              );
       const minY =
-          chosen.length === 1 ? 0 : Math.min(...chosen.map((e) => e.y)),
+          chosen.length === 1
+            ? 0
+            : Math.min(...chosenBounds.map(({ bounds }) => bounds.y)),
         maxY =
           chosen.length === 1
             ? page.height
-            : Math.max(...chosen.map((e) => e.y + e.height));
+            : Math.max(
+                ...chosenBounds.map(({ bounds }) => bounds.y + bounds.height),
+              );
       return {
         ...current,
         elements: current.elements.map((element) => {
           if (!selectedIds.includes(element.id)) return element;
-          if (value === "left") return { ...element, x: minX };
-          if (value === "right") return { ...element, x: maxX - element.width };
+          const bounds = getRotatedAabb(elementRect(element));
+          if (value === "left")
+            return { ...element, x: element.x + minX - bounds.x };
+          if (value === "right")
+            return {
+              ...element,
+              x: element.x + maxX - (bounds.x + bounds.width),
+            };
           if (value === "center")
-            return { ...element, x: (minX + maxX - element.width) / 2 };
-          if (value === "top") return { ...element, y: minY };
+            return {
+              ...element,
+              x: element.x + (minX + maxX) / 2 - (bounds.x + bounds.width / 2),
+            };
+          if (value === "top")
+            return { ...element, y: element.y + minY - bounds.y };
           if (value === "bottom")
-            return { ...element, y: maxY - element.height };
-          return { ...element, y: (minY + maxY - element.height) / 2 };
+            return {
+              ...element,
+              y: element.y + maxY - (bounds.y + bounds.height),
+            };
+          return {
+            ...element,
+            y: element.y + (minY + maxY) / 2 - (bounds.y + bounds.height / 2),
+          };
         }),
       };
     });
@@ -801,24 +829,28 @@ export default function App() {
     if (!files) return;
     try {
       notify("Uploading assets…");
-      const assets = await assetStorage.upload(Array.from(files));
-      for (const asset of assets) {
-        if (asset.type === "font" && asset.fontFamily) {
-          try {
-            const face = new FontFace(asset.fontFamily, `url(${asset.source})`);
-            await face.load();
-            document.fonts.add(face);
-          } catch (error) {
-            console.warn("This font could not be loaded.", error);
-          }
-        }
-      }
+      const { assets, summary } = await assetStorage.upload(Array.from(files));
+      await installManagedFonts([
+        ...(latestTemplate.current.assets ?? []),
+        ...assets,
+      ]);
       mutate((current) => ({
         ...current,
         assets: [...(current.assets ?? []), ...assets],
       }));
+      const details = [
+        summary.duplicates
+          ? `${summary.duplicates} duplicate${summary.duplicates === 1 ? "" : "s"} skipped`
+          : "",
+        summary.conflicts
+          ? `${summary.conflicts} version conflict${summary.conflicts === 1 ? "" : "s"} retained`
+          : "",
+        summary.rejected.length ? `${summary.rejected.length} rejected` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       notify(
-        `${assets.length} asset${assets.length === 1 ? "" : "s"} stored ${assets.every((asset) => asset.storage === "backend") ? "on the server" : "in this browser"}`,
+        `${summary.imported + summary.conflicts} imported${details ? ` · ${details}` : ""}`,
       );
     } catch (error) {
       console.error(error);
@@ -826,6 +858,14 @@ export default function App() {
     } finally {
       if (uploadRef.current) uploadRef.current.value = "";
     }
+  };
+  const removeAsset = async (asset: Asset) => {
+    await assetStorage.remove(asset.id);
+    mutate((current) => ({
+      ...current,
+      assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
+    }));
+    notify(`${asset.name} removed`);
   };
 
   useEffect(() => {
@@ -966,6 +1006,80 @@ export default function App() {
           </button>
         </>
       );
+    if (leftTab === "fonts") {
+      const fontAssets = (template.assets ?? []).filter(
+        (asset) => asset.type === "font" && asset.fontFamily,
+      );
+      const families = groupFontAssets(fontAssets);
+      return (
+        <>
+          <PanelTitle
+            title="Fonts"
+            subtitle="Managed organization font library"
+          />
+          <button
+            className="upload-drop compact-upload"
+            onClick={() => uploadRef.current?.click()}
+          >
+            <span>↥</span>
+            <strong>Import font bundle</strong>
+            <small>ZIP, WOFF2, WOFF, TTF or OTF</small>
+          </button>
+          <input
+            hidden
+            multiple
+            ref={uploadRef}
+            type="file"
+            accept=".zip,.woff,.woff2,.ttf,.otf"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+          <div className="font-library">
+            {[...families.entries()].map(([family, faces]) => (
+              <section className="font-family-card" key={family}>
+                <header>
+                  <strong style={{ fontFamily: family }}>{family}</strong>
+                  <span>{faces.length} faces</span>
+                </header>
+                {faces
+                  .sort(
+                    (a, b) =>
+                      (a.fontWeight ?? 400) - (b.fontWeight ?? 400) ||
+                      (a.fontStyle ?? "normal").localeCompare(
+                        b.fontStyle ?? "normal",
+                      ),
+                  )
+                  .map((face) => (
+                    <div className="font-face-row" key={face.id}>
+                      <span>
+                        {face.fontWeight ?? 400} {face.fontStyle ?? "normal"}
+                      </span>
+                      <small title={face.checksum}>
+                        {face.license?.type ?? "License not supplied"}
+                        {(face.version ?? 1) > 1 ? ` · v${face.version}` : ""}
+                      </small>
+                      <button
+                        title="Remove font face"
+                        onClick={() => removeAsset(face)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+              </section>
+            ))}
+          </div>
+          {!fontAssets.length && (
+            <div className="empty-state">
+              <strong>No managed fonts</strong>
+              <span>
+                Import a font-family ZIP to expose its real weights and styles
+                in the editor.
+              </span>
+            </div>
+          )}
+        </>
+      );
+    }
     if (leftTab === "uploads" || leftTab === "images")
       return (
         <>
@@ -979,14 +1093,14 @@ export default function App() {
           >
             <span>↥</span>
             <strong>Upload files</strong>
-            <small>PNG, JPG, WebP, SVG, WOFF, TTF or OTF</small>
+            <small>PNG, JPG, WebP, SVG, ZIP, WOFF2, WOFF, TTF or OTF</small>
           </button>
           <input
             hidden
             multiple
             ref={uploadRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml,.woff,.woff2,.ttf,.otf"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,.zip,.woff,.woff2,.ttf,.otf"
             onChange={(e) => handleFiles(e.target.files)}
           />
           <div className="asset-grid">
@@ -1342,6 +1456,7 @@ export default function App() {
               ["text", "T", "Text"],
               ["images", "▧", "Images"],
               ["uploads", "↥", "Uploads"],
+              ["fonts", "Aa", "Fonts"],
               ["data", "⛓", "Data"],
               ["validate", "✓", "QA"],
             ] as const
@@ -1536,9 +1651,9 @@ export default function App() {
           selectionCount={selectedIds.length}
           data={reportData}
           report={normalizedReport}
-          fontFamilies={(template.assets ?? [])
-            .filter((asset) => asset.type === "font" && asset.fontFamily)
-            .map((asset) => asset.fontFamily!)}
+          fontAssets={(template.assets ?? []).filter(
+            (asset) => asset.type === "font" && asset.fontFamily,
+          )}
           cropping={croppingId === selected?.id}
           onToggleCrop={() =>
             setCroppingId((current) =>

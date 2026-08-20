@@ -176,6 +176,22 @@ export async function generateReportInstance(
     generatedAt: new Date().toISOString(),
     dataSnapshot: structuredClone(reconciled),
     pages,
+    fontReferences: (template.assets ?? [])
+      .filter(
+        (asset) =>
+          asset.type === "font" &&
+          asset.fontFamily &&
+          asset.fontWeight != null &&
+          asset.fontStyle &&
+          asset.checksum,
+      )
+      .map((asset) => ({
+        assetId: asset.id,
+        family: asset.fontFamily!,
+        weight: asset.fontWeight!,
+        style: asset.fontStyle!,
+        checksum: asset.checksum!,
+      })),
     manualOverrides: [],
     readiness,
     status: "draft",

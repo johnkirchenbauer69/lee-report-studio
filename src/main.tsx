@@ -8,15 +8,19 @@ import {
 } from "./renderers/browser/PrintReport";
 import "./styles/app.css";
 import "./styles/advanced.css";
+import { RotationFontBenchmarkPage } from "./renderers/browser/RotationFontBenchmarkPage";
 
 const params = new URLSearchParams(window.location.search);
 const benchmark = params.get("benchmark") === "1";
 const printJob = params.get("printJob");
 const printBenchmark = params.get("printBenchmark") === "1";
+const rotationBenchmark = params.get("rotationBenchmark") === "1";
 const content = printJob ? (
   <PrintReport jobId={printJob} />
 ) : printBenchmark ? (
   <BenchmarkPrintReport />
+) : rotationBenchmark ? (
+  <RotationFontBenchmarkPage />
 ) : benchmark ? (
   <BenchmarkPage pageIndex={Number(params.get("page") ?? 0)} />
 ) : (

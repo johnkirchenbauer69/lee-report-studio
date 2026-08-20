@@ -1,4 +1,5 @@
 import type {
+  Asset,
   Fill,
   ReportElement,
   Stroke,
@@ -6,6 +7,11 @@ import type {
   Unit,
 } from "../types/report";
 import { formatUnit, toPixels, unitStep } from "../engine/editorMath";
+import { normalizeRotation } from "../engine/geometry";
+import {
+  BUILTIN_FONT_FAMILIES,
+  groupFontAssets,
+} from "../services/fontRegistry";
 import {
   formatValue,
   getByContextPath,
@@ -21,7 +27,7 @@ interface Props {
   element?: ReportElement;
   unit: Unit;
   selectionCount: number;
-  fontFamilies?: string[];
+  fontAssets?: Asset[];
   onChange: (patch: Partial<ReportElement>) => void;
   onAlign: (
     value: "left" | "center" | "right" | "top" | "middle" | "bottom",
@@ -113,7 +119,7 @@ export function Inspector({
   element,
   unit,
   selectionCount,
-  fontFamilies = [],
+  fontAssets = [],
   cropping,
   onToggleCrop,
   onChange,
@@ -146,6 +152,46 @@ export function Inspector({
   const typography = { ...typographyDefaults, ...element.style.typography };
   const setTypography = (patch: Partial<Typography>) =>
     setStyle({ typography: { ...typography, ...patch } });
+  const managedFamilies = groupFontAssets(fontAssets);
+  const activeManagedFaces = managedFamilies.get(typography.fontFamily) ?? [];
+  const activeBuiltin = BUILTIN_FONT_FAMILIES.find(
+    (font) => font.family === typography.fontFamily,
+  );
+  const availableWeights = [
+    ...new Set(
+      activeManagedFaces.length
+        ? activeManagedFaces.map((asset) => asset.fontWeight ?? 400)
+        : (activeBuiltin?.weights ?? [400]),
+    ),
+  ].sort((a, b) => a - b);
+  const availableStyles = [
+    ...new Set(
+      activeManagedFaces.length
+        ? activeManagedFaces.map((asset) => asset.fontStyle ?? "normal")
+        : (activeBuiltin?.styles ?? ["normal"]),
+    ),
+  ];
+  const selectFontFace = (
+    family: string,
+    weight: number,
+    fontStyle: "normal" | "italic",
+  ) => {
+    const faces = managedFamilies.get(family) ?? [];
+    const face =
+      faces.find(
+        (asset) =>
+          (asset.fontWeight ?? 400) === weight &&
+          (asset.fontStyle ?? "normal") === fontStyle,
+      ) ?? faces[0];
+    setTypography({
+      fontFamily: family,
+      fontWeight: face?.fontWeight ?? weight,
+      fontStyle: face?.fontStyle ?? fontStyle,
+      italic: (face?.fontStyle ?? fontStyle) === "italic",
+      fontAssetId: face?.id,
+      fontChecksum: face?.checksum,
+    });
+  };
   const fill: Fill = element.style.fill ?? {
     type: "solid",
     color: element.style.background ?? "#E5E7EB",
@@ -239,7 +285,7 @@ export function Inspector({
             value={element.rotation ?? 0}
             onChange={(e) =>
               onChange({
-                rotation: Number(e.target.value),
+                rotation: normalizeRotation(Number(e.target.value)),
               } as Partial<ReportElement>)
             }
           />
@@ -484,16 +530,23 @@ export function Inspector({
             Font
             <select
               value={typography.fontFamily}
-              onChange={(e) => setTypography({ fontFamily: e.target.value })}
+              onChange={(e) => {
+                const family = e.target.value;
+                const firstManaged = managedFamilies.get(family)?.[0];
+                const builtin = BUILTIN_FONT_FAMILIES.find(
+                  (font) => font.family === family,
+                );
+                selectFontFace(
+                  family,
+                  firstManaged?.fontWeight ?? builtin?.weights[0] ?? 400,
+                  firstManaged?.fontStyle ?? "normal",
+                );
+              }}
             >
               {[
                 ...new Set([
-                  "Inter",
-                  "Arial",
-                  "Georgia",
-                  "Times New Roman",
-                  "Courier New",
-                  ...fontFamilies,
+                  ...BUILTIN_FONT_FAMILIES.map((font) => font.family),
+                  ...managedFamilies.keys(),
                 ]),
               ].map((font) => (
                 <option key={font}>{font}</option>
@@ -506,10 +559,15 @@ export function Inspector({
               <select
                 value={typography.fontWeight}
                 onChange={(e) =>
-                  setTypography({ fontWeight: Number(e.target.value) })
+                  selectFontFace(
+                    typography.fontFamily,
+                    Number(e.target.value),
+                    typography.fontStyle ??
+                      (typography.italic ? "italic" : "normal"),
+                  )
                 }
               >
-                {[300, 400, 500, 600, 700, 800].map((weight) => (
+                {availableWeights.map((weight) => (
                   <option key={weight}>{weight}</option>
                 ))}
               </select>
@@ -558,9 +616,26 @@ export function Inspector({
           </div>
           <div className="icon-grid">
             <button
-              className={typography.italic ? "active" : ""}
+              className={
+                (typography.fontStyle ??
+                  (typography.italic ? "italic" : "normal")) === "italic"
+                  ? "active"
+                  : ""
+              }
               title="Italic"
-              onClick={() => setTypography({ italic: !typography.italic })}
+              disabled={!availableStyles.includes("italic")}
+              onClick={() => {
+                const next =
+                  (typography.fontStyle ??
+                    (typography.italic ? "italic" : "normal")) === "italic"
+                    ? "normal"
+                    : "italic";
+                selectFontFace(
+                  typography.fontFamily,
+                  Number(typography.fontWeight),
+                  next,
+                );
+              }}
             >
               <em>I</em>
             </button>

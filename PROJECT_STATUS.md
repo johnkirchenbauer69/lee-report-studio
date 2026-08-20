@@ -32,6 +32,9 @@ The reference workflow now runs from source selection through normalized data, r
 - Semantic MCP data, validation, conflict, provenance, and status tools with no raw SOQL/write surface
 - Fake Salesforce adapter contracts plus HTTP/MCP report/hash parity coverage in CI
 - Provider isolation, fixture-leak, cross-quarter, invalid-rate, negative-absorption, scope, and lifecycle tests
+- Center-origin rotation for text, shapes, images, tables, and charts with normalized persistence, rotated snapping/alignment/overflow geometry, local-axis resize, coalesced history, and Chromium PDF parity
+- True 90° `TOP LEASES` and `TOP SALES` labels replacing stacked-letter approximations
+- Managed organization font library with secure ZIP import, embedded metadata, SHA-256 dedupe/version conflicts, license status, real face controls, checksum-pinned report instances, and print-route font readiness
 
 ## Verified reference fidelity
 
@@ -39,7 +42,7 @@ The calibrated page similarity floors are cover 96%, table 95%, overview 88%, an
 
 ## Not yet production-complete
 
-- Licensed brand font packaging and final typographic sign-off
+- Production object storage/authorization policy and final licensed brand-font sign-off
 - Full Excel mapping for every report section and arbitrary workbook variants
 - Live-org permission/capability certification, credentials, retry/backoff policy, and approved Q2 benchmark sign-off
 - Durable snapshot/report persistence and MCP `create_market_report`
@@ -47,6 +50,7 @@ The calibrated page similarity floors are cover 96%, table 95%, overview 88%, an
 - Database-backed templates/reports, permissions, and collaborative editing
 - Native chart replacement of every approved raster chart
 - Rich-text runs, accessibility audit, and cross-browser editor certification
+- Shared-center group rotation gesture (group resize/move already preserve individual angles)
 
 Partial Excel reports intentionally remain editable drafts. Their absent sections render explicit empty states and cannot be approved or published when the selected template requires those sections.
 
