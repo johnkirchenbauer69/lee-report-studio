@@ -1,5 +1,9 @@
 # Report Data Model
 
+## Live-Verified Chicago Industrial Report Contract
+
+The standard definition uses 18 quarter-specific `Market_Data__c` rows and has no stored Overall Market row. Standard submarket metrics remain official Market_Data snapshots. Overall current-quarter metrics come from the accepted `Property_Data__c` `Eligible 20K+ Market Universe`; historical trends aggregate Market_Data by quarter. Contributor cards retain their `Market_Data_Contributor__c` parent/quarter/submarket/source IDs and prefer frozen native display values before finalist-only enrichment. Snapshot metadata records headline, trend, and contributor source definitions plus Salesforce call counts.
+
 Live Ascendix datasets also carry a service envelope containing source metadata, completeness, and an immutable source snapshot `{ id, hash }`. Generated Ascendix `ReportInstance` records reference that ID/hash plus `reportDefinitionVersion`; presentation edits do not change the source snapshot. See `REPORT_DATA_SERVICE.md`.
 
 `src/report-engine/schema/industrialMarketReport.ts` defines the product-owned Zod contract. Providers must produce this model before presentation or template code can consume data.

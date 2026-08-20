@@ -19,9 +19,9 @@ ReportDataRequest
 
 The input is UI-independent: report type, market, period, calculation scope, optional requested sections, and an explicit historical/current time context. If omitted, time context becomes `historical-period` for the requested period.
 
-The result contains the strict `IndustrialMarketReport`, source metadata, completeness, definition version, request/record-count metadata, optional field-capability diagnostics, and `{ id, hash }` for the source snapshot. `industrial-market-report-data-v2-verified-salesforce` identifies the verified contract.
+The result contains the strict `IndustrialMarketReport`, source metadata, completeness, definition version, request/record-count metadata, API-call/source-definition diagnostics, and `{ id, hash }` for the source snapshot. `industrial-market-report-data-v3-live-verified-chicago` identifies the live-verified contract.
 
-Historical Market_Data records are selected by authoritative `Quarter_Label__c`, normalized at ingestion, and filtered to the public submarket universe. Historical cards are ranked from active, report-included `Market_Data_Contributor__c` records. Direct Ascendix objects enrich/validate those selections; they do not silently re-rank an old report.
+Historical Market_Data records are selected by authoritative `Quarter_Label__c` and the canonical 18-submarket universe; `Market__c` is not required and no stored Overall Market row is assumed. Overall headlines use the eligible Property_Data rollup while historical trends aggregate the 18 Market_Data snapshots. Historical cards are scoped/pooled from active, report-included contributor snapshots, then only missing finalist fields are enriched.
 
 The SHA-256 is integrity/change-detection metadata over a recursively key-sorted canonical report payload. It is not a signature, timestamp authority, or complete cryptographic audit system.
 

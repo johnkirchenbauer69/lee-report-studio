@@ -14,8 +14,9 @@ LEE Report Studio treats missing or disputed data as visible report state, never
 6. **Calculation scope is independent from page selection.** Overall metrics use the declared analytical universe. Choosing detailed pages cannot implicitly change market totals.
 7. **Cross-period and cross-market contamination is blocked.** Request period/market must match normalized source metadata, and production page snapshots are scanned by regression tests for fixture-only values.
 8. **Historical quarter identity is stable.** `Quarter_Label__c` is authoritative even if a stored period-end date drifts.
-9. **The public universe is explicit.** Seven excluded submarkets and any `Overall Market` row are removed before deterministic submarket aggregation.
-10. **Unverified metrics stay visible.** Construction speculative share is a candidate calculation with a completeness warning, not a fictitious source field.
+9. **The report universe is explicit.** The versioned 18-submarket Chicago list—not every org picklist value—defines the standard geography.
+10. **Speculative construction is verified-derived.** Submarkets use available-UC / total-UC; Overall Market uses ratio-of-sums. Required inputs and calculated provenance remain mandatory.
+11. **Source differences remain classified.** Missing data, conflicts, known reconciled differences, and optional enrichment gaps are distinct states. The Chicago South unlinked row and West Cook 82,000-SF variance are retained as QA findings, not silent replacements.
 
 ## Validation and readiness
 

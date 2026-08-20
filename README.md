@@ -83,7 +83,7 @@ Templates and report editing state currently persist in LocalStorage. Uploaded a
 - Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
 - Excel v1 maps the supplied submarket sheet only. Sections absent from a workbook remain empty, are declared missing, appear as empty states, and block publication when required by the template.
 - Excel workbooks do not yet provide robust internal period metadata; the generation request supplies report period/market metadata while workbook name, sheet, cell, and import time remain traceable provenance.
-- Salesforce API names and historical business rules are ported from the verified production-dashboard contract. Live-org permissions/capability remain to be confirmed with `npm run salesforce:check`; construction speculative-share remains derived-unverified.
+- The Chicago Salesforce source hierarchy is live-verified: 18 Market_Data submarkets, Property_Data Overall headline, Market_Data historical trends, pooled/scoped contributor snapshots, and verified-derived speculative construction. Local permissions remain confirmable with `npm run salesforce:check`.
 - Report snapshots are process-local and require durable persistence before multi-instance production deployment.
 - MCP implements the read/validate/provenance subset; durable report-instance persistence is required before `create_market_report`.
 - Approved raster chart exports remain in the four-page fixture until native SVG charts reach the same visual fidelity.

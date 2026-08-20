@@ -18,6 +18,8 @@ There are no tools for arbitrary SOQL, Apex, object mutation, or unrestricted Sa
 
 The MCP and HTTP paths consume the same verified Salesforce normalization, exclusion, contributor-ranking, completeness, provenance, and immutable snapshot logic. Authentication credentials and field-probe details never enter tool inputs or responses; only safe capability diagnostics may appear in service metadata.
 
+For the live-verified Chicago contract, both transports see the same canonical quarter, 18-submarket definition, Property_Data Overall headline, Market_Data historical trend, contributor pooling/scoping, and finalist-only enrichment result. Snapshot hashes therefore remain transport-independent.
+
 ## Stable workflow
 
 Call `get_market_report_data` once, then use its snapshot ID for validation, conflict, and provenance operations. This prevents conversational steps from observing different live source states. Models may summarize, explain, or draft narrative from service output, but official metrics must come from the deterministic service.
