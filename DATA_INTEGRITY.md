@@ -1,5 +1,7 @@
 # Data Integrity Guarantees
 
+Authoritative live metrics are produced by the shared deterministic Report Data Service, never independently by HTTP handlers, MCP handlers, or a language model. Historical headline values retain period-specific `Market_Data__c` authority and receive deterministic submarket cross-check provenance. Every normalized service result is schema-validated and snapshotted with a canonical SHA-256 change-detection hash before report generation.
+
 LEE Report Studio treats missing or disputed data as visible report state, never as an invitation to substitute convenient content.
 
 ## Production guarantees

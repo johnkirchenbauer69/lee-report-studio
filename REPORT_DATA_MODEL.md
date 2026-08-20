@@ -1,5 +1,7 @@
 # Report Data Model
 
+Live Ascendix datasets also carry a service envelope containing source metadata, completeness, and an immutable source snapshot `{ id, hash }`. Generated Ascendix `ReportInstance` records reference that ID/hash plus `reportDefinitionVersion`; presentation edits do not change the source snapshot. See `REPORT_DATA_SERVICE.md`.
+
 `src/report-engine/schema/industrialMarketReport.ts` defines the product-owned Zod contract. Providers must produce this model before presentation or template code can consume data.
 
 ## Principles
