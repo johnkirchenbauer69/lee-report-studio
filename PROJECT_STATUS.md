@@ -23,7 +23,8 @@ The reference workflow now runs from source selection through normalized data, r
 - Independent calculation scope/detail-page selection with auditable derived-metric lineage
 - Business constraints, request consistency, conflict/override rules, and computed publication readiness
 - Shared deterministic Report Data Service used by HTTP and MCP interfaces
-- Server-only Salesforce client, injectable Ascendix adapter, centralized unverified field mappings, and explicit historical/current pathways
+- Server-only Salesforce client with explicit client-credentials/SOAP strategies, verified dashboard field mappings, and explicit historical/current pathways
+- Quarter-label authority, ingestion percent normalization, public submarket exclusions, contributor-first historical highlights, and optional relationship capability diagnostics
 - Versioned immutable report-data snapshots with canonical SHA-256 hashes and ReportInstance references
 - Semantic MCP data, validation, conflict, provenance, and status tools with no raw SOQL/write surface
 - Fake Salesforce adapter contracts plus HTTP/MCP report/hash parity coverage in CI
@@ -37,7 +38,7 @@ The calibrated page similarity floors are cover 96%, table 95%, overview 88%, an
 
 - Licensed brand font packaging and final typographic sign-off
 - Full Excel mapping for every report section and arbitrary workbook variants
-- Production Ascendix field-name verification, credentials, retry/backoff policy, and live sandbox certification
+- Live-org permission/capability certification, credentials, retry/backoff policy, and approved Q2 benchmark sign-off
 - Durable snapshot/report persistence and MCP `create_market_report`
 - Authenticated/durable PDF queues and artifact storage
 - Database-backed templates/reports, permissions, and collaborative editing

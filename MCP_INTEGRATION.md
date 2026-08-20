@@ -16,6 +16,8 @@ The intentionally deferred `create_market_report` tool will be added when report
 
 There are no tools for arbitrary SOQL, Apex, object mutation, or unrestricted Salesforce access. MCP tools never calculate authoritative metrics and do not write to Salesforce.
 
+The MCP and HTTP paths consume the same verified Salesforce normalization, exclusion, contributor-ranking, completeness, provenance, and immutable snapshot logic. Authentication credentials and field-probe details never enter tool inputs or responses; only safe capability diagnostics may appear in service metadata.
+
 ## Stable workflow
 
 Call `get_market_report_data` once, then use its snapshot ID for validation, conflict, and provenance operations. This prevents conversational steps from observing different live source states. Models may summarize, explain, or draft narrative from service output, but official metrics must come from the deterministic service.

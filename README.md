@@ -44,6 +44,8 @@ npm run build
 npm run test:visual
 ```
 
+For an optional live Salesforce check, create an ignored `.env` from `.env.example`, select `SALESFORCE_AUTH_MODE=client-credentials` or `soap-login`, then run `npm run salesforce:check`. Run `npm run salesforce:benchmark:q2` for the Chicago 2026 Q2 approved-fixture reconciliation. Neither command runs in normal CI.
+
 `npm test` runs browser-domain tests under `src/**/*.test.*` and server integration tests under `server/**/*.test.*` through Vitest. `npm run test:visual` is explicitly limited to `tests/visual/**/*.spec.*` through Playwright.
 
 Update approved visual baselines only after intentional review:
@@ -81,7 +83,7 @@ Templates and report editing state currently persist in LocalStorage. Uploaded a
 - Exact Avenir/Nunito font files are not distributed in this repository; approved licensed files must be supplied before final brand typography sign-off.
 - Excel v1 maps the supplied submarket sheet only. Sections absent from a workbook remain empty, are declared missing, appear as empty states, and block publication when required by the template.
 - Excel workbooks do not yet provide robust internal period metadata; the generation request supplies report period/market metadata while workbook name, sheet, cell, and import time remain traceable provenance.
-- Salesforce field names are centralized but unverified placeholders until confirmed against the production Ascendix org; live mode fails clearly instead of using the mock fixture.
+- Salesforce API names and historical business rules are ported from the verified production-dashboard contract. Live-org permissions/capability remain to be confirmed with `npm run salesforce:check`; construction speculative-share remains derived-unverified.
 - Report snapshots are process-local and require durable persistence before multi-instance production deployment.
 - MCP implements the read/validate/provenance subset; durable report-instance persistence is required before `create_market_report`.
 - Approved raster chart exports remain in the four-page fixture until native SVG charts reach the same visual fidelity.

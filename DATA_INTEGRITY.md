@@ -13,6 +13,9 @@ LEE Report Studio treats missing or disputed data as visible report state, never
 5. **Presentation overrides are explicit and auditable.** Overrides require field path, value, authority, reason, and creation time, with an optional source reference. They do not mutate normalized source values.
 6. **Calculation scope is independent from page selection.** Overall metrics use the declared analytical universe. Choosing detailed pages cannot implicitly change market totals.
 7. **Cross-period and cross-market contamination is blocked.** Request period/market must match normalized source metadata, and production page snapshots are scanned by regression tests for fixture-only values.
+8. **Historical quarter identity is stable.** `Quarter_Label__c` is authoritative even if a stored period-end date drifts.
+9. **The public universe is explicit.** Seven excluded submarkets and any `Overall Market` row are removed before deterministic submarket aggregation.
+10. **Unverified metrics stay visible.** Construction speculative share is a candidate calculation with a completeness warning, not a fictitious source field.
 
 ## Validation and readiness
 

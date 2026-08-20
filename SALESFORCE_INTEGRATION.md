@@ -4,7 +4,7 @@
 
 Salesforce access exists only in the Node backend. The browser and MCP callers receive normalized report data and never receive an OAuth token, client secret, private key, or refresh token.
 
-The implemented production flow is OAuth 2.0 client credentials through a dedicated Salesforce Connected App and a dedicated read-only **LEE Report Studio Integration User**. Configure `SALESFORCE_LOGIN_URL`, `SALESFORCE_CLIENT_ID`, and `SALESFORCE_CLIENT_SECRET`. `SALESFORCE_INSTANCE_URL` and `SALESFORCE_API_VERSION` are optional. The username/private-key variables in `.env.example` reserve a future JWT bearer option and are not currently consumed.
+The production-preferred flow is OAuth 2.0 client credentials through a dedicated Connected App and read-only integration user. Local development may explicitly select `SALESFORCE_AUTH_MODE=soap-login` and use `SF_USERNAME`, `SF_PASSWORD`, `SF_SECURITY_TOKEN`, and `SF_DOMAIN=login|test`. A failed selected strategy is fatal; the client never tries the other strategy.
 
 The integration identity should have API access and read-only field/object permissions for the mapped report objects. It needs no Salesforce write, Apex execution, metadata-administration, or user-impersonation permissions.
 
@@ -16,22 +16,37 @@ The integration identity should have API access and read-only field/object permi
 
 The safe health endpoint is `GET /api/integrations/salesforce/health`. It reports mode, configuration/connectivity state, definition version, and last successful request time without exposing an org token or credential.
 
-## Object and field mapping
+## Verified Industrial Market Report Salesforce Contract
 
-All API names live in `server/integrations/ascendix/salesforceFieldMap.ts`. The defaults are explicitly **unverified placeholders**, not claims about the live org. Each can be replaced through a documented environment mapping after Salesforce describe metadata or an administrator confirms the API name.
+All API names live in `server/integrations/ascendix/salesforceFieldMap.ts`. Registry statuses distinguish `verified-production-dashboard`, `verified-live-org`, `derived-unverified`, and `optional-probed`.
 
 Initial object roles are:
 
-| Object                       | Report use                                                      |
-| ---------------------------- | --------------------------------------------------------------- |
-| `Market_Data__c`             | Historical aggregate, submarket, and period metrics             |
-| `Market_Data_Contributor__c` | Centralized future mapping for contributors/transaction support |
-| `Lease__c`                   | Period-specific lease highlights                                |
-| `Property_Data__c`           | Period-specific sale highlights                                 |
-| `Availability__c`            | Period-specific availability cards                              |
-| `Construction_Pipeline__c`   | Construction and delivered-property cards                       |
+| Object                       | Report use                                                    |
+| ---------------------------- | ------------------------------------------------------------- |
+| `Market_Data__c`             | Historical aggregate, submarket, and period metrics           |
+| `Market_Data_Contributor__c` | Period-frozen historical highlight selection and ranking      |
+| `ascendix__Lease__c`         | Direct lease enrichment/current support; `Off_Market_Date__c` |
+| `ascendix__Sale__c`          | Direct sale enrichment/current support; Sale Date preferred   |
+| `ascendix__Availability__c`  | Availability enrichment/current support                       |
+| `ascendix__Property__c`      | Property address/type/owner/image enrichment                  |
+| `Property_Data__c`           | Eligible 20K+ historical property-quarter universe            |
 
-Before live rollout, verify every mapping, field-level permission, null convention, percentage scale, and market/period picklist value in a sandbox. Unverified mappings are surfaced by `unverifiedSalesforceMappings()`.
+`Quarter_Label__c` is authoritative for historical identity; normalized bounds drive transaction dates. Percent scale correction happens before schema validation. The public universe centrally excludes Chicago North, I-39 Corridor, McHenry County, Other IL, Other IN, Other WI, and Rockford. The construction speculative-share candidate is derived from available/total under-construction SF but remains explicitly unverified. Narrative remains blank because no authoritative `Market_Data__c` narrative field is established.
+
+Optional contributor relationships are probed independently. A field-level permission failure omits only that enrichment and appears in source diagnostics.
+
+## Local configuration and checks
+
+```powershell
+Copy-Item .env.example .env
+# Edit .env with REPORT_DATA_MODE=salesforce and one explicit auth group.
+git check-ignore -v .env
+npm run salesforce:check
+npm run salesforce:benchmark:q2
+```
+
+The check prints only connectivity, auth mode, safe instance hostname, API version, and object/field capability. The benchmark compares the live Chicago 2026 Q2 snapshot with the approved fixture without printing records or secrets.
 
 ## Historical and current rules
 
