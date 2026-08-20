@@ -163,12 +163,18 @@ export class ReportDataService {
         this.dependencies.mode === "salesforce"
           ? "salesforce-ascendix"
           : "explicit-mock-fixture";
-      const inferred = inferCompleteness(report, sourceId).map((item) =>
-        request.requestedSections &&
-        !request.requestedSections.includes(item.section)
-          ? { ...item, status: "not-requested" as const, sourceIds: [] }
-          : item,
+      const explicitCompleteness = new Map(
+        report.dataCompleteness.map((item) => [item.section, item]),
       );
+      const inferred = inferCompleteness(report, sourceId).map((item) => {
+        if (
+          request.requestedSections &&
+          !request.requestedSections.includes(item.section)
+        )
+          return { ...item, status: "not-requested" as const, sourceIds: [] };
+        const explicit = explicitCompleteness.get(item.section);
+        return explicit && explicit.status !== "complete" ? explicit : item;
+      });
       report.dataCompleteness = inferred;
       const validated = industrialMarketReportSchema.parse(report);
       const generatedAt = (
@@ -183,6 +189,7 @@ export class ReportDataService {
         requestId,
         salesforceOrg: source.salesforceOrg,
         recordCounts: source.recordCounts,
+        diagnostics: source.diagnostics,
       };
       const snapshot = prepareSnapshot(validated, sourceMetadata);
       await this.dependencies.snapshotStore.save(snapshot);

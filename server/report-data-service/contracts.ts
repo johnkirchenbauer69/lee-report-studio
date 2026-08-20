@@ -55,6 +55,7 @@ export interface ReportSourceMetadata {
   requestId: string;
   salesforceOrg?: string;
   recordCounts: Record<string, number>;
+  diagnostics?: string[];
 }
 
 export interface ReportDataResult {

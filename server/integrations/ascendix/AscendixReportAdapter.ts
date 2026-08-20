@@ -5,6 +5,7 @@ export interface AscendixAdapterResult {
   report: IndustrialMarketReport;
   recordCounts: Record<string, number>;
   salesforceOrg?: string;
+  diagnostics?: string[];
 }
 
 export interface AscendixReportAdapter {
@@ -13,5 +14,8 @@ export interface AscendixReportAdapter {
     configured: boolean;
     connected: boolean;
     mode: "mock" | "salesforce";
+    instanceUrl?: string;
+    authMode?: "client-credentials" | "soap-login";
+    apiVersion?: string;
   }>;
 }
