@@ -9,10 +9,23 @@ export interface SalesforceHealth {
   authMode?: SalesforceAuthMode;
   apiVersion?: string;
 }
+export interface SalesforceBinaryResponse {
+  buffer: Buffer;
+  contentType: string;
+  status: number;
+}
 export interface SalesforceClient {
   query<T extends SalesforceRecord>(soql: string): Promise<T[]>;
   health(): Promise<SalesforceHealth>;
   getApiCallCount?(): number;
+  /**
+   * Fetches raw binary content (e.g. an Attachment's Body or a
+   * ContentVersion's VersionData) via an authenticated REST call.
+   * `sobjectPath` is relative to `/services/data/v{apiVersion}/`, e.g.
+   * `sobjects/Attachment/{id}/Body`. Never exposes the access token to the
+   * caller — authentication happens entirely inside this method.
+   */
+  getBinary?(sobjectPath: string): Promise<SalesforceBinaryResponse>;
 }
 interface SalesforceQueryResponse<T> {
   records: T[];
@@ -151,6 +164,17 @@ export class SalesforceRestClient implements SalesforceClient {
         : "";
     } while (url);
     return records;
+  }
+  async getBinary(sobjectPath: string): Promise<SalesforceBinaryResponse> {
+    const session = await this.authenticate();
+    this.apiCallCount += 1;
+    const response = await fetch(
+      `${session.instanceUrl}/services/data/v${this.config.apiVersion}/${sobjectPath}`,
+      { headers: { authorization: `Bearer ${session.accessToken}` } },
+    );
+    const contentType = response.headers.get("content-type") ?? "";
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return { buffer, contentType, status: response.status };
   }
   async health(): Promise<SalesforceHealth> {
     try {

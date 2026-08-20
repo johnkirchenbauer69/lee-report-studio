@@ -1,5 +1,5 @@
 import type { Fill, ReportElement, Unit } from "../types/report";
-import { elementRect, getRotatedAabb } from "./geometry";
+import { elementRect, getRotatedAabb, rotatePoint } from "./geometry";
 
 /** Browser/CSS reference pixel density used throughout the editor. */
 export const PX_PER_INCH = 96;
@@ -200,4 +200,49 @@ export function scaleGroupedElements(
         }
       : element,
   );
+}
+
+/** Rotates every member of a group as a rigid body around the group's shared center. */
+export function rotateGroupedElements(
+  elements: ReportElement[],
+  sourceId: string,
+  nextRotation: number,
+): ReportElement[] {
+  const source = elements.find((element) => element.id === sourceId);
+  if (!source?.groupId) return elements;
+  const group = elements.filter(
+    (element) => element.groupId === source.groupId,
+  );
+  const bounds = group.reduce(
+    (acc, element) => {
+      const box = getRotatedAabb(elementRect(element));
+      return {
+        minX: Math.min(acc.minX, box.x),
+        minY: Math.min(acc.minY, box.y),
+        maxX: Math.max(acc.maxX, box.x + box.width),
+        maxY: Math.max(acc.maxY, box.y + box.height),
+      };
+    },
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
+  const center = {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  };
+  const delta = nextRotation - (source.rotation ?? 0);
+  if (!delta) return elements;
+  return elements.map((element) => {
+    if (element.groupId !== source.groupId) return element;
+    const elementCenter = {
+      x: element.x + element.width / 2,
+      y: element.y + element.height / 2,
+    };
+    const rotatedCenter = rotatePoint(elementCenter, center, delta);
+    return {
+      ...element,
+      x: rotatedCenter.x - element.width / 2,
+      y: rotatedCenter.y - element.height / 2,
+      rotation: (element.rotation ?? 0) + delta,
+    };
+  });
 }

@@ -71,7 +71,19 @@ export async function runExportPreflight(
           });
       }
       if (element.type === "image" && (element as ImageElement).src) {
-        const image = await loadImage((element as ImageElement).src);
+        const src = (element as ImageElement).src;
+        const contentTypeIssue = await checkImageContentType(src);
+        if (contentTypeIssue) {
+          issues.push({
+            level: "error",
+            kind: "image",
+            pageId: page.id,
+            elementId: element.id,
+            message: `Image preflight failed: ${element.name} resolved to ${contentTypeIssue} instead of an image.`,
+          });
+          continue;
+        }
+        const image = await loadImage(src);
         if (!image)
           issues.push({
             level: "error",
@@ -99,6 +111,29 @@ export async function runExportPreflight(
   }
   return deduplicate(issues);
 }
+/**
+ * Confirms an image element's `src` actually resolves to image content
+ * before attempting to decode it as one. Catches the case where a
+ * relative/bare id (e.g. an un-resolved Salesforce Attachment id) gets
+ * served the app's own `index.html` by a dev-server SPA fallback: that
+ * request returns `200 text/html`, which `<img>` would otherwise just fail
+ * to decode with no indication of *why*. Returns the offending content type
+ * (or `undefined` if it looks like an image, or the request itself failed
+ * and the existing `loadImage` check should report that instead).
+ */
+const checkImageContentType = async (
+  src: string,
+): Promise<string | undefined> => {
+  try {
+    const response = await fetch(src, { method: "GET" });
+    if (!response.ok) return undefined;
+    const contentType = response.headers.get("content-type") ?? "unknown";
+    return /^image\//i.test(contentType) ? undefined : contentType;
+  } catch {
+    return undefined;
+  }
+};
+
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement | undefined>((resolve) => {
     const image = new Image();

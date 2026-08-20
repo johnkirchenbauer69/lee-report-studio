@@ -20,6 +20,7 @@ import {
   mapHistoricalContributors,
   scopeHistoricalContributors,
   selectContributorFinalists,
+  type ImageResolver,
 } from "./contributors.ts";
 import {
   CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
@@ -267,6 +268,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
   constructor(
     private readonly client: SalesforceClient,
     private readonly now: () => Date = () => new Date(),
+    private readonly resolveImage?: ImageResolver,
   ) {}
 
   async loadReportSource(request: ReportDataRequest) {
@@ -487,7 +489,10 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     const finalists = selectContributorFinalists(scoped.rows);
     const enrichmentDiagnostics: string[] = [];
     await enrichFinalists(this.client, finalists, calls, enrichmentDiagnostics);
-    const highlights = mapHistoricalContributors(scoped.rows);
+    const highlights = await mapHistoricalContributors(
+      scoped.rows,
+      this.resolveImage,
+    );
     const retrievedAt = this.now().toISOString();
     const provenance: ProvenanceRecord[] = currentRecords.flatMap((record) => {
       const scope = canonicalChicagoSubmarket(text(record, md.submarket))!;
@@ -856,6 +861,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       diagnostics: [
         `Salesforce API calls: measured=${measuredApiCalls}; queryOperations=${queryOperations}; Market_Data=${calls.marketData}; Contributor=${calls.contributor}; Property_Data=${calls.propertyData}; Enrichment=${calls.enrichment}; Capability=${calls.capability}`,
         ...enrichmentDiagnostics,
+        ...highlights.imageWarnings,
         ...scoped.issues.map((issue) => issue.reason),
         ...(propertyRollup.facts.unlinkedMarketDataRows
           ? [

@@ -57,11 +57,23 @@ const mimeForExtension = (extension: string) =>
     ".woff2": "font/woff2",
   })[extension] ?? "application/octet-stream";
 
+const extensionForMime = (mimeType: string) =>
+  ({
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/svg+xml": ".svg",
+  })[mimeType.toLowerCase()] ?? "";
+
 const safeExtension = (fileName: string) =>
   path
     .extname(fileName)
     .toLowerCase()
     .replace(/[^.a-z0-9]/g, "");
+
+const ALLOWED_IMAGE_MIME_TYPES =
+  /^image\/(png|jpe?g|webp|gif|svg\+xml)$/i;
 
 export class FileSystemAssetStore {
   readonly assetsRoot: string;
@@ -143,7 +155,11 @@ export class FileSystemAssetStore {
           if (result.asset) created.push(result.asset);
           summary[result.outcome] += 1;
         } else {
-          const asset = await this.importImage(file);
+          const asset = await this.importImageBuffer({
+            buffer: file.buffer,
+            mimeType: file.mimetype,
+            originalName: file.originalname,
+          });
           created.push(asset);
           summary.imported += 1;
         }
@@ -208,28 +224,66 @@ export class FileSystemAssetStore {
     return { asset, outcome: classification.outcome };
   }
 
-  private async importImage(file: Express.Multer.File): Promise<StoredAsset> {
-    if (!/^image\/(png|jpeg|webp|svg\+xml)$/i.test(file.mimetype))
+  /**
+   * Validates, checksums, and content-addressably stores an image buffer.
+   * Shared by the multer upload path (`importUploads`) and any server-side
+   * import (e.g. a resolved Salesforce attachment via `importBuffer`), so
+   * both go through the same MIME allowlist and dedup-by-checksum storage.
+   */
+  private async importImageBuffer(input: {
+    buffer: Buffer;
+    mimeType: string;
+    originalName: string;
+  }): Promise<StoredAsset> {
+    if (!ALLOWED_IMAGE_MIME_TYPES.test(input.mimeType))
       throw new Error("Unsupported image type.");
-    const extension = safeExtension(file.originalname);
-    const id = randomUUID();
+    const checksum = createHash("sha256").update(input.buffer).digest("hex");
+    const extension =
+      safeExtension(input.originalName) || extensionForMime(input.mimeType);
     const storageKey = path
-      .join("images", `${id}${extension}`)
+      .join("images", `${checksum}${extension}`)
       .replace(/\\/g, "/");
     const destination = path.resolve(this.assetsRoot, storageKey);
     await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, file.buffer, { flag: "wx" });
+    await writeFile(destination, input.buffer, { flag: "wx" }).catch(
+      async (error: NodeJS.ErrnoException) => {
+        if (error.code !== "EEXIST") throw error;
+      },
+    );
+    const id = randomUUID();
     return {
       id,
-      name: path.parse(file.originalname).name,
-      type: /logo/i.test(file.originalname) ? "logo" : "image",
-      mimeType: file.mimetype,
+      name: path.parse(input.originalName).name,
+      type: /logo/i.test(input.originalName) ? "logo" : "image",
+      mimeType: input.mimeType,
       source: `/api/assets/${id}/content`,
       createdAt: new Date().toISOString(),
+      checksum,
       storage: "backend",
       storageKey,
-      size: file.size,
+      size: input.buffer.length,
     };
+  }
+
+  /**
+   * Public server-side import entrypoint for binary content that did not
+   * arrive via a multer upload (e.g. a Salesforce attachment fetched and
+   * validated by `salesforceImageResolver`). Applies the same MIME
+   * allowlist and checksum/dedup storage as uploaded images.
+   */
+  async importBuffer(input: {
+    buffer: Buffer;
+    mimeType: string;
+    name: string;
+  }): Promise<StoredAsset> {
+    const asset = await this.importImageBuffer({
+      buffer: input.buffer,
+      mimeType: input.mimeType,
+      originalName: input.name,
+    });
+    const existing = await this.list();
+    await this.save([...existing, asset]);
+    return asset;
   }
 
   async remove(id: string): Promise<boolean> {

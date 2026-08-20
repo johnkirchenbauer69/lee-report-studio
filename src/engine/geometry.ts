@@ -102,7 +102,7 @@ export function snapRotation(
   if (options.shiftKey)
     return normalizeRotation(Math.round(normalized / 15) * 15);
   const target = Math.round(normalized / 45) * 45;
-  return Math.abs(normalized - target) <= (options.threshold ?? 4)
+  return Math.abs(normalized - target) <= (options.threshold ?? 5)
     ? normalizeRotation(target)
     : normalized;
 }

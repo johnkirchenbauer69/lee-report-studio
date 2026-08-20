@@ -133,15 +133,40 @@ const address = (
   composedAddress(record, `${source}__r.ascendix__Property__r`) ||
   composedAddress(record, "Property__r") ||
   text(record, "Display_Title__c");
-const image = (
+/**
+ * Resolves a contributor/property image field to a usable URL. Delegates to
+ * a caller-supplied `resolveImage` (server-side, authenticated Salesforce
+ * fetch -> Studio asset) when provided. If a resolver isn't wired up, this
+ * still refuses to emit a bare Salesforce Attachment/File id as a URL --
+ * such values come back empty with a warning instead of becoming a broken
+ * `<img>` request.
+ */
+export type ImageResolver = (
+  value: string | undefined,
+) => Promise<{ url?: string; warning?: string }>;
+
+const image = async (
   record: SalesforceRecord,
   source: "Lease" | "Sale" | "Availability" | "Property",
-) =>
-  text(
+  resolveImage?: ImageResolver,
+): Promise<{ value: string; warning?: string }> => {
+  const raw = text(
     record,
     `${source}__r.ascendix__Property__r.ascendix__PrimaryImage__c`,
     "Property__r.ascendix__PrimaryImage__c",
   );
+  if (!raw) return { value: raw };
+  if (resolveImage) {
+    const resolved = await resolveImage(raw);
+    return { value: resolved.url ?? "", warning: resolved.warning };
+  }
+  if (looksLikeSalesforceId(raw))
+    return {
+      value: "",
+      warning: `Salesforce attachment ${raw} could not be resolved (no image resolver is configured).`,
+    };
+  return { value: raw };
+};
 
 export function rankContributors(
   rows: SalesforceRecord[],
@@ -234,10 +259,11 @@ export function selectContributorFinalists(rows: SalesforceRecord[]) {
   return [...new Map(selected.map((row) => [row.Id, row])).values()];
 }
 
-const highlight = (
+const highlight = async (
   record: SalesforceRecord,
   section: "availabilities" | "deliveries" | "construction",
-): PropertyHighlight => {
+  resolveImage?: ImageResolver,
+): Promise<{ highlight: PropertyHighlight; warning?: string }> => {
   const source = section === "availabilities" ? "Availability" : "Property";
   const sizePaths =
     section === "availabilities"
@@ -276,21 +302,28 @@ const highlight = (
           "Property__r.ascendix__ExpansionType__c",
           "Property__r.ascendix__PropertySubType__c",
         );
+  const resolvedImage = await image(record, source, resolveImage);
   return {
-    address: address(record, source),
-    sizeSf: numeric(record, ...sizePaths),
-    type,
-    sponsor: text(
-      record,
-      "Property__r.ascendix__Developer__r.Name",
-      "Property__r.ascendix__OwnerLandlord__r.Name",
-      "Availability__r.Listing_Broker_Company__c",
-    ),
-    image: image(record, source),
+    highlight: {
+      address: address(record, source),
+      sizeSf: numeric(record, ...sizePaths),
+      type,
+      sponsor: text(
+        record,
+        "Property__r.ascendix__Developer__r.Name",
+        "Property__r.ascendix__OwnerLandlord__r.Name",
+        "Availability__r.Listing_Broker_Company__c",
+      ),
+      image: resolvedImage.value,
+    },
+    warning: resolvedImage.warning,
   };
 };
 
-export function mapHistoricalContributors(rows: SalesforceRecord[]) {
+export async function mapHistoricalContributors(
+  rows: SalesforceRecord[],
+  resolveImage?: ImageResolver,
+) {
   const leaseRows = rankContributors(rows, "leasing");
   const saleRows = rankContributors(rows, "sales");
   const availabilityRows = rankContributors(rows, "availabilities");
@@ -395,14 +428,36 @@ export function mapHistoricalContributors(rows: SalesforceRecord[]) {
       status: "matched",
     }),
   );
+  const [availabilityHighlights, deliveryHighlights, constructionHighlights] =
+    await Promise.all([
+      Promise.all(
+        availabilityRows.map((row) =>
+          highlight(row, "availabilities", resolveImage),
+        ),
+      ),
+      Promise.all(
+        deliveryRows.map((row) => highlight(row, "deliveries", resolveImage)),
+      ),
+      Promise.all(
+        constructionRows.map((row) =>
+          highlight(row, "construction", resolveImage),
+        ),
+      ),
+    ]);
+  const imageWarnings = [
+    ...availabilityHighlights,
+    ...deliveryHighlights,
+    ...constructionHighlights,
+  ]
+    .map((entry) => entry.warning)
+    .filter((warning): warning is string => Boolean(warning));
   return {
     leasing,
     sales,
-    availabilities: availabilityRows.map((row) =>
-      highlight(row, "availabilities"),
-    ),
-    deliveries: deliveryRows.map((row) => highlight(row, "deliveries")),
-    construction: constructionRows.map((row) => highlight(row, "construction")),
+    availabilities: availabilityHighlights.map((entry) => entry.highlight),
+    deliveries: deliveryHighlights.map((entry) => entry.highlight),
+    construction: constructionHighlights.map((entry) => entry.highlight),
     provenance,
+    imageWarnings,
   };
 }

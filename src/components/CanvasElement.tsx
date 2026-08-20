@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type {
   EditorSettings,
   PreviewMode,
@@ -61,6 +61,7 @@ export function CanvasElement(props: Props) {
     onChange,
     onGuides,
   } = props;
+  const [rotationAngle, setRotationAngle] = useState<number | null>(null);
   const startDrag = (e: React.PointerEvent) => {
     if (element.locked) return;
     e.stopPropagation();
@@ -201,11 +202,14 @@ export function CanvasElement(props: Props) {
         (Math.atan2(py - centerY, px - centerX) * 180) / Math.PI + 90,
         { shiftKey: ev.shiftKey, bypass: ev.altKey },
       );
+      const rounded = Math.round(rotation * 10) / 10;
+      setRotationAngle(rounded);
       onChange(element.id, {
-        rotation: Math.round(rotation * 10) / 10,
+        rotation: rounded,
       } as Partial<ReportElement>);
     };
     const up = () => {
+      setRotationAngle(null);
       props.onInteractionEnd();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -429,6 +433,11 @@ export function CanvasElement(props: Props) {
             aria-label="Rotate element"
             onPointerDown={startRotate}
           />
+          {rotationAngle != null && (
+            <div className="rotation-tooltip" data-testid="rotation-tooltip">
+              {Math.round(rotationAngle)}°
+            </div>
+          )}
         </>
       )}
       {selected && (
