@@ -31,7 +31,7 @@ export function calculateMarketTotals(
       deliveredSf: 0,
       underConstructionSf: 0,
       speculativeShare: 0,
-      netAbsorptionSf: 0,
+      quarterlyNetAbsorptionSf: 0,
       vacancyRate: 0,
       availabilityRate: 0,
       askingNetRentPsf: 0,
@@ -46,7 +46,7 @@ export function calculateMarketTotals(
       "speculativeShare",
       "underConstructionSf",
     ),
-    netAbsorptionSf: sum(submarkets, "netAbsorptionSf"),
+    quarterlyNetAbsorptionSf: sum(submarkets, "quarterlyNetAbsorptionSf"),
     vacancyRate: weightedAverage(submarkets, "vacancyRate", "inventorySf"),
     availabilityRate: weightedAverage(
       submarkets,
@@ -100,7 +100,7 @@ const formulas: Record<keyof MarketMetrics, string> = {
   underConstructionSf: "SUM(submarket.underConstructionSf)",
   speculativeShare:
     "SUM(submarket.underConstructionSf × submarket.speculativeShare) / SUM(submarket.underConstructionSf)",
-  netAbsorptionSf: "SUM(submarket.netAbsorptionSf)",
+  quarterlyNetAbsorptionSf: "SUM(submarket.quarterlyNetAbsorptionSf)",
   vacancyRate:
     "SUM(submarket.inventorySf × submarket.vacancyRate) / SUM(submarket.inventorySf)",
   availabilityRate:

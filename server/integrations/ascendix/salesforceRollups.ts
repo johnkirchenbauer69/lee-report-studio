@@ -5,6 +5,7 @@ import type {
 } from "../../../src/report-engine/schema/industrialMarketReport.ts";
 import type { SalesforceRecord } from "../salesforce/SalesforceClient.ts";
 import { salesforceFieldMap as mapping } from "./salesforceFieldMap.ts";
+import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
 
 const numeric = (record: SalesforceRecord, field: { apiName: string }) => {
   const value = record[field.apiName];
@@ -34,7 +35,7 @@ export interface PropertyDataRollup {
     inventorySf: number;
     vacantSf: number;
     availableSf: number;
-    netAbsorptionSf: number;
+    quarterlyNetAbsorptionSf: number;
     leasingActivitySf: number;
     deliveredSf: number;
     underConstructionSf: number;
@@ -73,7 +74,7 @@ export function rollupPropertyData(
     inventorySf,
     vacantSf,
     availableSf,
-    netAbsorptionSf: sum(rows, pd.netAbsorptionSf),
+    quarterlyNetAbsorptionSf: sum(rows, pd.quarterlyNetAbsorptionSf),
     leasingActivitySf: sum(rows, pd.leasingActivitySf),
     deliveredSf: sum(rows, pd.deliveredSf),
     underConstructionSf,
@@ -92,7 +93,7 @@ export function rollupPropertyData(
         underConstructionSf,
         underConstructionAvailableSf,
       ),
-      netAbsorptionSf: facts.netAbsorptionSf,
+      quarterlyNetAbsorptionSf: facts.quarterlyNetAbsorptionSf,
       vacancyRate: inventorySf > 0 ? vacantSf / inventorySf : 0,
       availabilityRate: inventorySf > 0 ? availableSf / inventorySf : 0,
       askingNetRentPsf,
@@ -101,19 +102,99 @@ export function rollupPropertyData(
   };
 }
 
-export function aggregateHistoricalMarketPeriod(
+export type QuarterlyMarketPeriod = Omit<
+  HistoricalMarketPeriod,
+  "trailing12MonthNetAbsorptionSf" | "trailing12MonthNetAbsorptionStatus"
+> & {
+  sourceIds?: string[];
+};
+
+export function aggregateQuarterlyMarketPeriod(
   period: string,
   rows: SalesforceRecord[],
-): HistoricalMarketPeriod {
+): QuarterlyMarketPeriod {
   const md = mapping.marketData;
   const inventory = sum(rows, md.inventorySf);
   return {
-    period,
-    netAbsorption12MonthSf: sum(rows, md.netAbsorptionSf),
+    period: normalizeQuarterBounds(period).label,
+    quarterlyNetAbsorptionSf: sum(rows, md.quarterlyNetAbsorptionSf),
     vacancyRate: inventory > 0 ? sum(rows, md.totalVacantSf) / inventory : 0,
     availabilityRate:
       inventory > 0 ? sum(rows, md.totalAvailableSf) / inventory : 0,
     underConstructionSf: sum(rows, md.underConstructionSf),
     leasingActivitySf: sum(rows, md.leasingActivitySf),
+    sourceIds: rows.map((row) => String(row.Id)).filter(Boolean),
+  };
+}
+
+export interface Trailing12MonthNetAbsorptionResult {
+  value: number | null;
+  status: "complete" | "insufficient_history";
+  inputPeriods: string[];
+  missingPeriods: string[];
+  sourceIds: string[];
+}
+
+const quarterOrdinal = (period: string) => {
+  const { year, quarter } = normalizeQuarterBounds(period);
+  return year * 4 + quarter - 1;
+};
+
+const periodFromOrdinal = (ordinal: number) => {
+  const year = Math.floor(ordinal / 4);
+  const quarter = (ordinal % 4) + 1;
+  return `${year} Q${quarter}`;
+};
+
+/** Calculates a signed rolling four-quarter sum without zero-filling gaps. */
+export function calculateTrailing12MonthNetAbsorption(
+  periods: Array<
+    Pick<QuarterlyMarketPeriod, "period" | "quarterlyNetAbsorptionSf"> & {
+      sourceIds?: string[];
+    }
+  >,
+  targetPeriod: string,
+): Trailing12MonthNetAbsorptionResult {
+  const normalized = periods
+    .map((period) => ({
+      ...period,
+      period: normalizeQuarterBounds(period.period).label,
+      ordinal: quarterOrdinal(period.period),
+    }))
+    .sort((left, right) => right.ordinal - left.ordinal);
+  const byOrdinal = new Map<number, (typeof normalized)[number]>();
+  for (const period of normalized) {
+    if (byOrdinal.has(period.ordinal))
+      throw new Error(
+        `Duplicate quarterly net absorption input for ${period.period}.`,
+      );
+    byOrdinal.set(period.ordinal, period);
+  }
+  const targetOrdinal = quarterOrdinal(targetPeriod);
+  const inputPeriods = [0, 1, 2, 3].map((offset) =>
+    periodFromOrdinal(targetOrdinal - offset),
+  );
+  const inputs = [0, 1, 2, 3].map((offset) =>
+    byOrdinal.get(targetOrdinal - offset),
+  );
+  const missingPeriods = inputPeriods.filter((_, index) => !inputs[index]);
+  const sourceIds = inputs.flatMap((input) => input?.sourceIds ?? []);
+  if (missingPeriods.length)
+    return {
+      value: null,
+      status: "insufficient_history",
+      inputPeriods,
+      missingPeriods,
+      sourceIds,
+    };
+  return {
+    value: inputs.reduce(
+      (total, input) => total + input!.quarterlyNetAbsorptionSf,
+      0,
+    ),
+    status: "complete",
+    inputPeriods,
+    missingPeriods: [],
+    sourceIds,
   };
 }

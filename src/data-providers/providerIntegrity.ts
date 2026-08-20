@@ -9,7 +9,7 @@ export const IMPORTED_METRIC_KEYS: (keyof MarketMetrics)[] = [
   "deliveredSf",
   "underConstructionSf",
   "speculativeShare",
-  "netAbsorptionSf",
+  "quarterlyNetAbsorptionSf",
   "vacancyRate",
   "availabilityRate",
   "askingNetRentPsf",

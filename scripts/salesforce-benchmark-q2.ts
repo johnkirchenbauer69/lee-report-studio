@@ -21,6 +21,20 @@ const ohare = await service.getIndustrialMarketReport({
   ...base,
   calculationScope: { type: "selected-submarkets", submarkets: ["O'Hare"] },
 });
+const centralDuPage = await service.getIndustrialMarketReport({
+  ...base,
+  calculationScope: {
+    type: "selected-submarkets",
+    submarkets: ["Central DuPage"],
+  },
+});
+const chicagoSouth = await service.getIndustrialMarketReport({
+  ...base,
+  calculationScope: {
+    type: "selected-submarkets",
+    submarkets: ["Chicago South"],
+  },
+});
 const facts = overall.sourceMetadata.sourceDefinition?.propertyDataRollup ?? {};
 
 type Status =
@@ -51,7 +65,7 @@ const metric = (
 ) => {
   const difference = live === undefined ? undefined : live - expected;
   console.log(
-    `${label}\n  Live: ${live ?? "MISSING"}\n  Expected: ${expected}\n  Difference: ${difference ?? "MISSING"}\n  Tolerance: ${tolerance}\n  Source: ${source}\n  Status: ${classify(live, expected, tolerance, known)}`,
+    `${label}\n  Live: ${live ?? "MISSING"}\n  Approved: ${expected}\n  Difference: ${difference ?? "MISSING"}\n  Tolerance: ${tolerance}\n  Source: ${source}\n  Status: ${classify(live, expected, tolerance, known)}`,
   );
 };
 const contributor = (
@@ -110,11 +124,38 @@ metric(
   "SUM(Property_Data.Available) / SUM(Property_Data.Inventory)",
 );
 metric(
-  "Net Absorption",
-  Number(facts.netAbsorptionSf),
+  "Overall Market Quarterly Net Absorption",
+  overall.report.overallMarket.quarterlyNetAbsorptionSf,
   5_206_811,
   1,
-  "Property_Data__c",
+  "SUM(Property_Data__c.Net_Absorption_SF_Total__c)",
+);
+const currentIndicator = overall.report.historicalPeriods.find(
+  (period) => period.period === "2026 Q2",
+);
+metric(
+  "Overall Market 12-Month Net Absorption",
+  currentIndicator?.trailing12MonthNetAbsorptionSf ?? undefined,
+  17_654_829,
+  1,
+  "signed sum of four quarterly Market_Data__c aggregates",
+);
+const trailingProvenance = overall.report.provenance.find(
+  (entry) =>
+    entry.fieldPath ===
+    "historicalPeriods.2026 Q2.trailing12MonthNetAbsorptionSf",
+);
+console.log("12-Month Net Absorption — Q2 2026");
+for (const inputPeriod of trailingProvenance?.calculation?.inputPeriods ?? []) {
+  const input = overall.report.historicalPeriods.find(
+    (period) => period.period === inputPeriod,
+  );
+  console.log(
+    `  ${inputPeriod} quarterly: ${input?.quarterlyNetAbsorptionSf ?? "MISSING"}`,
+  );
+}
+console.log(
+  `  Calculated T12: ${currentIndicator?.trailing12MonthNetAbsorptionSf ?? "MISSING"}`,
 );
 metric(
   "Leasing Activity",
@@ -122,6 +163,37 @@ metric(
   14_584_206,
   1,
   "Property_Data__c",
+);
+
+metric(
+  "Central DuPage Quarterly Net Absorption",
+  centralDuPage.report.overallMarket.quarterlyNetAbsorptionSf,
+  126_800,
+  1,
+  "Market_Data__c.Total_Net_Absorption_SF__c",
+);
+metric(
+  "Central DuPage 12-Month Net Absorption",
+  centralDuPage.report.historicalPeriods[0]?.trailing12MonthNetAbsorptionSf ??
+    undefined,
+  265_471,
+  1,
+  "signed sum of four quarterly Market_Data__c records",
+);
+metric(
+  "Chicago South Quarterly Net Absorption",
+  chicagoSouth.report.overallMarket.quarterlyNetAbsorptionSf,
+  37_457,
+  1,
+  "Market_Data__c.Total_Net_Absorption_SF__c",
+);
+metric(
+  "Chicago South 12-Month Net Absorption",
+  chicagoSouth.report.historicalPeriods[0]?.trailing12MonthNetAbsorptionSf ??
+    undefined,
+  409_204,
+  1,
+  "signed sum of four quarterly Market_Data__c records",
 );
 metric(
   "Deliveries",

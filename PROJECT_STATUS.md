@@ -27,6 +27,7 @@ The reference workflow now runs from source selection through normalized data, r
 - Quarter-label authority, ingestion percent normalization, public submarket exclusions, contributor-first historical highlights, and optional relationship capability diagnostics
 - Live-verified 18-submarket Chicago definition with no stored Overall Market row, Property_Data current headline rollup, Market_Data historical trend aggregation, and finalist-only enrichment
 - Verified-derived speculative construction plus explicit Chicago South and West Cook Q2 reconciliation findings
+- Explicit quarterly-versus-trailing-12-month Net Absorption schema, rolling-window calculation/provenance, editor labels, and Q2 Overall/Central DuPage/Chicago South regression benchmarks
 - Versioned immutable report-data snapshots with canonical SHA-256 hashes and ReportInstance references
 - Semantic MCP data, validation, conflict, provenance, and status tools with no raw SOQL/write surface
 - Fake Salesforce adapter contracts plus HTTP/MCP report/hash parity coverage in CI

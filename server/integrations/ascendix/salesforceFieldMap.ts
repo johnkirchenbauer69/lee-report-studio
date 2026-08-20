@@ -111,7 +111,7 @@ export const salesforceFieldMap = {
     underConstructionPercent: verified(
       "Under_Construction_Percent_of_Inventory__c",
     ),
-    netAbsorptionSf: verified("Total_Net_Absorption_SF__c"),
+    quarterlyNetAbsorptionSf: verified("Total_Net_Absorption_SF__c"),
     directNetAbsorptionSf: verified("Direct_Net_Absorption_SF__c"),
     subletNetAbsorptionSf: verified("Sublet_Net_Absorption_SF__c"),
     totalGrossAbsorptionSf: verified("Total_Gross_Absorption_SF__c"),
@@ -184,9 +184,9 @@ export const salesforceFieldMap = {
     periodStart: verified("Period_Start__c"),
     inventorySf: verified("Inventory_SF__c"),
     vacantSf: verified("Vacant_SF_Total__c"),
-    netAbsorptionSf: verified("Net_Absorption_SF__c"),
-    leasingActivitySf: verified("Leasing_Activity_SF__c"),
-    deliveredSf: verified("Delivered_SF__c"),
+    quarterlyNetAbsorptionSf: verified("Net_Absorption_SF_Total__c"),
+    leasingActivitySf: verified("Leasing_Activity_SF_Total__c"),
+    deliveredSf: verified("Deliveries_SF__c"),
     underConstructionSf: verified("Under_Construction_SF__c"),
     underConstructionAvailableSf: verified(
       "Under_Construction_Available_SF__c",

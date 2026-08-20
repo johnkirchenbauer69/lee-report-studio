@@ -30,7 +30,7 @@ export function createReportMcpHandler(
       "get_market_report_data",
       {
         description:
-          "Retrieve validated normalized market-report data from the authoritative LEE Report Data Service. Use this instead of independently calculating report metrics from raw Salesforce records.",
+          "Retrieve validated normalized market-report data from the authoritative LEE Report Data Service, including distinct current-quarter and trailing-12-month Net Absorption fields. Use this instead of independently calculating report metrics from raw Salesforce records.",
         inputSchema: reportDataRequestSchema,
       },
       async (input) => response(await tools.getMarketReportData(input)),

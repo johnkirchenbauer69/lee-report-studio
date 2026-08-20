@@ -199,7 +199,7 @@ export const q2Submarkets: SubmarketMetrics[] = [
     deliveredSf,
     underConstructionSf,
     speculativeShare,
-    netAbsorptionSf,
+    quarterlyNetAbsorptionSf,
     vacancyRate,
     availabilityRate,
     askingNetRentPsf,
@@ -211,7 +211,7 @@ export const q2Submarkets: SubmarketMetrics[] = [
       deliveredSf,
       underConstructionSf,
       speculativeShare,
-      netAbsorptionSf,
+      quarterlyNetAbsorptionSf,
       vacancyRate,
       availabilityRate,
       askingNetRentPsf,
@@ -222,7 +222,9 @@ export const q2Submarkets: SubmarketMetrics[] = [
 export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
   {
     period: "2026 Q2",
-    netAbsorption12MonthSf: 17654829,
+    quarterlyNetAbsorptionSf: 5206811,
+    trailing12MonthNetAbsorptionSf: 17654829,
+    trailing12MonthNetAbsorptionStatus: "complete",
     vacancyRate: 0.0496,
     availabilityRate: 0.0853,
     underConstructionSf: 13912547,
@@ -230,7 +232,9 @@ export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
   },
   {
     period: "2026 Q1",
-    netAbsorption12MonthSf: 17675415,
+    quarterlyNetAbsorptionSf: 5038751,
+    trailing12MonthNetAbsorptionSf: 17675415,
+    trailing12MonthNetAbsorptionStatus: "complete",
     vacancyRate: 0.0585,
     availabilityRate: 0.0885,
     underConstructionSf: 13111050,
@@ -238,7 +242,9 @@ export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
   },
   {
     period: "2025 Q4",
-    netAbsorption12MonthSf: 18086895,
+    quarterlyNetAbsorptionSf: 2364125,
+    trailing12MonthNetAbsorptionSf: 18086895,
+    trailing12MonthNetAbsorptionStatus: "complete",
     vacancyRate: 0.0606,
     availabilityRate: 0.0894,
     underConstructionSf: 12459437,
@@ -246,7 +252,9 @@ export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
   },
   {
     period: "2025 Q3",
-    netAbsorption12MonthSf: 12657528,
+    quarterlyNetAbsorptionSf: 5045142,
+    trailing12MonthNetAbsorptionSf: 12657528,
+    trailing12MonthNetAbsorptionStatus: "complete",
     vacancyRate: 0.062,
     availabilityRate: 0.0906,
     underConstructionSf: 12864793,
@@ -254,7 +262,39 @@ export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
   },
   {
     period: "2025 Q2",
-    netAbsorption12MonthSf: 4547144,
+    quarterlyNetAbsorptionSf: 5227397,
+    trailing12MonthNetAbsorptionSf: 4547144,
+    trailing12MonthNetAbsorptionStatus: "complete",
+    vacancyRate: 0.0617,
+    availabilityRate: 0.0893,
+    underConstructionSf: 12423699,
+    leasingActivitySf: 15845047,
+  },
+  {
+    period: "2025 Q1",
+    quarterlyNetAbsorptionSf: 5450231,
+    trailing12MonthNetAbsorptionSf: null,
+    trailing12MonthNetAbsorptionStatus: "insufficient_history",
+    vacancyRate: 0.0617,
+    availabilityRate: 0.0893,
+    underConstructionSf: 12423699,
+    leasingActivitySf: 15845047,
+  },
+  {
+    period: "2024 Q4",
+    quarterlyNetAbsorptionSf: -3065242,
+    trailing12MonthNetAbsorptionSf: null,
+    trailing12MonthNetAbsorptionStatus: "insufficient_history",
+    vacancyRate: 0.0617,
+    availabilityRate: 0.0893,
+    underConstructionSf: 12423699,
+    leasingActivitySf: 15845047,
+  },
+  {
+    period: "2024 Q3",
+    quarterlyNetAbsorptionSf: -3065242,
+    trailing12MonthNetAbsorptionSf: null,
+    trailing12MonthNetAbsorptionStatus: "insufficient_history",
     vacancyRate: 0.0617,
     availabilityRate: 0.0893,
     underConstructionSf: 12423699,
@@ -400,6 +440,49 @@ export const q2SampleReport: IndustrialMarketReport = {
   construction: q2Construction,
   provenance: [
     {
+      fieldPath: "overallMarket.quarterlyNetAbsorptionSf",
+      selectedValue: calculatedTotals.quarterlyNetAbsorptionSf,
+      sources: [
+        {
+          sourceId: "submarket-stats-q2",
+          sourceType: "excel",
+          value: calculatedTotals.quarterlyNetAbsorptionSf,
+          reference: "Submarket Table quarterly net absorption total",
+        },
+      ],
+      authority: "Approved Q2 2026 quarterly market total",
+      metricType: "quarterly",
+      status: "calculated",
+    },
+    {
+      fieldPath: "historicalPeriods.2026 Q2.trailing12MonthNetAbsorptionSf",
+      selectedValue: 17_654_829,
+      sources: [
+        {
+          sourceId: "approved-q2-market-indicators",
+          sourceType: "pdf",
+          value: 17_654_829,
+          reference: "Page 3, 12 Month Net Absorption (SF)",
+        },
+      ],
+      authority: "Approved trailing four-quarter calculation",
+      metricType: "trailing-12-month",
+      status: "calculated",
+      calculation: {
+        formula:
+          "SUM(quarterlyNetAbsorptionSf for 2026 Q2, 2026 Q1, 2025 Q4, 2025 Q3)",
+        inputPaths: [
+          "historicalPeriods.2026 Q2.quarterlyNetAbsorptionSf",
+          "historicalPeriods.2026 Q1.quarterlyNetAbsorptionSf",
+          "historicalPeriods.2025 Q4.quarterlyNetAbsorptionSf",
+          "historicalPeriods.2025 Q3.quarterlyNetAbsorptionSf",
+        ],
+        inputCount: 4,
+        inputPeriods: ["2026 Q2", "2026 Q1", "2025 Q4", "2025 Q3"],
+        sourceObjects: ["approved Q2 fixture"],
+      },
+    },
+    {
       fieldPath: "overallMarket.vacancyRate",
       selectedValue: calculatedTotals.vacancyRate,
       sources: [
@@ -502,7 +585,7 @@ export const q2SampleReport: IndustrialMarketReport = {
       note: "The approved aggregate is retained because recomputing from rounded row percentages produces a different displayed result.",
     },
     {
-      fieldPath: "submarkets.Southeast Wisconsin.netAbsorptionSf",
+      fieldPath: "submarkets.Southeast Wisconsin.quarterlyNetAbsorptionSf",
       selectedValue: 891612,
       sources: [
         {
@@ -534,7 +617,7 @@ export const q2SampleReport: IndustrialMarketReport = {
       createdAt: "2026-07-22T00:00:00.000Z",
     },
     {
-      fieldPath: "submarkets.Southeast Wisconsin.netAbsorptionSf",
+      fieldPath: "submarkets.Southeast Wisconsin.quarterlyNetAbsorptionSf",
       value: 891615,
       authority: "Approved Q2 2026 market report",
       reason:

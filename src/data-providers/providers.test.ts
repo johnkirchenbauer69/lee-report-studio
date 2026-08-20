@@ -103,7 +103,7 @@ describe("report data providers", () => {
     expect(result.report.submarkets[0]).toMatchObject({
       name: "Test Market",
       inventorySf: 1000,
-      netAbsorptionSf: -25,
+      quarterlyNetAbsorptionSf: -25,
     });
     expect(result.report.leasing).toEqual([]);
     expect(result.report.sales).toEqual([]);
@@ -147,7 +147,9 @@ describe("report data providers", () => {
       ),
     ).resolves.toMatchObject({
       report: {
-        submarkets: [expect.objectContaining({ netAbsorptionSf: -500000 })],
+        submarkets: [
+          expect.objectContaining({ quarterlyNetAbsorptionSf: -500000 }),
+        ],
       },
     });
 

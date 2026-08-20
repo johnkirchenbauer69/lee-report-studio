@@ -20,7 +20,10 @@ const metricColumns: { key: keyof MarketMetrics; header: string }[] = [
   { key: "deliveredSf", header: "delivered (sf)" },
   { key: "underConstructionSf", header: "under construction (sf)" },
   { key: "speculativeShare", header: "construction speculative (%)" },
-  { key: "netAbsorptionSf", header: "net absorption (sf)" },
+  {
+    key: "quarterlyNetAbsorptionSf",
+    header: "net absorption (sf)",
+  },
   { key: "vacancyRate", header: "total vacant (%)" },
   { key: "availabilityRate", header: "total available (%)" },
   { key: "askingNetRentPsf", header: "asking net rent ($/sf)" },

@@ -40,6 +40,8 @@ Initial object roles are:
 - Standard submarket headlines and trends retain official `Market_Data__c` authority.
 - Current-quarter Overall Market headlines roll up all eligible `Property_Data__c` rows in the accepted universe, including zero-inventory and otherwise-eligible unlinked rows. Vacancy and availability use ratio-of-sums.
 - Historical Overall Market trends aggregate the 18 `Market_Data__c` snapshots by quarter.
+- Quarterly Net Absorption comes from `Market_Data__c.Total_Net_Absorption_SF__c` for a standard submarket and `SUM(Property_Data__c.Net_Absorption_SF_Total__c)` across the approved eligible universe for the current Overall Market headline. It drives the Overall Market Table and quarter-specific narrative.
+- Market Indicators **12 Month Net Absorption (SF)** is never read as a separate stored overall value. For each target quarter, the adapter first aggregates the requested geography's quarterly Market_Data records, then takes the signed sum of the target and prior three quarters. Missing history remains `null`/`insufficient_history`; provenance lists all four periods and contributing record IDs.
 - Contributors are stored per submarket. Overall Market pools the accepted 18 sets and globally ranks them; a standard submarket scopes contributors to that submarket and validates the Market_Data parent.
 - Frozen contributor-native values precede linked live enrichment. Only missing finalist fields are enriched in at most four batched source-object queries.
 - Speculative construction is `verified-derived`: `Under_Construction_Available_SF__c / Under_Construction_SF__c`, and Overall Market uses ratio-of-sums. Zero construction produces `0`, never NaN/Infinity.
@@ -66,4 +68,4 @@ The check prints only connectivity, auth mode, safe instance hostname, API versi
 
 `current` is a separate request type. The adapter currently rejects it clearly until the live current-state mapping has been verified; it cannot accidentally take the historical path.
 
-Every Salesforce metric records record ID, object/field reference, retrieval time, and authority. Calculated cross-checks add formula and input lineage. Structured logs include request ID, market, period, mode, record counts, duration, result, and snapshot ID—never credentials.
+Every Salesforce metric records record ID, object/field reference, retrieval time, and authority. Calculated cross-checks add formula and input lineage. Quarterly and trailing-12-month net absorption use distinct normalized field paths and metric types, so `5,206,811` and `17,654,829` are valid simultaneous Q2 Overall Market values rather than a conflict. Structured logs include request ID, market, period, mode, record counts, duration, result, and snapshot ID—never credentials.

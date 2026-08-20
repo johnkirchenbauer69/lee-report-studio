@@ -7,27 +7,41 @@ interface Props {
 const fields = [
   ["report.title", "Report → Title", "text"],
   ["report.period", "Report → Period", "text"],
-  ["overall_market.inventory_sf", "Overall Market → Inventory", "sf"],
-  ["overall_market.vacancy_rate", "Overall Market → Vacancy", "percentage"],
+  ["overallMarket.inventorySf", "Overall Market → Inventory", "sf"],
+  ["overallMarket.vacancyRate", "Overall Market → Vacancy", "percentage"],
   [
-    "overall_market.availability_rate",
+    "overallMarket.availabilityRate",
     "Overall Market → Availability",
     "percentage",
   ],
-  ["overall_market.net_absorption", "Overall Market → Net Absorption", "sf"],
   [
-    "overall_market.leasing_activity_sf",
+    "overallMarket.quarterlyNetAbsorptionSf",
+    "Overall Market → Quarterly Net Absorption",
+    "sf",
+  ],
+  [
+    "historicalPeriods[0].trailing12MonthNetAbsorptionSf",
+    "Market Indicators → 12-Month Net Absorption",
+    "sf",
+  ],
+  [
+    "historicalPeriods[0].leasingActivitySf",
     "Overall Market → Leasing Activity",
     "sf",
   ],
   [
-    "overall_market.under_construction_sf",
+    "overallMarket.underConstructionSf",
     "Overall Market → Under Construction",
     "sf",
   ],
   ["market.name", "Current Market → Name", "text"],
-  ["market.vacancy_rate", "Current Market → Vacancy", "percentage"],
-  ["market.availability_rate", "Current Market → Availability", "percentage"],
+  ["market.vacancyRate", "Current Market → Vacancy", "percentage"],
+  ["market.availabilityRate", "Current Market → Availability", "percentage"],
+  [
+    "market.quarterlyNetAbsorptionSf",
+    "Current Market → Quarterly Net Absorption",
+    "sf",
+  ],
 ];
 export function DataBrowser({ onBind, reportInstance }: Props) {
   return (

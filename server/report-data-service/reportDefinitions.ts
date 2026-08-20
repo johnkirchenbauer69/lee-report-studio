@@ -9,9 +9,38 @@ export interface MetricDefinition {
 }
 
 export const INDUSTRIAL_MARKET_REPORT_DEFINITION_VERSION =
-  "industrial-market-report-data-v3-live-verified-chicago";
+  "industrial-market-report-data-v4-explicit-absorption-periods";
 
 export const industrialMarketMetricDefinitions: readonly MetricDefinition[] = [
+  {
+    metricPath: "overallMarket.quarterlyNetAbsorptionSf",
+    version: "v1",
+    sourceObject: "Property_Data__c",
+    sourceField: "Net_Absorption_SF_Total__c",
+    calculation:
+      "Current report-quarter signed sum across the eligible 20K+ Property_Data universe and accepted submarkets.",
+    authority: "Property_Data__c Overall Market current-quarter rollup",
+    timeContext: "historical-period",
+  },
+  {
+    metricPath: "submarkets.*.quarterlyNetAbsorptionSf",
+    version: "v1",
+    sourceObject: "Market_Data__c",
+    sourceField: "Total_Net_Absorption_SF__c",
+    calculation: "Official selected-quarter submarket value.",
+    authority: "Market_Data__c official submarket snapshot",
+    timeContext: "historical-period",
+  },
+  {
+    metricPath: "historicalPeriods.*.trailing12MonthNetAbsorptionSf",
+    version: "v1",
+    sourceObject: "Market_Data__c",
+    sourceField: "Total_Net_Absorption_SF__c",
+    calculation:
+      "Signed sum of quarterlyNetAbsorptionSf for the target quarter and immediately preceding three quarters; null when history is incomplete.",
+    authority: "verified-derived trailing four-quarter calculation",
+    timeContext: "historical-period",
+  },
   {
     metricPath: "overallMarket.vacancyRate",
     version: "v1",

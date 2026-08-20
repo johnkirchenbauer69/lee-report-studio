@@ -17,6 +17,7 @@ LEE Report Studio treats missing or disputed data as visible report state, never
 9. **The report universe is explicit.** The versioned 18-submarket Chicago list—not every org picklist value—defines the standard geography.
 10. **Speculative construction is verified-derived.** Submarkets use available-UC / total-UC; Overall Market uses ratio-of-sums. Required inputs and calculated provenance remain mandatory.
 11. **Source differences remain classified.** Missing data, conflicts, known reconciled differences, and optional enrichment gaps are distinct states. The Chicago South unlinked row and West Cook 82,000-SF variance are retained as QA findings, not silent replacements.
+12. **Absorption periods are never conflated.** Quarterly absorption is a current-quarter signed source metric. Market Indicators absorption is a verified-derived signed sum of four consecutive quarterly inputs. Missing quarters yield `null`/`insufficient_history`, and quarterly-versus-T12 differences are not integrity conflicts.
 
 ## Validation and readiness
 
@@ -34,6 +35,7 @@ Template `requiredSections` and `optionalSections` define publication expectatio
 - Authorized override reconciliation
 - Full-market calculation with independently selected detail pages
 - JSON, Excel, and Ascendix provider isolation
+- Quarterly/T12 semantic separation, signed rolling windows, missing-history behavior, calendar-year boundaries, four-period provenance, and Overall/submarket benchmarks
 
 ## Known audit status
 

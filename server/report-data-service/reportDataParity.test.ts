@@ -51,6 +51,10 @@ describe("HTTP and MCP report data parity", () => {
     expect(httpResponse.status).toBe(200);
     expect(mcpResult.snapshot.hash).toBe(httpResult.snapshot.hash);
     expect(mcpResult.report).toEqual(httpResult.report);
+    expect(mcpResult.summary).toMatchObject({
+      quarterlyNetAbsorptionSf: 5_206_811,
+      trailing12MonthNetAbsorptionSf: 17_654_829,
+    });
   });
 
   it("calculates a selected-submarket scope without reusing the full-market aggregate", async () => {

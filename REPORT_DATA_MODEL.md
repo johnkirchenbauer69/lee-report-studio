@@ -13,6 +13,7 @@ Live Ascendix datasets also carry a service envelope containing source metadata,
 - Numeric business values remain numbers; formatting is a presentation concern.
 - Source-system field names never appear in visual bindings.
 - Additive metrics and weighted rates are calculated centrally.
+- Net absorption has explicit time semantics: `quarterlyNetAbsorptionSf` is the selected quarter, while `trailing12MonthNetAbsorptionSf` is a signed rolling four-quarter sum.
 - Every known disagreement can carry source references, authority, status, and notes.
 - An approved visible exception is stored in `presentationOverrides`; it does not replace normalized data.
 - Every dataset section declares `complete`, `partial`, `missing`, or `not-requested` with its source IDs.
@@ -23,9 +24,9 @@ Live Ascendix datasets also carry a service envelope containing source metadata,
 ## Main sections
 
 - `report`: identity, market, period, template, and preparer
-- `overallMarket`: calculated market metrics and approved narrative
+- `overallMarket`: current-quarter market metrics and approved narrative
 - `submarkets`: row-level inventory, construction, absorption, vacancy, availability, rents, and sales
-- `historicalPeriods`: time-series market indicators
+- `historicalPeriods`: quarterly source metrics and calculated time-series market indicators
 - `leasing`, `sales`: top transaction records
 - `availabilities`, `deliveries`, `construction`: property highlights and assets
 - `provenance`: field-level source reconciliation records
@@ -34,11 +35,11 @@ Live Ascendix datasets also carry a service envelope containing source metadata,
 
 ## Semantic constraints
 
-Rates are raw decimals from 0 through 1. Inventory, construction, deliveries, rent, transaction amounts, and property sizes are non-negative. Net absorption is intentionally signed. Cross-field anomalies such as availability below vacancy, zero rent, or rates on zero inventory are surfaced as warnings rather than silently corrected. `deliveredSf <= inventorySf` is not enforced because workbook timing and metric definitions can differ.
+Rates are raw decimals from 0 through 1. Inventory, construction, deliveries, rent, transaction amounts, and property sizes are non-negative. Both quarterly and trailing-12-month net absorption are intentionally signed. `quarterlyNetAbsorptionSf` is used by the Overall Market Table and quarter-specific narrative. `trailing12MonthNetAbsorptionSf` is used only by the Market Indicators row labeled **12 Month Net Absorption (SF)** and equals the target quarter plus its immediately preceding three quarters. Missing quarterly history produces `null` with `insufficient_history`; it is never zero-filled. Cross-field anomalies such as availability below vacancy, zero rent, or rates on zero inventory are surfaced as warnings rather than silently corrected. `deliveredSf <= inventorySf` is not enforced because workbook timing and metric definitions can differ.
 
 ## Provenance and overrides
 
-Imported provenance includes source ID/type, reference, timestamp, authority, and status. Derived overall metrics add a formula, input paths, and input count. A conflict remains unresolved until a presentation override supplies a non-empty authority, reason, value, and creation timestamp. Critical unresolved conflicts block approval and publication.
+Imported provenance includes source ID/type, reference, timestamp, authority, and status. Derived overall metrics add a formula, input paths, and input count. Trailing-12-month absorption also records `metricType`, the four canonical input periods, source objects, and contributing Salesforce record IDs. Quarterly and trailing-12-month absorption are separate definitions and are never compared as competing sources for one field. A conflict remains unresolved until a presentation override supplies a non-empty authority, reason, value, and creation timestamp. Critical unresolved conflicts block approval and publication.
 
 ## Request and readiness
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatReportValue } from "../../../src/report-engine/formatting/formatValue.ts";
 import {
+  calculateTrailing12MonthNetAbsorption,
   rollupPropertyData,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
@@ -16,7 +17,7 @@ const market = (
   deliveredSf: 0,
   underConstructionSf: 0,
   speculativeShare: 0,
-  netAbsorptionSf: 0,
+  quarterlyNetAbsorptionSf: 0,
   vacancyRate: 0,
   availabilityRate: 0,
   salesVolume: 0,
@@ -51,5 +52,36 @@ describe("live-verified Salesforce rollups", () => {
       "34%",
     );
     expect(verifiedSpeculativeShare(0, 0)).toBe(0);
+  });
+  it("calculates a signed trailing-four-quarter window across a year boundary", () => {
+    const result = calculateTrailing12MonthNetAbsorption(
+      [
+        { period: "Q1 2026", quarterlyNetAbsorptionSf: 2_000_000 },
+        { period: "2025 Q4", quarterlyNetAbsorptionSf: -1_000_000 },
+        { period: "2025 Q3", quarterlyNetAbsorptionSf: 3_000_000 },
+        { period: "2025 Q2", quarterlyNetAbsorptionSf: -500_000 },
+      ],
+      "2026 Q1",
+    );
+    expect(result).toMatchObject({
+      value: 3_500_000,
+      status: "complete",
+      inputPeriods: ["2026 Q1", "2025 Q4", "2025 Q3", "2025 Q2"],
+    });
+  });
+  it("returns an explicit incomplete result instead of zero-filling a gap", () => {
+    const result = calculateTrailing12MonthNetAbsorption(
+      [
+        { period: "2026 Q2", quarterlyNetAbsorptionSf: 10 },
+        { period: "2026 Q1", quarterlyNetAbsorptionSf: 20 },
+        { period: "2025 Q3", quarterlyNetAbsorptionSf: 40 },
+      ],
+      "2026 Q2",
+    );
+    expect(result).toMatchObject({
+      value: null,
+      status: "insufficient_history",
+      missingPeriods: ["2025 Q4"],
+    });
   });
 });

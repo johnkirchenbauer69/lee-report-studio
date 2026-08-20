@@ -32,7 +32,8 @@ import {
   normalizeSalesforceMarketDataRecord,
 } from "./salesforceNormalization.ts";
 import {
-  aggregateHistoricalMarketPeriod,
+  aggregateQuarterlyMarketPeriod,
+  calculateTrailing12MonthNetAbsorption,
   rollupPropertyData,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
@@ -76,7 +77,7 @@ const metricFields = [
   md.deliveredSf,
   md.underConstructionSf,
   md.underConstructionAvailableSf,
-  md.netAbsorptionSf,
+  md.quarterlyNetAbsorptionSf,
   md.totalVacantSf,
   md.vacancyRate,
   md.totalAvailableSf,
@@ -105,7 +106,11 @@ function metrics(record: SalesforceRecord): MarketMetrics {
       "under construction area",
     ),
     speculativeShare: speculativeShare(record),
-    netAbsorptionSf: number(record, md.netAbsorptionSf, "net absorption"),
+    quarterlyNetAbsorptionSf: number(
+      record,
+      md.quarterlyNetAbsorptionSf,
+      "quarterly net absorption",
+    ),
     vacancyRate: rate(record, md.vacancyRate, "vacancy rate"),
     availabilityRate: rate(record, md.availabilityRate, "availability rate"),
     askingNetRentPsf: number(record, md.askingNetRentPsf, "asking rent"),
@@ -418,10 +423,61 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
             .filter(Boolean),
         ).size !== CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.length,
     );
-    const historicalPeriods = [...historyGroups]
-      .sort(([a], [b]) => b.localeCompare(a))
-      .slice(0, 12)
-      .map(([label, rows]) => aggregateHistoricalMarketPeriod(label, rows));
+    const periodOrdinal = (label: string) => {
+      const normalized = normalizeQuarterBounds(label);
+      return normalized.year * 4 + normalized.quarter - 1;
+    };
+    const targetOrdinal = periodOrdinal(bounds.label);
+    const scopedHistoryGroups = [...historyGroups].map(
+      ([label, rows]) =>
+        [
+          label,
+          rows.filter((record) => {
+            const canonical = canonicalChicagoSubmarket(
+              text(record, md.submarket),
+            );
+            return canonical ? selectedNames.includes(canonical) : false;
+          }),
+        ] as const,
+    );
+    const incompleteScopedHistory = scopedHistoryGroups.filter(
+      ([, rows]) =>
+        new Set(
+          rows
+            .map((row) => canonicalChicagoSubmarket(text(row, md.submarket)))
+            .filter(Boolean),
+        ).size !== selectedNames.length,
+    );
+    const quarterlyHistoricalPeriods = scopedHistoryGroups
+      .filter(([label]) => periodOrdinal(label) <= targetOrdinal)
+      .filter(
+        ([label]) =>
+          !incompleteScopedHistory.some(([period]) => period === label),
+      )
+      .map(([label, rows]) => aggregateQuarterlyMarketPeriod(label, rows))
+      .sort(
+        (left, right) =>
+          periodOrdinal(right.period) - periodOrdinal(left.period),
+      )
+      .slice(0, 12);
+    const trailingCalculations = new Map(
+      quarterlyHistoricalPeriods.map((period) => [
+        period.period,
+        calculateTrailing12MonthNetAbsorption(
+          quarterlyHistoricalPeriods,
+          period.period,
+        ),
+      ]),
+    );
+    const historicalPeriods = quarterlyHistoricalPeriods.map((period) => {
+      const trailing = trailingCalculations.get(period.period)!;
+      const { sourceIds: _sourceIds, ...metrics } = period;
+      return {
+        ...metrics,
+        trailing12MonthNetAbsorptionSf: trailing.value,
+        trailing12MonthNetAbsorptionStatus: trailing.status,
+      };
+    });
 
     const scoped = scopeHistoricalContributors(contributorRows, {
       period: bounds.label,
@@ -462,6 +518,8 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
               },
             ],
             authority: "Market_Data__c official quarter snapshot",
+            metricType:
+              key === "quarterlyNetAbsorptionSf" ? "quarterly" : undefined,
             status: "matched" as const,
             critical: [
               "inventorySf",
@@ -501,18 +559,23 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
                   canonicalChicagoSubmarket(selectedNames[0]!)!,
                 )!,
             sourceType:
-              propertyHeadline && key === "askingNetRentPsf"
+              propertyHeadline &&
+              ["askingNetRentPsf", "quarterlyNetAbsorptionSf"].includes(key)
                 ? "calculated"
                 : "salesforce",
             value: overallMarket[key],
             reference: propertyHeadline
               ? key === "askingNetRentPsf"
                 ? "Inventory-weighted Market_Data__c rent methodology"
-                : `Property_Data__c ${ELIGIBLE_MARKET_UNIVERSE_SCOPE} (${selectedPropertyRows.length} rows)`
+                : key === "quarterlyNetAbsorptionSf"
+                  ? `SUM(Property_Data__c.${pd.quarterlyNetAbsorptionSf.apiName}) across ${ELIGIBLE_MARKET_UNIVERSE_SCOPE} (${selectedPropertyRows.length} rows)`
+                  : `Property_Data__c ${ELIGIBLE_MARKET_UNIVERSE_SCOPE} (${selectedPropertyRows.length} rows)`
               : `Market_Data__c official ${selectedNames[0]} snapshot`,
           },
         ],
         authority: headlineSource,
+        metricType:
+          key === "quarterlyNetAbsorptionSf" ? "quarterly" : undefined,
         status:
           propertyHeadline || key === "speculativeShare"
             ? "calculated"
@@ -537,7 +600,9 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
                 ? "SUM(Available_SF_Total__c) / SUM(Inventory_SF__c)"
                 : key === "speculativeShare"
                   ? "SUM(Under_Construction_Available_SF__c) / SUM(Under_Construction_SF__c)"
-                  : `Property_Data__c rollup.${key}`
+                  : key === "quarterlyNetAbsorptionSf"
+                    ? `SUM(${pd.quarterlyNetAbsorptionSf.apiName})`
+                    : `Property_Data__c rollup.${key}`
             : key === "speculativeShare"
               ? "Under_Construction_Available_SF__c / Under_Construction_SF__c"
               : `Market_Data__c.${key}`,
@@ -548,6 +613,84 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           inputCount: propertyHeadline ? selectedPropertyRows.length : 1,
         },
       });
+    const historyById = new Map(history.map((record) => [record.Id, record]));
+    for (const period of quarterlyHistoricalPeriods) {
+      const sourceIds = period.sourceIds ?? [];
+      const quarterlySources = sourceIds.map((sourceId) => {
+        const record = historyById.get(sourceId)!;
+        return {
+          sourceId,
+          sourceType: "salesforce" as const,
+          value: value(record, md.quarterlyNetAbsorptionSf),
+          reference: `Market_Data__c.${md.quarterlyNetAbsorptionSf.apiName} (${period.period} / ${text(record, md.submarket)})`,
+          importedAt: retrievedAt,
+        };
+      });
+      provenance.push({
+        fieldPath: `historicalPeriods.${period.period}.quarterlyNetAbsorptionSf`,
+        selectedValue: period.quarterlyNetAbsorptionSf,
+        sources: quarterlySources,
+        authority:
+          selectedNames.length === 1
+            ? "Market_Data__c official quarterly submarket snapshot"
+            : `SUM(${selectedNames.length} accepted Market_Data__c quarterly submarket snapshots)`,
+        metricType: "quarterly",
+        status: selectedNames.length === 1 ? "matched" : "calculated",
+        calculation: {
+          formula: `SUM(Market_Data__c.${md.quarterlyNetAbsorptionSf.apiName})`,
+          inputPaths: sourceIds.map(
+            (sourceId) =>
+              `Market_Data__c.${sourceId}.${md.quarterlyNetAbsorptionSf.apiName}`,
+          ),
+          inputCount: sourceIds.length,
+          inputPeriods: [period.period],
+          sourceObjects: ["Market_Data__c"],
+        },
+      });
+      const trailing = trailingCalculations.get(period.period)!;
+      const trailingSources = trailing.sourceIds.map((sourceId) => {
+        const record = historyById.get(sourceId)!;
+        return {
+          sourceId,
+          sourceType: "salesforce" as const,
+          value: value(record, md.quarterlyNetAbsorptionSf),
+          reference: `Market_Data__c.${md.quarterlyNetAbsorptionSf.apiName} (${text(record, md.period)} / ${text(record, md.submarket)})`,
+          importedAt: retrievedAt,
+        };
+      });
+      provenance.push({
+        fieldPath: `historicalPeriods.${period.period}.trailing12MonthNetAbsorptionSf`,
+        selectedValue: trailing.value,
+        sources: trailingSources.length
+          ? trailingSources
+          : [
+              {
+                sourceId: `market-data-history-${period.period}`,
+                sourceType: "calculated" as const,
+                value: null,
+                reference: "No quarterly Market_Data__c history was available.",
+                importedAt: retrievedAt,
+              },
+            ],
+        authority: "verified-derived trailing four-quarter calculation",
+        metricType: "trailing-12-month",
+        status: "calculated",
+        note:
+          trailing.status === "complete"
+            ? "Signed sum of the target quarter and immediately preceding three quarters."
+            : `Insufficient history; missing ${trailing.missingPeriods.join(", ")}. Missing quarters were not treated as zero.`,
+        calculation: {
+          formula: `SUM(quarterlyNetAbsorptionSf for ${trailing.inputPeriods.join(", ")})`,
+          inputPaths: trailing.inputPeriods.map(
+            (inputPeriod) =>
+              `historicalPeriods.${inputPeriod}.quarterlyNetAbsorptionSf`,
+          ),
+          inputCount: trailing.inputPeriods.length,
+          inputPeriods: trailing.inputPeriods,
+          sourceObjects: ["Market_Data__c"],
+        },
+      });
+    }
     for (const name of CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS) {
       const official = submarkets.find((row) => row.name === name)!.inventorySf;
       const propertyInventory = propertyRows

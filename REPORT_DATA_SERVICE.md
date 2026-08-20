@@ -19,9 +19,11 @@ ReportDataRequest
 
 The input is UI-independent: report type, market, period, calculation scope, optional requested sections, and an explicit historical/current time context. If omitted, time context becomes `historical-period` for the requested period.
 
-The result contains the strict `IndustrialMarketReport`, source metadata, completeness, definition version, request/record-count metadata, API-call/source-definition diagnostics, and `{ id, hash }` for the source snapshot. `industrial-market-report-data-v3-live-verified-chicago` identifies the live-verified contract.
+The result contains the strict `IndustrialMarketReport`, source metadata, completeness, definition version, request/record-count metadata, API-call/source-definition diagnostics, and `{ id, hash }` for the source snapshot. `industrial-market-report-data-v4-explicit-absorption-periods` identifies the current live-verified contract.
 
 Historical Market_Data records are selected by authoritative `Quarter_Label__c` and the canonical 18-submarket universe; `Market__c` is not required and no stored Overall Market row is assumed. Overall headlines use the eligible Property_Data rollup while historical trends aggregate the 18 Market_Data snapshots. Historical cards are scoped/pooled from active, report-included contributor snapshots, then only missing finalist fields are enriched.
+
+Net absorption has two response fields. `overallMarket.quarterlyNetAbsorptionSf` and each submarket's corresponding field represent the selected quarter and feed the table/narrative. Every `historicalPeriods` item retains its quarterly source value and a calculated `trailing12MonthNetAbsorptionSf` for Market Indicators. The latter is the signed sum of that period and the preceding three canonical quarters; incomplete history returns `null` plus `trailing12MonthNetAbsorptionStatus: "insufficient_history"`. HTTP and MCP serialize the same snapshotted fields and provenance.
 
 The SHA-256 is integrity/change-detection metadata over a recursively key-sorted canonical report payload. It is not a signature, timestamp authority, or complete cryptographic audit system.
 

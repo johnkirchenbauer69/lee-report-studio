@@ -23,7 +23,7 @@ const metricKeys: (keyof MarketMetrics)[] = [
   "deliveredSf",
   "underConstructionSf",
   "speculativeShare",
-  "netAbsorptionSf",
+  "quarterlyNetAbsorptionSf",
   "vacancyRate",
   "availabilityRate",
   "askingNetRentPsf",
@@ -146,6 +146,8 @@ export class ReportDataService {
                     ? "Market_Data__c official submarket snapshot"
                     : "Historical Market_Data aggregate"
                 : "LEE Report Studio calculation engine",
+          metricType:
+            key === "quarterlyNetAbsorptionSf" ? "quarterly" : undefined,
           status,
           critical:
             key === "speculativeShare" ||

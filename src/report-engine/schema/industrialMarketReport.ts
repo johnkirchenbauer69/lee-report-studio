@@ -49,7 +49,7 @@ export const marketMetricsSchema = z.object({
   deliveredSf: nonNegativeNumber,
   underConstructionSf: nonNegativeNumber,
   speculativeShare: rate,
-  netAbsorptionSf: finiteNumber,
+  quarterlyNetAbsorptionSf: finiteNumber,
   vacancyRate: rate,
   availabilityRate: rate,
   askingNetRentPsf: nonNegativeNumber,
@@ -62,7 +62,12 @@ export const submarketMetricsSchema = marketMetricsSchema.extend({
 
 export const historicalMarketPeriodSchema = z.object({
   period: z.string().min(1),
-  netAbsorption12MonthSf: finiteNumber,
+  quarterlyNetAbsorptionSf: finiteNumber,
+  trailing12MonthNetAbsorptionSf: finiteNumber.nullable(),
+  trailing12MonthNetAbsorptionStatus: z.enum([
+    "complete",
+    "insufficient_history",
+  ]),
   vacancyRate: rate,
   availabilityRate: rate,
   underConstructionSf: nonNegativeNumber,
@@ -106,6 +111,7 @@ export const provenanceRecordSchema = z.object({
     )
     .min(1),
   authority: z.string().min(1),
+  metricType: z.enum(["quarterly", "trailing-12-month"]).optional(),
   status: z.enum([
     "matched",
     "calculated",
@@ -121,6 +127,8 @@ export const provenanceRecordSchema = z.object({
       formula: z.string().min(1),
       inputPaths: z.array(z.string().min(1)).min(1),
       inputCount: z.number().int().nonnegative(),
+      inputPeriods: z.array(z.string().min(1)).optional(),
+      sourceObjects: z.array(z.string().min(1)).optional(),
     })
     .optional(),
 });
@@ -176,7 +184,8 @@ const fieldLabels: Record<string, string> = {
   underConstructionSf: "Under Construction",
   askingNetRentPsf: "Asking Net Rent",
   salesVolume: "Sales Volume",
-  netAbsorptionSf: "Net Absorption",
+  quarterlyNetAbsorptionSf: "Quarterly Net Absorption",
+  trailing12MonthNetAbsorptionSf: "12-Month Net Absorption",
 };
 
 const valueAtPath = (input: unknown, path: PropertyKey[]) =>
