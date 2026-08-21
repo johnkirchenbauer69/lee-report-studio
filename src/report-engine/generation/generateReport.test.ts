@@ -18,7 +18,7 @@ describe("generateReportInstance", () => {
       progress,
     );
 
-    expect(report.templateVersion).toBe("1.1.0");
+    expect(report.templateVersion).toBe("1.2.0");
     expect(report.pages).toHaveLength(4);
     expect(report.dataSnapshot.submarkets).toHaveLength(18);
     expect(report.status).toBe("draft");

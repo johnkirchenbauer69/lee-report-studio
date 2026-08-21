@@ -125,7 +125,7 @@ function standardHeader(pageNumber: number): ReportElement[] {
         "/report-assets/lee-logo-white.png",
         "contain",
       ),
-      style: { opacity: 1, mixBlendMode: "screen" },
+      style: { opacity: 1 },
     },
     {
       ...text(
@@ -234,7 +234,7 @@ const cover: ReportPage = {
         "/report-assets/lee-logo-white.png",
         "contain",
       ),
-      style: { opacity: 1, mixBlendMode: "screen" },
+      style: { opacity: 1 },
     },
     text(
       "cover-office",
@@ -595,6 +595,9 @@ const overviewPage: ReportPage = {
         width: 440,
         height: 300,
       },
+      requiredDataSection: "submarkets",
+      unavailableMessage:
+        "Data unavailable: live submarket map binding is not implemented.",
     },
     {
       id: "indicator-table",
@@ -645,31 +648,80 @@ const overviewPage: ReportPage = {
       "center",
     ),
     {
-      ...image(
-        "chart-net",
-        "Net Absorption Chart",
-        47,
-        520,
-        352,
-        216,
-        "/report-assets/chart-net-absorption.png",
-        "contain",
-      ),
+      id: "chart-net",
+      type: "chart",
+      name: "Net Absorption Chart",
+      x: 47,
+      y: 520,
+      width: 352,
+      height: 216,
+      sourcePath: "historicalPeriods",
+      categoryPath: "period",
+      chartType: "combination",
+      series: [
+        {
+          id: "absorption",
+          name: "Quarterly Net Absorption",
+          valuePath: "quarterlyNetAbsorptionSf",
+          type: "column",
+          color: "#0099d8",
+        },
+        {
+          id: "vacancy",
+          name: "Vacancy",
+          valuePath: "vacancyRate",
+          type: "line",
+          color: "#c4123f",
+          axisId: "rates",
+        },
+        {
+          id: "availability",
+          name: "Availability",
+          valuePath: "availabilityRate",
+          type: "line",
+          color: "#003c50",
+          axisId: "rates",
+        },
+      ],
+      axes: [
+        {
+          id: "volume",
+          position: "left",
+          format: "integer",
+          showGridlines: true,
+        },
+        {
+          id: "rates",
+          position: "right",
+          format: "percentage",
+          decimals: 1,
+          minimum: 0,
+        },
+      ],
+      legend: { visible: true, position: "bottom" },
+      chartStyle: {
+        background: "#ffffff",
+        gridColor: "#d5d9dd",
+        labelColor: "#53616c",
+        fontFamily: "Nunito Sans",
+        fontSize: 9,
+      },
+      style: { opacity: 1 },
       requiredDataSection: "historicalPeriods",
     },
-    {
-      ...image(
-        "chart-sales",
-        "Sales Volume Chart",
-        424,
-        520,
-        352,
-        216,
-        "/report-assets/chart-sales-volume.png",
-        "contain",
-      ),
-      requiredDataSection: "historicalPeriods",
-    },
+    text(
+      "chart-sales-unavailable",
+      "Sales Chart Data Diagnostic",
+      424,
+      520,
+      352,
+      216,
+      "Data unavailable: historical median sales price is not mapped in the normalized Salesforce report schema.",
+      11,
+      "#52636c",
+      600,
+      "center",
+    ),
     shape("leases-side-bg", "Section Side Bar", 32, 762, 23, 114, "#7a0d26"),
     {
       ...text(
@@ -977,10 +1029,47 @@ const highlightsPage: ReportPage = {
   ],
 };
 
+function detailElement(element: ReportElement): ReportElement {
+  const next = structuredClone(element);
+  next.id = `detail-${next.id}`;
+  if (next.id === "detail-market-3" || next.id === "detail-market-4") {
+    next.binding = { path: "market.name", fallback: "SUBMARKET" };
+  }
+  if (next.id === "detail-overview-narrative") {
+    next.binding = { path: "market.narrative", fallback: "" };
+  }
+  if (next.type === "table") next.sourcePath = `market.${next.sourcePath}`;
+  if (next.type === "chart") next.sourcePath = "market.historicalPeriods";
+  if (next.bindingContext?.name === "property" && next.binding) {
+    next.binding = {
+      ...next.binding,
+      path: `market.${next.bindingContext.path}.${next.binding.path.replace(/^property\./, "")}`,
+    };
+    next.bindingContext = undefined;
+  }
+  return next;
+}
+
+const submarketOverviewPage: ReportPage = {
+  ...structuredClone(overviewPage),
+  id: "submarket-overview",
+  name: "{item} Overview",
+  repeat: { sourcePath: "submarketDetails", contextName: "market" },
+  elements: overviewPage.elements.map(detailElement),
+};
+
+const submarketHighlightsPage: ReportPage = {
+  ...structuredClone(highlightsPage),
+  id: "submarket-highlights",
+  name: "{item} Highlights",
+  repeat: { sourcePath: "submarketDetails", contextName: "market" },
+  elements: highlightsPage.elements.map(detailElement),
+};
+
 export const sampleTemplate: ReportTemplate = {
   id: "industrial-market-report-q2-2026",
   name: "2026 Q2 Overall Market Report",
-  version: "1.1.0",
+  version: "1.2.0",
   requiredSections: [
     "overallMarket",
     "submarkets",
@@ -994,7 +1083,14 @@ export const sampleTemplate: ReportTemplate = {
     "construction",
     "narrative",
   ],
-  pages: [cover, tablePage, overviewPage, highlightsPage],
+  pages: [
+    cover,
+    tablePage,
+    overviewPage,
+    highlightsPage,
+    submarketOverviewPage,
+    submarketHighlightsPage,
+  ],
   settings: {
     unit: "px",
     gridEnabled: false,

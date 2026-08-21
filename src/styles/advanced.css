@@ -639,6 +639,22 @@
   color: #76858e;
   font-style: italic;
 }
+.canvas-element.is-table-editing {
+  cursor: default !important;
+}
+.canvas-element.is-table-editing .report-table th,
+.canvas-element.is-table-editing .report-table td {
+  cursor: cell;
+}
+.report-table .table-cell-selected {
+  outline: 2px solid #e23d83;
+  outline-offset: -2px;
+}
+.report-table .table-column-selected {
+  box-shadow:
+    inset 2px 0 #e23d83,
+    inset -2px 0 #e23d83;
+}
 .validation-row.info {
   color: #315d73;
   background: #edf6fa;

@@ -16,12 +16,12 @@ import {
 } from "../salesforce/soql.ts";
 import type { AscendixReportAdapter } from "./AscendixReportAdapter.ts";
 import {
-  looksLikeSalesforceId,
   mapHistoricalContributors,
   scopeHistoricalContributors,
   selectContributorFinalists,
   type ImageResolver,
 } from "./contributors.ts";
+import { looksLikeSalesforceId } from "../salesforce/salesforceIds.ts";
 import {
   CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
   ELIGIBLE_MARKET_UNIVERSE_SCOPE,
@@ -155,7 +155,8 @@ async function enrichFinalists(
   const propertyRows = finalists.filter(
     (row) =>
       sections.get(row.Id)?.includes("delivery") ||
-      sections.get(row.Id)?.includes("construction"),
+      sections.get(row.Id)?.includes("construction") ||
+      sections.get(row.Id)?.includes("availability"),
   );
   const availabilityRows = finalists.filter((row) =>
     sections.get(row.Id)?.includes("availability"),
@@ -260,6 +261,24 @@ async function enrichFinalists(
     saleRows,
     "Sale__c",
     "Sale__r",
+  );
+  await Promise.all(jobs);
+  for (const row of availabilityRows) {
+    const relation = row.Availability__r as SalesforceRecord | undefined;
+    const candidate = String(
+      relation?.Listing_Broker_Company__c ??
+        row["Availability__r.Listing_Broker_Company__c"] ??
+        "",
+    ).trim();
+    if (looksLikeSalesforceId(candidate))
+      row.Sponsor_Account_Id__local = candidate;
+  }
+  run(
+    "Account",
+    ["Id", "Name"],
+    availabilityRows,
+    "Sponsor_Account_Id__local",
+    "Sponsor_Account__r",
   );
   await Promise.all(jobs);
 }
@@ -486,12 +505,79 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       submarkets: selectedNames,
       marketDataIds,
     });
-    const finalists = selectContributorFinalists(scoped.rows);
+    const detailScopes = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name) => ({
+      name,
+      scoped: scopeHistoricalContributors(contributorRows, {
+        period: bounds.label,
+        submarkets: [name],
+        marketDataIds,
+      }),
+    }));
+    const finalists = [
+      ...new Map(
+        [
+          ...selectContributorFinalists(scoped.rows),
+          ...detailScopes.flatMap(({ scoped: detail }) =>
+            selectContributorFinalists(detail.rows),
+          ),
+        ].map((row) => [row.Id, row]),
+      ).values(),
+    ];
     const enrichmentDiagnostics: string[] = [];
     await enrichFinalists(this.client, finalists, calls, enrichmentDiagnostics);
     const highlights = await mapHistoricalContributors(
       scoped.rows,
       this.resolveImage,
+    );
+    const detailHighlights = await Promise.all(
+      detailScopes.map(({ scoped: detail }) =>
+        mapHistoricalContributors(detail.rows, this.resolveImage),
+      ),
+    );
+    const submarketDetails = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map(
+      (name, detailIndex) => {
+        const metricRow = submarkets.find((row) => row.name === name)!;
+        const { name: _name, ...detailMetrics } = metricRow;
+        const periods = [...historyGroups]
+          .filter(([label]) => periodOrdinal(label) <= targetOrdinal)
+          .flatMap(([label, rows]) => {
+            const exact = rows.filter(
+              (record) =>
+                canonicalChicagoSubmarket(text(record, md.submarket)) === name,
+            );
+            return exact.length === 1
+              ? [aggregateQuarterlyMarketPeriod(label, exact)]
+              : [];
+          })
+          .sort(
+            (left, right) =>
+              periodOrdinal(right.period) - periodOrdinal(left.period),
+          )
+          .slice(0, 12);
+        const history = periods.map((period) => {
+          const trailing = calculateTrailing12MonthNetAbsorption(
+            periods,
+            period.period,
+          );
+          const { sourceIds: _sourceIds, ...periodMetrics } = period;
+          return {
+            ...periodMetrics,
+            trailing12MonthNetAbsorptionSf: trailing.value,
+            trailing12MonthNetAbsorptionStatus: trailing.status,
+          };
+        });
+        return {
+          name,
+          metrics: detailMetrics,
+          historicalPeriods: history,
+          narrative: "",
+          leasing: detailHighlights[detailIndex]!.leasing,
+          sales: detailHighlights[detailIndex]!.sales,
+          availabilities: detailHighlights[detailIndex]!.availabilities,
+          deliveries: detailHighlights[detailIndex]!.deliveries,
+          construction: detailHighlights[detailIndex]!.construction,
+        };
+      },
     );
     const retrievedAt = this.now().toISOString();
     const provenance: ProvenanceRecord[] = currentRecords.flatMap((record) => {
@@ -817,6 +903,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       },
       overallMarket: { ...overallMarket, narrative: "" },
       submarkets,
+      submarketDetails,
       historicalPeriods,
       leasing: highlights.leasing,
       sales: highlights.sales,
@@ -862,6 +949,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
         `Salesforce API calls: measured=${measuredApiCalls}; queryOperations=${queryOperations}; Market_Data=${calls.marketData}; Contributor=${calls.contributor}; Property_Data=${calls.propertyData}; Enrichment=${calls.enrichment}; Capability=${calls.capability}`,
         ...enrichmentDiagnostics,
         ...highlights.imageWarnings,
+        ...detailHighlights.flatMap((detail) => detail.imageWarnings),
         ...scoped.issues.map((issue) => issue.reason),
         ...(propertyRollup.facts.unlinkedMarketDataRows
           ? [

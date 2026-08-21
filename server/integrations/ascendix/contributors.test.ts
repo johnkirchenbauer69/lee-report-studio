@@ -116,6 +116,32 @@ describe("historical contributors", () => {
     expect(mapped.imageWarnings).toHaveLength(0);
   });
 
+  it("prefers readable sponsor fields and never leaks an Account id", async () => {
+    const base = {
+      Contributor_Category__c: "Largest Availability",
+      Available_SF__c: 100,
+      Address__c: "1 Main",
+      Property_Type__c: "Industrial",
+    };
+    const unsafe = await mapHistoricalContributors([
+      row({
+        ...base,
+        Id: "unsafe",
+        Availability__r: { Listing_Broker_Company__c: "001al00000dS4qYAAS" },
+      }),
+    ]);
+    expect(unsafe.availabilities[0].sponsor).toBe("");
+    const resolved = await mapHistoricalContributors([
+      row({
+        ...base,
+        Id: "resolved",
+        Availability__r: { Listing_Broker_Company__c: "001al00000dS4qYAAS" },
+        Sponsor_Account__r: { Name: "Readable Sponsor" },
+      }),
+    ]);
+    expect(resolved.availabilities[0].sponsor).toBe("Readable Sponsor");
+  });
+
   it("never emits a bare Salesforce Attachment id as an image URL, even without a resolver wired up", async () => {
     const mapped = await mapHistoricalContributors([
       row({

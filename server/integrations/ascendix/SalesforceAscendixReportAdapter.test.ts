@@ -184,6 +184,17 @@ describe("Salesforce Ascendix live-verified contract", () => {
     expect(result.report.submarkets.map((row) => row.name)).toEqual(
       CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
     );
+    expect(result.report.submarketDetails).toHaveLength(18);
+    expect(result.report.submarketDetails[0]).toMatchObject({
+      name: "Central DuPage",
+      metrics: { quarterlyNetAbsorptionSf: 126_800 },
+    });
+    expect(
+      result.report.submarketDetails[0].historicalPeriods[0],
+    ).toMatchObject({
+      period: "2026 Q2",
+      quarterlyNetAbsorptionSf: 126_800,
+    });
     expect(result.report.submarkets[0].vacancyRate).toBeCloseTo(0.045318549447);
     expect(result.report.overallMarket.inventorySf).toBe(100_000);
     expect(result.report.overallMarket.vacancyRate).toBeCloseTo(900 / 100_000);

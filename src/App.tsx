@@ -11,6 +11,7 @@ import type {
   ReportPage,
   ReportTemplate,
   ShapeKind,
+  TableSelection,
 } from "./types/report";
 import type { SnapGuide } from "./engine/editorMath";
 import {
@@ -134,6 +135,8 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>();
   const [toast, setToast] = useState("");
   const [croppingId, setCroppingId] = useState<string>();
+  const [tableEditingId, setTableEditingId] = useState<string>();
+  const [tableSelection, setTableSelection] = useState<TableSelection>();
   const [draggedPageId, setDraggedPageId] = useState<string>();
   const [exportingPdf, setExportingPdf] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
@@ -409,6 +412,10 @@ export default function App() {
 
   const select = (id: string, additive: boolean) => {
     if (croppingId && croppingId !== id) setCroppingId(undefined);
+    if (tableEditingId && tableEditingId !== id) {
+      setTableEditingId(undefined);
+      setTableSelection(undefined);
+    }
     setSelectedIds((current) =>
       additive
         ? current.includes(id)
@@ -910,7 +917,11 @@ export default function App() {
       const target = event.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
       const mod = event.ctrlKey || event.metaKey;
-      if (
+      if (event.key === "Escape" && tableEditingId) {
+        event.preventDefault();
+        setTableEditingId(undefined);
+        setTableSelection(undefined);
+      } else if (
         (event.key === "Delete" || event.key === "Backspace") &&
         selectedIds.length
       ) {
@@ -979,6 +990,7 @@ export default function App() {
     paste,
     redo,
     selectedIds,
+    tableEditingId,
     undo,
     updatePage,
   ]);
@@ -1515,7 +1527,16 @@ export default function App() {
             Restore sample document
           </button>
         </aside>
-        <main className="stage" onClick={() => setSelectedIds([])}>
+        <main
+          className="stage"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest(".canvas-element"))
+              return;
+            setSelectedIds([]);
+            setTableEditingId(undefined);
+            setTableSelection(undefined);
+          }}
+        >
           <div className="stage-topline">
             <span>{page.name}</span>
             <span>
@@ -1652,6 +1673,15 @@ export default function App() {
                   mode={mode}
                   selected={selectedIds.includes(element.id)}
                   cropping={croppingId === element.id}
+                  tableEditing={tableEditingId === element.id}
+                  tableSelection={
+                    tableEditingId === element.id ? tableSelection : undefined
+                  }
+                  onEnterTableEdit={(id) => {
+                    setTableEditingId(id);
+                    setTableSelection(undefined);
+                  }}
+                  onTableSelect={setTableSelection}
                   zoom={zoom}
                   onSelect={select}
                   onChange={updateElement}
@@ -1692,6 +1722,21 @@ export default function App() {
             (asset) => asset.type === "font" && asset.fontFamily,
           )}
           cropping={croppingId === selected?.id}
+          tableEditing={tableEditingId === selected?.id}
+          tableSelection={
+            tableEditingId === selected?.id ? tableSelection : undefined
+          }
+          generated={Boolean(reportInstance)}
+          onToggleTableEdit={() => {
+            if (tableEditingId === selected?.id) {
+              setTableEditingId(undefined);
+              setTableSelection(undefined);
+            } else if (selected?.type === "table") {
+              setTableEditingId(selected.id);
+              setTableSelection(undefined);
+            }
+          }}
+          onTableSelectionChange={setTableSelection}
           onToggleCrop={() =>
             setCroppingId((current) =>
               current === selected?.id ? undefined : selected?.id,

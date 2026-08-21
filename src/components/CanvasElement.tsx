@@ -3,6 +3,8 @@ import type {
   EditorSettings,
   PreviewMode,
   ReportElement,
+  TableCellStyle,
+  TableSelection,
 } from "../types/report";
 import type { SnapGuide } from "../engine/editorMath";
 import { fillToCss, snapPosition } from "../engine/editorMath";
@@ -30,7 +32,24 @@ interface Props {
   onGuides: (guides: SnapGuide[]) => void;
   onContextMenu: (event: React.MouseEvent, id: string) => void;
   cropping?: boolean;
+  tableEditing?: boolean;
+  tableSelection?: TableSelection;
+  onEnterTableEdit?: (id: string) => void;
+  onTableSelect?: (selection: TableSelection) => void;
 }
+
+const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
+  fontFamily: style?.fontFamily,
+  fontWeight: style?.fontWeight,
+  fontSize: style?.fontSize,
+  color: style?.color,
+  background: style?.background,
+  textAlign: style?.textAlign,
+  padding: style?.padding,
+  borderColor: style?.borderColor,
+  borderWidth: style?.borderWidth,
+  borderStyle: style?.borderWidth ? "solid" : undefined,
+});
 
 const strokeStyle = (element: ReportElement): React.CSSProperties => {
   const stroke = element.style.stroke;
@@ -63,6 +82,7 @@ export function CanvasElement(props: Props) {
   } = props;
   const [rotationAngle, setRotationAngle] = useState<number | null>(null);
   const startDrag = (e: React.PointerEvent) => {
+    if (props.tableEditing && element.type === "table") return;
     if (element.locked) return;
     e.stopPropagation();
     onSelect(element.id, e.shiftKey || e.metaKey || e.ctrlKey);
@@ -354,8 +374,39 @@ export function CanvasElement(props: Props) {
         </colgroup>
         <thead>
           <tr>
-            {element.columns.map((c) => (
-              <th key={c.key} style={{ textAlign: c.align }}>
+            {element.columns.map((c, column) => (
+              <th
+                key={c.key}
+                data-table-section="header"
+                data-table-column={column}
+                className={
+                  props.tableSelection?.section === "header" &&
+                  props.tableSelection.column === column
+                    ? "table-cell-selected"
+                    : props.tableSelection?.section === "column" &&
+                        props.tableSelection.column === column
+                      ? "table-column-selected"
+                      : undefined
+                }
+                style={{
+                  ...tableStyle(element.headerStyle),
+                  ...tableStyle(c.headerStyle),
+                  textAlign: c.align,
+                }}
+                onPointerDown={
+                  props.tableEditing
+                    ? (event) => {
+                        event.stopPropagation();
+                        props.onTableSelect?.({ section: "header", column });
+                      }
+                    : undefined
+                }
+                onClick={
+                  props.tableEditing
+                    ? (event) => event.stopPropagation()
+                    : undefined
+                }
+              >
                 {c.label}
               </th>
             ))}
@@ -379,8 +430,49 @@ export function CanvasElement(props: Props) {
                     : undefined
                 }
               >
-                {element.columns.map((c) => (
-                  <td key={c.key} style={{ textAlign: c.align }}>
+                {element.columns.map((c, column) => (
+                  <td
+                    key={c.key}
+                    data-table-section="body"
+                    data-table-row={i}
+                    data-table-column={column}
+                    className={
+                      props.tableSelection?.section === "body" &&
+                      props.tableSelection.row === i &&
+                      props.tableSelection.column === column
+                        ? "table-cell-selected"
+                        : props.tableSelection?.section === "column" &&
+                            props.tableSelection.column === column
+                          ? "table-column-selected"
+                          : undefined
+                    }
+                    style={{
+                      ...tableStyle(element.bodyStyle),
+                      ...tableStyle(c.bodyStyle),
+                      ...tableStyle(
+                        element.cellStyles?.[`body:${i}:${column}`],
+                      ),
+                      textAlign: c.align,
+                      height: element.rowHeight,
+                    }}
+                    onPointerDown={
+                      props.tableEditing
+                        ? (event) => {
+                            event.stopPropagation();
+                            props.onTableSelect?.({
+                              section: "body",
+                              row: i,
+                              column,
+                            });
+                          }
+                        : undefined
+                    }
+                    onClick={
+                      props.tableEditing
+                        ? (event) => event.stopPropagation()
+                        : undefined
+                    }
+                  >
                     {formatValue(getByPath(row, c.path), {
                       path: c.path,
                       format: c.format,
@@ -401,12 +493,18 @@ export function CanvasElement(props: Props) {
   return (
     <div
       data-testid={element.id}
-      className={`canvas-element ${selected ? "is-selected" : ""} ${props.cropping ? "is-cropping" : ""}`}
+      className={`canvas-element ${selected ? "is-selected" : ""} ${props.cropping ? "is-cropping" : ""} ${props.tableEditing ? "is-table-editing" : ""}`}
       style={style}
       onPointerDown={startDrag}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(element.id, e.shiftKey || e.metaKey || e.ctrlKey);
+      }}
+      onDoubleClick={(event) => {
+        if (element.type === "table" && selected) {
+          event.stopPropagation();
+          props.onEnterTableEdit?.(element.id);
+        }
       }}
       onContextMenu={(e) => props.onContextMenu(e, element.id)}
     >
