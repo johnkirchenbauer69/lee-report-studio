@@ -78,10 +78,26 @@ const ALLOWED_IMAGE_MIME_TYPES =
 export class FileSystemAssetStore {
   readonly assetsRoot: string;
   private readonly manifestPath: string;
+  // Serializes every read-modify-write against the manifest file. Without
+  // this, concurrent imports (e.g. Promise.all-resolving several Salesforce
+  // images for one report) each read the same manifest snapshot, append
+  // their own asset, and save -- the last write wins and silently drops
+  // every asset imported by the calls in between, leaving orphaned entries
+  // in salesforceImageIndex that point at assets which were never saved.
+  private writeQueue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly dataRoot: string) {
     this.assetsRoot = path.join(dataRoot, "assets");
     this.manifestPath = path.join(dataRoot, "assets.json");
+  }
+
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(task, task);
+    this.writeQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   async initialize() {
@@ -122,6 +138,12 @@ export class FileSystemAssetStore {
   }
 
   async importUploads(
+    files: Express.Multer.File[],
+  ): Promise<{ assets: StoredAsset[]; summary: ImportSummary }> {
+    return this.enqueue(() => this.importUploadsLocked(files));
+  }
+
+  private async importUploadsLocked(
     files: Express.Multer.File[],
   ): Promise<{ assets: StoredAsset[]; summary: ImportSummary }> {
     const existing = await this.list();
@@ -276,22 +298,26 @@ export class FileSystemAssetStore {
     mimeType: string;
     name: string;
   }): Promise<StoredAsset> {
-    const asset = await this.importImageBuffer({
-      buffer: input.buffer,
-      mimeType: input.mimeType,
-      originalName: input.name,
+    return this.enqueue(async () => {
+      const asset = await this.importImageBuffer({
+        buffer: input.buffer,
+        mimeType: input.mimeType,
+        originalName: input.name,
+      });
+      const existing = await this.list();
+      await this.save([...existing, asset]);
+      return asset;
     });
-    const existing = await this.list();
-    await this.save([...existing, asset]);
-    return asset;
   }
 
   async remove(id: string): Promise<boolean> {
-    const assets = await this.list();
-    const asset = assets.find((item) => item.id === id);
-    if (!asset) return false;
-    await unlink(this.resolve(asset)).catch(() => undefined);
-    await this.save(assets.filter((item) => item.id !== id));
-    return true;
+    return this.enqueue(async () => {
+      const assets = await this.list();
+      const asset = assets.find((item) => item.id === id);
+      if (!asset) return false;
+      await unlink(this.resolve(asset)).catch(() => undefined);
+      await this.save(assets.filter((item) => item.id !== id));
+      return true;
+    });
   }
 }
