@@ -125,7 +125,10 @@ test("drag rotation handle snaps to 45 and free rotation bypasses snapping with 
   const centerY = box.y + box.height / 2;
 
   // Up-and-right at 45 degrees from center resolves to a 45-degree drag angle.
-  await dragRotationHandleWithMouse(page, { x: centerX + 200, y: centerY - 200 });
+  await dragRotationHandleWithMouse(page, {
+    x: centerX + 200,
+    y: centerY - 200,
+  });
   await releaseMouse(page);
   await expect(async () => {
     expect(await readRotation(stable)).toBeCloseTo(45, 0);
@@ -147,4 +150,94 @@ test("drag rotation handle snaps to 45 and free rotation bypasses snapping with 
   const freeAngle = await readRotation(stable);
   expect(freeAngle).not.toBeCloseTo(45, 0);
   expect(freeAngle).not.toBeCloseTo(90, 0);
+});
+
+test("structured tables support real-mouse selection, edit mode, cell and column controls, undo and Escape", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "load" });
+  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: "Overall Market Table" }).click();
+  await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
+
+  const tableElement = page.getByTestId("submarket-matrix");
+  const box = await tableElement.boundingBox();
+  if (!box)
+    throw new Error("Overall Market table has no visible mouse target.");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(tableElement).toHaveClass(/is-selected/);
+
+  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(tableElement).toHaveClass(/is-table-editing/);
+  const header = tableElement.locator("th").nth(5);
+  const headerBox = await header.boundingBox();
+  if (!headerBox) throw new Error("Table header has no visible mouse target.");
+  await page.mouse.click(
+    headerBox.x + headerBox.width / 2,
+    headerBox.y + headerBox.height / 2,
+  );
+  await expect(header).toHaveClass(/table-cell-selected/);
+
+  await page.getByRole("button", { name: "Select column" }).click();
+  await page.getByLabel("Table column width").fill("18");
+  await expect(tableElement.locator("col").nth(5)).toHaveAttribute(
+    "style",
+    /18%/,
+  );
+  await page.locator(".inspector-header").click();
+  await page.keyboard.press("Control+z");
+  await expect(tableElement.locator("col").nth(5)).toHaveAttribute(
+    "style",
+    /11%/,
+  );
+  await page.keyboard.press("Control+Shift+z");
+  await expect(tableElement.locator("col").nth(5)).toHaveAttribute(
+    "style",
+    /18%/,
+  );
+
+  await page.keyboard.press("Escape");
+  await expect(tableElement).not.toHaveClass(/is-table-editing/);
+});
+
+test("Market Indicators, Top Leases, and Top Sales are real-mouse selectable structured tables", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "load" });
+  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: "Market Overview" }).click();
+  await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
+  const stage = page.locator(".stage");
+  for (const id of ["indicator-table", "top-leases-table", "top-sales-table"]) {
+    const element = page.getByTestId(id);
+    await element.evaluate((node) =>
+      node.scrollIntoView({ block: "center", inline: "nearest" }),
+    );
+    const [elementBox, stageBox] = await Promise.all([
+      element.boundingBox(),
+      stage.boundingBox(),
+    ]);
+    if (!elementBox || !stageBox)
+      throw new Error(`${id} has no visible mouse target.`);
+    const x =
+      (Math.max(elementBox.x, stageBox.x) +
+        Math.min(
+          elementBox.x + elementBox.width,
+          stageBox.x + stageBox.width,
+        )) /
+      2;
+    const y =
+      (Math.max(elementBox.y, stageBox.y) +
+        Math.min(
+          elementBox.y + elementBox.height,
+          stageBox.y + stageBox.height,
+        )) /
+      2;
+    await page.mouse.click(x, y);
+    await expect(element).toHaveClass(/is-selected/);
+    await page.mouse.dblclick(x, y);
+    await expect(element).toHaveClass(/is-table-editing/);
+    await page.keyboard.press("Escape");
+    await expect(element).not.toHaveClass(/is-table-editing/);
+  }
 });

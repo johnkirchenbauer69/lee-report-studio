@@ -1,23 +1,13 @@
 import type { SalesforceClient } from "./SalesforceClient.ts";
 import type { FileSystemAssetStore } from "../../assets/assetStore.ts";
 import type { SalesforceImageIndex } from "../../assets/salesforceImageIndex.ts";
+import { isSalesforceAttachmentOrFileId } from "./salesforceIds.ts";
 
 const ATTACHMENT_PREFIX = "00P";
-const CONTENT_VERSION_PREFIXES = new Set(["068", "069"]);
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPE = /^image\/(png|jpe?g|webp|gif)/i;
 
-/** A bare Salesforce record id: 15 chars, or 18 with a case-safe checksum suffix. */
-export const looksLikeSalesforceId = (value?: string): boolean =>
-  Boolean(value && /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(value.trim()));
-
-/** Narrower check: is this specifically an Attachment or File/ContentVersion id? */
-export const isSalesforceAttachmentOrFileId = (value: string): boolean => {
-  const trimmed = value.trim();
-  if (!looksLikeSalesforceId(trimmed)) return false;
-  const prefix = trimmed.slice(0, 3);
-  return prefix === ATTACHMENT_PREFIX || CONTENT_VERSION_PREFIXES.has(prefix);
-};
+export { isSalesforceAttachmentOrFileId } from "./salesforceIds.ts";
 
 const sobjectPathFor = (id: string): string =>
   id.slice(0, 3) === ATTACHMENT_PREFIX

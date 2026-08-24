@@ -67,38 +67,78 @@ export function expandTemplatePages(
   data: unknown,
   pageSelection?: { submarkets: string[] },
 ): ReportPage[] {
-  return template.pages.flatMap((page) => {
-    if (!page.repeat)
-      return {
+  const result: ReportPage[] = [];
+  for (let pageIndex = 0; pageIndex < template.pages.length; pageIndex += 1) {
+    const page = template.pages[pageIndex]!;
+    if (!page.repeat) {
+      result.push({
         ...structuredClone(page),
         elements: expandRepeatingElements(page.elements, data),
-      };
+      });
+      continue;
+    }
+    const group = [page];
+    while (
+      template.pages[pageIndex + 1]?.repeat?.sourcePath ===
+        page.repeat.sourcePath &&
+      template.pages[pageIndex + 1]?.repeat?.contextName ===
+        page.repeat.contextName
+    )
+      group.push(template.pages[++pageIndex]!);
     const rule = page.repeat;
     const allowedNames =
-      rule.sourcePath === "submarkets" && pageSelection
+      ["submarkets", "submarketDetails"].includes(rule.sourcePath) &&
+      pageSelection
         ? new Set(pageSelection.submarkets)
         : undefined;
-    return orderedItems(data, rule, allowedNames).map(
+    orderedItems(data, rule, allowedNames).forEach(
       ({ item, index }, outputIndex) => {
-        const label = String(getByPath(item, "name") ?? outputIndex + 1);
-        const context = {
-          name: rule.contextName,
-          path: `${rule.sourcePath}[${index}]`,
-        };
-        return {
-          ...structuredClone(page),
-          id: `${page.id}-repeat-${index}`,
-          name: page.name.replace(/\{item\}/g, label),
-          repeat: undefined,
-          bindingContext: context,
-          elements: expandRepeatingElements(page.elements, data).map(
-            (element) => ({
-              ...element,
-              bindingContext: element.bindingContext ?? context,
-            }),
-          ),
-        };
+        group.forEach((groupPage) => {
+          const label = String(getByPath(item, "name") ?? outputIndex + 1);
+          const context = {
+            name: rule.contextName,
+            path: `${rule.sourcePath}[${index}]`,
+          };
+          const periods = getByPath(item, "historicalPeriods");
+          const formatPeriod = (value: unknown) => {
+            const text = String(value ?? "");
+            const match = text.match(/^(\d{4})\s+(Q[1-4])$/i);
+            return match
+              ? `${match[2]!.toUpperCase()} ${match[1]}`
+              : text || "—";
+          };
+          result.push({
+            ...structuredClone(groupPage),
+            id: `${groupPage.id}-repeat-${index}`,
+            name: groupPage.name.replace(/\{item\}/g, label),
+            repeat: undefined,
+            bindingContext: context,
+            elements: expandRepeatingElements(groupPage.elements, data).map(
+              (element) => ({
+                ...element,
+                ...(element.type === "table" &&
+                element.id.includes("indicator-table") &&
+                Array.isArray(periods)
+                  ? {
+                      columns: element.columns.map((column, columnIndex) =>
+                        columnIndex === 0
+                          ? column
+                          : {
+                              ...column,
+                              label: formatPeriod(
+                                getByPath(periods[columnIndex - 1], "period"),
+                              ),
+                            },
+                      ),
+                    }
+                  : {}),
+                bindingContext: element.bindingContext ?? context,
+              }),
+            ),
+          });
+        });
       },
     );
-  });
+  }
+  return result;
 }

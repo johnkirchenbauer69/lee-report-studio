@@ -3,6 +3,9 @@ import type {
   Fill,
   ReportElement,
   Stroke,
+  TableCellStyle,
+  TableElement,
+  TableSelection,
   Typography,
   Unit,
 } from "../types/report";
@@ -38,6 +41,11 @@ interface Props {
   onToggleCrop?: () => void;
   data?: unknown;
   report?: IndustrialMarketReport;
+  tableEditing?: boolean;
+  tableSelection?: TableSelection;
+  generated?: boolean;
+  onToggleTableEdit?: () => void;
+  onTableSelectionChange?: (selection: TableSelection | undefined) => void;
 }
 
 function Section({
@@ -116,6 +124,11 @@ export function Inspector({
   onDistribute,
   data,
   report,
+  tableEditing,
+  tableSelection,
+  generated,
+  onToggleTableEdit,
+  onTableSelectionChange,
 }: Props) {
   if (!element)
     return (
@@ -202,6 +215,61 @@ export function Inspector({
       : undefined;
   const setStroke = (patch: Partial<Stroke>) =>
     setStyle({ stroke: { ...stroke, ...patch } });
+  const table =
+    element.type === "table" ? (element as TableElement) : undefined;
+  const selectedColumn = tableSelection
+    ? table?.columns[tableSelection.column]
+    : undefined;
+  const updateColumn = (patch: Record<string, unknown>) => {
+    if (!table || !tableSelection) return;
+    onChange({
+      columns: table.columns.map((column, index) =>
+        index === tableSelection.column ? { ...column, ...patch } : column,
+      ),
+    } as Partial<ReportElement>);
+  };
+  const selectedCellStyle: TableCellStyle | undefined =
+    !table || !tableSelection
+      ? undefined
+      : tableSelection.section === "column"
+        ? table.columns[tableSelection.column]?.bodyStyle
+        : tableSelection.section === "header"
+          ? table.columns[tableSelection.column]?.headerStyle
+          : table.cellStyles?.[
+              `body:${tableSelection.row}:${tableSelection.column}`
+            ];
+  const updateTableCellStyle = (patch: Partial<TableCellStyle>) => {
+    if (!table || !tableSelection) return;
+    if (tableSelection.section === "column")
+      return updateColumn({ bodyStyle: { ...selectedCellStyle, ...patch } });
+    if (tableSelection.section === "header")
+      return updateColumn({ headerStyle: { ...selectedCellStyle, ...patch } });
+    const key = `body:${tableSelection.row}:${tableSelection.column}`;
+    onChange({
+      cellStyles: {
+        ...table.cellStyles,
+        [key]: { ...selectedCellStyle, ...patch },
+      },
+    } as Partial<ReportElement>);
+  };
+  const selectedRow =
+    tableSelection?.row == null || !table
+      ? undefined
+      : (
+          getByContextPath(
+            data,
+            table.sourcePath,
+            table.bindingContext,
+          ) as unknown[]
+        )?.[tableSelection.row];
+  const selectedDisplayValue =
+    selectedColumn && selectedRow
+      ? formatValue(getByContextPath(selectedRow, selectedColumn.path), {
+          path: selectedColumn.path,
+          format: selectedColumn.format,
+          decimals: selectedColumn.decimals,
+        })
+      : undefined;
   return (
     <aside className="inspector">
       <div className="inspector-header">
@@ -313,6 +381,353 @@ export function Inspector({
           </div>
         )}
       </Section>
+      {table && (
+        <Section title="Table">
+          <button
+            className={`crop-button ${tableEditing ? "active" : ""}`}
+            onClick={onToggleTableEdit}
+          >
+            {tableEditing ? "Finish table editing" : "Edit table"}
+          </button>
+          <label>
+            Data source
+            <input
+              aria-label="Table data source"
+              value={table.sourcePath}
+              disabled={generated}
+              onChange={(event) =>
+                onChange({
+                  sourcePath: event.target.value,
+                } as Partial<ReportElement>)
+              }
+            />
+          </label>
+          {generated && <small>Generated report bindings are read-only.</small>}
+          <div className="field-grid">
+            <label>
+              Max rows
+              <input
+                aria-label="Table max rows"
+                type="number"
+                min="1"
+                value={table.maxRows ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    maxRows: event.target.value
+                      ? Number(event.target.value)
+                      : undefined,
+                  } as Partial<ReportElement>)
+                }
+              />
+            </label>
+            <label>
+              Variant
+              <select
+                aria-label="Table variant"
+                value={table.variant ?? "default"}
+                onChange={(event) =>
+                  onChange({
+                    variant: event.target.value,
+                  } as Partial<ReportElement>)
+                }
+              >
+                <option value="default">default</option>
+                <option value="market-matrix">market-matrix</option>
+                <option value="indicators">indicators</option>
+                <option value="transactions">transactions</option>
+              </select>
+            </label>
+          </div>
+          <div className="field-grid">
+            <label>
+              Font
+              <input
+                aria-label="Table font family"
+                value={table.style.fontFamily ?? ""}
+                onChange={(event) =>
+                  setStyle({ fontFamily: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Size
+              <input
+                aria-label="Table font size"
+                type="number"
+                min="6"
+                value={table.style.fontSize ?? 9}
+                onChange={(event) =>
+                  setStyle({ fontSize: Number(event.target.value) })
+                }
+              />
+            </label>
+          </div>
+          <ColorField
+            label="Default text color"
+            value={table.style.color ?? "#123f55"}
+            onChange={(color) => setStyle({ color })}
+          />
+          <div className="field-grid">
+            <label>
+              Opacity
+              <input
+                aria-label="Table opacity"
+                type="number"
+                min="0"
+                max="1"
+                step=".05"
+                value={table.style.opacity ?? 1}
+                onChange={(event) =>
+                  setStyle({ opacity: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Row height
+              <input
+                aria-label="Table row height"
+                type="number"
+                min="0"
+                value={table.rowHeight ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    rowHeight: event.target.value
+                      ? Number(event.target.value)
+                      : undefined,
+                  } as Partial<ReportElement>)
+                }
+              />
+            </label>
+          </div>
+        </Section>
+      )}
+      {table && tableEditing && tableSelection && selectedColumn && (
+        <Section
+          title={tableSelection.section === "column" ? "Column" : "Cell"}
+        >
+          {tableSelection.section !== "column" && (
+            <button
+              onClick={() =>
+                onTableSelectionChange?.({
+                  section: "column",
+                  column: tableSelection.column,
+                })
+              }
+            >
+              Select column
+            </button>
+          )}
+          <label>
+            Header label
+            <input
+              aria-label="Table column header"
+              value={selectedColumn.label}
+              onChange={(event) => updateColumn({ label: event.target.value })}
+            />
+          </label>
+          <label>
+            Binding path
+            <input
+              aria-label="Table column binding"
+              value={selectedColumn.path}
+              disabled={generated}
+              onChange={(event) => updateColumn({ path: event.target.value })}
+            />
+          </label>
+          <div className="field-grid">
+            <label>
+              Width %
+              <input
+                aria-label="Table column width"
+                type="number"
+                min="1"
+                max="100"
+                value={selectedColumn.width ?? ""}
+                onChange={(event) =>
+                  updateColumn({ width: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Alignment
+              <select
+                aria-label="Table column alignment"
+                value={selectedColumn.align ?? "left"}
+                onChange={(event) =>
+                  updateColumn({ align: event.target.value })
+                }
+              >
+                <option>left</option>
+                <option>center</option>
+                <option>right</option>
+              </select>
+            </label>
+          </div>
+          <div className="field-grid">
+            <label>
+              Format
+              <select
+                aria-label="Table column format"
+                value={selectedColumn.format ?? "text"}
+                onChange={(event) =>
+                  updateColumn({ format: event.target.value })
+                }
+              >
+                <option>text</option>
+                <option>percentage</option>
+                <option>integer</option>
+                <option>decimal</option>
+                <option>sf</option>
+                <option>currency</option>
+                <option>currency_psf</option>
+              </select>
+            </label>
+            <label>
+              Decimals
+              <input
+                aria-label="Table column decimals"
+                type="number"
+                min="0"
+                max="6"
+                value={selectedColumn.decimals ?? 1}
+                onChange={(event) =>
+                  updateColumn({ decimals: Number(event.target.value) })
+                }
+              />
+            </label>
+          </div>
+          <strong>Selection style</strong>
+          <div className="field-grid">
+            <label>
+              Font
+              <input
+                aria-label="Table selection font"
+                value={selectedCellStyle?.fontFamily ?? ""}
+                onChange={(event) =>
+                  updateTableCellStyle({ fontFamily: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Weight
+              <input
+                aria-label="Table selection weight"
+                type="number"
+                min="100"
+                max="900"
+                step="100"
+                value={selectedCellStyle?.fontWeight ?? 400}
+                onChange={(event) =>
+                  updateTableCellStyle({
+                    fontWeight: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+          <div className="field-grid">
+            <label>
+              Size
+              <input
+                aria-label="Table selection size"
+                type="number"
+                min="6"
+                value={selectedCellStyle?.fontSize ?? table.style.fontSize ?? 9}
+                onChange={(event) =>
+                  updateTableCellStyle({ fontSize: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Padding
+              <input
+                aria-label="Table selection padding"
+                type="number"
+                min="0"
+                value={selectedCellStyle?.padding ?? 8}
+                onChange={(event) =>
+                  updateTableCellStyle({ padding: Number(event.target.value) })
+                }
+              />
+            </label>
+          </div>
+          <ColorField
+            label="Cell text color"
+            value={selectedCellStyle?.color ?? table.style.color ?? "#123f55"}
+            onChange={(color) => updateTableCellStyle({ color })}
+          />
+          <ColorField
+            label="Cell fill"
+            value={selectedCellStyle?.background ?? "#ffffff"}
+            allowNone
+            onChange={(background) => updateTableCellStyle({ background })}
+          />
+          <div className="field-grid">
+            <label>
+              Border
+              <input
+                aria-label="Table selection border width"
+                type="number"
+                min="0"
+                value={selectedCellStyle?.borderWidth ?? 0}
+                onChange={(event) =>
+                  updateTableCellStyle({
+                    borderWidth: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Align
+              <select
+                aria-label="Table selection alignment"
+                value={
+                  selectedCellStyle?.textAlign ?? selectedColumn.align ?? "left"
+                }
+                onChange={(event) =>
+                  updateTableCellStyle({
+                    textAlign: event.target
+                      .value as TableCellStyle["textAlign"],
+                  })
+                }
+              >
+                <option>left</option>
+                <option>center</option>
+                <option>right</option>
+              </select>
+            </label>
+          </div>
+          <ColorField
+            label="Cell border color"
+            value={selectedCellStyle?.borderColor ?? "#e4e7ec"}
+            onChange={(borderColor) => updateTableCellStyle({ borderColor })}
+          />
+          {tableSelection.section === "body" && (
+            <>
+              <label>
+                Display value
+                <input
+                  aria-label="Table cell display value"
+                  readOnly
+                  value={selectedDisplayValue ?? "—"}
+                />
+              </label>
+              <label>
+                Source
+                <input
+                  aria-label="Table cell source"
+                  readOnly
+                  value={`${table.sourcePath}[${tableSelection.row}].${selectedColumn.path}`}
+                />
+              </label>
+              <small>
+                Data-bound report values are read-only; style and formatting
+                changes do not modify Salesforce.
+              </small>
+            </>
+          )}
+        </Section>
+      )}
       {(element.type === "shape" || element.type === "text") && (
         <Section title="Fill">
           <div className="segmented">
@@ -677,9 +1092,7 @@ export function Inspector({
               {(["top", "middle", "bottom"] as const).map((value) => (
                 <button
                   key={`vertical-${value}`}
-                  className={
-                    typography.verticalAlign === value ? "active" : ""
-                  }
+                  className={typography.verticalAlign === value ? "active" : ""}
                   title={`Vertically align text ${value}`}
                   onClick={() => setTypography({ verticalAlign: value })}
                 >

@@ -7,6 +7,10 @@ import type {
 import type { SalesforceRecord } from "../salesforce/SalesforceClient.ts";
 import { canonicalChicagoSubmarket } from "./salesforceFieldMap.ts";
 import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
+import {
+  looksLikeSalesforceId,
+  sanitizeSalesforceDisplayValue,
+} from "../salesforce/salesforceIds.ts";
 
 export type ContributorSection =
   | "availabilities"
@@ -105,6 +109,12 @@ const first = (record: SalesforceRecord, ...paths: string[]) =>
     );
 const text = (record: SalesforceRecord, ...paths: string[]) =>
   String(first(record, ...paths) ?? "").trim();
+const displayText = (record: SalesforceRecord, ...paths: string[]) =>
+  paths
+    .map((path) =>
+      sanitizeSalesforceDisplayValue(getSalesforceValue(record, path)),
+    )
+    .find(Boolean) ?? "";
 const numeric = (record: SalesforceRecord, ...paths: string[]) => {
   const raw = first(record, ...paths);
   if (raw === undefined) return 0;
@@ -122,17 +132,17 @@ const optionalNumeric = (record: SalesforceRecord, path: string) => {
 };
 const composedAddress = (record: SalesforceRecord, prefix: string) =>
   ["ascendix__Street__c", "ascendix__City__c", "State__c", "Zip_Code__c"]
-    .map((field) => text(record, `${prefix}.${field}`))
+    .map((field) => displayText(record, `${prefix}.${field}`))
     .filter(Boolean)
     .join(", ");
 const address = (
   record: SalesforceRecord,
   source: "Lease" | "Sale" | "Availability" | "Property",
 ) =>
-  text(record, "Address__c", "Property_Name__c") ||
+  displayText(record, "Address__c", "Property_Name__c") ||
   composedAddress(record, `${source}__r.ascendix__Property__r`) ||
   composedAddress(record, "Property__r") ||
-  text(record, "Display_Title__c");
+  displayText(record, "Display_Title__c");
 /**
  * Resolves a contributor/property image field to a usable URL. Delegates to
  * a caller-supplied `resolveImage` (server-side, authenticated Salesforce
@@ -190,8 +200,7 @@ export function rankContributors(
     .slice(0, limit);
 }
 
-export const looksLikeSalesforceId = (value?: string) =>
-  Boolean(value && /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(value.trim()));
+export { looksLikeSalesforceId } from "../salesforce/salesforceIds.ts";
 
 export function scopeHistoricalContributors(
   rows: SalesforceRecord[],
@@ -288,14 +297,14 @@ const highlight = async (
           ];
   const type =
     section === "availabilities"
-      ? text(
+      ? displayText(
           record,
           "Property_Type__c",
           "Building_Class__c",
           "Availability__r.ascendix__UseSubType__c",
           "Property__r.ascendix__PropertySubType__c",
         )
-      : text(
+      : displayText(
           record,
           "Property_Type__c",
           "Building_Status__c",
@@ -308,11 +317,12 @@ const highlight = async (
       address: address(record, source),
       sizeSf: numeric(record, ...sizePaths),
       type,
-      sponsor: text(
+      sponsor: displayText(
         record,
         "Property__r.ascendix__Developer__r.Name",
         "Property__r.ascendix__OwnerLandlord__r.Name",
         "Availability__r.Listing_Broker_Company__c",
+        "Sponsor_Account__r.Name",
       ),
       image: resolvedImage.value,
     },
@@ -330,7 +340,7 @@ export async function mapHistoricalContributors(
   const deliveryRows = rankContributors(rows, "deliveries");
   const constructionRows = rankContributors(rows, "construction");
   const leasing: LeaseRecord[] = leaseRows.map((record) => ({
-    tenant: text(
+    tenant: displayText(
       record,
       "Tenant_Name__c",
       "Display_Title__c",
@@ -345,8 +355,8 @@ export async function mapHistoricalContributors(
     ),
     address: address(record, "Lease"),
     leaseType: [
-      text(record, "Deal_Type__c", "Lease__r.Deal_Type__c"),
-      text(
+      displayText(record, "Deal_Type__c", "Lease__r.Deal_Type__c"),
+      displayText(
         record,
         "Deal_Sub_Type__c",
         "Source_Status__c",
@@ -357,7 +367,7 @@ export async function mapHistoricalContributors(
       .join(" / "),
   }));
   const sales: SaleRecord[] = saleRows.map((record) => {
-    const preferredBuyer = text(
+    const preferredBuyer = displayText(
       record,
       "Buyer_Name__c",
       "Display_Title__c",
@@ -365,9 +375,7 @@ export async function mapHistoricalContributors(
       "Sale__r.ascendix__Buyer__r.Name",
     );
     return {
-      buyer: looksLikeSalesforceId(preferredBuyer)
-        ? "Buyer not published"
-        : preferredBuyer,
+      buyer: preferredBuyer || "Buyer not published",
       price: numeric(
         record,
         "Sale_Price__c",
@@ -376,7 +384,7 @@ export async function mapHistoricalContributors(
         "Display_Value__c",
       ),
       address: address(record, "Sale"),
-      saleType: text(
+      saleType: displayText(
         record,
         "Sale_Type__c",
         "Deal_Type__c",

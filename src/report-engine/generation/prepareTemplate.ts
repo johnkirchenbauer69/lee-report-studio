@@ -27,7 +27,9 @@ const unavailablePlaceholder = (element: ReportElement): TextElement => ({
   width: element.width,
   height: element.height,
   locked: true,
-  text: `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`,
+  text:
+    element.unavailableMessage ??
+    `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`,
   style: {
     background: "#f2f5f6",
     borderColor: "#c8d2d7",
@@ -99,13 +101,16 @@ function preparePage(
     const dynamicElement =
       Boolean(element.binding) ||
       element.type === "table" ||
+      element.type === "chart" ||
       Boolean(element.repeat);
     const remove =
       unavailable.has(element.requiredDataSection) ||
       !contextAvailable ||
       (provider !== "sample" && !dynamicElement && !element.bindingContext);
     if (!remove) return element;
-    return element.type === "image" ? unavailablePlaceholder(element) : [];
+    return element.type === "image" || element.type === "chart"
+      ? unavailablePlaceholder(element)
+      : [];
   });
   return { ...page, elements };
 }

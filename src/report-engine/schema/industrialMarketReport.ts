@@ -96,6 +96,18 @@ export const propertyHighlightSchema = z.object({
   image: z.string(),
 });
 
+export const submarketDetailSchema = z.object({
+  name: z.string().min(1),
+  metrics: marketMetricsSchema,
+  historicalPeriods: z.array(historicalMarketPeriodSchema),
+  narrative: z.string(),
+  leasing: z.array(leaseRecordSchema),
+  sales: z.array(saleRecordSchema),
+  availabilities: z.array(propertyHighlightSchema),
+  deliveries: z.array(propertyHighlightSchema),
+  construction: z.array(propertyHighlightSchema),
+});
+
 export const provenanceRecordSchema = z.object({
   fieldPath: z.string().min(1),
   selectedValue: z.unknown(),
@@ -146,6 +158,7 @@ export const industrialMarketReportSchema = z.object({
   report: reportMetadataSchema,
   overallMarket: marketMetricsSchema.extend({ narrative: z.string() }),
   submarkets: z.array(submarketMetricsSchema),
+  submarketDetails: z.array(submarketDetailSchema).default([]),
   historicalPeriods: z.array(historicalMarketPeriodSchema),
   leasing: z.array(leaseRecordSchema),
   sales: z.array(saleRecordSchema),
@@ -169,6 +182,7 @@ export type HistoricalMarketPeriod = z.infer<
 export type LeaseRecord = z.infer<typeof leaseRecordSchema>;
 export type SaleRecord = z.infer<typeof saleRecordSchema>;
 export type PropertyHighlight = z.infer<typeof propertyHighlightSchema>;
+export type SubmarketDetail = z.infer<typeof submarketDetailSchema>;
 export type ProvenanceRecord = z.infer<typeof provenanceRecordSchema>;
 export type PresentationOverride = z.infer<typeof presentationOverrideSchema>;
 export type IndustrialMarketReport = z.infer<

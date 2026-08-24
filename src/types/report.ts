@@ -110,6 +110,7 @@ export interface BaseElement {
   bindingContext?: BindingContext;
   repeat?: RepeatRule;
   requiredDataSection?: import("../report-engine/schema/industrialMarketReport").DatasetSection;
+  unavailableMessage?: string;
 }
 
 export interface TextElement extends BaseElement {
@@ -146,6 +147,26 @@ export interface TableColumn {
   decimals?: number;
   width?: number;
   align?: "left" | "center" | "right";
+  headerStyle?: TableCellStyle;
+  bodyStyle?: TableCellStyle;
+}
+
+export interface TableCellStyle {
+  fontFamily?: string;
+  fontWeight?: number;
+  fontSize?: number;
+  color?: string;
+  background?: string;
+  textAlign?: "left" | "center" | "right";
+  padding?: number;
+  borderColor?: string;
+  borderWidth?: number;
+}
+
+export interface TableSelection {
+  section: "column" | "header" | "body";
+  column: number;
+  row?: number;
 }
 
 export interface TableElement extends BaseElement {
@@ -156,6 +177,10 @@ export interface TableElement extends BaseElement {
   variant?: "default" | "market-matrix" | "indicators" | "transactions";
   rowKindPath?: string;
   emptyMessage?: string;
+  rowHeight?: number;
+  headerStyle?: TableCellStyle;
+  bodyStyle?: TableCellStyle;
+  cellStyles?: Record<string, TableCellStyle>;
 }
 
 export interface ChartElement extends BaseElement {
@@ -198,6 +223,7 @@ export interface ChartSeries {
   color: string;
   lineWidth?: number;
   markerSize?: number;
+  axisId?: string;
 }
 export interface ChartAxis {
   id: string;
