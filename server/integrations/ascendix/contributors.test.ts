@@ -268,6 +268,7 @@ describe("historical contributors", () => {
         Address__c: "Frozen Address",
         Deal_Type__c: "New",
         Lease__r: {
+          Is_Deal_Confidential__c: false,
           ascendix__Tenant__r: { Name: "Current Tenant" },
           Deal_Type__c: "Changed",
         },
@@ -278,5 +279,103 @@ describe("historical contributors", () => {
       address: "Frozen Address",
       leaseType: "New",
     });
+  });
+
+  it("uses the Sale object's Sale_Type__c and cannot leak Included as Sale Type", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "sale-contract",
+        Contributor_Category__c: "Sale",
+        Sale_Price__c: 2_000_000,
+        Buyer_Name__c: "001al00000dS4qYAAS",
+        Address__c: "100 Main St",
+        Sale_Type__c: "Included",
+        Deal_Type__c: "Included",
+        Source_Status__c: "Included",
+        Sale__r: {
+          Sale_Type__c: "Owner/User",
+          ascendix__Buyer__r: { Normalized_Name__c: "Acme Holdings" },
+        },
+      }),
+    ]);
+    expect(mapped.sales[0]).toEqual({
+      buyer: "Acme Holdings",
+      price: 2_000_000,
+      address: "100 Main St",
+      saleType: "Owner/User",
+    });
+    expect(JSON.stringify(mapped.sales)).not.toContain("Included");
+    expect(JSON.stringify(mapped.sales)).not.toContain("001al00000dS4qYAAS");
+  });
+
+  it.each([
+    {
+      label: "confidential linked tenant",
+      confidential: true,
+      nativeTenant: "Quarter-close Tenant",
+      linkedTenant: "Secret Tenant",
+      expected: "(Confidential)",
+    },
+    {
+      label: "non-confidential linked tenant",
+      confidential: false,
+      nativeTenant: "Published Tenant",
+      linkedTenant: "Current Tenant",
+      expected: "Published Tenant",
+    },
+    {
+      label: "missing tenant",
+      confidential: false,
+      nativeTenant: "",
+      linkedTenant: "",
+      expected: "Tenant not published",
+    },
+  ])("applies Lease.Is_Deal_Confidential__c for $label", async (fixture) => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: `lease-${fixture.label}`,
+        Contributor_Category__c: "Lease",
+        Lease_SF__c: 125_000,
+        Address__c: "200 Main St",
+        Tenant_Name__c: fixture.nativeTenant,
+        Deal_Type__c: "New",
+        Lease__r: {
+          Is_Deal_Confidential__c: fixture.confidential,
+          ascendix__Tenant__r: { Name: fixture.linkedTenant },
+        },
+      }),
+    ]);
+    expect(mapped.leasing[0]).toMatchObject({
+      tenant: fixture.expected,
+      tenantDisplayName: fixture.expected,
+      isDealConfidential: fixture.confidential,
+      sizeSf: 125_000,
+      address: "200 Main St",
+      leaseType: "New",
+    });
+    if (fixture.confidential)
+      expect(JSON.stringify(mapped.leasing[0])).not.toContain("Secret Tenant");
+  });
+
+  it("fails closed when Lease confidentiality is unavailable", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "lease-unverified",
+        Contributor_Category__c: "Lease",
+        Lease_SF__c: 125_000,
+        Address__c: "200 Main St",
+        Tenant_Name__c: "Native Tenant That Must Never Leak",
+        Deal_Type__c: "New",
+      }),
+    ]);
+
+    expect(mapped.leasing[0]).toMatchObject({
+      tenant: "(Confidential)",
+      tenantDisplayName: "(Confidential)",
+      isDealConfidential: null,
+    });
+    expect(JSON.stringify(mapped)).not.toContain(
+      "Native Tenant That Must Never Leak",
+    );
   });
 });

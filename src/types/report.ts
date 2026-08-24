@@ -111,6 +111,10 @@ export interface BaseElement {
   repeat?: RepeatRule;
   requiredDataSection?: import("../report-engine/schema/industrialMarketReport").DatasetSection;
   unavailableMessage?: string;
+  /** Client-safe copy used when an unavailable fixture is rendered for publication. */
+  publishedUnavailableMessage?: string;
+  /** Replaces editor/QA diagnostic copy in a published render. */
+  publishedText?: string;
 }
 
 export interface TextElement extends BaseElement {
@@ -257,6 +261,8 @@ export interface ReportPage {
   height: number;
   background: string;
   hidden?: boolean;
+  /** Assigned only after repeat expansion and final ordering. */
+  pageNumber?: number;
   bindingContext?: BindingContext;
   repeat?: RepeatingPageRule;
   elements: ReportElement[];

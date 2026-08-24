@@ -57,6 +57,9 @@ export const marketMetricsSchema = z.object({
 });
 
 export const submarketMetricsSchema = marketMetricsSchema.extend({
+  id: z.string().min(1).optional(),
+  canonicalName: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
   name: z.string().min(1),
 });
 
@@ -76,6 +79,8 @@ export const historicalMarketPeriodSchema = z.object({
 
 export const leaseRecordSchema = z.object({
   tenant: z.string().min(1),
+  tenantDisplayName: z.string().min(1).optional(),
+  isDealConfidential: z.boolean().nullable().optional(),
   sizeSf: nonNegativeNumber,
   address: z.string().min(1),
   leaseType: z.string().min(1),
@@ -94,9 +99,17 @@ export const propertyHighlightSchema = z.object({
   type: z.string().min(1),
   sponsor: z.string(),
   image: z.string(),
+  propertyType: z.string().optional(),
+  availabilityType: z.string().optional(),
+  developmentType: z.string().optional(),
+  constructionType: z.string().optional(),
+  developer: z.string().optional(),
 });
 
 export const submarketDetailSchema = z.object({
+  id: z.string().min(1).optional(),
+  canonicalName: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
   name: z.string().min(1),
   metrics: marketMetricsSchema,
   historicalPeriods: z.array(historicalMarketPeriodSchema),

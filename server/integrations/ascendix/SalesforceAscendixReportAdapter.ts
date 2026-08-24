@@ -28,6 +28,7 @@ import {
   canonicalChicagoSubmarket,
   salesforceFieldMap as mapping,
 } from "./salesforceFieldMap.ts";
+import { resolveChicagoSubmarket } from "../../../src/report-engine/submarkets.ts";
 import {
   normalizeQuarterBounds,
   normalizeSalesforceMarketDataRecord,
@@ -161,17 +162,13 @@ async function enrichFinalists(
   const availabilityRows = finalists.filter((row) =>
     sections.get(row.Id)?.includes("availability"),
   );
-  const leaseRows = finalists.filter(
-    (row) =>
-      sections.get(row.Id)?.includes("lease") &&
-      (!row.Tenant_Name__c || !row.Deal_Type__c),
+  // These relationships carry authoritative client-facing contracts, so every
+  // finalist is enriched rather than trusting denormalized contributor labels.
+  const leaseRows = finalists.filter((row) =>
+    sections.get(row.Id)?.includes("lease"),
   );
-  const saleRows = finalists.filter(
-    (row) =>
-      sections.get(row.Id)?.includes("sale") &&
-      (looksLikeSalesforceId(String(row.Buyer_Name__c ?? "")) ||
-        !row.Buyer_Name__c ||
-        !row.Sale_Type__c),
+  const saleRows = finalists.filter((row) =>
+    sections.get(row.Id)?.includes("sale"),
   );
   const jobs: Promise<void>[] = [];
   const run = (
@@ -245,6 +242,7 @@ async function enrichFinalists(
       api(mapping.lease.tenant),
       api(mapping.lease.type),
       api(mapping.lease.subtype),
+      api(mapping.lease.isDealConfidential),
     ],
     leaseRows,
     "Lease__c",
@@ -384,10 +382,16 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     const currentRecords = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map(
       (name) => recordsBySubmarket.get(name)![0],
     );
-    const submarkets: SubmarketMetrics[] = currentRecords.map((record) => ({
-      name: canonicalChicagoSubmarket(text(record, md.submarket))!,
-      ...metrics(record),
-    }));
+    const submarkets: SubmarketMetrics[] = currentRecords.map((record) => {
+      const identity = resolveChicagoSubmarket(text(record, md.submarket))!;
+      return {
+        id: identity.id,
+        canonicalName: identity.canonicalName,
+        displayName: identity.displayName,
+        name: identity.canonicalName,
+        ...metrics(record),
+      };
+    });
     const marketDataIds = new Map(
       currentRecords.map((record) => [
         canonicalChicagoSubmarket(text(record, md.submarket))!,
@@ -567,6 +571,9 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           };
         });
         return {
+          id: resolveChicagoSubmarket(name)!.id,
+          canonicalName: name,
+          displayName: resolveChicagoSubmarket(name)!.displayName,
           name,
           metrics: detailMetrics,
           historicalPeriods: history,

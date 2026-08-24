@@ -10,6 +10,8 @@ import {
 import { SalesforceAscendixReportAdapter } from "./SalesforceAscendixReportAdapter.ts";
 import { ReportDataService } from "../../report-data-service/ReportDataService.ts";
 import { InMemoryReportSnapshotStore } from "../../report-data-service/reportSnapshots.ts";
+import { sampleTemplate } from "../../../src/data/sampleTemplate.ts";
+import { evaluateReportReadiness } from "../../../src/report-engine/validation/reportValidation.ts";
 
 const marketRecord = (
   submarket: string,
@@ -111,11 +113,21 @@ class FakeSalesforceClient implements SalesforceClient {
       invalidRate?: boolean;
       missingInventory?: boolean;
       missingSubmarket?: boolean;
+      failedLeaseEnrichment?: boolean;
+      leaseContributor?: SalesforceRecord;
     } = {},
   ) {}
   async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
     this.queries.push(soql);
-    if (soql.includes("FROM Market_Data_Contributor__c")) return [];
+    if (soql.includes("FROM Market_Data_Contributor__c"))
+      return (
+        this.options.leaseContributor ? [this.options.leaseContributor] : []
+      ) as T[];
+    if (
+      this.options.failedLeaseEnrichment &&
+      soql.includes("FROM ascendix__Lease__c")
+    )
+      throw new Error("Simulated Lease enrichment failure");
     if (soql.includes("FROM Property_Data__c"))
       return CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name, index) =>
         propertyRecord({
@@ -173,6 +185,59 @@ describe("Salesforce Ascendix live-verified contract", () => {
     );
     expect(salesforceFieldMap.lease.object.apiName).toBe("ascendix__Lease__c");
     expect(salesforceFieldMap.sale.object.apiName).toBe("ascendix__Sale__c");
+  });
+  it("masks the native Tenant and blocks publication when Lease enrichment fails", async () => {
+    const nativeTenant = "Native Tenant That Must Never Leak";
+    const client = new FakeSalesforceClient({
+      failedLeaseEnrichment: true,
+      leaseContributor: {
+        Id: "lease-contributor-unverified",
+        Active_In_Run__c: true,
+        Included_In_Report__c: true,
+        Quarter_Label__c: "2026 Q2",
+        Submarket__c: "O'Hare",
+        Market_Data__c: "market-13",
+        Contributor_Category__c: "Lease",
+        Rank__c: 1,
+        Sort_Value__c: 125_000,
+        Lease_SF__c: 125_000,
+        Lease__c: "lease-unverified",
+        Source_Record_ID__c: "lease-unverified",
+        Tenant_Name__c: nativeTenant,
+        Address__c: "200 Main St",
+        Deal_Type__c: "New",
+      },
+    });
+    const result = await new SalesforceAscendixReportAdapter(
+      client,
+      () => new Date("2026-08-20T12:00:00Z"),
+    ).loadReportSource(request);
+
+    expect(result.report.leasing[0]).toMatchObject({
+      tenant: "(Confidential)",
+      tenantDisplayName: "(Confidential)",
+      isDealConfidential: null,
+    });
+    expect(JSON.stringify(result.report)).not.toContain(nativeTenant);
+    expect(result.diagnostics).toContain(
+      "Optional finalist enrichment unavailable for ascendix__Lease__c; contributor-native values were retained.",
+    );
+
+    const readiness = evaluateReportReadiness(
+      result.report,
+      sampleTemplate,
+      "ascendix",
+    );
+    expect(readiness.canExportDraft).toBe(true);
+    expect(readiness.canPublish).toBe(false);
+    expect(readiness.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "leasing[0].isDealConfidential",
+          level: "blocking",
+        }),
+      ]),
+    );
   });
   it("loads exactly 18 Market_Data snapshots without Market__c and derives Overall Market from Property_Data", async () => {
     const client = new FakeSalesforceClient();

@@ -130,6 +130,10 @@ const optionalNumeric = (record: SalesforceRecord, path: string) => {
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
+const booleanValue = (record: SalesforceRecord, path: string) => {
+  const value = getSalesforceValue(record, path);
+  return value === true ? true : value === false ? false : null;
+};
 const composedAddress = (record: SalesforceRecord, prefix: string) =>
   ["ascendix__Street__c", "ascendix__City__c", "State__c", "Zip_Code__c"]
     .map((field) => displayText(record, `${prefix}.${field}`))
@@ -317,12 +321,51 @@ const highlight = async (
       address: address(record, source),
       sizeSf: numeric(record, ...sizePaths),
       type,
+      propertyType:
+        section === "availabilities"
+          ? displayText(
+              record,
+              "Property_Type__c",
+              "Building_Class__c",
+              "Property__r.ascendix__PropertySubType__c",
+            )
+          : undefined,
+      availabilityType:
+        section === "availabilities"
+          ? displayText(
+              record,
+              "Availability__r.Vacancy_Type__c",
+              "Vacancy_Type__c",
+              "Availability__r.ascendix__UseSubType__c",
+            )
+          : undefined,
+      developmentType:
+        section === "deliveries"
+          ? displayText(
+              record,
+              "Property__r.ascendix__ExpansionType__c",
+              "Building_Status__c",
+            )
+          : undefined,
+      constructionType:
+        section === "construction"
+          ? displayText(
+              record,
+              "Property__r.ascendix__ExpansionType__c",
+              "Building_Status__c",
+            )
+          : undefined,
       sponsor: displayText(
         record,
         "Property__r.ascendix__Developer__r.Name",
         "Property__r.ascendix__OwnerLandlord__r.Name",
         "Availability__r.Listing_Broker_Company__c",
         "Sponsor_Account__r.Name",
+      ),
+      developer: displayText(
+        record,
+        "Property__r.ascendix__Developer__r.Name",
+        "Property__r.ascendix__OwnerLandlord__r.Name",
       ),
       image: resolvedImage.value,
     },
@@ -339,40 +382,51 @@ export async function mapHistoricalContributors(
   const availabilityRows = rankContributors(rows, "availabilities");
   const deliveryRows = rankContributors(rows, "deliveries");
   const constructionRows = rankContributors(rows, "construction");
-  const leasing: LeaseRecord[] = leaseRows.map((record) => ({
-    tenant: displayText(
+  const leasing: LeaseRecord[] = leaseRows.map((record) => {
+    const isDealConfidential = booleanValue(
+      record,
+      "Lease__r.Is_Deal_Confidential__c",
+    );
+    const resolvedTenant = displayText(
       record,
       "Tenant_Name__c",
-      "Display_Title__c",
       "Lease__r.ascendix__Tenant__r.Name",
-    ),
-    sizeSf: numeric(
-      record,
-      "Lease_SF__c",
-      "Metric_Value__c",
-      "Sort_Value__c",
-      "Display_Value__c",
-    ),
-    address: address(record, "Lease"),
-    leaseType: [
-      displayText(record, "Deal_Type__c", "Lease__r.Deal_Type__c"),
-      displayText(
+    );
+    const tenantDisplayName =
+      isDealConfidential === false
+        ? resolvedTenant || "Tenant not published"
+        : "(Confidential)";
+    return {
+      tenant: tenantDisplayName,
+      tenantDisplayName,
+      isDealConfidential,
+      sizeSf: numeric(
         record,
-        "Deal_Sub_Type__c",
-        "Source_Status__c",
-        "Lease__r.Deal_Sub_Type__c",
+        "Lease_SF__c",
+        "Metric_Value__c",
+        "Sort_Value__c",
+        "Display_Value__c",
       ),
-    ]
-      .filter(Boolean)
-      .join(" / "),
-  }));
+      address: address(record, "Lease"),
+      leaseType: [
+        displayText(record, "Deal_Type__c", "Lease__r.Deal_Type__c"),
+        displayText(
+          record,
+          "Deal_Sub_Type__c",
+          "Source_Status__c",
+          "Lease__r.Deal_Sub_Type__c",
+        ),
+      ]
+        .filter(Boolean)
+        .join(" / "),
+    };
+  });
   const sales: SaleRecord[] = saleRows.map((record) => {
     const preferredBuyer = displayText(
       record,
-      "Buyer_Name__c",
-      "Display_Title__c",
       "Sale__r.ascendix__Buyer__r.Normalized_Name__c",
       "Sale__r.ascendix__Buyer__r.Name",
+      "Buyer_Name__c",
     );
     return {
       buyer: preferredBuyer || "Buyer not published",
@@ -384,13 +438,9 @@ export async function mapHistoricalContributors(
         "Display_Value__c",
       ),
       address: address(record, "Sale"),
-      saleType: displayText(
-        record,
-        "Sale_Type__c",
-        "Deal_Type__c",
-        "Source_Status__c",
-        "Sale__r.Sale_Type__c",
-      ),
+      saleType:
+        displayText(record, "Sale__r.Sale_Type__c") ||
+        "Sale type not published",
     };
   });
   const provenanceRows = [
@@ -423,6 +473,13 @@ export async function mapHistoricalContributors(
         availabilityId: row.Availability__c,
         leaseId: row.Lease__c,
         saleId: row.Sale__c,
+        isDealConfidential:
+          section === "leasing"
+            ? booleanValue(row, "Lease__r.Is_Deal_Confidential__c")
+            : undefined,
+        tenantDisplayName:
+          section === "leasing" ? leasing[index]?.tenantDisplayName : undefined,
+        saleType: section === "sales" ? sales[index]?.saleType : undefined,
       },
       sources: [
         {

@@ -257,6 +257,29 @@ export function validateNormalizedReport(
     }
   });
 
+  const leaseCollections = [
+    { path: "leasing", leases: report.leasing },
+    ...report.submarketDetails.map((detail, index) => ({
+      path: `submarketDetails[${index}].leasing`,
+      leases: detail.leasing,
+    })),
+  ];
+  leaseCollections.forEach(({ path, leases }) =>
+    leases.forEach((lease, index) => {
+      if (
+        lease.isDealConfidential !== true &&
+        lease.isDealConfidential !== false
+      )
+        issues.push({
+          path: `${path}[${index}].isDealConfidential`,
+          message:
+            "Included Lease confidentiality could not be verified; publication is blocked and its Tenant remains masked.",
+          level: "blocking",
+          category: "readiness",
+        });
+    }),
+  );
+
   return issues;
 }
 

@@ -4,6 +4,7 @@ import { expandTemplatePages } from "./repeaters";
 import { sampleTemplate } from "../../data/sampleTemplate";
 import { q2SampleReport } from "../../data-providers/sample/q2SampleReport";
 import { buildPresentationModel } from "../bindings/presentationModel";
+import { chicagoSubmarketId } from "../submarkets";
 
 const template: ReportTemplate = {
   id: "t",
@@ -112,14 +113,76 @@ describe("industrial detail page selection", () => {
   });
 
   it("creates 40 pages for all 18 accepted Chicago submarkets", () => {
-    const selected = q2SampleReport.submarkets.map((item) => item.name);
+    const selected = q2SampleReport.submarkets.map((item) =>
+      chicagoSubmarketId(item.name)!,
+    );
     const pages = expandTemplatePages(sampleTemplate, data, {
-      submarkets: selected,
+      submarketIds: selected,
     });
     expect(selected).toHaveLength(18);
     expect(pages).toHaveLength(40);
     expect(pages.slice(4).map((page) => page.name)).toEqual(
-      selected.flatMap((name) => [`${name} Overview`, `${name} Highlights`]),
+      q2SampleReport.submarkets.flatMap((item) => {
+        const displayName =
+          item.name === "I-80 Corridor/Joliet" ? "I-80/Joliet Area" : item.name;
+        return [`${displayName} Overview`, `${displayName} Highlights`];
+      }),
     );
+    expect(pages.map((page) => page.pageNumber)).toEqual(
+      Array.from({ length: 40 }, (_, index) => index + 1),
+    );
+    expect(
+      pages[4].elements.find((item) => item.name === "Page Number"),
+    ).toMatchObject({
+      type: "text",
+      text: "5",
+    });
+    expect(
+      pages.at(-1)?.elements.find((item) => item.name === "Page Number"),
+    ).toMatchObject({
+      type: "text",
+      text: "40",
+    });
+  });
+
+  it("resolves the I-80 display alias through its canonical id without dropping its pair", () => {
+    const pages = expandTemplatePages(sampleTemplate, data, {
+      submarketIds: ["i80-joliet"],
+    });
+    expect(pages.slice(4).map((page) => page.name)).toEqual([
+      "I-80/Joliet Area Overview",
+      "I-80/Joliet Area Highlights",
+    ]);
+    expect(pages[4].bindingContext?.path).toBe("submarketDetails[5]");
+  });
+
+  it("preserves the full Southeast Wisconsin name in both generated headers", () => {
+    const pages = expandTemplatePages(sampleTemplate, data, {
+      submarketIds: ["southeast-wisconsin"],
+    });
+    expect(pages.slice(4).map((page) => page.name)).toEqual([
+      "Southeast Wisconsin Overview",
+      "Southeast Wisconsin Highlights",
+    ]);
+    for (const page of pages.slice(4))
+      expect(
+        page.elements.find((item) => item.name === "Market"),
+      ).toMatchObject({
+        width: 330,
+        binding: { path: "market.displayName" },
+      });
+  });
+
+  it("rejects unknown or duplicate canonical selections instead of silently dropping them", () => {
+    expect(() =>
+      expandTemplatePages(sampleTemplate, data, {
+        submarketIds: ["missing-submarket"],
+      }),
+    ).toThrow(/Unknown selected Chicago submarket/);
+    expect(() =>
+      expandTemplatePages(sampleTemplate, data, {
+        submarkets: ["I-80 Corridor\/Joliet", "I-80\/Joliet Area"],
+      }),
+    ).toThrow(/unique canonical IDs/);
   });
 });
