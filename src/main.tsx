@@ -15,6 +15,7 @@ const benchmark = params.get("benchmark") === "1";
 const printJob = params.get("printJob");
 const printBenchmark = params.get("printBenchmark") === "1";
 const rotationBenchmark = params.get("rotationBenchmark") === "1";
+const highlightStates = params.get("highlightStates") === "1";
 const content = printJob ? (
   <PrintReport jobId={printJob} />
 ) : printBenchmark ? (
@@ -22,7 +23,10 @@ const content = printJob ? (
 ) : rotationBenchmark ? (
   <RotationFontBenchmarkPage />
 ) : benchmark ? (
-  <BenchmarkPage pageIndex={Number(params.get("page") ?? 0)} />
+  <BenchmarkPage
+    pageIndex={Number(params.get("page") ?? 0)}
+    highlightStates={highlightStates}
+  />
 ) : (
   <App />
 );

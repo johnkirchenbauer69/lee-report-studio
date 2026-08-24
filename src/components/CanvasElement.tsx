@@ -292,22 +292,36 @@ export function CanvasElement(props: Props) {
 
   let content: React.ReactNode = null;
   if (element.type === "text") {
-    const raw =
-      mode === "data" && element.binding
-        ? formatValue(
-            getByContextPath(
-              data,
-              element.binding.path,
-              element.bindingContext,
-            ),
-            element.binding,
+    const cardState =
+      mode === "data" &&
+      element.binding &&
+      /\.(address|detail)$/.test(element.binding.path)
+        ? getByContextPath(
+            data,
+            element.binding.path.replace(/\.(address|detail)$/, ".state"),
+            element.bindingContext,
           )
-        : element.text;
+        : undefined;
+    const raw =
+      cardState === "none"
+        ? ""
+        : mode === "data" && element.binding
+          ? formatValue(
+              getByContextPath(
+                data,
+                element.binding.path,
+                element.bindingContext,
+              ),
+              element.binding,
+            )
+          : element.text;
     content = (
       <div
         className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}
       >
-        {typography?.uppercase ? raw.toUpperCase() : raw}
+        <span className="text-value">
+          {typography?.uppercase ? raw.toUpperCase() : raw}
+        </span>
       </div>
     );
   } else if (element.type === "image") {
@@ -316,6 +330,14 @@ export function CanvasElement(props: Props) {
         ? getByContextPath(data, element.binding.path, element.bindingContext)
         : undefined;
     const src = typeof dynamic === "string" ? dynamic : element.src,
+      recordState =
+        mode === "data" && element.binding?.path.endsWith(".image")
+          ? getByContextPath(
+              data,
+              element.binding.path.replace(/\.image$/, ".state"),
+              element.bindingContext,
+            )
+          : undefined,
       objectFit =
         element.fit === "stretch"
           ? "fill"
@@ -324,35 +346,43 @@ export function CanvasElement(props: Props) {
             : (element.fit ?? "cover");
     const crop = element.crop ?? { x: 50, y: 50, zoom: 1 };
     const region = element.sourceCrop;
-    content = src ? (
-      <img
-        src={src}
-        alt={element.name}
-        style={
-          region
-            ? {
-                position: "absolute",
-                width: (element.width * region.sourceWidth) / region.width,
-                height: (element.height * region.sourceHeight) / region.height,
-                left: (-region.x * element.width) / region.width,
-                top: (-region.y * element.height) / region.height,
-                maxWidth: "none",
-                pointerEvents: "none",
-              }
-            : {
-                width: `${crop.zoom * 100}%`,
-                height: `${crop.zoom * 100}%`,
-                objectFit,
-                objectPosition: `${crop.x}% ${crop.y}%`,
-                transform: `translate(${((1 - crop.zoom) * crop.x) / crop.zoom}%,${((1 - crop.zoom) * crop.y) / crop.zoom}%)`,
-                pointerEvents: "none",
-                maxWidth: "none",
-              }
-        }
-      />
-    ) : (
-      <div className="image-placeholder">Image</div>
-    );
+    content =
+      recordState === "none" ? (
+        <div className="property-card-placeholder none-to-report">
+          None to Report
+        </div>
+      ) : src ? (
+        <img
+          src={src}
+          alt={element.name}
+          style={
+            region
+              ? {
+                  position: "absolute",
+                  width: (element.width * region.sourceWidth) / region.width,
+                  height:
+                    (element.height * region.sourceHeight) / region.height,
+                  left: (-region.x * element.width) / region.width,
+                  top: (-region.y * element.height) / region.height,
+                  maxWidth: "none",
+                  pointerEvents: "none",
+                }
+              : {
+                  width: `${crop.zoom * 100}%`,
+                  height: `${crop.zoom * 100}%`,
+                  objectFit,
+                  objectPosition: `${crop.x}% ${crop.y}%`,
+                  transform: `translate(${((1 - crop.zoom) * crop.x) / crop.zoom}%,${((1 - crop.zoom) * crop.y) / crop.zoom}%)`,
+                  pointerEvents: "none",
+                  maxWidth: "none",
+                }
+          }
+        />
+      ) : (
+        <div className="property-card-placeholder image-unavailable">
+          Image unavailable
+        </div>
+      );
   } else if (element.type === "table") {
     const rows = getByContextPath(
         data,

@@ -36,6 +36,70 @@ test("text vertical alignment and color controls update the canvas", async ({
   await expect(selected).toHaveCSS("background-color", "rgb(18, 52, 86)");
 });
 
+test("wide text visibly honors left, center, right, resize, rotation, and undo", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/", { waitUntil: "load" });
+  await page.locator(".rail").getByTitle("Text").click();
+  await page.getByRole("button", { name: "Add body text" }).click();
+  await page
+    .locator(".inspector-section")
+    .filter({ hasText: "Typography" })
+    .locator("textarea")
+    .fill("TEST");
+  const position = page
+    .locator(".inspector-section")
+    .filter({ hasText: "Position & Size" });
+  await position.getByLabel(/^W/).fill("400");
+  await position.getByLabel(/^H/).fill("72");
+  const element = page.locator(".canvas-element.is-selected");
+
+  const geometry = () =>
+    element.locator(".text-value").evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const text = range.getBoundingClientRect();
+      const wrapper = node.getBoundingClientRect();
+      return {
+        leftGap: text.left - wrapper.left,
+        rightGap: wrapper.right - text.right,
+      };
+    });
+
+  await page.getByTitle("Text align left").click();
+  let gaps = await geometry();
+  expect(gaps.leftGap).toBeLessThan(2);
+  expect(gaps.rightGap).toBeGreaterThan(200);
+  const capture = async (name: string) => {
+    const path = testInfo.outputPath(name);
+    await element.screenshot({ path, animations: "disabled" });
+    await testInfo.attach(name, { path, contentType: "image/png" });
+  };
+  await capture("text-align-left.png");
+
+  await page.getByTitle("Text align center").click();
+  gaps = await geometry();
+  expect(Math.abs(gaps.leftGap - gaps.rightGap)).toBeLessThan(2);
+  await capture("text-align-center.png");
+
+  await page.getByTitle("Text align right").click();
+  gaps = await geometry();
+  expect(gaps.rightGap).toBeLessThan(2);
+  expect(gaps.leftGap).toBeGreaterThan(200);
+  await capture("text-align-right.png");
+
+  await page.keyboard.press("Control+z");
+  await expect(page.getByTitle("Text align center")).toHaveClass(/active/);
+  await page.keyboard.press("Control+Shift+z");
+  await expect(page.getByTitle("Text align right")).toHaveClass(/active/);
+  await page.getByLabel(/^Rotation/).fill("90");
+  await page.getByTitle("Text align center").click();
+  await expect(element.locator(".text-value")).toHaveCSS(
+    "text-align",
+    "center",
+  );
+});
+
 const readRotation = (locator: import("@playwright/test").Locator) =>
   locator.evaluate((node) => {
     const matrix = new DOMMatrix(getComputedStyle(node).transform);

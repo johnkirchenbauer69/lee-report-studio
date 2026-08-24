@@ -18,7 +18,12 @@ import type {
 const sectionLabel = (section: DatasetSection) =>
   section.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 
-const unavailablePlaceholder = (element: ReportElement): TextElement => ({
+export type ReportOutputMode = "editor" | "published";
+
+const unavailablePlaceholder = (
+  element: ReportElement,
+  outputMode: ReportOutputMode,
+): TextElement => ({
   id: `${element.id}-data-unavailable`,
   type: "text",
   name: "Data unavailable",
@@ -28,8 +33,14 @@ const unavailablePlaceholder = (element: ReportElement): TextElement => ({
   height: element.height,
   locked: true,
   text:
-    element.unavailableMessage ??
-    `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`,
+    outputMode === "published"
+      ? (element.publishedUnavailableMessage ??
+        "Content not available for this edition")
+      : (element.unavailableMessage ??
+        `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`),
+  publishedText:
+    element.publishedUnavailableMessage ??
+    "Content not available for this edition",
   style: {
     background: "#f2f5f6",
     borderColor: "#c8d2d7",
@@ -43,6 +54,23 @@ const unavailablePlaceholder = (element: ReportElement): TextElement => ({
   },
 });
 
+/** Applies publication-only copy after all editor and report-instance edits. */
+export function prepareTemplateForPublication(
+  template: ReportTemplate,
+): ReportTemplate {
+  return {
+    ...structuredClone(template),
+    pages: template.pages.map((page) => ({
+      ...structuredClone(page),
+      elements: page.elements.map((element) =>
+        element.type === "text" && element.publishedText
+          ? { ...structuredClone(element), text: element.publishedText }
+          : structuredClone(element),
+      ),
+    })),
+  };
+}
+
 const formatPeriod = (period: string) => {
   const match = period.match(/^(\d{4})\s+(Q[1-4])$/i);
   return match ? `${match[2].toUpperCase()} ${match[1]}` : period;
@@ -54,8 +82,15 @@ function preparePage(
   presentationData: unknown,
   provider: ReportProviderId,
   unavailable: Set<DatasetSection>,
+  outputMode: ReportOutputMode,
 ): ReportPage {
   const elements = page.elements.flatMap((element) => {
+    if (
+      element.type === "text" &&
+      outputMode === "published" &&
+      element.publishedText
+    )
+      element = { ...element, text: element.publishedText };
     if (element.binding) {
       const value = getByContextPath(
         presentationData,
@@ -109,7 +144,7 @@ function preparePage(
       (provider !== "sample" && !dynamicElement && !element.bindingContext);
     if (!remove) return element;
     return element.type === "image" || element.type === "chart"
-      ? unavailablePlaceholder(element)
+      ? unavailablePlaceholder(element, outputMode)
       : [];
   });
   return { ...page, elements };
@@ -124,6 +159,7 @@ export function prepareTemplateForReport(
   report: IndustrialMarketReport,
   presentationData: unknown,
   provider: ReportProviderId,
+  outputMode: ReportOutputMode = "editor",
 ): ReportTemplate {
   const unavailable = new Set(
     report.dataCompleteness
@@ -141,6 +177,7 @@ export function prepareTemplateForReport(
         presentationData,
         provider,
         unavailable,
+        outputMode,
       ),
     ),
   };

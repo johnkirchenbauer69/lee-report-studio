@@ -14,11 +14,6 @@ const verified = (apiName: string): FieldMapping => ({
   verified: true,
   verification: "verified-production-dashboard",
 });
-const optional = (apiName: string): FieldMapping => ({
-  apiName,
-  verified: false,
-  verification: "optional-probed",
-});
 
 export const PUBLIC_EXCLUDED_SUBMARKETS = [
   "Chicago North",
@@ -45,35 +40,10 @@ export const verifiedDerivedMetrics = {
   },
 };
 
-export const CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS = [
-  "Central DuPage",
-  "Chicago South",
-  "Fox Valley",
-  "I-55 Corridor",
-  "I-57 Corridor",
-  "I-80 Corridor/Joliet",
-  "I-88 Corridor",
-  "Lake County",
-  "North Cook",
-  "North DuPage",
-  "North Kane",
-  "Northwest Cook",
-  "Northwest Indiana",
-  "O'Hare",
-  "South Cook",
-  "Southeast Wisconsin",
-  "Southwest Cook",
-  "West Cook",
-] as const;
-
-const chicagoSubmarkets = new Map(
-  CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map((name) => [
-    name.trim().toLocaleLowerCase(),
-    name,
-  ]),
-);
-export const canonicalChicagoSubmarket = (name: string) =>
-  chicagoSubmarkets.get(name.trim().toLocaleLowerCase());
+export {
+  CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
+  canonicalChicagoSubmarket,
+} from "../../../src/report-engine/submarkets.ts";
 
 export const salesforceFieldMap = {
   marketData: {
@@ -255,6 +225,7 @@ export const salesforceFieldMap = {
     leaseRate: verified("ascendix__LeaseRatePerUOM__c"),
     term: verified("Term__c"),
     propertySubtype: verified("Property_Sub_Type__c"),
+    isDealConfidential: verified("Is_Deal_Confidential__c"),
   },
   sale: {
     object: verified("ascendix__Sale__c"),
@@ -321,12 +292,10 @@ export const salesforceFieldMap = {
     marketDataId: verified("Market_Data__c"),
     marketDataSubmarket: verified("Market_Data__r.Submarket__c"),
     marketDataPeriod: verified("Market_Data__r.Quarter_Label__c"),
-    saleType: optional("Sale_Type__c"),
   },
 } as const;
 
 export const contributorOptionalRelationshipFields = [
-  "Sale_Type__c",
   "Property__r.Id",
   "Property__r.ascendix__Street__c",
   "Property__r.ascendix__City__c",
@@ -341,6 +310,7 @@ export const contributorOptionalRelationshipFields = [
   "Property__r.ascendix__OwnerLandlord__r.Name",
   "Property__r.ascendix__PrimaryImage__c",
   "Lease__r.ascendix__Tenant__r.Name",
+  "Lease__r.Is_Deal_Confidential__c",
   "Lease__r.ascendix__Property__c",
   "Lease__r.ascendix__Property__r.ascendix__Street__c",
   "Lease__r.ascendix__Property__r.ascendix__City__c",
@@ -377,6 +347,4 @@ export const contributorOptionalRelationshipFields = [
   "Availability__r.Listing_Broker_Company__c",
 ] as const;
 
-export const unverifiedSalesforceMappings = () => [
-  "contributor.saleType (optional-probed)",
-];
+export const unverifiedSalesforceMappings = () => [];

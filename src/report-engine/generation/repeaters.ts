@@ -5,19 +5,26 @@ import type {
   ReportTemplate,
   RepeatRule,
 } from "../../types/report";
+import { chicagoSubmarketId, resolveChicagoSubmarket } from "../submarkets";
 
 function orderedItems(
   data: unknown,
   rule: RepeatRule,
-  allowedNames?: Set<string>,
+  allowedIds?: Set<string>,
 ): { item: unknown; index: number }[] {
   const source = getByPath(data, rule.sourcePath);
   if (!Array.isArray(source)) return [];
   const indexed = source
     .map((item, index) => ({ item, index }))
-    .filter(({ item }) =>
-      allowedNames ? allowedNames.has(String(getByPath(item, "name"))) : true,
-    );
+    .filter(({ item }) => {
+      if (!allowedIds) return true;
+      const id =
+        String(getByPath(item, "id") ?? "") ||
+        chicagoSubmarketId(String(getByPath(item, "canonicalName") ?? "")) ||
+        chicagoSubmarketId(String(getByPath(item, "name") ?? "")) ||
+        "";
+      return allowedIds.has(id);
+    });
   if (rule.sortBy)
     indexed.sort(
       (a, b) =>
@@ -65,8 +72,24 @@ export function expandRepeatingElements(
 export function expandTemplatePages(
   template: ReportTemplate,
   data: unknown,
-  pageSelection?: { submarkets: string[] },
+  pageSelection?: { submarketIds?: string[]; submarkets?: string[] },
 ): ReportPage[] {
+  const requested =
+    pageSelection?.submarketIds ?? pageSelection?.submarkets ?? undefined;
+  const selectedIds = requested
+    ? requested.map((value) => {
+        const identity = resolveChicagoSubmarket(value);
+        if (!identity)
+          throw new Error(`Unknown selected Chicago submarket: ${value}.`);
+        return identity.id;
+      })
+    : undefined;
+  if (selectedIds && new Set(selectedIds).size !== selectedIds.length)
+    throw new Error(
+      "Selected submarkets must resolve to unique canonical IDs.",
+    );
+  const allowedIds = selectedIds ? new Set(selectedIds) : undefined;
+  const generatedIds = new Set<string>();
   const result: ReportPage[] = [];
   for (let pageIndex = 0; pageIndex < template.pages.length; pageIndex += 1) {
     const page = template.pages[pageIndex]!;
@@ -86,15 +109,28 @@ export function expandTemplatePages(
     )
       group.push(template.pages[++pageIndex]!);
     const rule = page.repeat;
-    const allowedNames =
+    const selection =
       ["submarkets", "submarketDetails"].includes(rule.sourcePath) &&
       pageSelection
-        ? new Set(pageSelection.submarkets)
+        ? allowedIds
         : undefined;
-    orderedItems(data, rule, allowedNames).forEach(
+    orderedItems(data, rule, selection).forEach(
       ({ item, index }, outputIndex) => {
+        const identity = resolveChicagoSubmarket(
+          String(
+            getByPath(item, "id") ??
+              getByPath(item, "canonicalName") ??
+              getByPath(item, "name") ??
+              "",
+          ),
+        );
+        if (identity) generatedIds.add(identity.id);
         group.forEach((groupPage) => {
-          const label = String(getByPath(item, "name") ?? outputIndex + 1);
+          const label = String(
+            getByPath(item, "displayName") ??
+              getByPath(item, "name") ??
+              outputIndex + 1,
+          );
           const context = {
             name: rule.contextName,
             path: `${rule.sourcePath}[${index}]`,
@@ -140,5 +176,20 @@ export function expandTemplatePages(
       },
     );
   }
-  return result;
+  if (allowedIds) {
+    const missing = [...allowedIds].filter((id) => !generatedIds.has(id));
+    if (missing.length)
+      throw new Error(
+        `Selected canonical submarkets were not generated: ${missing.join(", ")}.`,
+      );
+  }
+  return result.map((page, index) => ({
+    ...page,
+    pageNumber: index + 1,
+    elements: page.elements.map((element) =>
+      element.type === "text" && element.name === "Page Number"
+        ? { ...element, text: String(index + 1) }
+        : element,
+    ),
+  }));
 }

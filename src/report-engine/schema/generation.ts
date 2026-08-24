@@ -11,7 +11,7 @@ export interface ReportGenerationRequest {
   calculationScope:
     | { type: "all-submarkets" }
     | { type: "selected-submarkets"; submarkets: string[] };
-  pageSelection: { submarkets: string[] };
+  pageSelection: { submarketIds?: string[]; submarkets?: string[] };
   source: { provider: ReportProviderId; configuration?: unknown };
 }
 
