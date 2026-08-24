@@ -146,9 +146,9 @@ function standardHeader(pageNumber: number): ReportElement[] {
     text(
       `market-${pageNumber}`,
       "Market",
-      597,
+      451,
       67,
-      184,
+      330,
       25,
       "OVERALL MARKET",
       20,
@@ -598,6 +598,8 @@ const overviewPage: ReportPage = {
       requiredDataSection: "submarkets",
       unavailableMessage:
         "Data unavailable: live submarket map binding is not implemented.",
+      publishedUnavailableMessage:
+        "Submarket map not available in this edition",
     },
     {
       id: "indicator-table",
@@ -709,19 +711,22 @@ const overviewPage: ReportPage = {
       style: { opacity: 1 },
       requiredDataSection: "historicalPeriods",
     },
-    text(
-      "chart-sales-unavailable",
-      "Sales Chart Data Diagnostic",
-      424,
-      520,
-      352,
-      216,
-      "Data unavailable: historical median sales price is not mapped in the normalized Salesforce report schema.",
-      11,
-      "#52636c",
-      600,
-      "center",
-    ),
+    {
+      ...text(
+        "chart-sales-unavailable",
+        "Sales Chart Data Diagnostic",
+        424,
+        520,
+        352,
+        216,
+        "Data unavailable: historical median sales price is not mapped in the normalized Salesforce report schema.",
+        11,
+        "#52636c",
+        600,
+        "center",
+      ),
+      publishedText: "MEDIAN SALES PRICE\nNOT AVAILABLE FOR THIS EDITION",
+    },
     shape("leases-side-bg", "Section Side Bar", 32, 762, 23, 114, "#7a0d26"),
     {
       ...text(
@@ -909,7 +914,7 @@ function propertySection(
         width,
         47,
         navy,
-        index === 0 ? 8 : 0,
+        0,
       ),
       bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
     });
@@ -948,9 +953,7 @@ function propertySection(
       bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
     });
   });
-  return result.map((element, index) =>
-    index < 2 ? element : { ...element, requiredDataSection: section },
-  );
+  return result;
 }
 
 const highlightsPage: ReportPage = {
@@ -1033,7 +1036,7 @@ function detailElement(element: ReportElement): ReportElement {
   const next = structuredClone(element);
   next.id = `detail-${next.id}`;
   if (next.id === "detail-market-3" || next.id === "detail-market-4") {
-    next.binding = { path: "market.name", fallback: "SUBMARKET" };
+    next.binding = { path: "market.displayName", fallback: "SUBMARKET" };
   }
   if (next.id === "detail-overview-narrative") {
     next.binding = { path: "market.narrative", fallback: "" };

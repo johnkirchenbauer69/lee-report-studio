@@ -39,6 +39,7 @@ import {
   runExportPreflight,
   type ExportPreflightIssue,
 } from "./report-engine/validation/exportPreflight";
+import { prepareTemplateForPublication } from "./report-engine/generation/prepareTemplate";
 import {
   generateReportInstance,
   type GenerationProgress,
@@ -784,7 +785,8 @@ export default function App() {
     }
     setExportingPdf(true);
     try {
-      const issues = await runExportPreflight(template);
+      const publicationTemplate = prepareTemplateForPublication(template);
+      const issues = await runExportPreflight(publicationTemplate);
       setPreflightIssues(issues);
       const errors = issues.filter((issue) => issue.level === "error");
       if (errors.length) {
@@ -799,7 +801,7 @@ export default function App() {
       const fileName = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
       let chromiumFailure: ReturnType<typeof classifyExportError> | undefined;
       try {
-        await exportChromiumPdf(template, reportData, fileName);
+        await exportChromiumPdf(publicationTemplate, reportData, fileName);
       } catch (chromiumError) {
         chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
@@ -807,7 +809,7 @@ export default function App() {
           chromiumFailure,
         );
         try {
-          await exportReportPdf(template, reportData, fileName);
+          await exportReportPdf(publicationTemplate, reportData, fileName);
         } catch (fallbackError) {
           const fallbackFailure = classifyExportError(
             "fallback",

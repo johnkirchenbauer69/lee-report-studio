@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { q2SampleReport } from "../../data-providers/sample/q2SampleReport";
 import { sampleTemplate } from "../../data/sampleTemplate";
 import { buildPresentationModel } from "../bindings/presentationModel";
-import { prepareTemplateForReport } from "./prepareTemplate";
+import {
+  prepareTemplateForPublication,
+  prepareTemplateForReport,
+} from "./prepareTemplate";
 
 describe("production template preparation", () => {
   it("keeps the bound native historical chart and strips the full-page map fixture", () => {
@@ -51,5 +54,35 @@ describe("production template preparation", () => {
             element.src === "/report-assets/reference-page-3.png",
         ),
     ).toBe(true);
+  });
+
+  it("keeps QA diagnostics in the editor but sanitizes all published copy", () => {
+    const presentation = buildPresentationModel(q2SampleReport);
+    const editor = prepareTemplateForReport(
+      sampleTemplate,
+      q2SampleReport,
+      presentation,
+      "ascendix",
+      "editor",
+    );
+    const published = prepareTemplateForReport(
+      sampleTemplate,
+      q2SampleReport,
+      presentation,
+      "ascendix",
+      "published",
+    );
+    const text = (template: typeof sampleTemplate) =>
+      template.pages
+        .flatMap((page) => page.elements)
+        .flatMap((element) => (element.type === "text" ? [element.text] : []))
+        .join("\n");
+    expect(text(editor)).toContain("Data unavailable:");
+    expect(text(published)).not.toContain("Data unavailable:");
+    expect(text(published)).toContain("Submarket map not available");
+    expect(text(published)).toContain("MEDIAN SALES PRICE");
+    expect(text(prepareTemplateForPublication(editor))).not.toContain(
+      "Data unavailable:",
+    );
   });
 });

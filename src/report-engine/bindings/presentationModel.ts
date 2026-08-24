@@ -9,6 +9,7 @@ import type {
   MarketMetrics,
 } from "../schema/industrialMarketReport";
 import { looksLikeSalesforceId } from "../../shared/salesforceIds";
+import { resolveChicagoSubmarket } from "../submarkets";
 
 export function assertNoClientFacingSalesforceIds(
   value: unknown,
@@ -210,19 +211,56 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
         ]
       : [];
   const indicatorRows = buildIndicatorRows(report.historicalPeriods);
-  const presentProperties = (items: IndustrialMarketReport["availabilities"]) =>
-    items.map((item) => ({
-      ...item,
-      detail: `${item.sizeSf.toLocaleString("en-US")} SF - ${item.type}${item.sponsor ? ` - ${item.sponsor}` : ""}`,
-    }));
+  type HighlightSection = "availability" | "delivery" | "construction";
+  const presentProperties = (
+    items: IndustrialMarketReport["availabilities"],
+    section: HighlightSection,
+  ) => {
+    const presented = items.slice(0, 3).map((item) => {
+      const fields =
+        section === "availability"
+          ? [item.propertyType || item.type, item.availabilityType]
+          : section === "delivery"
+            ? [
+                item.developmentType || item.type,
+                item.developer || item.sponsor,
+              ]
+            : [
+                item.constructionType || item.type,
+                item.developer || item.sponsor,
+              ];
+      return {
+        ...item,
+        state: item.image ? "record" : "image-unavailable",
+        detail: [
+          `${item.sizeSf.toLocaleString("en-US")} SF`,
+          ...fields.filter(Boolean),
+        ].join(" - "),
+      };
+    });
+    while (presented.length < 3)
+      presented.push({
+        address: "",
+        sizeSf: 0,
+        type: "",
+        sponsor: "",
+        image: "",
+        state: "none",
+        detail: "",
+      });
+    return presented;
+  };
   const transactionRows = (
     items: IndustrialMarketReport["leasing"] | IndustrialMarketReport["sales"],
     kind: "lease" | "sale",
-  ) =>
-    items.map((item) =>
+  ) => {
+    const rows = items.slice(0, 3).map((item) =>
       kind === "lease"
         ? {
-            party: (item as IndustrialMarketReport["leasing"][number]).tenant,
+            party:
+              (item as IndustrialMarketReport["leasing"][number])
+                .tenantDisplayName ??
+              (item as IndustrialMarketReport["leasing"][number]).tenant,
             amount: `${integer((item as IndustrialMarketReport["leasing"][number]).sizeSf)} SF`,
             address: item.address,
             type: (item as IndustrialMarketReport["leasing"][number]).leaseType,
@@ -233,18 +271,38 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
               (item as IndustrialMarketReport["sales"][number]).price,
             ),
             address: item.address,
-            type: (item as IndustrialMarketReport["sales"][number]).saleType,
+            type:
+              (item as IndustrialMarketReport["sales"][number]).saleType ===
+              "Included"
+                ? "Sale type not published"
+                : (item as IndustrialMarketReport["sales"][number]).saleType,
           },
     );
-  const submarketDetails = report.submarketDetails.map((detail) => ({
-    ...detail,
-    indicatorRows: buildIndicatorRows(detail.historicalPeriods),
-    topLeaseRows: transactionRows(detail.leasing, "lease"),
-    topSaleRows: transactionRows(detail.sales, "sale"),
-    topAvailabilities: presentProperties(detail.availabilities),
-    topDeliveries: presentProperties(detail.deliveries),
-    topConstruction: presentProperties(detail.construction),
-  }));
+    while (rows.length < 3)
+      rows.push({ party: "-", amount: "-", address: "-", type: "-" });
+    return rows;
+  };
+  const submarketDetails = report.submarketDetails.map((detail) => {
+    const identity = resolveChicagoSubmarket(
+      detail.id ?? detail.canonicalName ?? detail.name,
+    );
+    return {
+      ...detail,
+      id: identity?.id ?? detail.id,
+      canonicalName:
+        identity?.canonicalName ?? detail.canonicalName ?? detail.name,
+      displayName: identity?.displayName ?? detail.displayName ?? detail.name,
+      indicatorRows: buildIndicatorRows(detail.historicalPeriods),
+      topLeaseRows: transactionRows(detail.leasing, "lease"),
+      topSaleRows: transactionRows(detail.sales, "sale"),
+      topAvailabilities: presentProperties(
+        detail.availabilities,
+        "availability",
+      ),
+      topDeliveries: presentProperties(detail.deliveries, "delivery"),
+      topConstruction: presentProperties(detail.construction, "construction"),
+    };
+  });
   const clientFacing = {
     overallMarket: report.overallMarket,
     submarkets: report.submarkets,
@@ -269,9 +327,9 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     topSales: report.sales,
     topLeaseRows: transactionRows(report.leasing, "lease"),
     topSaleRows: transactionRows(report.sales, "sale"),
-    topAvailabilities: presentProperties(report.availabilities),
-    topDeliveries: presentProperties(report.deliveries),
-    topConstruction: presentProperties(report.construction),
+    topAvailabilities: presentProperties(report.availabilities, "availability"),
+    topDeliveries: presentProperties(report.deliveries, "delivery"),
+    topConstruction: presentProperties(report.construction, "construction"),
     submarketDetails,
   };
 }

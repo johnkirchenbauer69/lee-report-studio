@@ -693,9 +693,35 @@ button {
   overflow: hidden;
 }
 .text-content {
+  width: 100%;
   height: 100%;
   display: flex;
   white-space: pre-wrap;
+}
+.text-content .text-value {
+  display: block;
+  width: 100%;
+  text-align: inherit;
+}
+.property-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  text-align: center;
+  font-weight: 700;
+}
+.property-card-placeholder.none-to-report {
+  background: #003c50;
+  color: #fff;
+  font-size: 13px;
+}
+.property-card-placeholder.image-unavailable {
+  background: #e7ecee;
+  color: #315568;
+  border: 1px solid #b7c5ca;
+  font-size: 11px;
 }
 .vertical-top {
   align-items: flex-start;

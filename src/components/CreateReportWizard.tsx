@@ -4,6 +4,7 @@ import type {
   ReportGenerationRequest,
   ReportProviderId,
 } from "../report-engine/schema/generation";
+import { chicagoSubmarketId } from "../report-engine/submarkets";
 
 interface Props {
   onClose: () => void;
@@ -71,7 +72,7 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                 type: "selected-submarkets",
                 submarkets: calculationSelected,
               },
-        pageSelection: { submarkets: detailedSelected },
+        pageSelection: { submarketIds: detailedSelected },
         source: { provider, configuration },
       });
     } catch (reason) {
@@ -302,7 +303,9 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                     setDetailedSelected(
                       detailedSelected.length === q2Submarkets.length
                         ? []
-                        : q2Submarkets.map((item) => item.name),
+                        : q2Submarkets.map((item) =>
+                            chicagoSubmarketId(item.name)!,
+                          ),
                     )
                   }
                 >
@@ -316,8 +319,12 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
                   <label key={item.name}>
                     <input
                       type="checkbox"
-                      checked={detailedSelected.includes(item.name)}
-                      onChange={() => toggleDetailed(item.name)}
+                      checked={detailedSelected.includes(
+                        chicagoSubmarketId(item.name)!,
+                      )}
+                      onChange={() =>
+                        toggleDetailed(chicagoSubmarketId(item.name)!)
+                      }
                     />
                     <span>{item.name}</span>
                   </label>
