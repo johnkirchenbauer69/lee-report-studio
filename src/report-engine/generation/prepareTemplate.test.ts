@@ -8,7 +8,7 @@ import {
 } from "./prepareTemplate";
 
 describe("production template preparation", () => {
-  it("keeps the bound native historical chart and strips the full-page map fixture", () => {
+  it("keeps the bound native historical chart and managed Overall Market map", () => {
     const prepared = prepareTemplateForReport(
       sampleTemplate,
       q2SampleReport,
@@ -22,23 +22,16 @@ describe("production template preparation", () => {
       overview.elements.find((element) => element.id === "chart-net")?.type,
     ).toBe("chart");
     expect(
-      overview.elements.some(
-        (element) =>
-          element.type === "image" &&
-          element.src === "/report-assets/reference-page-3.png",
-      ),
-    ).toBe(false);
-    expect(
-      overview.elements.find(
-        (element) => element.id === "market-map-data-unavailable",
-      ),
+      overview.elements.find((element) => element.id === "market-map"),
     ).toMatchObject({
-      type: "text",
-      text: "Data unavailable: live submarket map binding is not implemented.",
+      type: "image",
+      src: "/report-assets/maps/Overall_Market_Map.jpg",
+      fit: "contain",
+      binding: { path: "overallMarketMapAssetUrl" },
     });
   });
 
-  it("retains approved reference artwork only for the sample provider", () => {
+  it("retains the managed static page artwork for every provider", () => {
     const prepared = prepareTemplateForReport(
       sampleTemplate,
       q2SampleReport,
@@ -51,7 +44,7 @@ describe("production template preparation", () => {
         .some(
           (element) =>
             element.type === "image" &&
-            element.src === "/report-assets/reference-page-3.png",
+            element.src === "/report-assets/static-pages/data-methodology.png",
         ),
     ).toBe(true);
   });
@@ -79,10 +72,32 @@ describe("production template preparation", () => {
         .join("\n");
     expect(text(editor)).toContain("Data unavailable:");
     expect(text(published)).not.toContain("Data unavailable:");
-    expect(text(published)).toContain("Submarket map not available");
+    expect(text(published)).toContain("Content not available for this edition");
     expect(text(published)).toContain("MEDIAN SALES PRICE");
     expect(text(prepareTemplateForPublication(editor))).not.toContain(
       "Data unavailable:",
     );
+  });
+
+  it("binds the period only on pages 41-43 and leaves page 44 static", () => {
+    const report = structuredClone(q2SampleReport);
+    report.report.period = "2027 Q1";
+    const prepared = prepareTemplateForReport(
+      sampleTemplate,
+      report,
+      buildPresentationModel(report),
+      "sample",
+    );
+    for (const id of ["data-methodology", "definitions", "contacts"])
+      expect(
+        prepared.pages
+          .find((page) => page.id === id)
+          ?.elements.find((element) => element.name === "Quarter"),
+      ).toMatchObject({ type: "text", text: "Q1 2027" });
+    expect(
+      prepared.pages
+        .find((page) => page.id === "who-we-are")
+        ?.elements.some((element) => element.binding),
+    ).toBe(false);
   });
 });

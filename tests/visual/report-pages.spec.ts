@@ -5,21 +5,25 @@ import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
 const pages = [
-  "cover",
-  "overall-market-table",
-  "market-overview",
-  "market-highlights",
-];
+  { index: 0, number: 1, name: "cover" },
+  { index: 1, number: 2, name: "overall-market-table" },
+  { index: 2, number: 3, name: "market-overview" },
+  { index: 3, number: 4, name: "market-highlights" },
+  { index: 6, number: 41, name: "data-methodology" },
+  { index: 9, number: 44, name: "who-we-are" },
+] as const;
 const maximumDifference = {
   cover: 0.08,
   "overall-market-table": 0.06,
   "market-overview": 0.12,
   "market-highlights": 0.12,
+  "data-methodology": 0.03,
+  "who-we-are": 0.03,
 } as const;
 
-for (const [pageIndex, name] of pages.entries())
-  test(`Page ${pageIndex + 1} — ${name}`, async ({ page }, testInfo) => {
-    await page.goto(`/?benchmark=1&page=${pageIndex}`, { waitUntil: "load" });
+for (const { index, number, name } of pages)
+  test(`Page ${number} — ${name}`, async ({ page }, testInfo) => {
+    await page.goto(`/?benchmark=1&page=${index}`, { waitUntil: "load" });
     await page.evaluate(async () => {
       await document.fonts.ready;
       await Promise.all(
@@ -38,6 +42,8 @@ for (const [pageIndex, name] of pages.entries())
     const currentBuffer = await page
       .locator(".benchmark-page")
       .screenshot({ animations: "disabled" });
+    if (name === "data-methodology")
+      await expect(page.getByText("Q2 2026", { exact: true })).toHaveCount(1);
     const baselinePath = join(
       testInfo.config.rootDir,
       "baselines",
@@ -86,7 +92,7 @@ for (const [pageIndex, name] of pages.entries())
     });
     await testInfo.attach("diff", { path: diffPath, contentType: "image/png" });
     console.log(
-      `Page ${pageIndex + 1} — ${name}: ${similarity.toFixed(2)}% similarity`,
+      `Page ${number} — ${name}: ${similarity.toFixed(2)}% similarity`,
     );
     expect(
       ratio,

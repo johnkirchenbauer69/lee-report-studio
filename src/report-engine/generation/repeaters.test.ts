@@ -79,7 +79,7 @@ describe("report repeaters", () =>
 describe("industrial detail page selection", () => {
   const data = buildPresentationModel(q2SampleReport);
 
-  it("keeps the four Overall Market pages when no details are selected", () => {
+  it("keeps the four Overall Market and four static pages when no details are selected", () => {
     expect(
       expandTemplatePages(sampleTemplate, data, { submarkets: [] }).map(
         (page) => page.name,
@@ -89,6 +89,10 @@ describe("industrial detail page selection", () => {
       "Overall Market Table",
       "Market Overview",
       "Market Highlights",
+      "Data Methodology",
+      "Definitions",
+      "Contacts",
+      "Who We Are",
     ]);
   });
 
@@ -96,8 +100,8 @@ describe("industrial detail page selection", () => {
     const pages = expandTemplatePages(sampleTemplate, data, {
       submarkets: ["O'Hare"],
     });
-    expect(pages).toHaveLength(6);
-    expect(pages.slice(4).map((page) => page.name)).toEqual([
+    expect(pages).toHaveLength(10);
+    expect(pages.slice(4, 6).map((page) => page.name)).toEqual([
       "O'Hare Overview",
       "O'Hare Highlights",
     ]);
@@ -112,7 +116,7 @@ describe("industrial detail page selection", () => {
     expect(pages[4].bindingContext?.path).not.toContain("overallMarket");
   });
 
-  it("creates 40 pages for all 18 accepted Chicago submarkets", () => {
+  it("creates the final 44 pages for all 18 accepted Chicago submarkets", () => {
     const selected = q2SampleReport.submarkets.map((item) =>
       chicagoSubmarketId(item.name)!,
     );
@@ -120,8 +124,8 @@ describe("industrial detail page selection", () => {
       submarketIds: selected,
     });
     expect(selected).toHaveLength(18);
-    expect(pages).toHaveLength(40);
-    expect(pages.slice(4).map((page) => page.name)).toEqual(
+    expect(pages).toHaveLength(44);
+    expect(pages.slice(4, 40).map((page) => page.name)).toEqual(
       q2SampleReport.submarkets.flatMap((item) => {
         const displayName =
           item.name === "I-80 Corridor/Joliet" ? "I-80/Joliet Area" : item.name;
@@ -129,7 +133,7 @@ describe("industrial detail page selection", () => {
       }),
     );
     expect(pages.map((page) => page.pageNumber)).toEqual(
-      Array.from({ length: 40 }, (_, index) => index + 1),
+      Array.from({ length: 44 }, (_, index) => index + 1),
     );
     expect(
       pages[4].elements.find((item) => item.name === "Page Number"),
@@ -137,40 +141,55 @@ describe("industrial detail page selection", () => {
       type: "text",
       text: "5",
     });
-    expect(
-      pages.at(-1)?.elements.find((item) => item.name === "Page Number"),
-    ).toMatchObject({
-      type: "text",
-      text: "40",
-    });
+    expect(pages.slice(40).map((page) => page.name)).toEqual([
+      "Data Methodology",
+      "Definitions",
+      "Contacts",
+      "Who We Are",
+    ]);
+    expect(pages.slice(40).map((page) => page.pageNumber)).toEqual([
+      41, 42, 43, 44,
+    ]);
   });
 
   it("resolves the I-80 display alias through its canonical id without dropping its pair", () => {
     const pages = expandTemplatePages(sampleTemplate, data, {
       submarketIds: ["i80-joliet"],
     });
-    expect(pages.slice(4).map((page) => page.name)).toEqual([
+    expect(pages.slice(4, 6).map((page) => page.name)).toEqual([
       "I-80/Joliet Area Overview",
       "I-80/Joliet Area Highlights",
     ]);
     expect(pages[4].bindingContext?.path).toBe("submarketDetails[5]");
+    expect(
+      pages[4].elements.find((element) => element.id.includes("market-map")),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/I-80_Corridor_Map.jpg",
+    });
   });
 
   it("preserves the full Southeast Wisconsin name in both generated headers", () => {
     const pages = expandTemplatePages(sampleTemplate, data, {
       submarketIds: ["southeast-wisconsin"],
     });
-    expect(pages.slice(4).map((page) => page.name)).toEqual([
+    expect(pages.slice(4, 6).map((page) => page.name)).toEqual([
       "Southeast Wisconsin Overview",
       "Southeast Wisconsin Highlights",
     ]);
-    for (const page of pages.slice(4))
+    for (const page of pages.slice(4, 6))
       expect(
         page.elements.find((item) => item.name === "Market"),
       ).toMatchObject({
         width: 330,
         binding: { path: "market.displayName" },
       });
+    expect(
+      pages[4].elements.find((element) => element.id.includes("market-map")),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/Southeast_Wisconsin_Map.jpg",
+    });
   });
 
   it("rejects unknown or duplicate canonical selections instead of silently dropping them", () => {

@@ -152,6 +152,10 @@ export function expandTemplatePages(
             elements: expandRepeatingElements(groupPage.elements, data).map(
               (element) => ({
                 ...element,
+                ...(element.type === "image" &&
+                element.binding?.path === "market.mapAssetUrl"
+                  ? { src: String(getByPath(item, "mapAssetUrl") ?? "") }
+                  : {}),
                 ...(element.type === "table" &&
                 element.id.includes("indicator-table") &&
                 Array.isArray(periods)

@@ -44,24 +44,60 @@ if (
   selected.length !== 18 ||
   selectedIds.length !== 18 ||
   new Set(selectedIds).size !== 18 ||
-  pages.length !== 40
+  pages.length !== 44
 )
   throw new Error(
-    `Expected 18 selected submarkets and 40 pages; received ${selected.length} and ${pages.length}.`,
+    `Expected 18 selected submarkets and 44 pages; received ${selected.length} and ${pages.length}.`,
   );
 const expectedOrder = presentation.submarketDetails.flatMap((detail) => [
   `${detail.displayName} Overview`,
   `${detail.displayName} Highlights`,
 ]);
 if (
-  JSON.stringify(pages.slice(4).map((page) => page.name)) !==
+  JSON.stringify(pages.slice(4, 40).map((page) => page.name)) !==
   JSON.stringify(expectedOrder)
 )
   throw new Error("Detailed page pair order is incorrect.");
+const staticPages = pages.slice(40);
+if (
+  JSON.stringify(staticPages.map((page) => page.name)) !==
+  JSON.stringify(["Data Methodology", "Definitions", "Contacts", "Who We Are"])
+)
+  throw new Error("Static pages 41-44 are missing or out of order.");
+for (const page of staticPages.slice(0, 3))
+  if (
+    !page.elements.some(
+      (element) =>
+        element.type === "text" &&
+        element.name === "Quarter" &&
+        element.text === "Q2 2026" &&
+        element.binding?.path === "reportDisplay.period",
+    )
+  )
+    throw new Error(`${page.name} is missing its dynamic Q2 2026 header.`);
+if (staticPages[3]!.elements.some((element) => element.binding))
+  throw new Error("Who We Are must remain fully static.");
 if (!selectedIds.includes("i80-joliet"))
   throw new Error("I-80/Joliet canonical submarket was not generated.");
 if (!pages.every((page, index) => page.pageNumber === index + 1))
-  throw new Error("Expanded page numbers are not sequential 1-40.");
+  throw new Error("Expanded page numbers are not sequential 1-44.");
+const overallMap = pages[2]!.elements.find(
+  (element) => element.id === "market-map",
+);
+if (
+  overallMap?.type !== "image" ||
+  overallMap.src !== "/report-assets/maps/Overall_Market_Map.jpg"
+)
+  throw new Error("Overall Market Overview did not resolve its managed map.");
+presentation.submarketDetails.forEach((detail, index) => {
+  const map = pages[4 + index * 2]!.elements.find((element) =>
+    element.id.includes("market-map"),
+  );
+  if (map?.type !== "image" || map.src !== detail.mapAssetUrl)
+    throw new Error(
+      `${detail.displayName} Overview did not resolve its canonical managed map.`,
+    );
+});
 for (const detail of presentation.submarketDetails) {
   if (detail.topLeaseRows.length !== 3 || detail.topSaleRows.length !== 3)
     throw new Error(
@@ -174,10 +210,11 @@ if (!pdfResponse.ok)
   );
 const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 const pdf = await PDFDocument.load(pdfBytes);
-if (pdf.getPageCount() !== 40)
-  throw new Error(`Expected a 40-page PDF; received ${pdf.getPageCount()}.`);
-await fs.mkdir("test-results", { recursive: true });
-await fs.writeFile("test-results/live-q2-report.pdf", pdfBytes);
+if (pdf.getPageCount() !== 44)
+  throw new Error(`Expected a 44-page PDF; received ${pdf.getPageCount()}.`);
+const output = "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
+await fs.mkdir("output/pdf", { recursive: true });
+await fs.writeFile(output, pdfBytes);
 console.log(
   JSON.stringify(
     {
@@ -185,7 +222,7 @@ console.log(
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
       firstPages: pages.slice(0, 6).map((page) => page.name),
-      lastPages: pages.slice(-2).map((page) => page.name),
+      lastPages: pages.slice(-4).map((page) => page.name),
       availabilitySponsors: report.availabilities
         .map((item) => item.sponsor)
         .filter(Boolean),
@@ -203,7 +240,7 @@ console.log(
           ),
         ),
       ],
-      output: "test-results/live-q2-report.pdf",
+      output,
     },
     null,
     2,
