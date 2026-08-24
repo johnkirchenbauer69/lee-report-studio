@@ -7,6 +7,7 @@ dist
 /tmp/
 test-results/
 visual-report/
+output/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store

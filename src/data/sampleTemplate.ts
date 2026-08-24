@@ -584,22 +584,14 @@ const overviewPage: ReportPage = {
         120,
         352,
         240,
-        "/report-assets/reference-page-3.png",
-        "stretch",
+        "/report-assets/maps/Overall_Market_Map.jpg",
+        "contain",
       ),
-      sourceCrop: {
-        sourceWidth: 1020,
-        sourceHeight: 1320,
-        x: 540,
-        y: 150,
-        width: 440,
-        height: 300,
-      },
+      binding: { path: "overallMarketMapAssetUrl" },
       requiredDataSection: "submarkets",
       unavailableMessage:
-        "Data unavailable: live submarket map binding is not implemented.",
-      publishedUnavailableMessage:
-        "Submarket map not available in this edition",
+        "Data unavailable: required managed Overall Market map asset is missing.",
+      publishedUnavailableMessage: "Required market map is unavailable",
     },
     {
       id: "indicator-table",
@@ -1041,6 +1033,9 @@ function detailElement(element: ReportElement): ReportElement {
   if (next.id === "detail-overview-narrative") {
     next.binding = { path: "market.narrative", fallback: "" };
   }
+  if (next.id === "detail-market-map") {
+    next.binding = { path: "market.mapAssetUrl" };
+  }
   if (next.type === "table") next.sourcePath = `market.${next.sourcePath}`;
   if (next.type === "chart") next.sourcePath = "market.historicalPeriods";
   if (next.bindingContext?.name === "property" && next.binding) {
@@ -1069,10 +1064,82 @@ const submarketHighlightsPage: ReportPage = {
   elements: highlightsPage.elements.map(detailElement),
 };
 
+function staticReferencePage(
+  id: string,
+  name: string,
+  assetName: string,
+  dynamicPeriod: boolean,
+): ReportPage {
+  return {
+    id,
+    name,
+    width: 816,
+    height: 1056,
+    background: "#ffffff",
+    elements: [
+      image(
+        `${id}-artwork`,
+        `${name} Reference Artwork`,
+        0,
+        0,
+        816,
+        1056,
+        `/report-assets/static-pages/${assetName}.png`,
+        "stretch",
+      ),
+      ...(dynamicPeriod
+        ? [
+            {
+              ...text(
+                `${id}-period`,
+                "Quarter",
+                598,
+                21,
+                184,
+                43,
+                "Q2 2026",
+                35,
+                white,
+                800,
+                "right",
+              ),
+              binding: { path: "reportDisplay.period" },
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
+const dataMethodologyPage = staticReferencePage(
+  "data-methodology",
+  "Data Methodology",
+  "data-methodology",
+  true,
+);
+const definitionsPage = staticReferencePage(
+  "definitions",
+  "Definitions",
+  "definitions",
+  true,
+);
+const contactsPage = staticReferencePage(
+  "contacts",
+  "Contacts",
+  "contacts",
+  true,
+);
+const whoWeArePage = staticReferencePage(
+  "who-we-are",
+  "Who We Are",
+  "who-we-are",
+  false,
+);
+
 export const sampleTemplate: ReportTemplate = {
   id: "industrial-market-report-q2-2026",
   name: "2026 Q2 Overall Market Report",
-  version: "1.2.0",
+  version: "1.3.0",
   requiredSections: [
     "overallMarket",
     "submarkets",
@@ -1093,6 +1160,10 @@ export const sampleTemplate: ReportTemplate = {
     highlightsPage,
     submarketOverviewPage,
     submarketHighlightsPage,
+    dataMethodologyPage,
+    definitionsPage,
+    contactsPage,
+    whoWeArePage,
   ],
   settings: {
     unit: "px",

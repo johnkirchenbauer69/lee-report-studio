@@ -55,7 +55,7 @@ describe("deterministic PDF export", () => {
     );
   });
 
-  it("exports 40 pages for all 18 selected detailed submarkets", async () => {
+  it("exports 44 pages for all 18 selected detailed submarkets", async () => {
     const selected = q2SampleReport.submarkets.map((item) => item.name);
     const instance = await generateReportInstance(sampleTemplate, {
       templateId: sampleTemplate.id,
@@ -69,6 +69,6 @@ describe("deterministic PDF export", () => {
       { ...sampleTemplate, pages: instance.pages },
       buildPresentationModel(instance.dataSnapshot),
     );
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(40);
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(44);
   });
 });

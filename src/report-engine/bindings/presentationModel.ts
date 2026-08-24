@@ -10,6 +10,7 @@ import type {
 } from "../schema/industrialMarketReport";
 import { looksLikeSalesforceId } from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
+import { resolveMarketMapAsset } from "../assets/marketMapAssets";
 
 export function assertNoClientFacingSalesforceIds(
   value: unknown,
@@ -292,6 +293,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
       canonicalName:
         identity?.canonicalName ?? detail.canonicalName ?? detail.name,
       displayName: identity?.displayName ?? detail.displayName ?? detail.name,
+      mapAssetUrl: resolveMarketMapAsset(identity?.id ?? ""),
       indicatorRows: buildIndicatorRows(detail.historicalPeriods),
       topLeaseRows: transactionRows(detail.leasing, "lease"),
       topSaleRows: transactionRows(detail.sales, "sale"),
@@ -318,6 +320,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
   return {
     ...report,
     reportDisplay,
+    overallMarketMapAssetUrl: resolveMarketMapAsset("overall-market"),
     overallMarket: { ...report.overallMarket },
     periods: report.historicalPeriods,
     sourceNotes: report.provenance,
