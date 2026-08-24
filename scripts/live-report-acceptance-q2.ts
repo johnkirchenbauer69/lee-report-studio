@@ -84,6 +84,10 @@ const allLeases = [
 const confidentialLeases = allLeases.filter(
   (lease) => lease.isDealConfidential === true,
 );
+const unknownConfidentialityLeases = allLeases.filter(
+  (lease) =>
+    lease.isDealConfidential !== true && lease.isDealConfidential !== false,
+);
 if (
   confidentialLeases.some(
     (lease) =>
@@ -93,13 +97,23 @@ if (
 )
   throw new Error("A confidential Lease exposed a tenant display name.");
 if (
+  unknownConfidentialityLeases.some(
+    (lease) =>
+      lease.tenant !== "(Confidential)" ||
+      lease.tenantDisplayName !== "(Confidential)",
+  )
+)
+  throw new Error("A Lease with unknown confidentiality exposed a tenant.");
+if (
   allLeases.some(
     (lease) =>
-      lease.isDealConfidential !== true &&
+      lease.isDealConfidential === false &&
       lease.tenantDisplayName === "(Confidential)",
   )
 )
-  throw new Error("A non-confidential Lease was mislabeled confidential.");
+  throw new Error(
+    "A verified non-confidential Lease was mislabeled confidential.",
+  );
 const clientFacing = JSON.stringify({
   leasing: presentation.leasing,
   sales: presentation.sales,
@@ -181,6 +195,7 @@ console.log(
         (page, index) => page.pageNumber === index + 1,
       ),
       confidentialLeaseRows: confidentialLeases.length,
+      unknownConfidentialityLeaseRows: unknownConfidentialityLeases.length,
       saleTypes: [
         ...new Set(
           presentation.submarketDetails.flatMap((detail) =>

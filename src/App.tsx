@@ -778,9 +778,9 @@ export default function App() {
     notify("Template exported");
   };
   const downloadPdf = async () => {
-    if (reportInstance && !reportInstance.readiness.canExportDraft) {
+    if (reportInstance && !reportInstance.readiness.canPublish) {
       setLeftTab("validate");
-      notify("Draft export is blocked by report validation errors.");
+      notify("Published export is blocked by report readiness issues.");
       return;
     }
     setExportingPdf(true);

@@ -80,7 +80,7 @@ export const historicalMarketPeriodSchema = z.object({
 export const leaseRecordSchema = z.object({
   tenant: z.string().min(1),
   tenantDisplayName: z.string().min(1).optional(),
-  isDealConfidential: z.boolean().optional(),
+  isDealConfidential: z.boolean().nullable().optional(),
   sizeSf: nonNegativeNumber,
   address: z.string().min(1),
   leaseType: z.string().min(1),

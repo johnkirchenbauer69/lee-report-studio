@@ -305,18 +305,21 @@ export const q2HistoricalPeriods: HistoricalMarketPeriod[] = [
 export const q2Leases: LeaseRecord[] = [
   {
     tenant: "Hyundai Translead",
+    isDealConfidential: false,
     sizeSf: 906517,
     address: "3835 Youngs Rd, Channahon, IL 60410",
     leaseType: "Direct / New",
   },
   {
     tenant: "Kehe Distributors",
+    isDealConfidential: false,
     sizeSf: 802440,
     address: "1850 S Cherry Hill Rd, Joliet, IL 60432",
     leaseType: "Direct / New",
   },
   {
     tenant: "Distribution 2000",
+    isDealConfidential: false,
     sizeSf: 453568,
     address: "1120-1140 Remington Blvd, Romeoville, IL 60446",
     leaseType: "Direct / New",

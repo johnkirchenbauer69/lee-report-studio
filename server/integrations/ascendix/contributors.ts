@@ -130,8 +130,10 @@ const optionalNumeric = (record: SalesforceRecord, path: string) => {
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
-const booleanValue = (record: SalesforceRecord, path: string) =>
-  getSalesforceValue(record, path) === true;
+const booleanValue = (record: SalesforceRecord, path: string) => {
+  const value = getSalesforceValue(record, path);
+  return value === true ? true : value === false ? false : null;
+};
 const composedAddress = (record: SalesforceRecord, prefix: string) =>
   ["ascendix__Street__c", "ascendix__City__c", "State__c", "Zip_Code__c"]
     .map((field) => displayText(record, `${prefix}.${field}`))
@@ -390,9 +392,10 @@ export async function mapHistoricalContributors(
       "Tenant_Name__c",
       "Lease__r.ascendix__Tenant__r.Name",
     );
-    const tenantDisplayName = isDealConfidential
-      ? "(Confidential)"
-      : resolvedTenant || "Tenant not published";
+    const tenantDisplayName =
+      isDealConfidential === false
+        ? resolvedTenant || "Tenant not published"
+        : "(Confidential)";
     return {
       tenant: tenantDisplayName,
       tenantDisplayName,

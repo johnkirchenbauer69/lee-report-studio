@@ -268,6 +268,7 @@ describe("historical contributors", () => {
         Address__c: "Frozen Address",
         Deal_Type__c: "New",
         Lease__r: {
+          Is_Deal_Confidential__c: false,
           ascendix__Tenant__r: { Name: "Current Tenant" },
           Deal_Type__c: "Changed",
         },
@@ -354,5 +355,27 @@ describe("historical contributors", () => {
     });
     if (fixture.confidential)
       expect(JSON.stringify(mapped.leasing[0])).not.toContain("Secret Tenant");
+  });
+
+  it("fails closed when Lease confidentiality is unavailable", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "lease-unverified",
+        Contributor_Category__c: "Lease",
+        Lease_SF__c: 125_000,
+        Address__c: "200 Main St",
+        Tenant_Name__c: "Native Tenant That Must Never Leak",
+        Deal_Type__c: "New",
+      }),
+    ]);
+
+    expect(mapped.leasing[0]).toMatchObject({
+      tenant: "(Confidential)",
+      tenantDisplayName: "(Confidential)",
+      isDealConfidential: null,
+    });
+    expect(JSON.stringify(mapped)).not.toContain(
+      "Native Tenant That Must Never Leak",
+    );
   });
 });
