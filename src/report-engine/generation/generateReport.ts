@@ -35,6 +35,14 @@ const progress = (
   message: string,
 ) => callback?.({ stage, message });
 
+const templateChecksum = async (template: ReportTemplate) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(template));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 export async function loadSourceData(request: ReportGenerationRequest) {
   return getReportDataProvider(request.source.provider).loadReportData(request);
 }
@@ -81,6 +89,21 @@ export async function generateReportInstance(
   request: ReportGenerationRequest,
   onProgress?: (progress: GenerationProgress) => void,
 ): Promise<ReportInstance> {
+  if (
+    request.templateId !== template.id ||
+    request.templateVersion !== template.version
+  )
+    throw new Error(
+      `Requested template ${request.templateId} v${request.templateVersion} does not match loaded template ${template.id} v${template.version}.`,
+    );
+  const loadedTemplateChecksum = await templateChecksum(template);
+  if (
+    request.templateChecksum &&
+    request.templateChecksum !== loadedTemplateChecksum
+  )
+    throw new Error(
+      `Requested template checksum ${request.templateChecksum} does not match loaded template checksum ${loadedTemplateChecksum}.`,
+    );
   progress(
     onProgress,
     "loading",
@@ -167,6 +190,7 @@ export async function generateReportInstance(
     id: `report-${crypto.randomUUID()}`,
     templateId: template.id,
     templateVersion: template.version,
+    templateChecksum: loadedTemplateChecksum,
     generationRequest: structuredClone(request),
     provider: providerResult.provider,
     sourceMetadata: structuredClone(providerResult.sourceMetadata),

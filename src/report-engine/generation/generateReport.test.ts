@@ -9,6 +9,7 @@ describe("generateReportInstance", () => {
       sampleTemplate,
       {
         templateId: sampleTemplate.id,
+        templateVersion: sampleTemplate.version,
         market: "Chicago",
         period: "2026 Q2",
         calculationScope: { type: "all-submarkets" },
@@ -19,6 +20,7 @@ describe("generateReportInstance", () => {
     );
 
     expect(report.templateVersion).toBe("1.3.0");
+    expect(report.templateChecksum).toMatch(/^[a-f0-9]{64}$/);
     expect(report.pages).toHaveLength(8);
     expect(report.dataSnapshot.submarkets).toHaveLength(18);
     expect(report.status).toBe("draft");
@@ -26,6 +28,53 @@ describe("generateReportInstance", () => {
       stage: "complete",
       message: "Report ready to edit and publish",
     });
+  });
+
+  it("pins generation to the explicitly requested template version", async () => {
+    await expect(
+      generateReportInstance(sampleTemplate, {
+        templateId: sampleTemplate.id,
+        templateVersion: "99.0.0",
+        market: "Chicago",
+        period: "2026 Q2",
+        calculationScope: { type: "all-submarkets" },
+        pageSelection: {},
+        source: { provider: "sample" },
+      }),
+    ).rejects.toThrow("does not match loaded template");
+  });
+
+  it("rejects a request whose stored checksum does not match the loaded version", async () => {
+    await expect(
+      generateReportInstance(sampleTemplate, {
+        templateId: sampleTemplate.id,
+        templateVersion: sampleTemplate.version,
+        templateChecksum: "0".repeat(64),
+        market: "Chicago",
+        period: "2026 Q2",
+        calculationScope: { type: "all-submarkets" },
+        pageSelection: {},
+        source: { provider: "sample" },
+      }),
+    ).rejects.toThrow("does not match loaded template checksum");
+  });
+
+  it("isolates generated report edits from the master and later master edits from history", async () => {
+    const master = structuredClone(sampleTemplate);
+    const report = await generateReportInstance(master, {
+      templateId: master.id,
+      templateVersion: master.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: {},
+      source: { provider: "sample" },
+    });
+    const originalMasterName = master.pages[0]!.name;
+    report.pages[0]!.name = "Edited Q2 report page";
+    expect(master.pages[0]!.name).toBe(originalMasterName);
+    master.pages[0]!.name = "Future master page";
+    expect(report.pages[0]!.name).toBe("Edited Q2 report page");
   });
 
   it("preserves rotation and checksum-pins managed font faces", async () => {
@@ -47,6 +96,7 @@ describe("generateReportInstance", () => {
     ];
     const report = await generateReportInstance(template, {
       templateId: template.id,
+      templateVersion: template.version,
       market: "Chicago",
       period: "2026 Q2",
       calculationScope: { type: "all-submarkets" },

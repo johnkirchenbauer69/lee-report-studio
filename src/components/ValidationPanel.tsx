@@ -20,10 +20,12 @@ export function ValidationPanel({
   items,
   completeness,
   onSelect,
+  onViewReconciliation,
 }: {
   items: ValidationItem[];
   completeness?: DatasetSectionStatus[];
   onSelect?: (id: string) => void;
+  onViewReconciliation?: (path: string) => void;
 }) {
   const blockers = items.filter((item) => item.level === "blocking").length;
   const warnings = items.filter((item) => item.level === "warning").length;
@@ -56,15 +58,21 @@ export function ValidationPanel({
         </section>
       )}
       {items.map((item, index) => (
-        <button
+        <div
           className={`validation-row ${item.level}`}
           key={`${item.message}-${index}`}
-          disabled={!item.elementId}
-          onClick={() => item.elementId && onSelect?.(item.elementId)}
         >
           <span>{severityIcon(item.level)}</span>
           <em>{item.message}</em>
-        </button>
+          {item.elementId && (
+            <button onClick={() => onSelect?.(item.elementId!)}>Select</button>
+          )}
+          {item.path?.startsWith("reconciliation.submarkets.") && (
+            <button onClick={() => onViewReconciliation?.(item.path!)}>
+              View reconciliation
+            </button>
+          )}
+        </div>
       ))}
     </div>
   );

@@ -5,14 +5,20 @@ import type {
   ReportProviderId,
 } from "../report-engine/schema/generation";
 import { chicagoSubmarketId } from "../report-engine/submarkets";
+import type { StoredTemplateVersion } from "../types/templateLibrary";
 
 interface Props {
   onClose: () => void;
   onGenerate: (request: ReportGenerationRequest) => Promise<void>;
+  publishedTemplate: StoredTemplateVersion;
 }
 const steps = ["Template", "Period", "Source", "Geographies", "Review"];
 
-export function CreateReportWizard({ onClose, onGenerate }: Props) {
+export function CreateReportWizard({
+  onClose,
+  onGenerate,
+  publishedTemplate,
+}: Props) {
   const [step, setStep] = useState(0),
     [period, setPeriod] = useState("2026 Q2"),
     [market, setMarket] = useState("Chicago"),
@@ -62,7 +68,9 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
             : { data, fileName: file.name };
       }
       await onGenerate({
-        templateId: "industrial-market-report-q2-2026",
+        templateId: publishedTemplate.id,
+        templateVersion: publishedTemplate.version,
+        templateChecksum: publishedTemplate.checksum,
         market,
         period,
         calculationScope:
@@ -120,13 +128,16 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
             <div className="wizard-choice selected">
               <span className="template-preview">IM</span>
               <div>
-                <strong>Industrial Market Report</strong>
+                <strong>{publishedTemplate.name}</strong>
                 <p>
                   LEE & Associates quarterly market template · 4 fixed
                   overall-market pages with optional repeating submarket
                   sections.
                 </p>
-                <small>Version 1.1.0 · Letter portrait</small>
+                <small>
+                  Published version {publishedTemplate.version} · Letter
+                  portrait
+                </small>
               </div>
               <span className="choice-check">✓</span>
             </div>
@@ -336,7 +347,9 @@ export function CreateReportWizard({ onClose, onGenerate }: Props) {
             <div className="review-card">
               <div>
                 <span>Template</span>
-                <strong>Industrial Market Report</strong>
+                <strong>
+                  {publishedTemplate.name} v{publishedTemplate.version}
+                </strong>
               </div>
               <div>
                 <span>Period</span>

@@ -13,13 +13,24 @@ import {
 import { createReportDataService } from "./report-data-service/createReportDataService.ts";
 import { ChromiumPdfRenderer } from "./renderers/chromiumPdfRenderer.ts";
 import { FileSystemAssetStore } from "./assets/assetStore.ts";
+import { createTemplateRouter } from "./api/templateRoutes.ts";
+import { FileSystemTemplateRepository } from "./templates/FileSystemTemplateRepository.ts";
+import { sampleTemplate } from "../src/data/sampleTemplate.ts";
+import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
+const templateRepository = new FileSystemTemplateRepository(dataRoot);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
 await assetStore.initialize();
+const managedFontAssets = (await assetStore.list()).filter(
+  (asset) => asset.type === "font" && asset.fontFamily,
+);
+await templateRepository.initialize(
+  normalizeReportTemplateFonts(sampleTemplate, managedFontAssets),
+);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -48,6 +59,7 @@ app.get("/api/health", (_request, response) =>
   }),
 );
 app.use("/api", createReportDataRouter(reportDataService));
+app.use("/api", createTemplateRouter(templateRepository));
 app.get("/api/assets", async (_request, response) =>
   response.json({ assets: await assetStore.list() }),
 );

@@ -13,7 +13,12 @@ import { formatUnit, toPixels, unitStep } from "../engine/editorMath";
 import { normalizeRotation } from "../engine/geometry";
 import {
   BUILTIN_FONT_FAMILIES,
+  BRAND_FONT_FAMILY,
+  diagnoseFontSelection,
   groupFontAssets,
+  normalizeSemanticFontFamily,
+  resolveAvailableManagedFontFace,
+  type ManagedFontFaceDiagnostic,
 } from "../services/fontRegistry";
 import { resolveTypography, withTypography } from "../engine/typography";
 import {
@@ -32,6 +37,7 @@ interface Props {
   unit: Unit;
   selectionCount: number;
   fontAssets?: Asset[];
+  fontDiagnostics?: ManagedFontFaceDiagnostic[];
   onChange: (patch: Partial<ReportElement>) => void;
   onAlign: (
     value: "left" | "center" | "right" | "top" | "middle" | "bottom",
@@ -117,6 +123,7 @@ export function Inspector({
   unit,
   selectionCount,
   fontAssets = [],
+  fontDiagnostics = [],
   cropping,
   onToggleCrop,
   onChange,
@@ -155,9 +162,10 @@ export function Inspector({
   const setTypography = (patch: Partial<Typography>) =>
     onChange({ style: withTypography(element.style, patch) });
   const managedFamilies = groupFontAssets(fontAssets);
-  const activeManagedFaces = managedFamilies.get(typography.fontFamily) ?? [];
+  const semanticFamily = normalizeSemanticFontFamily(typography.fontFamily);
+  const activeManagedFaces = managedFamilies.get(semanticFamily) ?? [];
   const activeBuiltin = BUILTIN_FONT_FAMILIES.find(
-    (font) => font.family === typography.fontFamily,
+    (font) => font.family === semanticFamily,
   );
   const availableWeights = [
     ...new Set(
@@ -169,30 +177,69 @@ export function Inspector({
   const availableStyles = [
     ...new Set(
       activeManagedFaces.length
-        ? activeManagedFaces.map((asset) => asset.fontStyle ?? "normal")
+        ? activeManagedFaces
+            .filter(
+              (asset) =>
+                (asset.fontWeight ?? 400) ===
+                (Number(typography.fontWeight) || 400),
+            )
+            .map((asset) => asset.fontStyle ?? "normal")
         : (activeBuiltin?.styles ?? ["normal"]),
     ),
+  ];
+  const fontFamilies = [
+    ...new Set([
+      semanticFamily,
+      BRAND_FONT_FAMILY,
+      ...managedFamilies.keys(),
+      ...BUILTIN_FONT_FAMILIES.map((font) => font.family),
+    ]),
   ];
   const selectFontFace = (
     family: string,
     weight: number,
     fontStyle: "normal" | "italic",
   ) => {
-    const faces = managedFamilies.get(family) ?? [];
-    const face =
-      faces.find(
-        (asset) =>
-          (asset.fontWeight ?? 400) === weight &&
-          (asset.fontStyle ?? "normal") === fontStyle,
-      ) ?? faces[0];
+    const semantic = normalizeSemanticFontFamily(family);
+    const face = resolveAvailableManagedFontFace(
+      fontAssets,
+      semantic,
+      weight,
+      fontStyle,
+    );
     setTypography({
-      fontFamily: family,
+      fontFamily: semantic,
       fontWeight: face?.fontWeight ?? weight,
       fontStyle: face?.fontStyle ?? fontStyle,
       italic: (face?.fontStyle ?? fontStyle) === "italic",
       fontAssetId: face?.id,
       fontChecksum: face?.checksum,
     });
+  };
+  const fontDiagnostic = diagnoseFontSelection(
+    { ...typography, fontFamily: semanticFamily },
+    fontAssets,
+    fontDiagnostics,
+  );
+  const cellFontPatch = (
+    family: string,
+    weight = selectedCellStyle?.fontWeight ?? 400,
+    fontStyle = selectedCellStyle?.fontStyle ?? "normal",
+  ): Partial<TableCellStyle> => {
+    const semantic = normalizeSemanticFontFamily(family);
+    const face = resolveAvailableManagedFontFace(
+      fontAssets,
+      semantic,
+      weight,
+      fontStyle,
+    );
+    return {
+      fontFamily: semantic,
+      fontWeight: face?.fontWeight ?? weight,
+      fontStyle: face?.fontStyle ?? fontStyle,
+      fontAssetId: face?.id,
+      fontChecksum: face?.checksum,
+    };
   };
   const fill: Fill = element.style.fill ?? {
     type: "solid",
@@ -238,6 +285,35 @@ export function Inspector({
           : table.cellStyles?.[
               `body:${tableSelection.row}:${tableSelection.column}`
             ];
+  const selectedCellFamily = normalizeSemanticFontFamily(
+    selectedCellStyle?.fontFamily ?? table?.style.fontFamily,
+  );
+  const selectedCellManagedFaces =
+    managedFamilies.get(selectedCellFamily) ?? [];
+  const selectedCellBuiltin = BUILTIN_FONT_FAMILIES.find(
+    (font) => font.family === selectedCellFamily,
+  );
+  const selectedCellWeights = [
+    ...new Set(
+      selectedCellManagedFaces.length
+        ? selectedCellManagedFaces.map((asset) => asset.fontWeight ?? 400)
+        : (selectedCellBuiltin?.weights ?? [400]),
+    ),
+  ].sort((a, b) => a - b);
+  const selectedCellWeight = selectedCellWeights.includes(
+    selectedCellStyle?.fontWeight ?? 400,
+  )
+    ? (selectedCellStyle?.fontWeight ?? 400)
+    : selectedCellWeights[0]!;
+  const selectedCellStyles = [
+    ...new Set(
+      selectedCellManagedFaces.length
+        ? selectedCellManagedFaces
+            .filter((asset) => (asset.fontWeight ?? 400) === selectedCellWeight)
+            .map((asset) => asset.fontStyle ?? "normal")
+        : (selectedCellBuiltin?.styles ?? ["normal"]),
+    ),
+  ];
   const updateTableCellStyle = (patch: Partial<TableCellStyle>) => {
     if (!table || !tableSelection) return;
     if (tableSelection.section === "column")
@@ -441,13 +517,19 @@ export function Inspector({
           <div className="field-grid">
             <label>
               Font
-              <input
+              <select
                 aria-label="Table font family"
-                value={table.style.fontFamily ?? ""}
+                value={normalizeSemanticFontFamily(table.style.fontFamily)}
                 onChange={(event) =>
-                  setStyle({ fontFamily: event.target.value })
+                  setStyle({
+                    fontFamily: normalizeSemanticFontFamily(event.target.value),
+                  })
                 }
-              />
+              >
+                {fontFamilies.map((font) => (
+                  <option key={font}>{font}</option>
+                ))}
+              </select>
             </label>
             <label>
               Size
@@ -600,31 +682,74 @@ export function Inspector({
           <div className="field-grid">
             <label>
               Font
-              <input
+              <select
                 aria-label="Table selection font"
-                value={selectedCellStyle?.fontFamily ?? ""}
+                value={normalizeSemanticFontFamily(
+                  selectedCellStyle?.fontFamily ?? table.style.fontFamily,
+                )}
                 onChange={(event) =>
-                  updateTableCellStyle({ fontFamily: event.target.value })
+                  updateTableCellStyle(cellFontPatch(event.target.value))
                 }
-              />
+              >
+                {fontFamilies.map((font) => (
+                  <option key={font}>{font}</option>
+                ))}
+              </select>
             </label>
             <label>
               Weight
-              <input
+              <select
                 aria-label="Table selection weight"
-                type="number"
-                min="100"
-                max="900"
-                step="100"
-                value={selectedCellStyle?.fontWeight ?? 400}
+                value={selectedCellWeight}
                 onChange={(event) =>
-                  updateTableCellStyle({
-                    fontWeight: Number(event.target.value),
-                  })
+                  updateTableCellStyle(
+                    cellFontPatch(
+                      selectedCellStyle?.fontFamily ??
+                        table.style.fontFamily ??
+                        BRAND_FONT_FAMILY,
+                      Number(event.target.value),
+                    ),
+                  )
                 }
-              />
+              >
+                {selectedCellWeights.map((weight) => (
+                  <option key={weight} value={weight}>
+                    {weight}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+          <label>
+            Style
+            <select
+              aria-label="Table selection style"
+              value={
+                selectedCellStyles.includes(
+                  selectedCellStyle?.fontStyle ?? "normal",
+                )
+                  ? (selectedCellStyle?.fontStyle ?? "normal")
+                  : selectedCellStyles[0]
+              }
+              onChange={(event) =>
+                updateTableCellStyle(
+                  cellFontPatch(
+                    selectedCellStyle?.fontFamily ??
+                      table.style.fontFamily ??
+                      BRAND_FONT_FAMILY,
+                    selectedCellWeight,
+                    event.target.value as "normal" | "italic",
+                  ),
+                )
+              }
+            >
+              {selectedCellStyles.map((style) => (
+                <option key={style} value={style}>
+                  {style === "normal" ? "Normal" : "Italic"}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="field-grid">
             <label>
               Size
@@ -940,7 +1065,8 @@ export function Inspector({
           <label>
             Font
             <select
-              value={typography.fontFamily}
+              aria-label="Font family"
+              value={semanticFamily}
               onChange={(e) => {
                 const family = e.target.value;
                 const firstManaged = managedFamilies.get(family)?.[0];
@@ -954,15 +1080,18 @@ export function Inspector({
                 );
               }}
             >
-              {[
-                ...new Set([
-                  typography.fontFamily,
-                  ...BUILTIN_FONT_FAMILIES.map((font) => font.family),
-                  ...managedFamilies.keys(),
-                ]),
-              ].map((font) => (
-                <option key={font}>{font}</option>
-              ))}
+              <optgroup label="Managed fonts">
+                {[
+                  ...new Set([BRAND_FONT_FAMILY, ...managedFamilies.keys()]),
+                ].map((font) => (
+                  <option key={font}>{font}</option>
+                ))}
+              </optgroup>
+              <optgroup label="System fonts">
+                {BUILTIN_FONT_FAMILIES.map((font) => (
+                  <option key={font.family}>{font.family}</option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <div className="field-grid">
@@ -980,22 +1109,66 @@ export function Inspector({
                 }
               >
                 {availableWeights.map((weight) => (
-                  <option key={weight}>{weight}</option>
+                  <option key={weight} value={weight}>
+                    {weight}{" "}
+                    {weight === 400
+                      ? "Regular"
+                      : weight === 500
+                        ? "Medium"
+                        : weight === 600
+                          ? "SemiBold"
+                          : weight === 700
+                            ? "Bold"
+                            : ""}
+                  </option>
                 ))}
               </select>
             </label>
             <label>
-              Size <span>px</span>
-              <input
-                type="number"
-                min="6"
-                value={typography.fontSize}
-                onChange={(e) =>
-                  setTypography({ fontSize: Number(e.target.value) })
+              Style
+              <select
+                aria-label="Font style"
+                value={
+                  typography.fontStyle ??
+                  (typography.italic ? "italic" : "normal")
                 }
-              />
+                onChange={(event) =>
+                  selectFontFace(
+                    semanticFamily,
+                    Number(typography.fontWeight),
+                    event.target.value as "normal" | "italic",
+                  )
+                }
+              >
+                {availableStyles.map((style) => (
+                  <option key={style} value={style}>
+                    {style === "normal" ? "Normal" : "Italic"}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+          <div
+            className={`font-resolution ${fontDiagnostic.loaded ? "loaded" : "warning"}`}
+          >
+            <strong>Resolved face</strong>
+            <span>
+              {fontDiagnostic.style === "italic" ? "Italic" : "Regular"}{" "}
+              {fontDiagnostic.weight}
+            </span>
+            <small>{fontDiagnostic.message}</small>
+          </div>
+          <label>
+            Size <span>px</span>
+            <input
+              type="number"
+              min="6"
+              value={typography.fontSize}
+              onChange={(e) =>
+                setTypography({ fontSize: Number(e.target.value) })
+              }
+            />
+          </label>
           <ColorField
             label="Text color"
             value={typography.color}
@@ -1027,30 +1200,6 @@ export function Inspector({
             </label>
           </div>
           <div className="icon-grid text-style-controls">
-            <button
-              className={
-                (typography.fontStyle ??
-                  (typography.italic ? "italic" : "normal")) === "italic"
-                  ? "active"
-                  : ""
-              }
-              title="Italic"
-              disabled={!availableStyles.includes("italic")}
-              onClick={() => {
-                const next =
-                  (typography.fontStyle ??
-                    (typography.italic ? "italic" : "normal")) === "italic"
-                    ? "normal"
-                    : "italic";
-                selectFontFace(
-                  typography.fontFamily,
-                  Number(typography.fontWeight),
-                  next,
-                );
-              }}
-            >
-              <em>I</em>
-            </button>
             <button
               className={typography.underline ? "active" : ""}
               title="Underline"

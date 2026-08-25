@@ -160,6 +160,35 @@ export const provenanceRecordSchema = z.object({
       varianceAbsolute: nonNegativeNumber.nullable(),
       variancePercentage: nonNegativeNumber.nullable(),
       reason: z.string().min(1),
+      details: z
+        .object({
+          determination: z.enum([
+            "candidate-match",
+            "candidate-set",
+            "aggregate-only",
+            "known-difference",
+          ]),
+          explanation: z.string().min(1),
+          sourceCriteria: z.array(z.string().min(1)).min(1),
+          includedRecordCount: z.number().int().nonnegative(),
+          candidateTotalSf: nonNegativeNumber,
+          diagnosticOnly: z.literal(true),
+          records: z.array(
+            z.object({
+              propertyDataId: z.string().min(1),
+              propertyId: z.string().min(1).nullable(),
+              property: z.string().min(1),
+              address: z.string().min(1).nullable(),
+              buildingSf: nonNegativeNumber,
+              canonicalSubmarket: z.string().min(1),
+              includedInPropertyDataAggregation: z.boolean(),
+              expectedOfficialScope: z.boolean().nullable(),
+              classification: z.enum(["candidate", "context"]),
+              reason: z.string().min(1),
+            }),
+          ),
+        })
+        .optional(),
     })
     .optional(),
   calculation: z

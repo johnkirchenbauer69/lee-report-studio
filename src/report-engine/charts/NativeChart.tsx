@@ -4,6 +4,7 @@ import {
   getByContextPath,
   getByPath,
 } from "../../engine/bindings";
+import { fontFamilyToCss } from "../../services/fontRegistry";
 
 export function NativeChart({
   element,
@@ -75,13 +76,17 @@ export function NativeChart({
   return (
     <div
       className="chart-wrap native-chart"
-      style={{ background: element.chartStyle?.background }}
+      style={{
+        background: element.chartStyle?.background,
+        fontFamily: fontFamilyToCss(element.chartStyle?.fontFamily),
+      }}
     >
       <div className="chart-title">{element.title}</div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={element.title ?? "Report chart"}
+        style={{ fontFamily: fontFamilyToCss(element.chartStyle?.fontFamily) }}
       >
         {grid.map((value) => (
           <g key={value}>

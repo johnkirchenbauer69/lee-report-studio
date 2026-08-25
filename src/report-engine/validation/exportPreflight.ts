@@ -4,6 +4,12 @@ import type {
   TextElement,
 } from "../../types/report";
 import { elementRect, getRotatedAabb } from "../../engine/geometry";
+import {
+  BRAND_FONT_FAMILY,
+  normalizeSemanticFontFamily,
+  resolveManagedFontFace,
+} from "../../services/fontRegistry";
+import { resolveTypography } from "../../engine/typography";
 
 export interface ExportPreflightIssue {
   level: "warning" | "error";
@@ -36,15 +42,19 @@ export async function runExportPreflight(
           message: `${element.name} extends outside ${page.name}.`,
         });
       if (element.type === "text") {
-        const family =
-          (element as TextElement).style.typography?.fontFamily ??
-          element.style.fontFamily;
-        const typography = (element as TextElement).style.typography;
+        const typography = resolveTypography((element as TextElement).style);
+        const family = normalizeSemanticFontFamily(typography.fontFamily);
         const managed = typography?.fontAssetId
           ? template.assets?.find(
               (asset) => asset.id === typography.fontAssetId,
             )
           : undefined;
+        const expectedManaged = resolveManagedFontFace(
+          template.assets ?? [],
+          family,
+          Number(typography.fontWeight) || 400,
+          typography.fontStyle ?? (typography.italic ? "italic" : "normal"),
+        );
         if (
           typography?.fontAssetId &&
           (!managed || managed.checksum !== typography.fontChecksum)
@@ -56,10 +66,27 @@ export async function runExportPreflight(
             elementId: element.id,
             message: `${element.name} references a missing or changed managed font face.`,
           });
+        else if (expectedManaged && !typography.fontAssetId)
+          issues.push({
+            level: "error",
+            kind: "font",
+            pageId: page.id,
+            elementId: element.id,
+            message: `${element.name} does not pin the available managed ${family} face.`,
+          });
+        else if (family === BRAND_FONT_FAMILY && !expectedManaged)
+          issues.push({
+            level: "error",
+            kind: "font",
+            pageId: page.id,
+            elementId: element.id,
+            message: `${element.name} requires managed ${BRAND_FONT_FAMILY} ${typography.fontWeight} ${typography.fontStyle ?? "normal"}, but that face is unavailable.`,
+          });
         else if (
           family &&
           !document.fonts.check(
-            `${typography?.fontStyle ?? "normal"} ${typography?.fontWeight ?? 400} 12px "${family.split(",")[0].trim()}"`,
+            `${typography.fontStyle ?? "normal"} ${typography.fontWeight ?? 400} 12px "${family}"`,
+            "LEE managed font verification",
           )
         )
           issues.push({

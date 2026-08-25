@@ -6,6 +6,8 @@ export type ReportProviderId = "sample" | "json" | "excel" | "ascendix";
 
 export interface ReportGenerationRequest {
   templateId: string;
+  templateVersion: string;
+  templateChecksum?: string;
   market: string;
   period: string;
   calculationScope:
@@ -42,6 +44,7 @@ export interface ReportInstance {
   id: string;
   templateId: string;
   templateVersion: string;
+  templateChecksum: string;
   generationRequest: ReportGenerationRequest;
   provider: ReportProviderId;
   sourceMetadata: ProviderSourceMetadata;

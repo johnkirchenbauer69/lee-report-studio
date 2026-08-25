@@ -15,6 +15,7 @@ import {
   resolveTypography,
   verticalAlignmentClass,
 } from "../engine/typography";
+import { fontFamilyToCss } from "../services/fontRegistry";
 
 interface Props {
   element: ReportElement;
@@ -39,7 +40,7 @@ interface Props {
 }
 
 const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
-  fontFamily: style?.fontFamily,
+  fontFamily: style?.fontFamily ? fontFamilyToCss(style.fontFamily) : undefined,
   fontWeight: style?.fontWeight,
   fontSize: style?.fontSize,
   color: style?.color,
@@ -258,7 +259,9 @@ export function CanvasElement(props: Props) {
         : (element.style.borderRadius ?? 0),
     background: fillToCss(element.style.fill, element.style.background),
     color: typography?.color ?? element.style.color,
-    fontFamily: typography?.fontFamily ?? element.style.fontFamily,
+    fontFamily: fontFamilyToCss(
+      typography?.fontFamily ?? element.style.fontFamily,
+    ),
     fontSize: typography?.fontSize ?? element.style.fontSize,
     fontWeight: typography?.fontWeight ?? element.style.fontWeight,
     fontStyle:

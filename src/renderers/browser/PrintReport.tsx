@@ -59,7 +59,14 @@ function PrintPages({
   useEffect(() => {
     setFontsReady(false);
     installManagedFonts(template.assets ?? [])
-      .then(() => setFontsReady(true))
+      .then((diagnostics) => {
+        const unavailable = diagnostics.filter((face) => !face.loaded);
+        if (unavailable.length)
+          throw new Error(
+            `${unavailable.length} managed font face${unavailable.length === 1 ? " is" : "s are"} unavailable.`,
+          );
+        setFontsReady(true);
+      })
       .catch((error) =>
         setFontError(error instanceof Error ? error.message : String(error)),
       );

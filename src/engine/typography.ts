@@ -1,7 +1,7 @@
 import type { ElementStyle, Typography } from "../types/report";
 
 export const typographyDefaults: Typography = {
-  fontFamily: "Inter",
+  fontFamily: "Nunito Sans",
   fontWeight: 400,
   fontSize: 16,
   color: "#111827",

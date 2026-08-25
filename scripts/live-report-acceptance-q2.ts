@@ -64,6 +64,16 @@ if (readiness.blockers.some((issue) => issue.path === inventory65200.fieldPath))
   throw new Error(
     "The 65,200 SF reconciliation incorrectly blocks publication.",
   );
+if (
+  !inventory65200.reconciliation.details?.diagnosticOnly ||
+  !inventory65200.reconciliation.details.records.length ||
+  inventory65200.reconciliation.details.records.some(
+    (record) => record.expectedOfficialScope !== null,
+  )
+)
+  throw new Error(
+    "Chicago South reconciliation details must remain populated, diagnostic-only, and explicit that official row-level scope is unknown.",
+  );
 
 const westCookInventory = report.provenance.find(
   (record) =>
@@ -94,6 +104,16 @@ if (
 )
   throw new Error(
     "Known West Cook reconciliation incorrectly blocks publication.",
+  );
+if (
+  !westCookInventory.reconciliation.details?.diagnosticOnly ||
+  !westCookInventory.reconciliation.details.records.length ||
+  westCookInventory.reconciliation.details.records.some(
+    (record) => record.expectedOfficialScope !== null,
+  )
+)
+  throw new Error(
+    "West Cook reconciliation details must remain populated, diagnostic-only, and explicit that official row-level scope is unknown.",
   );
 for (const record of report.provenance.filter(
   (item) => item.reconciliation?.classification === "blocking",
@@ -312,6 +332,10 @@ console.log(
         variancePercentage: westCookInventory.reconciliation.variancePercentage,
         classification: westCookInventory.reconciliation.classification,
         qaSeverity: westCookIssue.level,
+        detailDetermination:
+          westCookInventory.reconciliation.details.determination,
+        candidateRecordCount:
+          westCookInventory.reconciliation.details.records.length,
       },
       inventory65200Reconciliation: {
         path: inventory65200.fieldPath,
@@ -321,6 +345,10 @@ console.log(
         variancePercentage: inventory65200.reconciliation.variancePercentage,
         classification: inventory65200.reconciliation.classification,
         qaSeverity: inventory65200Issue.level,
+        detailDetermination:
+          inventory65200.reconciliation.details.determination,
+        candidateRecordCount:
+          inventory65200.reconciliation.details.records.length,
       },
       saleTypes: [
         ...new Set(

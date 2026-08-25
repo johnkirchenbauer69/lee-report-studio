@@ -158,6 +158,9 @@ export interface TableColumn {
 export interface TableCellStyle {
   fontFamily?: string;
   fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   fontSize?: number;
   color?: string;
   background?: string;
@@ -326,4 +329,5 @@ export interface ValidationItem {
   category?: "data" | "design" | "export";
   message: string;
   elementId?: string;
+  path?: string;
 }
