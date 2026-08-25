@@ -231,7 +231,25 @@ export function validateNormalizedReport(
   }
 
   report.provenance
-    .filter((record) => record.status === "conflict")
+    .filter(
+      (record) =>
+        record.reconciliation &&
+        record.reconciliation.classification !== "matched",
+    )
+    .forEach((record) =>
+      issues.push({
+        path: record.fieldPath,
+        message: record.note ?? record.reconciliation!.reason,
+        level:
+          record.reconciliation!.classification === "blocking"
+            ? "blocking"
+            : "warning",
+        category: "provenance",
+      }),
+    );
+
+  report.provenance
+    .filter((record) => record.status === "conflict" && !record.reconciliation)
     .forEach((record) =>
       issues.push({
         path: record.fieldPath,

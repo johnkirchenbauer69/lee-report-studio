@@ -21,6 +21,7 @@ import {
   selectContributorFinalists,
   type ImageResolver,
 } from "./contributors.ts";
+import { classifyInventoryReconciliation } from "./inventoryReconciliation.ts";
 import { looksLikeSalesforceId } from "../salesforce/salesforceIds.ts";
 import {
   CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
@@ -799,13 +800,19 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           (total, row) => total + Number(value(row, pd.inventorySf) ?? 0),
           0,
         );
-      const difference = propertyInventory - official;
-      const withinTolerance =
-        Math.abs(difference) <= Math.max(1, Math.abs(official) * 0.000001);
+      const varianceAbsolute = Math.abs(propertyInventory - official);
       const knownWestCook =
         bounds.label === "2026 Q2" &&
         name === "West Cook" &&
-        Math.abs(difference - 82_000) <= 1;
+        Math.abs(varianceAbsolute - 82_000) <= 1;
+      const reconciliation = classifyInventoryReconciliation({
+        authoritativeInventory: official,
+        propertyDataInventory: propertyInventory,
+        knownDifference: knownWestCook,
+        knownDifferenceReason: knownWestCook
+          ? "Known Q2 West Cook parent-linked Property_Data reconciliation difference."
+          : undefined,
+      });
       provenance.push({
         fieldPath: `reconciliation.submarkets.${name}.inventorySf`,
         selectedValue: official,
@@ -824,17 +831,22 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           },
         ],
         authority: "Market_Data__c official submarket snapshot",
-        status: withinTolerance
-          ? "matched"
-          : knownWestCook
-            ? "reconciled"
-            : "conflict",
-        critical: !withinTolerance && !knownWestCook,
-        note: withinTolerance
-          ? "Property_Data inventory reconciles within tolerance."
-          : knownWestCook
-            ? `Known Q2 West Cook Property_Data variance: ${difference} SF; official Market_Data remains selected.`
-            : `Property_Data inventory differs by ${difference} SF; official Market_Data remains selected.`,
+        status:
+          reconciliation.classification === "matched"
+            ? "matched"
+            : reconciliation.classification === "known-difference"
+              ? "reconciled"
+              : "conflict",
+        critical: reconciliation.classification === "blocking",
+        note: reconciliation.message,
+        reconciliation: {
+          classification: reconciliation.classification,
+          authoritativeValue: reconciliation.authoritativeValue,
+          comparisonValue: reconciliation.comparisonValue,
+          varianceAbsolute: reconciliation.varianceAbsolute,
+          variancePercentage: reconciliation.variancePercentage,
+          reason: reconciliation.reason,
+        },
       });
     }
     if (propertyRollup.facts.unlinkedMarketDataRows)

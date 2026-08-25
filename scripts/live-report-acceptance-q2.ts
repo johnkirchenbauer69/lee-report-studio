@@ -6,6 +6,7 @@ import { expandTemplatePages } from "../src/report-engine/generation/repeaters.t
 import { prepareTemplateForReport } from "../src/report-engine/generation/prepareTemplate.ts";
 import { industrialMarketReportSchema } from "../src/report-engine/schema/industrialMarketReport.ts";
 import { looksLikeSalesforceId } from "../src/shared/salesforceIds.ts";
+import { evaluateReportReadiness } from "../src/report-engine/validation/reportValidation.ts";
 
 const api = process.env.LEE_API_URL ?? "http://127.0.0.1:8787";
 const response = await fetch(`${api}/api/report-data/industrial-market`, {
@@ -30,6 +31,77 @@ const selectedIds = report.submarkets
   .map((item) => item.id)
   .filter(Boolean) as string[];
 const presentation = buildPresentationModel(report);
+const readiness = evaluateReportReadiness(report, sampleTemplate, "ascendix");
+const inventory65200 = report.provenance.find(
+  (record) => record.reconciliation?.varianceAbsolute === 65_200,
+);
+if (
+  inventory65200?.reconciliation?.classification !== "warning" ||
+  inventory65200.fieldPath !==
+    "reconciliation.submarkets.Chicago South.inventorySf"
+)
+  throw new Error(
+    `Expected the visible 65,200 SF Chicago South reconciliation warning; received ${JSON.stringify(inventory65200?.reconciliation)}.`,
+  );
+if (
+  inventory65200.selectedValue !==
+    report.submarkets.find((item) => item.name === "Chicago South")
+      ?.inventorySf ||
+  inventory65200.selectedValue !==
+    inventory65200.reconciliation.authoritativeValue
+)
+  throw new Error(
+    "Chicago South reconciliation did not preserve authoritative Market_Data inventory.",
+  );
+const inventory65200Issue = readiness.issues.find(
+  (issue) => issue.path === inventory65200.fieldPath,
+);
+if (inventory65200Issue?.level !== "warning")
+  throw new Error(
+    `Expected the 65,200 SF reconciliation to remain visible as a warning; received ${inventory65200Issue?.level ?? "no issue"}.`,
+  );
+if (readiness.blockers.some((issue) => issue.path === inventory65200.fieldPath))
+  throw new Error(
+    "The 65,200 SF reconciliation incorrectly blocks publication.",
+  );
+
+const westCookInventory = report.provenance.find(
+  (record) =>
+    record.fieldPath === "reconciliation.submarkets.West Cook.inventorySf",
+);
+if (westCookInventory?.reconciliation?.classification !== "known-difference")
+  throw new Error(
+    `Expected the approved West Cook reconciliation finding; received ${JSON.stringify(westCookInventory?.reconciliation)}.`,
+  );
+if (
+  westCookInventory.selectedValue !==
+    report.submarkets.find((item) => item.name === "West Cook")?.inventorySf ||
+  westCookInventory.selectedValue !==
+    westCookInventory.reconciliation.authoritativeValue
+)
+  throw new Error(
+    "West Cook reconciliation did not preserve authoritative Market_Data inventory.",
+  );
+const westCookIssue = readiness.issues.find(
+  (issue) => issue.path === westCookInventory.fieldPath,
+);
+if (westCookIssue?.level !== "warning")
+  throw new Error(
+    `Expected West Cook reconciliation to remain visible as a warning; received ${westCookIssue?.level ?? "no issue"}.`,
+  );
+if (
+  readiness.blockers.some((issue) => issue.path === westCookInventory.fieldPath)
+)
+  throw new Error(
+    "Known West Cook reconciliation incorrectly blocks publication.",
+  );
+for (const record of report.provenance.filter(
+  (item) => item.reconciliation?.classification === "blocking",
+))
+  if (!readiness.blockers.some((issue) => issue.path === record.fieldPath))
+    throw new Error(
+      `Material reconciliation blocker was incorrectly downgraded: ${record.fieldPath}.`,
+    );
 const prepared = prepareTemplateForReport(
   sampleTemplate,
   report,
@@ -233,6 +305,23 @@ console.log(
       ),
       confidentialLeaseRows: confidentialLeases.length,
       unknownConfidentialityLeaseRows: unknownConfidentialityLeases.length,
+      westCookInventoryReconciliation: {
+        authoritativeValue: westCookInventory.reconciliation.authoritativeValue,
+        propertyDataValue: westCookInventory.reconciliation.comparisonValue,
+        varianceAbsolute: westCookInventory.reconciliation.varianceAbsolute,
+        variancePercentage: westCookInventory.reconciliation.variancePercentage,
+        classification: westCookInventory.reconciliation.classification,
+        qaSeverity: westCookIssue.level,
+      },
+      inventory65200Reconciliation: {
+        path: inventory65200.fieldPath,
+        authoritativeValue: inventory65200.reconciliation.authoritativeValue,
+        propertyDataValue: inventory65200.reconciliation.comparisonValue,
+        varianceAbsolute: inventory65200.reconciliation.varianceAbsolute,
+        variancePercentage: inventory65200.reconciliation.variancePercentage,
+        classification: inventory65200.reconciliation.classification,
+        qaSeverity: inventory65200Issue.level,
+      },
       saleTypes: [
         ...new Set(
           presentation.submarketDetails.flatMap((detail) =>

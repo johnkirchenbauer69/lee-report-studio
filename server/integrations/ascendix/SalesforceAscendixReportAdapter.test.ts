@@ -314,7 +314,27 @@ describe("Salesforce Ascendix live-verified contract", () => {
       status: "reconciled",
       selectedValue: 1000,
       critical: false,
+      reconciliation: {
+        classification: "known-difference",
+        authoritativeValue: 1000,
+        comparisonValue: 83_000,
+        varianceAbsolute: 82_000,
+      },
     });
+    expect(
+      result.report.submarkets.find((row) => row.name === "West Cook")
+        ?.inventorySf,
+    ).toBe(1000);
+    expect(
+      evaluateReportReadiness(result.report, sampleTemplate, "ascendix").issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "reconciliation.submarkets.West Cook.inventorySf",
+          level: "warning",
+        }),
+      ]),
+    );
     const currentQuery = client.queries.find(
       (query) =>
         query.includes("FROM Market_Data__c") && !query.includes("ORDER BY"),

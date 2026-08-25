@@ -147,6 +147,21 @@ export const provenanceRecordSchema = z.object({
   ]),
   critical: z.boolean().optional(),
   note: z.string().min(1).optional(),
+  reconciliation: z
+    .object({
+      classification: z.enum([
+        "matched",
+        "known-difference",
+        "warning",
+        "blocking",
+      ]),
+      authoritativeValue: finiteNumber.nullable(),
+      comparisonValue: finiteNumber.nullable(),
+      varianceAbsolute: nonNegativeNumber.nullable(),
+      variancePercentage: nonNegativeNumber.nullable(),
+      reason: z.string().min(1),
+    })
+    .optional(),
   calculation: z
     .object({
       formula: z.string().min(1),
