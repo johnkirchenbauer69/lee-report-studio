@@ -1,10 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runExportPreflight } from "./exportPreflight";
 import type {
+  Asset,
   ImageElement,
   ReportElement,
   ReportTemplate,
 } from "../../types/report";
+
+const managedNunito: Asset = {
+  id: "nunito-regular",
+  name: "Nunito Sans Regular",
+  type: "font",
+  mimeType: "font/ttf",
+  source: "/api/assets/nunito-regular/content",
+  createdAt: "2026-08-27T00:00:00.000Z",
+  fontFamily: "Nunito Sans",
+  fontWeight: 400,
+  fontStyle: "normal",
+  checksum: "expected-checksum",
+  version: 1,
+};
 
 const imageElement = (overrides: Partial<ImageElement> = {}): ImageElement => ({
   id: "img-1",
@@ -19,7 +34,10 @@ const imageElement = (overrides: Partial<ImageElement> = {}): ImageElement => ({
   ...overrides,
 });
 
-const templateWith = (element: ReportElement): ReportTemplate => ({
+const templateWith = (
+  element: ReportElement,
+  assets?: Asset[],
+): ReportTemplate => ({
   id: "t",
   name: "Test template",
   version: "1",
@@ -33,6 +51,7 @@ const templateWith = (element: ReportElement): ReportTemplate => ({
       elements: [element],
     },
   ],
+  assets,
 });
 
 describe("runExportPreflight image content-type check", () => {
@@ -116,6 +135,93 @@ describe("runExportPreflight image content-type check", () => {
         level: "error",
         kind: "font",
         message: expect.stringContaining("face is unavailable"),
+      }),
+    ]);
+  });
+
+  it("accepts a dynamically generated placeholder pinned to the loaded managed face", async () => {
+    const check = vi.fn(() => true);
+    vi.stubGlobal("document", { fonts: { check } });
+    const issues = await runExportPreflight(
+      templateWith(
+        {
+          id: "unavailable",
+          type: "text",
+          name: "Data unavailable",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 30,
+          text: "Content not available for this edition",
+          style: {
+            typography: {
+              fontFamily: "Nunito Sans",
+              fontWeight: 400,
+              fontStyle: "normal",
+              fontAssetId: managedNunito.id,
+              fontChecksum: managedNunito.checksum,
+              fontSize: 11,
+              color: "#000",
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              textAlign: "center",
+              verticalAlign: "middle",
+              italic: false,
+              underline: false,
+            },
+          },
+        },
+        [managedNunito],
+      ),
+    );
+    expect(issues.filter((issue) => issue.kind === "font")).toEqual([]);
+    expect(check).toHaveBeenCalledWith(
+      expect.stringContaining("LEE Managed nunito-regular"),
+      "LEE managed font verification",
+    );
+  });
+
+  it("still blocks a checksum-changed managed face", async () => {
+    vi.stubGlobal("document", {
+      fonts: { check: vi.fn(() => true) },
+    });
+    const issues = await runExportPreflight(
+      templateWith(
+        {
+          id: "changed-font",
+          type: "text",
+          name: "Data unavailable",
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 30,
+          text: "Content not available for this edition",
+          style: {
+            typography: {
+              fontFamily: "Nunito Sans",
+              fontWeight: 400,
+              fontStyle: "normal",
+              fontAssetId: managedNunito.id,
+              fontChecksum: "stale-checksum",
+              fontSize: 11,
+              color: "#000",
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              textAlign: "center",
+              verticalAlign: "middle",
+              italic: false,
+              underline: false,
+            },
+          },
+        },
+        [managedNunito],
+      ),
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({
+        level: "error",
+        kind: "font",
+        message: expect.stringContaining("missing or changed managed font"),
       }),
     ]);
   });

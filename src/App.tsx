@@ -62,6 +62,7 @@ import {
   fontFamilyToCss,
   groupFontAssets,
   installManagedFonts,
+  resolveAvailableManagedFontFace,
   type ManagedFontFaceDiagnostic,
 } from "./services/fontRegistry";
 import { normalizeReportTemplateFonts } from "./services/templateNormalization";
@@ -517,7 +518,15 @@ export default function App() {
   };
   const addText = (variant: "heading" | "subheading" | "body" = "body") => {
     const id = uid("text"),
-      sizes = { heading: 32, subheading: 22, body: 14 };
+      sizes = { heading: 32, subheading: 22, body: 14 },
+      weight =
+        variant === "heading" ? 700 : variant === "subheading" ? 600 : 400,
+      managedFace = resolveAvailableManagedFontFace(
+        latestTemplate.current.assets ?? [],
+        "Nunito Sans",
+        weight,
+        "normal",
+      );
     const element: ReportElement = {
       id,
       type: "text",
@@ -540,8 +549,10 @@ export default function App() {
       style: {
         typography: {
           fontFamily: "Nunito Sans",
-          fontWeight:
-            variant === "heading" ? 700 : variant === "subheading" ? 600 : 400,
+          fontWeight: managedFace?.fontWeight ?? weight,
+          fontStyle: managedFace?.fontStyle ?? "normal",
+          fontAssetId: managedFace?.id,
+          fontChecksum: managedFace?.checksum,
           fontSize: sizes[variant],
           color: "#172033",
           letterSpacing: 0,

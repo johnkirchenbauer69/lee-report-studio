@@ -45,6 +45,9 @@ export async function runExportPreflight(
       if (element.type === "text") {
         const typography = resolveTypography((element as TextElement).style);
         const family = normalizeSemanticFontFamily(typography.fontFamily);
+        const weight = Number(typography.fontWeight) || 400;
+        const fontStyle =
+          typography.fontStyle ?? (typography.italic ? "italic" : "normal");
         const managed = typography?.fontAssetId
           ? template.assets?.find(
               (asset) => asset.id === typography.fontAssetId,
@@ -53,12 +56,17 @@ export async function runExportPreflight(
         const expectedManaged = resolveManagedFontFace(
           template.assets ?? [],
           family,
-          Number(typography.fontWeight) || 400,
-          typography.fontStyle ?? (typography.italic ? "italic" : "normal"),
+          weight,
+          fontStyle,
         );
         if (
           typography?.fontAssetId &&
-          (!managed || managed.checksum !== typography.fontChecksum)
+          (!managed ||
+            managed.type !== "font" ||
+            managed.checksum !== typography.fontChecksum ||
+            normalizeSemanticFontFamily(managed.fontFamily) !== family ||
+            (managed.fontWeight ?? 400) !== weight ||
+            (managed.fontStyle ?? "normal") !== fontStyle)
         )
           issues.push({
             level: "error",
@@ -86,7 +94,7 @@ export async function runExportPreflight(
         else if (
           family &&
           !document.fonts.check(
-            `${typography.fontStyle ?? "normal"} ${typography.fontWeight ?? 400} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
+            `${fontStyle} ${weight} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
             "LEE managed font verification",
           )
         )

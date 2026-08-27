@@ -52,4 +52,37 @@ describe("template typography migration", () => {
         .find((item) => item.id === image.id),
     ).toEqual(image);
   });
+
+  it("preserves a stale checksum pin so strict preflight can reject it", () => {
+    const source = structuredClone(sampleTemplate);
+    const text = source.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "text")!;
+    text.style = {
+      ...text.style,
+      typography: {
+        fontFamily: "Nunito Sans",
+        fontWeight: 400,
+        fontStyle: "normal",
+        fontAssetId: regular.id,
+        fontChecksum: "stale-checksum",
+        fontSize: 16,
+        color: "#000",
+        letterSpacing: 0,
+        lineHeight: 1.2,
+        textAlign: "left",
+        verticalAlign: "top",
+        italic: false,
+        underline: false,
+      },
+    };
+    const normalized = normalizeReportTemplateFonts(source, [regular]);
+    const result = normalized.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === text.id)!;
+    expect(result.style.typography).toMatchObject({
+      fontAssetId: regular.id,
+      fontChecksum: "stale-checksum",
+    });
+  });
 });

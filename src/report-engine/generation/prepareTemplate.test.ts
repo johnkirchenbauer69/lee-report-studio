@@ -1,11 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { q2SampleReport } from "../../data-providers/sample/q2SampleReport";
 import { sampleTemplate } from "../../data/sampleTemplate";
+import type { Asset, TextElement } from "../../types/report";
 import { buildPresentationModel } from "../bindings/presentationModel";
 import {
   prepareTemplateForPublication,
   prepareTemplateForReport,
 } from "./prepareTemplate";
+
+const managedNunito600: Asset = {
+  id: "nunito-sans-semibold",
+  name: "Nunito Sans SemiBold",
+  type: "font",
+  mimeType: "font/ttf",
+  source: "/api/assets/nunito-sans-semibold/content",
+  createdAt: "2026-08-27T00:00:00.000Z",
+  fontFamily: "Nunito Sans",
+  fontWeight: 600,
+  fontStyle: "normal",
+  checksum: "nunito-sans-semibold-checksum",
+  version: 1,
+};
 
 describe("production template preparation", () => {
   it("keeps the bound native historical chart and managed Overall Market map", () => {
@@ -77,6 +92,44 @@ describe("production template preparation", () => {
     expect(text(prepareTemplateForPublication(editor))).not.toContain(
       "Data unavailable:",
     );
+  });
+
+  it("pins dynamically generated and publication-safe unavailable text to the exact managed face", () => {
+    const source = {
+      ...structuredClone(sampleTemplate),
+      assets: [managedNunito600],
+    };
+    const presentation = buildPresentationModel(q2SampleReport);
+    const editor = prepareTemplateForReport(
+      source,
+      q2SampleReport,
+      presentation,
+      "ascendix",
+      "editor",
+    );
+    const placeholder = editor.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.name === "Data unavailable") as TextElement;
+    expect(placeholder).toBeDefined();
+    expect(placeholder.style.typography).toMatchObject({
+      fontFamily: "Nunito Sans",
+      fontWeight: 600,
+      fontStyle: "normal",
+      fontAssetId: managedNunito600.id,
+      fontChecksum: managedNunito600.checksum,
+    });
+
+    const published = prepareTemplateForPublication(editor);
+    const publishedPlaceholder = published.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === placeholder.id) as TextElement;
+    expect(publishedPlaceholder.text).toBe(
+      "Content not available for this edition",
+    );
+    expect(publishedPlaceholder.style.typography).toMatchObject({
+      fontAssetId: managedNunito600.id,
+      fontChecksum: managedNunito600.checksum,
+    });
   });
 
   it("binds the period only on pages 41-43 and leaves page 44 static", () => {

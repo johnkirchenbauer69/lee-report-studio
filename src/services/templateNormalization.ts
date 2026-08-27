@@ -10,6 +10,42 @@ import {
   resolveAvailableManagedFontFace,
 } from "./fontRegistry";
 
+interface ExistingFontPin {
+  fontAssetId?: string;
+  fontChecksum?: string;
+}
+
+const resolveFaceWithoutHealingInvalidPin = (
+  assets: Asset[],
+  family: string,
+  weight: number,
+  style: "normal" | "italic",
+  pin: ExistingFontPin,
+) => {
+  if (!pin.fontAssetId)
+    return resolveAvailableManagedFontFace(assets, family, weight, style);
+  const pinned = assets.find(
+    (asset) => asset.type === "font" && asset.id === pin.fontAssetId,
+  );
+  if (
+    !pinned ||
+    (pin.fontChecksum && pinned.checksum !== pin.fontChecksum) ||
+    normalizeSemanticFontFamily(pinned.fontFamily) !== family ||
+    (pinned.fontWeight ?? 400) !== weight ||
+    (pinned.fontStyle ?? "normal") !== style
+  )
+    return undefined;
+  return pinned;
+};
+
+const resolvedPin = (pin: ExistingFontPin, face?: Asset) =>
+  face
+    ? { fontAssetId: face.id, fontChecksum: face.checksum }
+    : {
+        fontAssetId: pin.fontAssetId,
+        fontChecksum: pin.fontChecksum,
+      };
+
 const normalizeCellStyle = (
   style: TableCellStyle | undefined,
   assets: Asset[],
@@ -18,19 +54,19 @@ const normalizeCellStyle = (
   const fontFamily = normalizeSemanticFontFamily(style.fontFamily);
   const fontWeight = style.fontWeight ?? 400;
   const fontStyle = style.fontStyle ?? "normal";
-  const face = resolveAvailableManagedFontFace(
+  const face = resolveFaceWithoutHealingInvalidPin(
     assets,
     fontFamily,
     fontWeight,
     fontStyle,
+    style,
   );
   return {
     ...style,
     fontFamily,
     fontWeight: face?.fontWeight ?? fontWeight,
     fontStyle: face?.fontStyle ?? fontStyle,
-    fontAssetId: face?.id,
-    fontChecksum: face?.checksum,
+    ...resolvedPin(style, face),
   };
 };
 
@@ -44,17 +80,17 @@ const normalizeElement = (
     const fontWeight = next.style.fontWeight ?? 400;
     const fontStyle =
       next.style.fontStyle ?? (next.style.italic ? "italic" : "normal");
-    const face = resolveAvailableManagedFontFace(
+    const face = resolveFaceWithoutHealingInvalidPin(
       assets,
       fontFamily,
       fontWeight,
       fontStyle,
+      next.style,
     );
     next.style.fontFamily = fontFamily;
     next.style.fontWeight = face?.fontWeight ?? fontWeight;
     next.style.fontStyle = face?.fontStyle ?? fontStyle;
-    next.style.fontAssetId = face?.id;
-    next.style.fontChecksum = face?.checksum;
+    Object.assign(next.style, resolvedPin(next.style, face));
   }
   if (next.type === "text") {
     const typography = resolveTypography(next.style);
@@ -62,11 +98,12 @@ const normalizeElement = (
     const fontWeight = Number(typography.fontWeight) || 400;
     const fontStyle =
       typography.fontStyle ?? (typography.italic ? "italic" : "normal");
-    const face = resolveAvailableManagedFontFace(
+    const face = resolveFaceWithoutHealingInvalidPin(
       assets,
       fontFamily,
       fontWeight,
       fontStyle,
+      typography,
     );
     next.style.typography = {
       ...typography,
@@ -74,8 +111,7 @@ const normalizeElement = (
       fontWeight: face?.fontWeight ?? fontWeight,
       fontStyle: face?.fontStyle ?? fontStyle,
       italic: (face?.fontStyle ?? fontStyle) === "italic",
-      fontAssetId: face?.id,
-      fontChecksum: face?.checksum,
+      ...resolvedPin(typography, face),
     };
   }
   if (next.type === "table") {

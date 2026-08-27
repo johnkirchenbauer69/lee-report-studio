@@ -10,6 +10,7 @@ import type {
   TextElement,
 } from "../../types/report";
 import type { ReportProviderId } from "../schema/generation";
+import { normalizeReportTemplateFonts } from "../../services/templateNormalization";
 import type {
   DatasetSection,
   IndustrialMarketReport,
@@ -58,7 +59,7 @@ const unavailablePlaceholder = (
 export function prepareTemplateForPublication(
   template: ReportTemplate,
 ): ReportTemplate {
-  return {
+  const publication = {
     ...structuredClone(template),
     pages: template.pages.map((page) => ({
       ...structuredClone(page),
@@ -69,6 +70,7 @@ export function prepareTemplateForPublication(
       ),
     })),
   };
+  return normalizeReportTemplateFonts(publication, publication.assets ?? []);
 }
 
 const formatPeriod = (period: string) => {
@@ -168,7 +170,7 @@ export function prepareTemplateForReport(
       )
       .map((item) => item.section),
   );
-  return {
+  const prepared = {
     ...structuredClone(template),
     pages: template.pages.map((page) =>
       preparePage(
@@ -181,4 +183,5 @@ export function prepareTemplateForReport(
       ),
     ),
   };
+  return normalizeReportTemplateFonts(prepared, prepared.assets ?? []);
 }

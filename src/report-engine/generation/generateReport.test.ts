@@ -122,4 +122,49 @@ describe("generateReportInstance", () => {
         .map((element) => element.rotation),
     ).toEqual([90, 90]);
   });
+
+  it("pins every managed text element across repeated pages and dynamic labels", async () => {
+    const template = structuredClone(sampleTemplate);
+    template.assets = [
+      {
+        id: "nunito-semibold",
+        name: "Nunito Sans SemiBold",
+        type: "font",
+        mimeType: "font/ttf",
+        source: "/api/assets/nunito-semibold/content",
+        createdAt: "2026-08-27T00:00:00.000Z",
+        fontFamily: "Nunito Sans",
+        fontWeight: 600,
+        fontStyle: "normal",
+        checksum: "semibold-checksum",
+        version: 1,
+        storage: "backend",
+      },
+    ];
+    const report = await generateReportInstance(template, {
+      templateId: template.id,
+      templateVersion: template.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: {},
+      source: { provider: "sample" },
+    });
+    const textElements = report.pages
+      .flatMap((page) => page.elements)
+      .filter((element) => element.type === "text");
+    expect(report.pages).toHaveLength(44);
+    expect(
+      textElements.some(
+        (element) => element.name === "Quarter" && element.text === "Q2 2026",
+      ),
+    ).toBe(true);
+    expect(
+      textElements.every(
+        (element) =>
+          element.style.typography?.fontAssetId === "nunito-semibold" &&
+          element.style.typography?.fontChecksum === "semibold-checksum",
+      ),
+    ).toBe(true);
+  });
 });
