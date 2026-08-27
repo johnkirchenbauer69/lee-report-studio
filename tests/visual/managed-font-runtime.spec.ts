@@ -281,6 +281,14 @@ test("representative imported families populate semantic controls and render in 
       })
       .locator(".font-family-status"),
   ).toContainText("License: Not provided · Unverified");
+  await expect(
+    page
+      .locator(".font-family-card")
+      .filter({
+        has: page.locator("header strong", { hasText: "Flamante Round" }),
+      })
+      .locator(".font-family-status"),
+  ).toContainText("FREE_FOR_PERSONAL_USE_ONLY.pdf");
 
   const representative = exactFaceChecks.map(
     (_, index) =>

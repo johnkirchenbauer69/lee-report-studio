@@ -1363,10 +1363,17 @@ export default function App() {
                   ),
                 ),
               ];
+              const licenseFiles = [
+                ...new Set(
+                  faces.flatMap((face) =>
+                    face.license?.fileName ? [face.license.fileName] : [],
+                  ),
+                ),
+              ];
               const licenseLabel = licenseTypes.length
                 ? licenseTypes.join(", ")
-                : faces.some((face) => face.license?.fileName)
-                  ? "Documentation provided · Unverified"
+                : licenseFiles.length
+                  ? `Unverified · ${licenseFiles.join(", ")}`
                   : "Not provided · Unverified";
               return (
                 <section className="font-family-card" key={family}>
@@ -1406,7 +1413,10 @@ export default function App() {
                         )?.loaded
                           ? "Loaded ✓ · "
                           : "Unavailable ⚠ · "}
-                        {face.license?.type ?? "License not supplied"}
+                        {face.license?.type ??
+                          (face.license?.fileName
+                            ? `Unverified · ${face.license.fileName}`
+                            : "Not provided · Unverified")}
                         {` · asset v${face.version ?? 1}`}
                         {face.checksum
                           ? ` · ${face.checksum.slice(0, 10)}…`

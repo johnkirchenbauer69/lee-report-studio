@@ -1263,6 +1263,7 @@ button {
   padding: 0 9px 8px;
   color: #6e7986;
   font-size: 8px;
+  overflow-wrap: anywhere;
 }
 .font-face-row {
   display: grid;
