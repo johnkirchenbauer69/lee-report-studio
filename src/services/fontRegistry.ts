@@ -53,13 +53,20 @@ export function normalizeSemanticFontFamily(value?: string): string {
 }
 
 /** Internal CSS stack; the Inspector never exposes this implementation detail. */
-export function fontFamilyToCss(family?: string): string {
+export const managedFontAssetFamily = (assetId: string) =>
+  `LEE Managed ${assetId.replace(/[^a-z0-9-]/gi, "")}`;
+
+export function fontFamilyToCss(family?: string, assetId?: string): string {
   const semantic = normalizeSemanticFontFamily(family);
-  if (semantic === BRAND_FONT_FAMILY) return '"Nunito Sans", Arial, sans-serif';
-  return (
-    BUILTIN_FONT_FAMILIES.find((candidate) => candidate.family === semantic)
-      ?.css ?? `"${safeCssValue(semantic)}", Arial, sans-serif`
-  );
+  const semanticStack =
+    semantic === BRAND_FONT_FAMILY
+      ? '"Nunito Sans", Arial, sans-serif'
+      : (BUILTIN_FONT_FAMILIES.find(
+          (candidate) => candidate.family === semantic,
+        )?.css ?? `"${safeCssValue(semantic)}", Arial, sans-serif`);
+  return assetId
+    ? `"${safeCssValue(managedFontAssetFamily(assetId))}", ${semanticStack}`
+    : semanticStack;
 }
 
 export function managedFontCss(assets: Asset[]): string {
@@ -72,10 +79,15 @@ export function managedFontCss(assets: Asset[]): string {
         `${b.fontFamily}-${b.fontWeight}-${b.fontStyle}`,
       ),
     )
-    .map(
-      (asset) =>
-        `@font-face{font-family:"${safeCssValue(normalizeSemanticFontFamily(asset.fontFamily))}";src:url("${safeCssValue(asset.source)}");font-weight:${asset.fontWeight ?? 400};font-style:${asset.fontStyle ?? "normal"};font-display:block;}`,
-    )
+    .map((asset) => {
+      const source = `src:url("${safeCssValue(asset.source)}")`;
+      const descriptors = `font-weight:${asset.fontWeight ?? 400};font-style:${asset.fontStyle ?? "normal"};font-display:block;`;
+      const semantic = safeCssValue(
+        normalizeSemanticFontFamily(asset.fontFamily),
+      );
+      const exact = safeCssValue(managedFontAssetFamily(asset.id));
+      return `@font-face{font-family:"${exact}";${source};${descriptors}}\n@font-face{font-family:"${semantic}";${source};${descriptors}}`;
+    })
     .join("\n");
 }
 
@@ -109,7 +121,7 @@ export async function installManagedFonts(
       const family = normalizeSemanticFontFamily(asset.fontFamily);
       const weight = asset.fontWeight ?? 400;
       const fontStyle = asset.fontStyle ?? "normal";
-      const descriptor = `${fontStyle} ${weight} 12px "${safeCssValue(family)}"`;
+      const descriptor = `${fontStyle} ${weight} 12px "${safeCssValue(managedFontAssetFamily(asset.id))}"`;
       try {
         const loadedFaces = await document.fonts.load(
           descriptor,

@@ -18,6 +18,7 @@ export interface TemplateStore {
     template?: ReportTemplate,
   ): Promise<StoredTemplateVersion>;
   publish(record: StoredTemplateVersion): Promise<StoredTemplateVersion>;
+  deleteDraft(record: TemplateVersionSummary): Promise<void>;
 }
 
 const json = async <T>(response: Response): Promise<T> => {
@@ -89,5 +90,19 @@ export const templateStore: TemplateStore = {
         { method: "POST" },
       ),
     );
+  },
+  async deleteDraft(record) {
+    const response = await fetch(
+      `/api/templates/${encodeURIComponent(record.id)}/versions/${encodeURIComponent(record.version)}`,
+      { method: "DELETE" },
+    );
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      throw new Error(
+        body.error ?? `Template API returned ${response.status}.`,
+      );
+    }
   },
 };

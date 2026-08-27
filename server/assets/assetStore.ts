@@ -72,8 +72,7 @@ const safeExtension = (fileName: string) =>
     .toLowerCase()
     .replace(/[^.a-z0-9]/g, "");
 
-const ALLOWED_IMAGE_MIME_TYPES =
-  /^image\/(png|jpe?g|webp|gif|svg\+xml)$/i;
+const ALLOWED_IMAGE_MIME_TYPES = /^image\/(png|jpe?g|webp|gif|svg\+xml)$/i;
 
 export class FileSystemAssetStore {
   readonly assetsRoot: string;
@@ -160,14 +159,20 @@ export class FileSystemAssetStore {
         if (extension === ".zip") {
           const bundle = await readFontBundle(file.buffer);
           for (const face of bundle.fonts) {
-            const result = await this.importFont(
-              face.name,
-              face.buffer,
-              [...existing, ...created],
-              bundle.license,
-            );
-            if (result.asset) created.push(result.asset);
-            summary[result.outcome] += 1;
+            try {
+              const result = await this.importFont(
+                face.name,
+                face.buffer,
+                [...existing, ...created],
+                bundle.license,
+              );
+              if (result.asset) created.push(result.asset);
+              summary[result.outcome] += 1;
+            } catch (error) {
+              summary.rejected.push(
+                `${file.originalname}/${face.name}: ${error instanceof Error ? error.message : "rejected"}`,
+              );
+            }
           }
         } else if (FONT_EXTENSIONS.has(extension)) {
           const result = await this.importFont(file.originalname, file.buffer, [
@@ -192,7 +197,7 @@ export class FileSystemAssetStore {
       }
     }
     if (created.length) await this.save([...existing, ...created]);
-    if (!created.length && summary.rejected.length)
+    if (!created.length && summary.duplicates === 0 && summary.rejected.length)
       throw new Error(summary.rejected.join("\n"));
     return { assets: created, summary };
   }

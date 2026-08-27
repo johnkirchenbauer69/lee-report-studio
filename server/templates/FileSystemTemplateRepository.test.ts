@@ -82,6 +82,55 @@ describe("FileSystemTemplateRepository", () => {
     ).toBe("published");
   });
 
+  it("deletes only a draft, persists deletion, and leaves other versions and shared assets intact", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    const seeded = structuredClone(sampleTemplate);
+    seeded.assets = [
+      {
+        id: "shared-font",
+        name: "Shared Font",
+        type: "font",
+        mimeType: "font/otf",
+        source: "/api/assets/shared-font/content",
+        createdAt: "2026-08-27T00:00:00.000Z",
+        fontFamily: "Shared Family",
+        fontWeight: 400,
+        fontStyle: "normal",
+        checksum: "shared-checksum",
+        storage: "backend",
+      },
+    ];
+    await repository.initialize(seeded);
+    const initial = (await repository.list())[0]!;
+    const draft = await repository.createVersion(initial.id, initial.version);
+    await repository.deleteDraft(draft.id, draft.version);
+
+    const reopened = new FileSystemTemplateRepository(root);
+    expect(await reopened.get(draft.id, draft.version)).toBeUndefined();
+    const remaining = await reopened.get(initial.id, initial.version);
+    expect(await reopened.listVersions(initial.id)).toHaveLength(1);
+    expect(remaining?.assetReferences).toContain("shared-font");
+    expect(remaining?.template.assets?.[0]?.id).toBe("shared-font");
+    await expect(
+      reopened.deleteDraft(initial.id, initial.version),
+    ).rejects.toThrow("only remaining template version");
+  });
+
+  it("does not delete published versions", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const initial = (await repository.list())[0]!;
+    const published = await repository.publish(initial.id, initial.version);
+    await expect(
+      repository.deleteDraft(published.id, published.version),
+    ).rejects.toThrow("Only unpublished draft templates");
+    expect(await repository.get(published.id, published.version)).toBeDefined();
+  });
+
   it("generates from an exact published version/checksum without mutating the stored master", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
     roots.push(root);
@@ -104,7 +153,13 @@ describe("FileSystemTemplateRepository", () => {
       templateVersion: published.version,
       templateChecksum: published.checksum,
     });
+    const disposableDraft = await repository.createVersion(
+      published.id,
+      published.version,
+    );
+    await repository.deleteDraft(disposableDraft.id, disposableDraft.version);
     report.pages[0]!.name = "Edited generated report";
+    expect(report.templateChecksum).toBe(published.checksum);
     expect(
       (await repository.get(published.id, published.version))?.template.pages[0]
         ?.name,

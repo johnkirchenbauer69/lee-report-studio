@@ -6,6 +6,7 @@ import type {
 import { elementRect, getRotatedAabb } from "../../engine/geometry";
 import {
   BRAND_FONT_FAMILY,
+  managedFontAssetFamily,
   normalizeSemanticFontFamily,
   resolveManagedFontFace,
 } from "../../services/fontRegistry";
@@ -85,7 +86,7 @@ export async function runExportPreflight(
         else if (
           family &&
           !document.fonts.check(
-            `${typography.fontStyle ?? "normal"} ${typography.fontWeight ?? 400} 12px "${family}"`,
+            `${typography.fontStyle ?? "normal"} ${typography.fontWeight ?? 400} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
             "LEE managed font verification",
           )
         )

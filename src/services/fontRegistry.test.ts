@@ -5,6 +5,7 @@ import {
   fontFamilyToCss,
   groupFontAssets,
   managedFontCss,
+  managedFontAssetFamily,
   normalizeSemanticFontFamily,
   resolveAvailableManagedFontFace,
   resolveManagedFontFace,
@@ -49,6 +50,9 @@ describe("managed font registry", () => {
   it("emits centralized, no-synthesis font-face rules", () => {
     const css = managedFontCss([face("bold-italic", 700, "italic")]);
     expect(css).toContain('font-family:"Nunito Sans"');
+    expect(css).toContain(
+      `font-family:"${managedFontAssetFamily("bold-italic")}"`,
+    );
     expect(css).toContain("font-weight:700");
     expect(css).toContain("font-style:italic");
     expect(css).toContain("font-display:block");
@@ -68,6 +72,9 @@ describe("managed font registry", () => {
     ).toBe("Nunito Sans");
     expect(fontFamilyToCss("Nunito Sans")).toBe(
       '"Nunito Sans", Arial, sans-serif',
+    );
+    expect(fontFamilyToCss("Cooper Hewitt", "face-id")).toBe(
+      '"LEE Managed face-id", "Cooper Hewitt", Arial, sans-serif',
     );
   });
 

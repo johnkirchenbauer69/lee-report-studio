@@ -40,7 +40,9 @@ interface Props {
 }
 
 const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
-  fontFamily: style?.fontFamily ? fontFamilyToCss(style.fontFamily) : undefined,
+  fontFamily: style?.fontFamily
+    ? fontFamilyToCss(style.fontFamily, style.fontAssetId)
+    : undefined,
   fontWeight: style?.fontWeight,
   fontSize: style?.fontSize,
   color: style?.color,
@@ -261,11 +263,13 @@ export function CanvasElement(props: Props) {
     color: typography?.color ?? element.style.color,
     fontFamily: fontFamilyToCss(
       typography?.fontFamily ?? element.style.fontFamily,
+      typography?.fontAssetId ?? element.style.fontAssetId,
     ),
     fontSize: typography?.fontSize ?? element.style.fontSize,
     fontWeight: typography?.fontWeight ?? element.style.fontWeight,
     fontStyle:
       typography?.fontStyle ??
+      element.style.fontStyle ??
       (typography?.italic || element.style.italic ? "italic" : "normal"),
     fontSynthesis: "none",
     textDecoration: typography?.underline

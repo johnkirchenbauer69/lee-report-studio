@@ -240,4 +240,22 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       return clone(records[index]!);
     });
   }
+
+  async deleteDraft(id: string, version: string) {
+    return this.enqueue(async () => {
+      const records = await this.read();
+      const index = records.findIndex(
+        (record) => record.id === id && record.version === version,
+      );
+      if (index < 0) throw new Error("Template version not found.");
+      if (records[index]!.status !== "draft")
+        throw new Error("Only unpublished draft templates can be deleted.");
+      if (records.filter((record) => record.id === id).length <= 1)
+        throw new Error(
+          "The only remaining template version cannot be deleted.",
+        );
+      records.splice(index, 1);
+      await this.write(records);
+    });
+  }
 }

@@ -521,9 +521,13 @@ export function Inspector({
                 aria-label="Table font family"
                 value={normalizeSemanticFontFamily(table.style.fontFamily)}
                 onChange={(event) =>
-                  setStyle({
-                    fontFamily: normalizeSemanticFontFamily(event.target.value),
-                  })
+                  setStyle(
+                    cellFontPatch(
+                      event.target.value,
+                      table.style.fontWeight ?? 400,
+                      table.style.fontStyle ?? "normal",
+                    ),
+                  )
                 }
               >
                 {fontFamilies.map((font) => (

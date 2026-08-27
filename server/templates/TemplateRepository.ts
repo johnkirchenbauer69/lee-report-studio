@@ -21,4 +21,5 @@ export interface TemplateRepository {
     template?: ReportTemplate,
   ): Promise<StoredTemplateVersion>;
   publish(id: string, version: string): Promise<StoredTemplateVersion>;
+  deleteDraft(id: string, version: string): Promise<void>;
 }

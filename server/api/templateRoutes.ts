@@ -93,5 +93,16 @@ export function createTemplateRouter(repository: TemplateRepository) {
       }
     },
   );
+  router.delete(
+    "/templates/:id/versions/:version",
+    async (request, response, next) => {
+      try {
+        await repository.deleteDraft(request.params.id, request.params.version);
+        response.status(204).end();
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   return router;
 }

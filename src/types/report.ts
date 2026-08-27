@@ -74,6 +74,9 @@ export interface ElementStyle {
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   italic?: boolean;
   textAlign?: "left" | "center" | "right";
   color?: string;

@@ -59,6 +59,7 @@ import {
   normalizeRotation,
 } from "./engine/geometry";
 import {
+  fontFamilyToCss,
   groupFontAssets,
   installManagedFonts,
   type ManagedFontFaceDiagnostic,
@@ -174,6 +175,9 @@ export default function App() {
     ManagedFontFaceDiagnostic[]
   >([]);
   const [reconciliationPath, setReconciliationPath] = useState<string>();
+  const [versionMenuKey, setVersionMenuKey] = useState<string>();
+  const [draftToDelete, setDraftToDelete] = useState<TemplateVersionSummary>();
+  const [deletingDraft, setDeletingDraft] = useState(false);
   const [generationProgress, setGenerationProgress] =
     useState<GenerationProgress>();
   const [preflightIssues, setPreflightIssues] = useState<
@@ -182,6 +186,7 @@ export default function App() {
   const interactionStart = useRef<ReportTemplate | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const managedServerAssets = useRef<Asset[]>([]);
 
   const page =
     template.pages.find((item) => item.id === pageId) ?? template.pages[0];
@@ -253,7 +258,13 @@ export default function App() {
     return templates;
   }, []);
   const openTemplateRecord = useCallback((record: StoredTemplateVersion) => {
-    const next = hydrate(record.template);
+    const browserAssets = (record.template.assets ?? []).filter(
+      (asset) => asset.storage !== "backend",
+    );
+    const assets = [...browserAssets, ...managedServerAssets.current];
+    const next = hydrate(
+      normalizeReportTemplateFonts({ ...record.template, assets }, assets),
+    );
     setActiveTemplateRecord(record);
     setTemplate(next);
     latestTemplate.current = next;
@@ -281,8 +292,12 @@ export default function App() {
       });
   }, [template.assets]);
   useEffect(() => {
-    refreshTemplateLibrary()
-      .then(async (records) => {
+    Promise.all([
+      refreshTemplateLibrary(),
+      assetStorage.list().catch(() => [] as Asset[]),
+    ])
+      .then(async ([records, serverAssets]) => {
+        managedServerAssets.current = serverAssets;
         const preferred =
           records.find((record) => record.status === "draft") ?? records[0];
         if (!preferred) return;
@@ -298,23 +313,6 @@ export default function App() {
         );
       });
   }, [openTemplateRecord, refreshTemplateLibrary]);
-  useEffect(() => {
-    assetStorage
-      .list()
-      .then((serverAssets) => {
-        if (!serverAssets.length) return;
-        mutate((current) => {
-          const browserAssets = (current.assets ?? []).filter(
-            (asset) => asset.storage !== "backend",
-          );
-          return normalizeReportTemplateFonts(
-            { ...current, assets: [...browserAssets, ...serverAssets] },
-            [...browserAssets, ...serverAssets],
-          );
-        }, false);
-      })
-      .catch(() => undefined);
-  }, [mutate]);
 
   const updatePage = useCallback(
     (updater: (current: ReportPage) => ReportPage, record = true) =>
@@ -953,6 +951,38 @@ export default function App() {
       );
     }
   };
+  const confirmDeleteDraft = async () => {
+    if (!draftToDelete || deletingDraft) return;
+    setDeletingDraft(true);
+    try {
+      await templateStore.deleteDraft(draftToDelete);
+      const records = await refreshTemplateLibrary();
+      if (
+        documentMode === "master-template" &&
+        activeTemplateRecord?.id === draftToDelete.id &&
+        activeTemplateRecord.version === draftToDelete.version
+      ) {
+        const family = records.filter(
+          (record) => record.id === draftToDelete.id,
+        );
+        const fallback =
+          family.find((record) => record.status === "published") ??
+          family.find((record) => record.status === "draft") ??
+          family[0];
+        if (fallback)
+          openTemplateRecord(
+            await templateStore.get(fallback.id, fallback.version),
+          );
+      }
+      notify(`Draft v${draftToDelete.version} deleted`);
+      setDraftToDelete(undefined);
+      setVersionMenuKey(undefined);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Draft deletion failed");
+    } finally {
+      setDeletingDraft(false);
+    }
+  };
   const startCreateReport = () => {
     if (!publishedTemplate) {
       setLeftTab("templates");
@@ -1051,7 +1081,14 @@ export default function App() {
     notify("Editable report generated");
   };
   const reset = () => {
-    const next = hydrate(activeTemplateRecord?.template ?? sampleTemplate);
+    const source = activeTemplateRecord?.template ?? sampleTemplate;
+    const browserAssets = (source.assets ?? []).filter(
+      (asset) => asset.storage !== "backend",
+    );
+    const assets = [...browserAssets, ...managedServerAssets.current];
+    const next = hydrate(
+      normalizeReportTemplateFonts({ ...source, assets }, assets),
+    );
     localPersistence.clear();
     setTemplate(next);
     latestTemplate.current = next;
@@ -1078,6 +1115,9 @@ export default function App() {
       notify("Uploading assets…");
       const { assets, summary } = await assetStorage.upload(Array.from(files));
       const allAssets = [...(latestTemplate.current.assets ?? []), ...assets];
+      managedServerAssets.current = allAssets.filter(
+        (asset) => asset.storage === "backend",
+      );
       setFontDiagnostics(await installManagedFonts(allAssets));
       mutate((current) =>
         normalizeReportTemplateFonts(
@@ -1115,6 +1155,9 @@ export default function App() {
       return;
     }
     await assetStorage.remove(asset.id);
+    managedServerAssets.current = managedServerAssets.current.filter(
+      (item) => item.id !== asset.id,
+    );
     mutate((current) => ({
       ...current,
       assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
@@ -1293,21 +1336,64 @@ export default function App() {
             onChange={(e) => handleFiles(e.target.files)}
           />
           <div className="font-library">
-            {[...families.entries()].map(([family, faces]) => (
-              <section className="font-family-card" key={family}>
-                <header>
-                  <strong style={{ fontFamily: family }}>{family}</strong>
-                  <span>{faces.length} faces</span>
-                </header>
-                {faces
-                  .sort(
-                    (a, b) =>
-                      (a.fontWeight ?? 400) - (b.fontWeight ?? 400) ||
-                      (a.fontStyle ?? "normal").localeCompare(
-                        b.fontStyle ?? "normal",
-                      ),
-                  )
-                  .map((face) => (
+            {[...families.entries()].map(([family, faces]) => {
+              const sortedFaces = [...faces].sort(
+                (a, b) =>
+                  (a.fontWeight ?? 400) - (b.fontWeight ?? 400) ||
+                  (a.fontStyle ?? "normal").localeCompare(
+                    b.fontStyle ?? "normal",
+                  ),
+              );
+              const previewFace =
+                sortedFaces.find(
+                  (face) =>
+                    (face.fontWeight ?? 400) === 400 &&
+                    (face.fontStyle ?? "normal") === "normal",
+                ) ?? sortedFaces[0];
+              const loadedFaces = faces.filter((face) =>
+                fontDiagnostics.some(
+                  (diagnostic) =>
+                    diagnostic.assetId === face.id && diagnostic.loaded,
+                ),
+              ).length;
+              const licenseTypes = [
+                ...new Set(
+                  faces.flatMap((face) =>
+                    face.license?.type ? [face.license.type] : [],
+                  ),
+                ),
+              ];
+              const licenseLabel = licenseTypes.length
+                ? licenseTypes.join(", ")
+                : faces.some((face) => face.license?.fileName)
+                  ? "Documentation provided · Unverified"
+                  : "Not provided · Unverified";
+              return (
+                <section className="font-family-card" key={family}>
+                  <header>
+                    <strong style={{ fontFamily: fontFamilyToCss(family) }}>
+                      {family}
+                    </strong>
+                    <span>{faces.length} faces</span>
+                  </header>
+                  <p
+                    className="font-family-preview"
+                    style={{
+                      fontFamily: fontFamilyToCss(family),
+                      fontWeight: previewFace?.fontWeight ?? 400,
+                      fontStyle: previewFace?.fontStyle ?? "normal",
+                    }}
+                  >
+                    The quick brown fox jumps over the lazy dog.
+                  </p>
+                  <div className="font-family-status">
+                    <span>
+                      {loadedFaces}/{faces.length} loaded
+                    </span>
+                    <span>License: {licenseLabel}</span>
+                    <span>Managed · checksum verified</span>
+                  </div>
+                  {sortedFaces.map((face) => (
                     <div className="font-face-row" key={face.id}>
                       <span>
                         {face.fontWeight ?? 400} {face.fontStyle ?? "normal"}
@@ -1334,8 +1420,9 @@ export default function App() {
                       </button>
                     </div>
                   ))}
-              </section>
-            ))}
+                </section>
+              );
+            })}
           </div>
           {!fontAssets.length && (
             <div className="empty-state">
@@ -1440,12 +1527,78 @@ export default function App() {
                         Updated {new Date(record.updatedAt).toLocaleString()}
                       </small>
                     </div>
-                    <button onClick={() => openTemplateVersion(record)}>
-                      Open
-                    </button>
-                    <button onClick={() => createDraftFromVersion(record)}>
-                      Create draft
-                    </button>
+                    <div className="template-version-actions">
+                      <button onClick={() => openTemplateVersion(record)}>
+                        {record.status === "draft" ? "Open Draft" : "Open"}
+                      </button>
+                      <button onClick={() => createDraftFromVersion(record)}>
+                        {record.status === "draft"
+                          ? "Create New Version"
+                          : "Create Draft From Version"}
+                      </button>
+                      {record.status === "draft" && (
+                        <button
+                          className="delete-draft-button"
+                          onClick={() => setDraftToDelete(record)}
+                        >
+                          Delete Draft
+                        </button>
+                      )}
+                      <div className="template-version-menu">
+                        <button
+                          aria-label={`More actions for v${record.version}`}
+                          aria-expanded={
+                            versionMenuKey === `${record.id}-${record.version}`
+                          }
+                          onClick={() =>
+                            setVersionMenuKey((current) =>
+                              current === `${record.id}-${record.version}`
+                                ? undefined
+                                : `${record.id}-${record.version}`,
+                            )
+                          }
+                        >
+                          •••
+                        </button>
+                        {versionMenuKey ===
+                          `${record.id}-${record.version}` && (
+                          <div role="menu">
+                            <button
+                              role="menuitem"
+                              onClick={() => openTemplateVersion(record)}
+                            >
+                              Open version
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => createDraftFromVersion(record)}
+                            >
+                              Duplicate as new draft
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                notify(
+                                  "All versions are shown in this version history.",
+                                );
+                                setVersionMenuKey(undefined);
+                              }}
+                            >
+                              View version history
+                            </button>
+                            {record.status === "draft" && (
+                              <button
+                                role="menuitem"
+                                className="danger"
+                                onClick={() => setDraftToDelete(record)}
+                              >
+                                Delete draft
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </section>
                 ))}
               </div>
@@ -2134,6 +2287,55 @@ export default function App() {
           publishedTemplate={publishedTemplate}
         />
       )}
+      {draftToDelete && (
+        <div
+          className="wizard-backdrop"
+          role="presentation"
+          onMouseDown={() => !deletingDraft && setDraftToDelete(undefined)}
+        >
+          <section
+            className="confirmation-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Delete draft v${draftToDelete.version}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="destructive-icon" aria-hidden="true">
+              !
+            </span>
+            <div>
+              <h2>Delete draft v{draftToDelete.version}?</h2>
+              <p>
+                This permanently removes this unpublished template draft.
+                Published templates, shared managed assets, and previously
+                generated reports will not be affected.
+              </p>
+              {activeTemplateRecord?.id === draftToDelete.id &&
+                activeTemplateRecord.version === draftToDelete.version && (
+                  <p className="current-draft-warning">
+                    This draft is currently open. The editor will safely open
+                    another retained version after deletion.
+                  </p>
+                )}
+            </div>
+            <footer>
+              <button
+                disabled={deletingDraft}
+                onClick={() => setDraftToDelete(undefined)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-delete-draft"
+                disabled={deletingDraft}
+                onClick={confirmDeleteDraft}
+              >
+                {deletingDraft ? "Deleting…" : "Delete Draft"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
       {reconciliationRecord?.reconciliation && (
         <ReconciliationDrilldown
           record={reconciliationRecord}
@@ -2151,7 +2353,6 @@ function PanelTitle({ title, subtitle }: { title: string; subtitle?: string }) {
         <strong>{title}</strong>
         {subtitle && <span>{subtitle}</span>}
       </div>
-      <button aria-label={`${title} options`}>•••</button>
     </div>
   );
 }

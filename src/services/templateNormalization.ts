@@ -39,8 +39,23 @@ const normalizeElement = (
   assets: Asset[],
 ): ReportElement => {
   const next = structuredClone(element);
-  if (next.style.fontFamily)
-    next.style.fontFamily = normalizeSemanticFontFamily(next.style.fontFamily);
+  if (next.style.fontFamily) {
+    const fontFamily = normalizeSemanticFontFamily(next.style.fontFamily);
+    const fontWeight = next.style.fontWeight ?? 400;
+    const fontStyle =
+      next.style.fontStyle ?? (next.style.italic ? "italic" : "normal");
+    const face = resolveAvailableManagedFontFace(
+      assets,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+    );
+    next.style.fontFamily = fontFamily;
+    next.style.fontWeight = face?.fontWeight ?? fontWeight;
+    next.style.fontStyle = face?.fontStyle ?? fontStyle;
+    next.style.fontAssetId = face?.id;
+    next.style.fontChecksum = face?.checksum;
+  }
   if (next.type === "text") {
     const typography = resolveTypography(next.style);
     const fontFamily = normalizeSemanticFontFamily(typography.fontFamily);

@@ -29,6 +29,33 @@ const normalizeFamily = (value: string) =>
     .replace(/\s+(?:6|8|9|10|11|12|14|16|18|24|32|36|48|60|72|96)pt$/i, "")
     .trim();
 
+export const inferNamedWeight = (...values: Array<string | undefined>) => {
+  const value = values.filter(Boolean).join(" ");
+  for (const [pattern, weight] of [
+    [/extra[\s-]*light|ultra[\s-]*light/i, 200],
+    [/semi[\s-]*bold|demi[\s-]*bold/i, 600],
+    [/extra[\s-]*bold|ultra[\s-]*bold/i, 800],
+    [/thin|hairline/i, 100],
+    [/light/i, 300],
+    [/medium/i, 500],
+    [/black|heavy/i, 900],
+    [/bold/i, 700],
+    [/book|regular|roman/i, 400],
+  ] as const)
+    if (pattern.test(value)) return weight;
+  return undefined;
+};
+
+const detectedLicenseType = (contents: string) => {
+  if (/SIL OPEN FONT LICENSE/i.test(contents))
+    return "SIL Open Font License 1.1";
+  if (/UBUNTU FONT LICEN[CS]E\s+Version 1\.0/i.test(contents))
+    return "Ubuntu Font Licence 1.0";
+  if (/Apache License[\s\S]{0,80}Version 2\.0/i.test(contents))
+    return "Apache License 2.0";
+  return undefined;
+};
+
 export function parseFontMetadata(buffer: Buffer): FontMetadata {
   const parsed = createFont(buffer);
   if ("fonts" in (parsed as FontCollection))
@@ -36,10 +63,13 @@ export function parseFontMetadata(buffer: Buffer): FontMetadata {
       "Font collections are not supported; upload individual font faces.",
     );
   const font = parsed as Font;
-  const weight = Math.min(
+  const os2Weight = Math.min(
     1000,
     Math.max(1, font["OS/2"]?.usWeightClass ?? 400),
   );
+  const weight =
+    inferNamedWeight(font.fullName, font.postscriptName, font.subfamilyName) ??
+    os2Weight;
   const style =
     font.italicAngle !== 0 || /italic|oblique/i.test(font.subfamilyName)
       ? "italic"
@@ -115,9 +145,9 @@ export function readFontBundle(buffer: Buffer): Promise<FontBundle> {
           }
           const extension = path.extname(entry.fileName).toLowerCase();
           const licenseEntry =
-            /(?:^|\/)(?:ofl|license|licence|copying)(?:[-_.]|$)/i.test(
+            /(?:^|\/)(?:ofl|ufl|license|licence|copying|readme|please-read|sil open font license)(?:[-_. ]|$)/i.test(
               entry.fileName,
-            );
+            ) || /personal[_ -]?use/i.test(entry.fileName);
           if (!FONT_EXTENSIONS.has(extension) && !licenseEntry) {
             zip.readEntry();
             return;
@@ -155,14 +185,14 @@ export function readFontBundle(buffer: Buffer): Promise<FontBundle> {
                   name: path.basename(entry.fileName),
                   buffer: contents,
                 });
-              else if (!license) {
+              else {
                 const text = contents.toString("utf8");
-                license = {
-                  type: /SIL OPEN FONT LICENSE/i.test(text)
-                    ? "SIL Open Font License 1.1"
-                    : undefined,
+                const candidate = {
+                  type: detectedLicenseType(text),
                   fileName: path.basename(entry.fileName),
                 };
+                if (!license || (!license.type && candidate.type))
+                  license = candidate;
               }
               zip.readEntry();
             });
