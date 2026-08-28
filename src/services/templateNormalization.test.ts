@@ -14,6 +14,7 @@ const regular: Asset = {
   fontWeight: 400,
   fontStyle: "normal",
   checksum: "regular-checksum",
+  fontGovernanceStatus: "approved",
 };
 
 describe("template typography migration", () => {

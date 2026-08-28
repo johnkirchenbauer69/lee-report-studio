@@ -3,6 +3,10 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Asset } from "../../src/types/report.ts";
 import {
+  inferFontGovernanceStatus,
+  isApprovedManagedFont,
+} from "../../src/services/fontGovernance.ts";
+import {
   FONT_EXTENSIONS,
   MAX_FONT_BYTES,
   type FontMetadata,
@@ -20,6 +24,12 @@ export interface ImportSummary {
   duplicates: number;
   conflicts: number;
   rejected: string[];
+}
+
+export interface FontGovernanceEnforcementResult {
+  approved: string[];
+  retired: string[];
+  deleted: string[];
 }
 
 export function classifyFontFace(
@@ -112,10 +122,18 @@ export class FileSystemAssetStore {
       ) as Array<StoredAsset & { fileName?: string }>;
       return stored
         .filter((asset) => asset.storageKey || asset.fileName)
-        .map(({ fileName, ...asset }) => ({
-          ...asset,
-          storageKey: asset.storageKey ?? fileName!,
-        }));
+        .map(({ fileName, ...asset }) => {
+          const normalized = {
+            ...asset,
+            storageKey: asset.storageKey ?? fileName!,
+          };
+          return normalized.type === "font"
+            ? {
+                ...normalized,
+                fontGovernanceStatus: inferFontGovernanceStatus(normalized),
+              }
+            : normalized;
+        });
     } catch {
       return [];
     }
@@ -245,6 +263,15 @@ export class FileSystemAssetStore {
       storage: "backend",
       storageKey,
       license,
+      fontGovernanceStatus: inferFontGovernanceStatus({
+        id,
+        name,
+        type: "font",
+        mimeType: mimeForExtension(extension),
+        source: "",
+        createdAt: "",
+        license,
+      }),
       version: classification.version,
       size: buffer.length,
     };
@@ -315,14 +342,68 @@ export class FileSystemAssetStore {
     });
   }
 
-  async remove(id: string): Promise<boolean> {
+  async enforceFontGovernance(
+    referencedAssetIds: ReadonlySet<string>,
+  ): Promise<FontGovernanceEnforcementResult> {
+    return this.enqueue(async () => {
+      const assets = await this.list();
+      const kept: StoredAsset[] = [];
+      const deleted: StoredAsset[] = [];
+      const result: FontGovernanceEnforcementResult = {
+        approved: [],
+        retired: [],
+        deleted: [],
+      };
+      for (const asset of assets) {
+        if (asset.type !== "font") {
+          kept.push(asset);
+          continue;
+        }
+        if (isApprovedManagedFont(asset)) {
+          kept.push({ ...asset, fontGovernanceStatus: "approved" });
+          result.approved.push(asset.id);
+        } else if (referencedAssetIds.has(asset.id)) {
+          kept.push({ ...asset, fontGovernanceStatus: "retired" });
+          result.retired.push(asset.id);
+        } else {
+          deleted.push(asset);
+          result.deleted.push(asset.id);
+        }
+      }
+      const retainedKeys = new Set(kept.map((asset) => asset.storageKey));
+      await Promise.all(
+        deleted
+          .filter((asset) => !retainedKeys.has(asset.storageKey))
+          .map((asset) => unlink(this.resolve(asset)).catch(() => undefined)),
+      );
+      await this.save(kept);
+      return result;
+    });
+  }
+
+  async remove(
+    id: string,
+    referencedAssetIds: ReadonlySet<string> = new Set(),
+  ): Promise<"deleted" | "retained" | "not-found"> {
     return this.enqueue(async () => {
       const assets = await this.list();
       const asset = assets.find((item) => item.id === id);
-      if (!asset) return false;
-      await unlink(this.resolve(asset)).catch(() => undefined);
-      await this.save(assets.filter((item) => item.id !== id));
-      return true;
+      if (!asset) return "not-found";
+      if (asset.type === "font" && referencedAssetIds.has(id)) {
+        await this.save(
+          assets.map((item) =>
+            item.id === id
+              ? { ...item, fontGovernanceStatus: "retired" }
+              : item,
+          ),
+        );
+        return "retained";
+      }
+      const remaining = assets.filter((item) => item.id !== id);
+      if (!remaining.some((item) => item.storageKey === asset.storageKey))
+        await unlink(this.resolve(asset)).catch(() => undefined);
+      await this.save(remaining);
+      return "deleted";
     });
   }
 }

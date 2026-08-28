@@ -131,6 +131,43 @@ describe("FileSystemTemplateRepository", () => {
     expect(await repository.get(published.id, published.version)).toBeDefined();
   });
 
+  it("blocks publishing a new template version that pins a retired font", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    const template = structuredClone(sampleTemplate);
+    const retired = {
+      id: "retired-walrus",
+      name: "Walrus",
+      type: "font" as const,
+      mimeType: "font/ttf",
+      source: "/api/assets/retired-walrus/content",
+      createdAt: "2026-08-28T00:00:00.000Z",
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal" as const,
+      checksum: "retired-checksum",
+      fontGovernanceStatus: "retired" as const,
+    };
+    template.assets = [retired];
+    const element = template.pages
+      .flatMap((page) => page.elements)
+      .find((candidate) => candidate.type === "text")!;
+    element.style = {
+      ...element.style,
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal",
+      fontAssetId: retired.id,
+      fontChecksum: retired.checksum,
+    };
+    await repository.initialize(template);
+    const draft = (await repository.list())[0]!;
+    await expect(repository.publish(draft.id, draft.version)).rejects.toThrow(
+      "non-approved fonts",
+    );
+  });
+
   it("generates from an exact published version/checksum without mutating the stored master", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
     roots.push(root);

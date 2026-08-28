@@ -18,6 +18,7 @@ const managedNunito: Asset = {
   fontWeight: 400,
   fontStyle: "normal",
   checksum: "expected-checksum",
+  fontGovernanceStatus: "approved",
   version: 1,
 };
 
@@ -224,5 +225,42 @@ describe("runExportPreflight image content-type check", () => {
         message: expect.stringContaining("missing or changed managed font"),
       }),
     ]);
+  });
+
+  it("blocks a new publication using a retired face but permits immutable historical reproduction", async () => {
+    vi.stubGlobal("document", { fonts: { check: vi.fn(() => true) } });
+    const retired = {
+      ...managedNunito,
+      id: "retired-face",
+      fontFamily: "Walrus",
+      fontGovernanceStatus: "retired" as const,
+    };
+    const element = {
+      id: "historical-title",
+      type: "text" as const,
+      name: "Historical title",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 30,
+      text: "Historical",
+      style: {
+        fontFamily: "Walrus",
+        fontWeight: 400,
+        fontStyle: "normal" as const,
+        fontAssetId: retired.id,
+        fontChecksum: retired.checksum,
+      },
+    };
+    const template = templateWith(element, [retired]);
+    expect(await runExportPreflight(template)).toEqual([
+      expect.objectContaining({
+        level: "error",
+        message: expect.stringContaining("non-approved managed font Walrus"),
+      }),
+    ]);
+    expect(await runExportPreflight(template, { historical: true })).toEqual(
+      [],
+    );
   });
 });

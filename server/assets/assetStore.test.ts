@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -139,5 +139,48 @@ describe("FileSystemAssetStore.importBuffer", () => {
         name: "not-an-image.html",
       }),
     ).rejects.toThrow("Unsupported image type.");
+  });
+
+  it("physically deletes an unused unverified font and persists removal across restart", async () => {
+    const unverified = {
+      ...stored("unverified"),
+      fontFamily: "Cooper Hewitt",
+      license: { fileName: "readme.txt" },
+    };
+    const contentPath = path.join(dataRoot, "assets", unverified.storageKey);
+    await mkdir(path.dirname(contentPath), { recursive: true });
+    await writeFile(contentPath, "font bytes");
+    await writeFile(
+      path.join(dataRoot, "assets.json"),
+      JSON.stringify([unverified]),
+    );
+
+    const result = await store.enforceFontGovernance(new Set());
+    expect(result.deleted).toEqual([unverified.id]);
+    await expect(access(contentPath)).rejects.toThrow();
+    expect(await new FileSystemAssetStore(dataRoot).list()).toEqual([]);
+  });
+
+  it("retires and retains a referenced historical face and its bytes", async () => {
+    const historical = {
+      ...stored("historical"),
+      fontFamily: "Walrus",
+      license: { fileName: "PLEASE-READ.txt" },
+    };
+    const contentPath = path.join(dataRoot, "assets", historical.storageKey);
+    await mkdir(path.dirname(contentPath), { recursive: true });
+    await writeFile(contentPath, "historical font bytes");
+    await writeFile(
+      path.join(dataRoot, "assets.json"),
+      JSON.stringify([historical]),
+    );
+
+    const result = await store.enforceFontGovernance(new Set([historical.id]));
+    expect(result.retired).toEqual([historical.id]);
+    expect((await store.list())[0]?.fontGovernanceStatus).toBe("retired");
+    await expect(access(contentPath)).resolves.toBeUndefined();
+    expect(await store.remove(historical.id, new Set([historical.id]))).toBe(
+      "retained",
+    );
   });
 });

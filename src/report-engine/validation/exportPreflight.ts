@@ -11,6 +11,7 @@ import {
   resolveManagedFontFace,
 } from "../../services/fontRegistry";
 import { resolveTypography } from "../../engine/typography";
+import { findNonApprovedFontUsages } from "../../services/fontGovernance";
 
 export interface ExportPreflightIssue {
   level: "warning" | "error";
@@ -22,8 +23,17 @@ export interface ExportPreflightIssue {
 
 export async function runExportPreflight(
   template: ReportTemplate,
+  options: { historical?: boolean } = {},
 ): Promise<ExportPreflightIssue[]> {
-  const issues: ExportPreflightIssue[] = [];
+  const issues: ExportPreflightIssue[] = options.historical
+    ? []
+    : findNonApprovedFontUsages(template).map((usage) => ({
+        level: "error" as const,
+        kind: "font" as const,
+        pageId: usage.pageId,
+        elementId: usage.elementId,
+        message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
+      }));
   for (const page of template.pages) {
     for (const element of page.elements) {
       if (element.hidden) continue;
@@ -58,6 +68,7 @@ export async function runExportPreflight(
           family,
           weight,
           fontStyle,
+          options.historical,
         );
         if (
           typography?.fontAssetId &&

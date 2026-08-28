@@ -10,6 +10,7 @@ export interface TemplateRepository {
   listVersions(id: string): Promise<TemplateVersionSummary[]>;
   get(id: string, version: string): Promise<StoredTemplateVersion | undefined>;
   getPublished(id: string): Promise<StoredTemplateVersion | undefined>;
+  listFontAssetReferences(): Promise<Set<string>>;
   saveDraft(
     id: string,
     version: string,

@@ -91,6 +91,7 @@ describe("generateReportInstance", () => {
         fontWeight: 700,
         fontStyle: "normal",
         checksum: "abc123",
+        fontGovernanceStatus: "approved",
         storage: "backend",
       },
     ];
@@ -137,6 +138,7 @@ describe("generateReportInstance", () => {
         fontWeight: 600,
         fontStyle: "normal",
         checksum: "semibold-checksum",
+        fontGovernanceStatus: "approved",
         version: 1,
         storage: "backend",
       },
@@ -166,5 +168,52 @@ describe("generateReportInstance", () => {
           element.style.typography?.fontChecksum === "semibold-checksum",
       ),
     ).toBe(true);
+  });
+
+  it("creates an editable draft but blocks publication when a retired face is pinned", async () => {
+    const template = structuredClone(sampleTemplate);
+    const retired = {
+      id: "retired-walrus",
+      name: "Walrus Regular",
+      type: "font" as const,
+      mimeType: "font/ttf",
+      source: "/api/assets/retired-walrus/content",
+      createdAt: "2026-08-28T00:00:00.000Z",
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal" as const,
+      checksum: "walrus-checksum",
+      fontGovernanceStatus: "retired" as const,
+      storage: "backend" as const,
+    };
+    template.assets = [retired];
+    const element = template.pages
+      .flatMap((page) => page.elements)
+      .find((candidate) => candidate.type === "text")!;
+    element.style = {
+      ...element.style,
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal",
+      fontAssetId: retired.id,
+      fontChecksum: retired.checksum,
+    };
+    const report = await generateReportInstance(template, {
+      templateId: template.id,
+      templateVersion: template.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarkets: [] },
+      source: { provider: "sample" },
+    });
+    expect(report.readiness.canEdit).toBe(true);
+    expect(report.readiness.canPublish).toBe(false);
+    expect(report.readiness.blockers).toEqual([
+      expect.objectContaining({
+        level: "blocking",
+        message: expect.stringContaining("non-approved managed font Walrus"),
+      }),
+    ]);
   });
 });

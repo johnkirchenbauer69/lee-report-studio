@@ -26,6 +26,7 @@ const face = (
   fontWeight: weight,
   fontStyle: style,
   checksum: id,
+  fontGovernanceStatus: "approved",
   storage: "backend",
 });
 

@@ -14,6 +14,10 @@ import {
 } from "../validation/reportValidation";
 import { expandTemplatePages } from "./repeaters";
 import { prepareTemplateForReport } from "./prepareTemplate";
+import {
+  collectManagedFontReferences,
+  findNonApprovedFontUsages,
+} from "../../services/fontGovernance";
 
 export interface GenerationProgress {
   stage:
@@ -147,11 +151,24 @@ export async function generateReportInstance(
   const reconciled = reconcileSources(calculated);
 
   progress(onProgress, "validating", "Evaluating report readiness");
-  const readiness = evaluateReportReadiness(
+  const dataReadiness = evaluateReportReadiness(
     reconciled,
     template,
     providerResult.provider,
   );
+  const fontIssues = findNonApprovedFontUsages(template).map((usage) => ({
+    path: `pages.${usage.pageId}.elements.${usage.elementId}.font`,
+    message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
+    level: "blocking" as const,
+    category: "readiness" as const,
+  }));
+  const readiness = {
+    ...dataReadiness,
+    canApprove: dataReadiness.canApprove && fontIssues.length === 0,
+    canPublish: dataReadiness.canPublish && fontIssues.length === 0,
+    blockers: [...dataReadiness.blockers, ...fontIssues],
+    issues: [...dataReadiness.issues, ...fontIssues],
+  };
   const structuralErrors = readiness.issues.filter(
     (issue) => issue.level === "error",
   );
@@ -200,22 +217,7 @@ export async function generateReportInstance(
     generatedAt: new Date().toISOString(),
     dataSnapshot: structuredClone(reconciled),
     pages,
-    fontReferences: (template.assets ?? [])
-      .filter(
-        (asset) =>
-          asset.type === "font" &&
-          asset.fontFamily &&
-          asset.fontWeight != null &&
-          asset.fontStyle &&
-          asset.checksum,
-      )
-      .map((asset) => ({
-        assetId: asset.id,
-        family: asset.fontFamily!,
-        weight: asset.fontWeight!,
-        style: asset.fontStyle!,
-        checksum: asset.checksum!,
-      })),
+    fontReferences: collectManagedFontReferences({ ...template, pages }),
     manualOverrides: [],
     readiness,
     status: "draft",

@@ -19,6 +19,7 @@ const managedNunito600: Asset = {
   fontWeight: 600,
   fontStyle: "normal",
   checksum: "nunito-sans-semibold-checksum",
+  fontGovernanceStatus: "approved",
   version: 1,
 };
 

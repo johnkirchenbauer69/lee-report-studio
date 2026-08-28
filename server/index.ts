@@ -25,11 +25,19 @@ const assetStore = new FileSystemAssetStore(dataRoot);
 const templateRepository = new FileSystemTemplateRepository(dataRoot);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
 await assetStore.initialize();
-const managedFontAssets = (await assetStore.list()).filter(
-  (asset) => asset.type === "font" && asset.fontFamily,
-);
 await templateRepository.initialize(
-  normalizeReportTemplateFonts(sampleTemplate, managedFontAssets),
+  normalizeReportTemplateFonts(
+    sampleTemplate,
+    (await assetStore.list()).filter(
+      (asset) => asset.type === "font" && asset.fontFamily,
+    ),
+  ),
+);
+const fontGovernance = await assetStore.enforceFontGovernance(
+  await templateRepository.listFontAssetReferences(),
+);
+console.log(
+  `Font governance: ${fontGovernance.approved.length} approved, ${fontGovernance.retired.length} retained historical, ${fontGovernance.deleted.length} deleted.`,
 );
 
 const upload = multer({
@@ -83,9 +91,15 @@ app.get("/api/assets/:id/content", async (request, response) => {
   return response.sendFile(assetStore.resolve(asset));
 });
 app.delete("/api/assets/:id", async (request, response) => {
-  if (!(await assetStore.remove(request.params.id)))
+  const outcome = await assetStore.remove(
+    request.params.id,
+    await templateRepository.listFontAssetReferences(),
+  );
+  if (outcome === "not-found")
     return response.status(404).json({ error: "Asset not found" });
-  return response.status(204).end();
+  return outcome === "retained"
+    ? response.status(200).json({ outcome })
+    : response.status(204).end();
 });
 
 interface RenderJob {

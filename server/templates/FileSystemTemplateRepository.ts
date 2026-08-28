@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { FontReference, ReportTemplate } from "../../src/types/report.ts";
+import type { ReportTemplate } from "../../src/types/report.ts";
+import {
+  collectManagedFontReferences,
+  findNonApprovedFontUsages,
+} from "../../src/services/fontGovernance.ts";
 import type {
   StoredTemplateVersion,
   TemplateVersionSummary,
@@ -25,24 +29,6 @@ const nextVersion = (versions: string[]) => {
   const [major = 1, minor = 0] = latest.split(".").map(Number);
   return `${major}.${minor + 1}.0`;
 };
-const fontReferences = (template: ReportTemplate): FontReference[] =>
-  (template.assets ?? []).flatMap((asset) =>
-    asset.type === "font" &&
-    asset.fontFamily &&
-    asset.fontWeight != null &&
-    asset.fontStyle &&
-    asset.checksum
-      ? [
-          {
-            assetId: asset.id,
-            family: asset.fontFamily,
-            weight: asset.fontWeight,
-            style: asset.fontStyle,
-            checksum: asset.checksum,
-          },
-        ]
-      : [],
-  );
 const summary = (record: StoredTemplateVersion): TemplateVersionSummary => {
   const {
     template: _template,
@@ -118,7 +104,7 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       pageDefinitionCount: frozen.pages.length,
       template: frozen,
       assetReferences: (frozen.assets ?? []).map((asset) => asset.id),
-      managedFontReferences: fontReferences(frozen),
+      managedFontReferences: collectManagedFontReferences(frozen),
     };
   }
 
@@ -156,6 +142,16 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       .filter((record) => record.id === id && record.status === "published")
       .sort((a, b) => compareVersions(b.version, a.version))[0];
     return found ? clone(found) : undefined;
+  }
+
+  async listFontAssetReferences() {
+    return new Set(
+      (await this.read()).flatMap((record) =>
+        collectManagedFontReferences(record.template).map(
+          (reference) => reference.assetId,
+        ),
+      ),
+    );
   }
 
   async saveDraft(id: string, version: string, template: ReportTemplate) {
@@ -220,6 +216,18 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       if (index < 0) throw new Error("Template version not found.");
       if (records[index]!.status !== "draft")
         throw new Error("Only a draft template can be published.");
+      const disallowedFonts = findNonApprovedFontUsages(
+        records[index]!.template,
+      );
+      if (disallowedFonts.length)
+        throw new Error(
+          `Template publication is blocked by non-approved fonts:\n${disallowedFonts
+            .map(
+              (usage) =>
+                `- ${usage.elementName} (${usage.elementId}) uses ${usage.family} [${usage.status}]`,
+            )
+            .join("\n")}`,
+        );
       const publishedAt = this.now().toISOString();
       for (let cursor = 0; cursor < records.length; cursor += 1) {
         const record = records[cursor]!;

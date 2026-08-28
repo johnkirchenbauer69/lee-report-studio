@@ -289,10 +289,15 @@ export interface Asset {
   scope?: "builtin" | "organization" | "template";
   storageKey?: string;
   license?: { type?: string; fileName?: string };
+  /** Production-use policy. Missing legacy values are inferred from license metadata. */
+  fontGovernanceStatus?: FontGovernanceStatus;
   version?: number;
   storage?: "backend" | "browser";
   size?: number;
 }
+
+export type FontGovernanceStatus =
+  "approved" | "unverified" | "restricted" | "retired";
 
 export interface FontReference {
   assetId: string;

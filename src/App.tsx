@@ -66,6 +66,10 @@ import {
   type ManagedFontFaceDiagnostic,
 } from "./services/fontRegistry";
 import { normalizeReportTemplateFonts } from "./services/templateNormalization";
+import {
+  approvedManagedFontAssets,
+  inferFontGovernanceStatus,
+} from "./services/fontGovernance";
 import { templateStore } from "./services/templateStore";
 import type {
   StoredTemplateVersion,
@@ -1320,9 +1324,9 @@ export default function App() {
         </>
       );
     if (leftTab === "fonts") {
-      const fontAssets = (template.assets ?? []).filter(
-        (asset) => asset.type === "font" && asset.fontFamily,
-      );
+      const fontAssets = approvedManagedFontAssets(
+        template.assets ?? [],
+      ).filter((asset) => asset.fontFamily);
       const families = groupFontAssets(fontAssets);
       return (
         <>
@@ -1409,7 +1413,10 @@ export default function App() {
                       {loadedFaces}/{faces.length} loaded
                     </span>
                     <span>License: {licenseLabel}</span>
-                    <span>Managed · checksum verified</span>
+                    <span>
+                      Governance: {inferFontGovernanceStatus(faces[0]!)} ·
+                      checksum verified
+                    </span>
                   </div>
                   {sortedFaces.map((face) => (
                     <div className="font-face-row" key={face.id}>

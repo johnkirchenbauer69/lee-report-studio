@@ -1,4 +1,5 @@
 import type { Asset, Typography } from "../types/report";
+import { isApprovedManagedFont } from "./fontGovernance";
 
 const STYLE_ID = "lee-managed-font-faces";
 export const BRAND_FONT_FAMILY = "Nunito Sans";
@@ -161,10 +162,13 @@ export async function installManagedFonts(
   );
 }
 
-export function groupFontAssets(assets: Asset[]) {
+export function groupFontAssets(assets: Asset[], includeDisallowed = false) {
   const groups = new Map<string, Asset[]>();
   for (const asset of assets.filter(
-    (item) => item.type === "font" && item.fontFamily,
+    (item) =>
+      item.type === "font" &&
+      item.fontFamily &&
+      (includeDisallowed || isApprovedManagedFont(item)),
   )) {
     const family = normalizeSemanticFontFamily(asset.fontFamily);
     const current = groups.get(family) ?? [];
@@ -179,11 +183,13 @@ export function resolveManagedFontFace(
   family: string,
   weight: number,
   style: "normal" | "italic",
+  includeDisallowed = false,
 ): Asset | undefined {
   const semantic = normalizeSemanticFontFamily(family);
   return assets.find(
     (asset) =>
       asset.type === "font" &&
+      (includeDisallowed || isApprovedManagedFont(asset)) &&
       normalizeSemanticFontFamily(asset.fontFamily) === semantic &&
       (asset.fontWeight ?? 400) === weight &&
       (asset.fontStyle ?? "normal") === style,
@@ -196,14 +202,22 @@ export function resolveAvailableManagedFontFace(
   family: string,
   weight: number,
   style: "normal" | "italic",
+  includeDisallowed = false,
 ): Asset | undefined {
-  const exact = resolveManagedFontFace(assets, family, weight, style);
+  const exact = resolveManagedFontFace(
+    assets,
+    family,
+    weight,
+    style,
+    includeDisallowed,
+  );
   if (exact) return exact;
   const semantic = normalizeSemanticFontFamily(family);
   return assets
     .filter(
       (asset) =>
         asset.type === "font" &&
+        (includeDisallowed || isApprovedManagedFont(asset)) &&
         normalizeSemanticFontFamily(asset.fontFamily) === semantic,
     )
     .sort((left, right) => {
@@ -238,7 +252,7 @@ export function diagnoseFontSelection(
   const style =
     typography.fontStyle ?? (typography.italic ? "italic" : "normal");
   const managedFamily =
-    groupFontAssets(assets).has(family) || family === BRAND_FONT_FAMILY;
+    groupFontAssets(assets, true).has(family) || family === BRAND_FONT_FAMILY;
   if (!managedFamily)
     return {
       family,
