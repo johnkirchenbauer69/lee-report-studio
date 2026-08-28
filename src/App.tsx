@@ -26,6 +26,7 @@ import { Inspector } from "./components/Inspector";
 import { DataBrowser } from "./components/DataBrowser";
 import { ValidationPanel } from "./components/ValidationPanel";
 import { CreateReportWizard } from "./components/CreateReportWizard";
+import { ReconciliationDrilldown } from "./components/ReconciliationDrilldown";
 import { validatePage } from "./engine/validation";
 import { localPersistence } from "./services/persistence";
 import { assetStorage } from "./services/assetStorage";
@@ -57,7 +58,23 @@ import {
   getRotatedAabb,
   normalizeRotation,
 } from "./engine/geometry";
-import { groupFontAssets, installManagedFonts } from "./services/fontRegistry";
+import {
+  fontFamilyToCss,
+  groupFontAssets,
+  installManagedFonts,
+  resolveAvailableManagedFontFace,
+  type ManagedFontFaceDiagnostic,
+} from "./services/fontRegistry";
+import { normalizeReportTemplateFonts } from "./services/templateNormalization";
+import {
+  approvedManagedFontAssets,
+  inferFontGovernanceStatus,
+} from "./services/fontGovernance";
+import { templateStore } from "./services/templateStore";
+import type {
+  StoredTemplateVersion,
+  TemplateVersionSummary,
+} from "./types/templateLibrary";
 import "./styles/app.css";
 import "./styles/advanced.css";
 
@@ -78,8 +95,9 @@ const defaultSettings: EditorSettings = {
 };
 
 function hydrate(input: ReportTemplate): ReportTemplate {
+  const normalized = normalizeReportTemplateFonts(input, input.assets ?? []);
   return {
-    ...clone(input),
+    ...clone(normalized),
     assets: input.assets ?? [],
     settings: { ...defaultSettings, ...input.settings },
     pages: input.pages.map((page) => ({
@@ -114,6 +132,7 @@ type LeftTab =
   | "pages"
   | "validate";
 type ContextMenuState = { x: number; y: number; id: string } | undefined;
+type EditorDocumentMode = "master-template" | "report-instance";
 
 export default function App() {
   const [template, setTemplate] = useState<ReportTemplate>(() => {
@@ -145,6 +164,25 @@ export default function App() {
   const [normalizedReport, setNormalizedReport] =
     useState<IndustrialMarketReport>(() => q2SampleReport);
   const [reportInstance, setReportInstance] = useState<ReportInstance>();
+  const [documentMode, setDocumentMode] =
+    useState<EditorDocumentMode>("master-template");
+  const [templateLibrary, setTemplateLibrary] = useState<
+    TemplateVersionSummary[]
+  >([]);
+  const [activeTemplateRecord, setActiveTemplateRecord] =
+    useState<StoredTemplateVersion>();
+  const [publishedTemplate, setPublishedTemplate] =
+    useState<StoredTemplateVersion>();
+  const [librarySaveState, setLibrarySaveState] = useState<
+    "loading" | "saved" | "local" | "error"
+  >("loading");
+  const [fontDiagnostics, setFontDiagnostics] = useState<
+    ManagedFontFaceDiagnostic[]
+  >([]);
+  const [reconciliationPath, setReconciliationPath] = useState<string>();
+  const [versionMenuKey, setVersionMenuKey] = useState<string>();
+  const [draftToDelete, setDraftToDelete] = useState<TemplateVersionSummary>();
+  const [deletingDraft, setDeletingDraft] = useState(false);
   const [generationProgress, setGenerationProgress] =
     useState<GenerationProgress>();
   const [preflightIssues, setPreflightIssues] = useState<
@@ -153,6 +191,7 @@ export default function App() {
   const interactionStart = useRef<ReportTemplate | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const managedServerAssets = useRef<Asset[]>([]);
 
   const page =
     template.pages.find((item) => item.id === pageId) ?? template.pages[0];
@@ -160,6 +199,9 @@ export default function App() {
     selectedIds.includes(element.id),
   );
   const selected = selectedElements[0];
+  const reconciliationRecord = normalizedReport.provenance.find(
+    (record) => record.fieldPath === reconciliationPath,
+  );
   const settings = { ...defaultSettings, ...template.settings };
   const validations = useMemo(
     () => [
@@ -167,6 +209,7 @@ export default function App() {
         level: issue.level,
         category: "data" as const,
         message: issue.message,
+        path: issue.path,
       })) ?? []),
       ...validatePage(page, reportData),
       ...preflightIssues
@@ -183,46 +226,98 @@ export default function App() {
 
   const mutate = useCallback(
     (updater: (current: ReportTemplate) => ReportTemplate, record = true) => {
+      if (
+        record &&
+        documentMode === "master-template" &&
+        activeTemplateRecord &&
+        activeTemplateRecord.status !== "draft"
+      ) {
+        setToast(
+          "Published templates are read-only. Create a draft version to edit.",
+        );
+        window.setTimeout(() => setToast(""), 1800);
+        return;
+      }
       setTemplate((current) => {
         if (record) {
           setPast((items) => [...items.slice(-49), clone(current)]);
           setFuture([]);
+          setLibrarySaveState("local");
         }
         const next = updater(current);
         latestTemplate.current = next;
         return next;
       });
     },
-    [],
+    [activeTemplateRecord, documentMode],
   );
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
   };
+  const refreshTemplateLibrary = useCallback(async () => {
+    const templates = await templateStore.list();
+    setTemplateLibrary(templates);
+    const published = await templateStore.getPublished(sampleTemplate.id);
+    setPublishedTemplate(published);
+    return templates;
+  }, []);
+  const openTemplateRecord = useCallback((record: StoredTemplateVersion) => {
+    const browserAssets = (record.template.assets ?? []).filter(
+      (asset) => asset.storage !== "backend",
+    );
+    const assets = [...browserAssets, ...managedServerAssets.current];
+    const next = hydrate(
+      normalizeReportTemplateFonts({ ...record.template, assets }, assets),
+    );
+    setActiveTemplateRecord(record);
+    setTemplate(next);
+    latestTemplate.current = next;
+    setDocumentMode("master-template");
+    setReportInstance(undefined);
+    setReportData(sampleData);
+    setNormalizedReport(q2SampleReport);
+    setPageId(next.pages[1]?.id ?? next.pages[0].id);
+    setSelectedIds([]);
+    setPast([]);
+    setFuture([]);
+    setLibrarySaveState("saved");
+  }, []);
   useEffect(() => {
     latestTemplate.current = template;
     const timer = window.setTimeout(() => localPersistence.save(template), 250);
     return () => window.clearTimeout(timer);
   }, [template]);
   useEffect(() => {
-    installManagedFonts(template.assets ?? []).catch((error) =>
-      console.warn("Saved managed fonts could not be restored.", error),
-    );
+    installManagedFonts(template.assets ?? [])
+      .then(setFontDiagnostics)
+      .catch((error) => {
+        setFontDiagnostics([]);
+        console.warn("Saved managed fonts could not be restored.", error);
+      });
   }, [template.assets]);
   useEffect(() => {
-    assetStorage
-      .list()
-      .then((serverAssets) => {
-        if (!serverAssets.length) return;
-        mutate((current) => {
-          const browserAssets = (current.assets ?? []).filter(
-            (asset) => asset.storage !== "backend",
-          );
-          return { ...current, assets: [...browserAssets, ...serverAssets] };
-        }, false);
+    Promise.all([
+      refreshTemplateLibrary(),
+      assetStorage.list().catch(() => [] as Asset[]),
+    ])
+      .then(async ([records, serverAssets]) => {
+        managedServerAssets.current = serverAssets;
+        const preferred =
+          records.find((record) => record.status === "draft") ?? records[0];
+        if (!preferred) return;
+        openTemplateRecord(
+          await templateStore.get(preferred.id, preferred.version),
+        );
       })
-      .catch(() => undefined);
-  }, [mutate]);
+      .catch((error) => {
+        setLibrarySaveState("local");
+        console.warn(
+          "Template library unavailable; local recovery remains active.",
+          error,
+        );
+      });
+  }, [openTemplateRecord, refreshTemplateLibrary]);
 
   const updatePage = useCallback(
     (updater: (current: ReportPage) => ReportPage, record = true) =>
@@ -427,7 +522,15 @@ export default function App() {
   };
   const addText = (variant: "heading" | "subheading" | "body" = "body") => {
     const id = uid("text"),
-      sizes = { heading: 32, subheading: 22, body: 14 };
+      sizes = { heading: 32, subheading: 22, body: 14 },
+      weight =
+        variant === "heading" ? 700 : variant === "subheading" ? 600 : 400,
+      managedFace = resolveAvailableManagedFontFace(
+        latestTemplate.current.assets ?? [],
+        "Nunito Sans",
+        weight,
+        "normal",
+      );
     const element: ReportElement = {
       id,
       type: "text",
@@ -449,9 +552,11 @@ export default function App() {
             : "Add body text",
       style: {
         typography: {
-          fontFamily: "Inter",
-          fontWeight:
-            variant === "heading" ? 700 : variant === "subheading" ? 600 : 400,
+          fontFamily: "Nunito Sans",
+          fontWeight: managedFace?.fontWeight ?? weight,
+          fontStyle: managedFace?.fontStyle ?? "normal",
+          fontAssetId: managedFace?.id,
+          fontChecksum: managedFace?.checksum,
           fontSize: sizes[variant],
           color: "#172033",
           letterSpacing: 0,
@@ -777,6 +882,130 @@ export default function App() {
     URL.revokeObjectURL(url);
     notify("Template exported");
   };
+  const saveMasterTemplate = async () => {
+    if (documentMode !== "master-template" || !activeTemplateRecord) return;
+    if (activeTemplateRecord.status !== "draft") {
+      notify("Published templates require Save As New Version.");
+      return;
+    }
+    try {
+      const normalized = normalizeReportTemplateFonts(
+        latestTemplate.current,
+        latestTemplate.current.assets ?? [],
+      );
+      const saved = await templateStore.saveDraft(
+        activeTemplateRecord,
+        normalized,
+      );
+      openTemplateRecord(saved);
+      await refreshTemplateLibrary();
+      setLibrarySaveState("saved");
+      notify(`Template v${saved.version} saved to library`);
+    } catch (error) {
+      setLibrarySaveState("error");
+      notify(error instanceof Error ? error.message : "Template save failed");
+    }
+  };
+  const saveAsNewTemplateVersion = async (
+    source = activeTemplateRecord,
+    sourceTemplate = latestTemplate.current,
+  ) => {
+    if (!source) return;
+    try {
+      const created = await templateStore.createVersion(
+        source,
+        normalizeReportTemplateFonts(
+          sourceTemplate,
+          sourceTemplate.assets ?? [],
+        ),
+      );
+      openTemplateRecord(created);
+      await refreshTemplateLibrary();
+      notify(`Draft v${created.version} created`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "New version failed");
+    }
+  };
+  const publishMasterTemplate = async () => {
+    if (!activeTemplateRecord || activeTemplateRecord.status !== "draft") {
+      notify("Only a saved draft can be published.");
+      return;
+    }
+    try {
+      const saved = await templateStore.saveDraft(
+        activeTemplateRecord,
+        normalizeReportTemplateFonts(
+          latestTemplate.current,
+          latestTemplate.current.assets ?? [],
+        ),
+      );
+      const published = await templateStore.publish(saved);
+      openTemplateRecord(published);
+      await refreshTemplateLibrary();
+      notify(`Template v${published.version} published`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Publish failed");
+    }
+  };
+  const openTemplateVersion = async (summary: TemplateVersionSummary) => {
+    try {
+      openTemplateRecord(await templateStore.get(summary.id, summary.version));
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : "Template could not be opened",
+      );
+    }
+  };
+  const createDraftFromVersion = async (summary: TemplateVersionSummary) => {
+    try {
+      const source = await templateStore.get(summary.id, summary.version);
+      await saveAsNewTemplateVersion(source, source.template);
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : "Draft could not be created",
+      );
+    }
+  };
+  const confirmDeleteDraft = async () => {
+    if (!draftToDelete || deletingDraft) return;
+    setDeletingDraft(true);
+    try {
+      await templateStore.deleteDraft(draftToDelete);
+      const records = await refreshTemplateLibrary();
+      if (
+        documentMode === "master-template" &&
+        activeTemplateRecord?.id === draftToDelete.id &&
+        activeTemplateRecord.version === draftToDelete.version
+      ) {
+        const family = records.filter(
+          (record) => record.id === draftToDelete.id,
+        );
+        const fallback =
+          family.find((record) => record.status === "published") ??
+          family.find((record) => record.status === "draft") ??
+          family[0];
+        if (fallback)
+          openTemplateRecord(
+            await templateStore.get(fallback.id, fallback.version),
+          );
+      }
+      notify(`Draft v${draftToDelete.version} deleted`);
+      setDraftToDelete(undefined);
+      setVersionMenuKey(undefined);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Draft deletion failed");
+    } finally {
+      setDeletingDraft(false);
+    }
+  };
+  const startCreateReport = () => {
+    if (!publishedTemplate) {
+      setLeftTab("templates");
+      notify("Publish a master template before generating a report.");
+      return;
+    }
+    setShowWizard(true);
+  };
   const downloadPdf = async () => {
     if (reportInstance && !reportInstance.readiness.canPublish) {
       setLeftTab("validate");
@@ -834,13 +1063,21 @@ export default function App() {
     }
   };
   const handleGenerate = async (request: ReportGenerationRequest) => {
+    const sourceTemplate = await templateStore.get(
+      request.templateId,
+      request.templateVersion,
+    );
+    if (sourceTemplate.status !== "published")
+      throw new Error(
+        "Report generation requires a published template version.",
+      );
     const instance = await generateReportInstance(
-      sampleTemplate,
+      sourceTemplate.template,
       request,
       setGenerationProgress,
     );
     const next = hydrate({
-      ...sampleTemplate,
+      ...sourceTemplate.template,
       name: `${request.period} ${request.market} Industrial Market Report`,
       pages: instance.pages,
     });
@@ -849,6 +1086,7 @@ export default function App() {
     setReportData(buildPresentationModel(instance.dataSnapshot));
     setNormalizedReport(instance.dataSnapshot);
     setReportInstance(instance);
+    setDocumentMode("report-instance");
     setPageId(next.pages[0].id);
     setSelectedIds([]);
     setPast([]);
@@ -858,32 +1096,50 @@ export default function App() {
     notify("Editable report generated");
   };
   const reset = () => {
-    const next = hydrate(sampleTemplate);
+    const source = activeTemplateRecord?.template ?? sampleTemplate;
+    const browserAssets = (source.assets ?? []).filter(
+      (asset) => asset.storage !== "backend",
+    );
+    const assets = [...browserAssets, ...managedServerAssets.current];
+    const next = hydrate(
+      normalizeReportTemplateFonts({ ...source, assets }, assets),
+    );
     localPersistence.clear();
     setTemplate(next);
     latestTemplate.current = next;
     setReportData(sampleData);
     setNormalizedReport(q2SampleReport);
     setReportInstance(undefined);
+    setDocumentMode("master-template");
     setPageId(next.pages[1]?.id ?? next.pages[0].id);
     setSelectedIds([]);
     setPast([]);
     setFuture([]);
-    notify("Demo restored");
+    notify(activeTemplateRecord ? "Saved master restored" : "Demo restored");
   };
   const handleFiles = async (files: FileList | null) => {
     if (!files) return;
+    if (
+      documentMode === "master-template" &&
+      activeTemplateRecord?.status !== "draft"
+    ) {
+      notify("Create a draft version before changing managed assets.");
+      return;
+    }
     try {
       notify("Uploading assets…");
       const { assets, summary } = await assetStorage.upload(Array.from(files));
-      await installManagedFonts([
-        ...(latestTemplate.current.assets ?? []),
-        ...assets,
-      ]);
-      mutate((current) => ({
-        ...current,
-        assets: [...(current.assets ?? []), ...assets],
-      }));
+      const allAssets = [...(latestTemplate.current.assets ?? []), ...assets];
+      managedServerAssets.current = allAssets.filter(
+        (asset) => asset.storage === "backend",
+      );
+      setFontDiagnostics(await installManagedFonts(allAssets));
+      mutate((current) =>
+        normalizeReportTemplateFonts(
+          { ...current, assets: allAssets },
+          allAssets,
+        ),
+      );
       const details = [
         summary.duplicates
           ? `${summary.duplicates} duplicate${summary.duplicates === 1 ? "" : "s"} skipped`
@@ -906,7 +1162,17 @@ export default function App() {
     }
   };
   const removeAsset = async (asset: Asset) => {
+    if (
+      documentMode === "master-template" &&
+      activeTemplateRecord?.status !== "draft"
+    ) {
+      notify("Create a draft version before changing managed assets.");
+      return;
+    }
     await assetStorage.remove(asset.id);
+    managedServerAssets.current = managedServerAssets.current.filter(
+      (item) => item.id !== asset.id,
+    );
     mutate((current) => ({
       ...current,
       assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
@@ -1058,9 +1324,9 @@ export default function App() {
         </>
       );
     if (leftTab === "fonts") {
-      const fontAssets = (template.assets ?? []).filter(
-        (asset) => asset.type === "font" && asset.fontFamily,
-      );
+      const fontAssets = approvedManagedFontAssets(
+        template.assets ?? [],
+      ).filter((asset) => asset.fontFamily);
       const families = groupFontAssets(fontAssets);
       return (
         <>
@@ -1085,28 +1351,94 @@ export default function App() {
             onChange={(e) => handleFiles(e.target.files)}
           />
           <div className="font-library">
-            {[...families.entries()].map(([family, faces]) => (
-              <section className="font-family-card" key={family}>
-                <header>
-                  <strong style={{ fontFamily: family }}>{family}</strong>
-                  <span>{faces.length} faces</span>
-                </header>
-                {faces
-                  .sort(
-                    (a, b) =>
-                      (a.fontWeight ?? 400) - (b.fontWeight ?? 400) ||
-                      (a.fontStyle ?? "normal").localeCompare(
-                        b.fontStyle ?? "normal",
-                      ),
-                  )
-                  .map((face) => (
+            {[...families.entries()].map(([family, faces]) => {
+              const sortedFaces = [...faces].sort(
+                (a, b) =>
+                  (a.fontWeight ?? 400) - (b.fontWeight ?? 400) ||
+                  (a.fontStyle ?? "normal").localeCompare(
+                    b.fontStyle ?? "normal",
+                  ),
+              );
+              const previewFace =
+                sortedFaces.find(
+                  (face) =>
+                    (face.fontWeight ?? 400) === 400 &&
+                    (face.fontStyle ?? "normal") === "normal",
+                ) ?? sortedFaces[0];
+              const loadedFaces = faces.filter((face) =>
+                fontDiagnostics.some(
+                  (diagnostic) =>
+                    diagnostic.assetId === face.id && diagnostic.loaded,
+                ),
+              ).length;
+              const licenseTypes = [
+                ...new Set(
+                  faces.flatMap((face) =>
+                    face.license?.type ? [face.license.type] : [],
+                  ),
+                ),
+              ];
+              const licenseFiles = [
+                ...new Set(
+                  faces.flatMap((face) =>
+                    face.license?.fileName ? [face.license.fileName] : [],
+                  ),
+                ),
+              ];
+              const licenseLabel = licenseTypes.length
+                ? licenseTypes.join(", ")
+                : licenseFiles.length
+                  ? `Unverified · ${licenseFiles.join(", ")}`
+                  : "Not provided · Unverified";
+              return (
+                <section className="font-family-card" key={family}>
+                  <header>
+                    <strong style={{ fontFamily: fontFamilyToCss(family) }}>
+                      {family}
+                    </strong>
+                    <span>{faces.length} faces</span>
+                  </header>
+                  <p
+                    className="font-family-preview"
+                    style={{
+                      fontFamily: fontFamilyToCss(family),
+                      fontWeight: previewFace?.fontWeight ?? 400,
+                      fontStyle: previewFace?.fontStyle ?? "normal",
+                    }}
+                  >
+                    The quick brown fox jumps over the lazy dog.
+                  </p>
+                  <div className="font-family-status">
+                    <span>
+                      {loadedFaces}/{faces.length} loaded
+                    </span>
+                    <span>License: {licenseLabel}</span>
+                    <span>
+                      Governance: {inferFontGovernanceStatus(faces[0]!)} ·
+                      checksum verified
+                    </span>
+                  </div>
+                  {sortedFaces.map((face) => (
                     <div className="font-face-row" key={face.id}>
                       <span>
                         {face.fontWeight ?? 400} {face.fontStyle ?? "normal"}
                       </span>
-                      <small title={face.checksum}>
-                        {face.license?.type ?? "License not supplied"}
-                        {(face.version ?? 1) > 1 ? ` · v${face.version}` : ""}
+                      <small
+                        title={`Managed asset ${face.id}\nChecksum ${face.checksum ?? "missing"}`}
+                      >
+                        {fontDiagnostics.find(
+                          (diagnostic) => diagnostic.assetId === face.id,
+                        )?.loaded
+                          ? "Loaded ✓ · "
+                          : "Unavailable ⚠ · "}
+                        {face.license?.type ??
+                          (face.license?.fileName
+                            ? `Unverified · ${face.license.fileName}`
+                            : "Not provided · Unverified")}
+                        {` · asset v${face.version ?? 1}`}
+                        {face.checksum
+                          ? ` · ${face.checksum.slice(0, 10)}…`
+                          : ""}
                       </small>
                       <button
                         title="Remove font face"
@@ -1116,8 +1448,9 @@ export default function App() {
                       </button>
                     </div>
                   ))}
-              </section>
-            ))}
+                </section>
+              );
+            })}
           </div>
           {!fontAssets.length && (
             <div className="empty-state">
@@ -1179,14 +1512,154 @@ export default function App() {
     if (leftTab === "pages" || leftTab === "templates")
       return (
         <>
+          {leftTab === "templates" && (
+            <>
+              <PanelTitle
+                title="Template Library"
+                subtitle="Durable server-side master versions"
+              />
+              <div className="master-mode-card">
+                <strong>
+                  {documentMode === "master-template"
+                    ? "MASTER TEMPLATE MODE"
+                    : "REPORT INSTANCE MODE"}
+                </strong>
+                <span>
+                  {activeTemplateRecord
+                    ? `${activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}`
+                    : "Loading template library…"}
+                </span>
+                <small>
+                  {documentMode === "master-template"
+                    ? "Published changes affect future reports only."
+                    : "Edits are isolated to this generated report."}
+                </small>
+              </div>
+              <div className="template-version-list">
+                {templateLibrary.map((record) => (
+                  <section
+                    key={`${record.id}-${record.version}`}
+                    className={
+                      activeTemplateRecord?.id === record.id &&
+                      activeTemplateRecord.version === record.version
+                        ? "active"
+                        : ""
+                    }
+                  >
+                    <div>
+                      <strong>{record.name}</strong>
+                      <span>
+                        v{record.version} · {record.status}
+                      </span>
+                      <small>
+                        Updated {new Date(record.updatedAt).toLocaleString()}
+                      </small>
+                    </div>
+                    <div className="template-version-actions">
+                      <button onClick={() => openTemplateVersion(record)}>
+                        {record.status === "draft" ? "Open Draft" : "Open"}
+                      </button>
+                      <button onClick={() => createDraftFromVersion(record)}>
+                        {record.status === "draft"
+                          ? "Create New Version"
+                          : "Create Draft From Version"}
+                      </button>
+                      {record.status === "draft" && (
+                        <button
+                          className="delete-draft-button"
+                          onClick={() => setDraftToDelete(record)}
+                        >
+                          Delete Draft
+                        </button>
+                      )}
+                      <div className="template-version-menu">
+                        <button
+                          aria-label={`More actions for v${record.version}`}
+                          aria-expanded={
+                            versionMenuKey === `${record.id}-${record.version}`
+                          }
+                          onClick={() =>
+                            setVersionMenuKey((current) =>
+                              current === `${record.id}-${record.version}`
+                                ? undefined
+                                : `${record.id}-${record.version}`,
+                            )
+                          }
+                        >
+                          •••
+                        </button>
+                        {versionMenuKey ===
+                          `${record.id}-${record.version}` && (
+                          <div role="menu">
+                            <button
+                              role="menuitem"
+                              onClick={() => openTemplateVersion(record)}
+                            >
+                              Open version
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => createDraftFromVersion(record)}
+                            >
+                              Duplicate as new draft
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                notify(
+                                  "All versions are shown in this version history.",
+                                );
+                                setVersionMenuKey(undefined);
+                              }}
+                            >
+                              View version history
+                            </button>
+                            {record.status === "draft" && (
+                              <button
+                                role="menuitem"
+                                className="danger"
+                                onClick={() => setDraftToDelete(record)}
+                              >
+                                Delete draft
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                ))}
+              </div>
+              <div className="panel-actions template-actions">
+                <button
+                  disabled={
+                    documentMode !== "master-template" ||
+                    activeTemplateRecord?.status !== "draft"
+                  }
+                  onClick={saveMasterTemplate}
+                >
+                  Save
+                </button>
+                <button
+                  disabled={!activeTemplateRecord}
+                  onClick={() => saveAsNewTemplateVersion()}
+                >
+                  Save As New Version
+                </button>
+                <button
+                  disabled={activeTemplateRecord?.status !== "draft"}
+                  onClick={publishMasterTemplate}
+                >
+                  Publish Template
+                </button>
+              </div>
+            </>
+          )}
           <PanelTitle
             title="Pages"
-            subtitle={`${template.pages.length} pages · Drag to reorder`}
+            subtitle={`${template.pages.length} page definitions · expands to 44 pages for the full Chicago scope`}
           />
-          <button
-            className="create-report-button"
-            onClick={() => setShowWizard(true)}
-          >
+          <button className="create-report-button" onClick={startCreateReport}>
             ＋ Create report from data
           </button>
           <div className="page-list">
@@ -1347,6 +1820,7 @@ export default function App() {
           setSelectedIds([id]);
           setLeftTab("elements");
         }}
+        onViewReconciliation={setReconciliationPath}
       />
     );
   };
@@ -1359,10 +1833,12 @@ export default function App() {
             <span>LEE</span>
           </div>
           <div>
-            <strong contentEditable suppressContentEditableWarning>
-              {template.name}
-            </strong>
-            <span>Report Studio · Autosaved</span>
+            <strong>{template.name}</strong>
+            <span>
+              {documentMode === "master-template"
+                ? `Master Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status ?? "local recovery"}`
+                : `Report Instance · pinned to v${reportInstance?.templateVersion ?? template.version}`}
+            </span>
           </div>
         </div>
         <div className="toolbar-group">
@@ -1460,10 +1936,32 @@ export default function App() {
         <div className="toolbar-spacer" />
         <button
           className="toolbar-button create-report-top"
-          onClick={() => setShowWizard(true)}
+          onClick={startCreateReport}
         >
           ＋ Create report
         </button>
+        {documentMode === "master-template" && (
+          <div className="toolbar-group template-save-actions">
+            <button
+              disabled={activeTemplateRecord?.status !== "draft"}
+              onClick={saveMasterTemplate}
+            >
+              Save
+            </button>
+            <button
+              disabled={!activeTemplateRecord}
+              onClick={() => saveAsNewTemplateVersion()}
+            >
+              Save as version
+            </button>
+            <button
+              disabled={activeTemplateRecord?.status !== "draft"}
+              onClick={publishMasterTemplate}
+            >
+              Publish
+            </button>
+          </div>
+        )}
         <div className="mode-toggle">
           <button
             className={mode === "design" ? "active" : ""}
@@ -1723,6 +2221,7 @@ export default function App() {
           fontAssets={(template.assets ?? []).filter(
             (asset) => asset.type === "font" && asset.fontFamily,
           )}
+          fontDiagnostics={fontDiagnostics}
           cropping={croppingId === selected?.id}
           tableEditing={tableEditingId === selected?.id}
           tableSelection={
@@ -1766,7 +2265,11 @@ export default function App() {
           {reportInstance
             ? `${reportInstance.manualOverrides.length} manual overrides · `
             : ""}
-          Saved locally
+          {librarySaveState === "saved" && documentMode === "master-template"
+            ? "Saved to template library"
+            : librarySaveState === "error"
+              ? "Template library save failed"
+              : "Saved locally for recovery"}
         </span>
       </footer>
       {contextMenu && (
@@ -1805,10 +2308,66 @@ export default function App() {
         </div>
       )}
       {toast && <div className="toast">✓ {toast}</div>}
-      {showWizard && (
+      {showWizard && publishedTemplate && (
         <CreateReportWizard
           onClose={() => setShowWizard(false)}
           onGenerate={handleGenerate}
+          publishedTemplate={publishedTemplate}
+        />
+      )}
+      {draftToDelete && (
+        <div
+          className="wizard-backdrop"
+          role="presentation"
+          onMouseDown={() => !deletingDraft && setDraftToDelete(undefined)}
+        >
+          <section
+            className="confirmation-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Delete draft v${draftToDelete.version}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="destructive-icon" aria-hidden="true">
+              !
+            </span>
+            <div>
+              <h2>Delete draft v{draftToDelete.version}?</h2>
+              <p>
+                This permanently removes this unpublished template draft.
+                Published templates, shared managed assets, and previously
+                generated reports will not be affected.
+              </p>
+              {activeTemplateRecord?.id === draftToDelete.id &&
+                activeTemplateRecord.version === draftToDelete.version && (
+                  <p className="current-draft-warning">
+                    This draft is currently open. The editor will safely open
+                    another retained version after deletion.
+                  </p>
+                )}
+            </div>
+            <footer>
+              <button
+                disabled={deletingDraft}
+                onClick={() => setDraftToDelete(undefined)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-delete-draft"
+                disabled={deletingDraft}
+                onClick={confirmDeleteDraft}
+              >
+                {deletingDraft ? "Deleting…" : "Delete Draft"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+      {reconciliationRecord?.reconciliation && (
+        <ReconciliationDrilldown
+          record={reconciliationRecord}
+          onClose={() => setReconciliationPath(undefined)}
         />
       )}
     </div>
@@ -1822,7 +2381,6 @@ function PanelTitle({ title, subtitle }: { title: string; subtitle?: string }) {
         <strong>{title}</strong>
         {subtitle && <span>{subtitle}</span>}
       </div>
-      <button aria-label={`${title} options`}>•••</button>
     </div>
   );
 }

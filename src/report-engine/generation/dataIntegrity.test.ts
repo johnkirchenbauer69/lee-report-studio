@@ -15,6 +15,7 @@ const request = (
   options: Partial<ReportGenerationRequest> = {},
 ): ReportGenerationRequest => ({
   templateId: sampleTemplate.id,
+  templateVersion: sampleTemplate.version,
   market: "Chicago",
   period: "2026 Q2",
   calculationScope: { type: "all-submarkets" },
@@ -147,6 +148,7 @@ describe("report data integrity", () => {
       repeatedTemplate,
       request("sample", {
         templateId: repeatedTemplate.id,
+        templateVersion: repeatedTemplate.version,
         pageSelection: { submarkets: ["O'Hare"] },
       }),
     );
@@ -166,6 +168,7 @@ describe("report data integrity", () => {
       repeatedTemplate,
       request("sample", {
         templateId: repeatedTemplate.id,
+        templateVersion: repeatedTemplate.version,
         calculationScope: {
           type: "selected-submarkets",
           submarkets: ["O'Hare"],

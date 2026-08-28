@@ -14,6 +14,10 @@ import {
 } from "../validation/reportValidation";
 import { expandTemplatePages } from "./repeaters";
 import { prepareTemplateForReport } from "./prepareTemplate";
+import {
+  collectManagedFontReferences,
+  findNonApprovedFontUsages,
+} from "../../services/fontGovernance";
 
 export interface GenerationProgress {
   stage:
@@ -34,6 +38,14 @@ const progress = (
   stage: GenerationProgress["stage"],
   message: string,
 ) => callback?.({ stage, message });
+
+const templateChecksum = async (template: ReportTemplate) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(template));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
 
 export async function loadSourceData(request: ReportGenerationRequest) {
   return getReportDataProvider(request.source.provider).loadReportData(request);
@@ -81,6 +93,21 @@ export async function generateReportInstance(
   request: ReportGenerationRequest,
   onProgress?: (progress: GenerationProgress) => void,
 ): Promise<ReportInstance> {
+  if (
+    request.templateId !== template.id ||
+    request.templateVersion !== template.version
+  )
+    throw new Error(
+      `Requested template ${request.templateId} v${request.templateVersion} does not match loaded template ${template.id} v${template.version}.`,
+    );
+  const loadedTemplateChecksum = await templateChecksum(template);
+  if (
+    request.templateChecksum &&
+    request.templateChecksum !== loadedTemplateChecksum
+  )
+    throw new Error(
+      `Requested template checksum ${request.templateChecksum} does not match loaded template checksum ${loadedTemplateChecksum}.`,
+    );
   progress(
     onProgress,
     "loading",
@@ -124,11 +151,24 @@ export async function generateReportInstance(
   const reconciled = reconcileSources(calculated);
 
   progress(onProgress, "validating", "Evaluating report readiness");
-  const readiness = evaluateReportReadiness(
+  const dataReadiness = evaluateReportReadiness(
     reconciled,
     template,
     providerResult.provider,
   );
+  const fontIssues = findNonApprovedFontUsages(template).map((usage) => ({
+    path: `pages.${usage.pageId}.elements.${usage.elementId}.font`,
+    message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
+    level: "blocking" as const,
+    category: "readiness" as const,
+  }));
+  const readiness = {
+    ...dataReadiness,
+    canApprove: dataReadiness.canApprove && fontIssues.length === 0,
+    canPublish: dataReadiness.canPublish && fontIssues.length === 0,
+    blockers: [...dataReadiness.blockers, ...fontIssues],
+    issues: [...dataReadiness.issues, ...fontIssues],
+  };
   const structuralErrors = readiness.issues.filter(
     (issue) => issue.level === "error",
   );
@@ -167,6 +207,7 @@ export async function generateReportInstance(
     id: `report-${crypto.randomUUID()}`,
     templateId: template.id,
     templateVersion: template.version,
+    templateChecksum: loadedTemplateChecksum,
     generationRequest: structuredClone(request),
     provider: providerResult.provider,
     sourceMetadata: structuredClone(providerResult.sourceMetadata),
@@ -176,22 +217,7 @@ export async function generateReportInstance(
     generatedAt: new Date().toISOString(),
     dataSnapshot: structuredClone(reconciled),
     pages,
-    fontReferences: (template.assets ?? [])
-      .filter(
-        (asset) =>
-          asset.type === "font" &&
-          asset.fontFamily &&
-          asset.fontWeight != null &&
-          asset.fontStyle &&
-          asset.checksum,
-      )
-      .map((asset) => ({
-        assetId: asset.id,
-        family: asset.fontFamily!,
-        weight: asset.fontWeight!,
-        style: asset.fontStyle!,
-        checksum: asset.checksum!,
-      })),
+    fontReferences: collectManagedFontReferences({ ...template, pages }),
     manualOverrides: [],
     readiness,
     status: "draft",

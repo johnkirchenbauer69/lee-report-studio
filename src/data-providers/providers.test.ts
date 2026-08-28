@@ -12,6 +12,7 @@ const request = (
   period = "2026 Q2",
 ): ReportGenerationRequest => ({
   templateId: "industrial-market-report",
+  templateVersion: "1.3.0",
   market: "Chicago",
   period,
   calculationScope: { type: "all-submarkets" },

@@ -1251,6 +1251,20 @@ button {
   font-size: 8px;
   color: #7c8795;
 }
+.font-family-preview {
+  margin: 0;
+  padding: 11px 9px 7px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+.font-family-status {
+  display: grid;
+  gap: 2px;
+  padding: 0 9px 8px;
+  color: #6e7986;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
 .font-face-row {
   display: grid;
   grid-template-columns: 72px 1fr 22px;
@@ -1308,4 +1322,217 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: ui-monospace, monospace;
+}
+
+.font-resolution,
+.master-mode-card,
+.diagnostic-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #d9e0e5;
+  border-radius: 6px;
+  background: #f7f9fa;
+}
+.font-resolution.loaded {
+  border-color: #9ac9b0;
+  background: #f0faf4;
+}
+.font-resolution.warning,
+.diagnostic-note.warning {
+  border-color: #e1b45a;
+  background: #fff8e9;
+}
+.template-version-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+.template-version-list section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid #d9e0e5;
+  border-radius: 6px;
+}
+.template-version-list section.active {
+  border-color: #c4123f;
+  box-shadow: inset 3px 0 #c4123f;
+}
+.template-version-list section > div {
+  display: grid;
+  gap: 2px;
+}
+.template-version-actions {
+  display: grid;
+  gap: 5px;
+  margin-top: 5px;
+}
+.template-version-actions > button,
+.template-version-menu > button {
+  width: 100%;
+  font-size: 10px;
+}
+.delete-draft-button,
+.confirm-delete-draft {
+  border-color: #b42335 !important;
+  background: #fff4f5 !important;
+  color: #b42335 !important;
+  font-weight: 700;
+}
+.delete-draft-button:hover,
+.confirm-delete-draft:hover {
+  background: #b42335 !important;
+  color: #fff !important;
+}
+.template-version-menu {
+  position: relative;
+}
+.template-version-menu > div[role="menu"] {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 3px);
+  display: grid;
+  width: 180px;
+  padding: 5px;
+  border: 1px solid #d9e0e5;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(20 35 50 / 18%);
+}
+.template-version-menu [role="menuitem"] {
+  border: 0;
+  background: transparent;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 10px;
+}
+.template-version-menu [role="menuitem"]:hover {
+  background: #f3f5f7;
+}
+.template-version-menu [role="menuitem"].danger {
+  color: #b42335;
+}
+.template-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.confirmation-dialog {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  width: min(520px, calc(100vw - 40px));
+  padding: 22px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+.destructive-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fff0f2;
+  color: #b42335;
+  font-size: 20px;
+  font-weight: 800;
+}
+.confirmation-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+.confirmation-dialog p {
+  margin: 0;
+  color: #5f6b78;
+  line-height: 1.5;
+}
+.confirmation-dialog .current-draft-warning {
+  margin-top: 10px;
+  color: #9f2d3b;
+  font-weight: 600;
+}
+.confirmation-dialog footer {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.confirmation-dialog footer button {
+  min-width: 104px;
+  padding: 8px 12px;
+}
+.reconciliation-dialog {
+  width: min(1180px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 28%);
+}
+.reconciliation-dialog > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #d9e0e5;
+}
+.reconciliation-dialog h2,
+.reconciliation-dialog p {
+  margin: 4px 0 0;
+}
+.reconciliation-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px 24px;
+  background: #f4f6f8;
+}
+.reconciliation-summary > div {
+  display: grid;
+  gap: 4px;
+}
+.reconciliation-summary span,
+.reconciliation-table-wrap small {
+  color: #63717c;
+  font-size: 11px;
+}
+.reconciliation-body {
+  display: grid;
+  gap: 18px;
+  padding: 20px 24px 28px;
+}
+.reconciliation-body h3 {
+  margin: 0 0 6px;
+}
+.reconciliation-table-wrap {
+  overflow: auto;
+  border: 1px solid #d9e0e5;
+}
+.reconciliation-table-wrap table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.reconciliation-table-wrap th,
+.reconciliation-table-wrap td {
+  padding: 8px;
+  border-bottom: 1px solid #e5e9ec;
+  text-align: left;
+  vertical-align: top;
+}
+.reconciliation-table-wrap td:first-child {
+  display: grid;
+  gap: 2px;
+}
+.validation-row {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+}
+.validation-row > button {
+  font-size: 10px;
+  white-space: nowrap;
 }

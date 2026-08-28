@@ -74,6 +74,9 @@ export interface ElementStyle {
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   italic?: boolean;
   textAlign?: "left" | "center" | "right";
   color?: string;
@@ -158,6 +161,9 @@ export interface TableColumn {
 export interface TableCellStyle {
   fontFamily?: string;
   fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   fontSize?: number;
   color?: string;
   background?: string;
@@ -283,10 +289,15 @@ export interface Asset {
   scope?: "builtin" | "organization" | "template";
   storageKey?: string;
   license?: { type?: string; fileName?: string };
+  /** Production-use policy. Missing legacy values are inferred from license metadata. */
+  fontGovernanceStatus?: FontGovernanceStatus;
   version?: number;
   storage?: "backend" | "browser";
   size?: number;
 }
+
+export type FontGovernanceStatus =
+  "approved" | "unverified" | "restricted" | "retired";
 
 export interface FontReference {
   assetId: string;
@@ -326,4 +337,5 @@ export interface ValidationItem {
   category?: "data" | "design" | "export";
   message: string;
   elementId?: string;
+  path?: string;
 }

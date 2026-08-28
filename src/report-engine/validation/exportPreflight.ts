@@ -4,6 +4,14 @@ import type {
   TextElement,
 } from "../../types/report";
 import { elementRect, getRotatedAabb } from "../../engine/geometry";
+import {
+  BRAND_FONT_FAMILY,
+  managedFontAssetFamily,
+  normalizeSemanticFontFamily,
+  resolveManagedFontFace,
+} from "../../services/fontRegistry";
+import { resolveTypography } from "../../engine/typography";
+import { findNonApprovedFontUsages } from "../../services/fontGovernance";
 
 export interface ExportPreflightIssue {
   level: "warning" | "error";
@@ -15,8 +23,17 @@ export interface ExportPreflightIssue {
 
 export async function runExportPreflight(
   template: ReportTemplate,
+  options: { historical?: boolean } = {},
 ): Promise<ExportPreflightIssue[]> {
-  const issues: ExportPreflightIssue[] = [];
+  const issues: ExportPreflightIssue[] = options.historical
+    ? []
+    : findNonApprovedFontUsages(template).map((usage) => ({
+        level: "error" as const,
+        kind: "font" as const,
+        pageId: usage.pageId,
+        elementId: usage.elementId,
+        message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
+      }));
   for (const page of template.pages) {
     for (const element of page.elements) {
       if (element.hidden) continue;
@@ -36,18 +53,31 @@ export async function runExportPreflight(
           message: `${element.name} extends outside ${page.name}.`,
         });
       if (element.type === "text") {
-        const family =
-          (element as TextElement).style.typography?.fontFamily ??
-          element.style.fontFamily;
-        const typography = (element as TextElement).style.typography;
+        const typography = resolveTypography((element as TextElement).style);
+        const family = normalizeSemanticFontFamily(typography.fontFamily);
+        const weight = Number(typography.fontWeight) || 400;
+        const fontStyle =
+          typography.fontStyle ?? (typography.italic ? "italic" : "normal");
         const managed = typography?.fontAssetId
           ? template.assets?.find(
               (asset) => asset.id === typography.fontAssetId,
             )
           : undefined;
+        const expectedManaged = resolveManagedFontFace(
+          template.assets ?? [],
+          family,
+          weight,
+          fontStyle,
+          options.historical,
+        );
         if (
           typography?.fontAssetId &&
-          (!managed || managed.checksum !== typography.fontChecksum)
+          (!managed ||
+            managed.type !== "font" ||
+            managed.checksum !== typography.fontChecksum ||
+            normalizeSemanticFontFamily(managed.fontFamily) !== family ||
+            (managed.fontWeight ?? 400) !== weight ||
+            (managed.fontStyle ?? "normal") !== fontStyle)
         )
           issues.push({
             level: "error",
@@ -56,10 +86,27 @@ export async function runExportPreflight(
             elementId: element.id,
             message: `${element.name} references a missing or changed managed font face.`,
           });
+        else if (expectedManaged && !typography.fontAssetId)
+          issues.push({
+            level: "error",
+            kind: "font",
+            pageId: page.id,
+            elementId: element.id,
+            message: `${element.name} does not pin the available managed ${family} face.`,
+          });
+        else if (family === BRAND_FONT_FAMILY && !expectedManaged)
+          issues.push({
+            level: "error",
+            kind: "font",
+            pageId: page.id,
+            elementId: element.id,
+            message: `${element.name} requires managed ${BRAND_FONT_FAMILY} ${typography.fontWeight} ${typography.fontStyle ?? "normal"}, but that face is unavailable.`,
+          });
         else if (
           family &&
           !document.fonts.check(
-            `${typography?.fontStyle ?? "normal"} ${typography?.fontWeight ?? 400} 12px "${family.split(",")[0].trim()}"`,
+            `${fontStyle} ${weight} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
+            "LEE managed font verification",
           )
         )
           issues.push({

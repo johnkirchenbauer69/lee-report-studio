@@ -9,6 +9,7 @@ describe("generateReportInstance", () => {
       sampleTemplate,
       {
         templateId: sampleTemplate.id,
+        templateVersion: sampleTemplate.version,
         market: "Chicago",
         period: "2026 Q2",
         calculationScope: { type: "all-submarkets" },
@@ -19,6 +20,7 @@ describe("generateReportInstance", () => {
     );
 
     expect(report.templateVersion).toBe("1.3.0");
+    expect(report.templateChecksum).toMatch(/^[a-f0-9]{64}$/);
     expect(report.pages).toHaveLength(8);
     expect(report.dataSnapshot.submarkets).toHaveLength(18);
     expect(report.status).toBe("draft");
@@ -26,6 +28,53 @@ describe("generateReportInstance", () => {
       stage: "complete",
       message: "Report ready to edit and publish",
     });
+  });
+
+  it("pins generation to the explicitly requested template version", async () => {
+    await expect(
+      generateReportInstance(sampleTemplate, {
+        templateId: sampleTemplate.id,
+        templateVersion: "99.0.0",
+        market: "Chicago",
+        period: "2026 Q2",
+        calculationScope: { type: "all-submarkets" },
+        pageSelection: {},
+        source: { provider: "sample" },
+      }),
+    ).rejects.toThrow("does not match loaded template");
+  });
+
+  it("rejects a request whose stored checksum does not match the loaded version", async () => {
+    await expect(
+      generateReportInstance(sampleTemplate, {
+        templateId: sampleTemplate.id,
+        templateVersion: sampleTemplate.version,
+        templateChecksum: "0".repeat(64),
+        market: "Chicago",
+        period: "2026 Q2",
+        calculationScope: { type: "all-submarkets" },
+        pageSelection: {},
+        source: { provider: "sample" },
+      }),
+    ).rejects.toThrow("does not match loaded template checksum");
+  });
+
+  it("isolates generated report edits from the master and later master edits from history", async () => {
+    const master = structuredClone(sampleTemplate);
+    const report = await generateReportInstance(master, {
+      templateId: master.id,
+      templateVersion: master.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: {},
+      source: { provider: "sample" },
+    });
+    const originalMasterName = master.pages[0]!.name;
+    report.pages[0]!.name = "Edited Q2 report page";
+    expect(master.pages[0]!.name).toBe(originalMasterName);
+    master.pages[0]!.name = "Future master page";
+    expect(report.pages[0]!.name).toBe("Edited Q2 report page");
   });
 
   it("preserves rotation and checksum-pins managed font faces", async () => {
@@ -42,11 +91,13 @@ describe("generateReportInstance", () => {
         fontWeight: 700,
         fontStyle: "normal",
         checksum: "abc123",
+        fontGovernanceStatus: "approved",
         storage: "backend",
       },
     ];
     const report = await generateReportInstance(template, {
       templateId: template.id,
+      templateVersion: template.version,
       market: "Chicago",
       period: "2026 Q2",
       calculationScope: { type: "all-submarkets" },
@@ -71,5 +122,98 @@ describe("generateReportInstance", () => {
         )
         .map((element) => element.rotation),
     ).toEqual([90, 90]);
+  });
+
+  it("pins every managed text element across repeated pages and dynamic labels", async () => {
+    const template = structuredClone(sampleTemplate);
+    template.assets = [
+      {
+        id: "nunito-semibold",
+        name: "Nunito Sans SemiBold",
+        type: "font",
+        mimeType: "font/ttf",
+        source: "/api/assets/nunito-semibold/content",
+        createdAt: "2026-08-27T00:00:00.000Z",
+        fontFamily: "Nunito Sans",
+        fontWeight: 600,
+        fontStyle: "normal",
+        checksum: "semibold-checksum",
+        fontGovernanceStatus: "approved",
+        version: 1,
+        storage: "backend",
+      },
+    ];
+    const report = await generateReportInstance(template, {
+      templateId: template.id,
+      templateVersion: template.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: {},
+      source: { provider: "sample" },
+    });
+    const textElements = report.pages
+      .flatMap((page) => page.elements)
+      .filter((element) => element.type === "text");
+    expect(report.pages).toHaveLength(44);
+    expect(
+      textElements.some(
+        (element) => element.name === "Quarter" && element.text === "Q2 2026",
+      ),
+    ).toBe(true);
+    expect(
+      textElements.every(
+        (element) =>
+          element.style.typography?.fontAssetId === "nunito-semibold" &&
+          element.style.typography?.fontChecksum === "semibold-checksum",
+      ),
+    ).toBe(true);
+  });
+
+  it("creates an editable draft but blocks publication when a retired face is pinned", async () => {
+    const template = structuredClone(sampleTemplate);
+    const retired = {
+      id: "retired-walrus",
+      name: "Walrus Regular",
+      type: "font" as const,
+      mimeType: "font/ttf",
+      source: "/api/assets/retired-walrus/content",
+      createdAt: "2026-08-28T00:00:00.000Z",
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal" as const,
+      checksum: "walrus-checksum",
+      fontGovernanceStatus: "retired" as const,
+      storage: "backend" as const,
+    };
+    template.assets = [retired];
+    const element = template.pages
+      .flatMap((page) => page.elements)
+      .find((candidate) => candidate.type === "text")!;
+    element.style = {
+      ...element.style,
+      fontFamily: "Walrus",
+      fontWeight: 400,
+      fontStyle: "normal",
+      fontAssetId: retired.id,
+      fontChecksum: retired.checksum,
+    };
+    const report = await generateReportInstance(template, {
+      templateId: template.id,
+      templateVersion: template.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarkets: [] },
+      source: { provider: "sample" },
+    });
+    expect(report.readiness.canEdit).toBe(true);
+    expect(report.readiness.canPublish).toBe(false);
+    expect(report.readiness.blockers).toEqual([
+      expect.objectContaining({
+        level: "blocking",
+        message: expect.stringContaining("non-approved managed font Walrus"),
+      }),
+    ]);
   });
 });

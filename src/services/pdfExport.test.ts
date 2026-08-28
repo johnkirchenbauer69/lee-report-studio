@@ -59,6 +59,7 @@ describe("deterministic PDF export", () => {
     const selected = q2SampleReport.submarkets.map((item) => item.name);
     const instance = await generateReportInstance(sampleTemplate, {
       templateId: sampleTemplate.id,
+      templateVersion: sampleTemplate.version,
       market: "Chicago",
       period: "2026 Q2",
       calculationScope: { type: "all-submarkets" },

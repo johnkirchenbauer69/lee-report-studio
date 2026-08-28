@@ -1137,8 +1137,8 @@ const whoWeArePage = staticReferencePage(
 );
 
 export const sampleTemplate: ReportTemplate = {
-  id: "industrial-market-report-q2-2026",
-  name: "2026 Q2 Overall Market Report",
+  id: "industrial-market-report",
+  name: "Industrial Market Report",
   version: "1.3.0",
   requiredSections: [
     "overallMarket",

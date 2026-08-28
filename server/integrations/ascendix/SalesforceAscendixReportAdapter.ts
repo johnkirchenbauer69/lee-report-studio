@@ -22,6 +22,7 @@ import {
   type ImageResolver,
 } from "./contributors.ts";
 import { classifyInventoryReconciliation } from "./inventoryReconciliation.ts";
+import { buildInventoryReconciliationDetails } from "./inventoryReconciliationDetails.ts";
 import { looksLikeSalesforceId } from "../salesforce/salesforceIds.ts";
 import {
   CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
@@ -133,6 +134,14 @@ const propertyDataFields = Object.values(mapping.propertyData)
   .filter((field) => field !== mapping.propertyData.object)
   .map(api)
   .filter((field, index, fields) => fields.indexOf(field) === index);
+propertyDataFields.push(
+  "Property__r.Name",
+  "Property__r.ascendix__Street__c",
+  "Property__r.ascendix__City__c",
+  "Property__r.State__c",
+  "Property__r.Submarket_Picklist__c",
+  "Property__r.ascendix__BuildingStatus__c",
+);
 
 function ids(rows: SalesforceRecord[], field: string) {
   return [
@@ -846,6 +855,18 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           varianceAbsolute: reconciliation.varianceAbsolute,
           variancePercentage: reconciliation.variancePercentage,
           reason: reconciliation.reason,
+          details:
+            reconciliation.classification === "matched"
+              ? undefined
+              : buildInventoryReconciliationDetails({
+                  rows: propertyRows,
+                  submarket: name,
+                  varianceAbsolute:
+                    reconciliation.varianceAbsolute ?? varianceAbsolute,
+                  period: bounds.label,
+                  scope: ELIGIBLE_MARKET_UNIVERSE_SCOPE,
+                  knownDifference: knownWestCook,
+                }),
         },
       });
     }

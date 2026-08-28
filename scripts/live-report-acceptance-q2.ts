@@ -1,12 +1,13 @@
 import fs from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
-import { sampleTemplate } from "../src/data/sampleTemplate.ts";
 import { buildPresentationModel } from "../src/report-engine/bindings/presentationModel.ts";
 import { expandTemplatePages } from "../src/report-engine/generation/repeaters.ts";
 import { prepareTemplateForReport } from "../src/report-engine/generation/prepareTemplate.ts";
 import { industrialMarketReportSchema } from "../src/report-engine/schema/industrialMarketReport.ts";
 import { looksLikeSalesforceId } from "../src/shared/salesforceIds.ts";
 import { evaluateReportReadiness } from "../src/report-engine/validation/reportValidation.ts";
+import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
+import type { Asset, ReportTemplate } from "../src/types/report.ts";
 
 const api = process.env.LEE_API_URL ?? "http://127.0.0.1:8787";
 const response = await fetch(`${api}/api/report-data/industrial-market`, {
@@ -26,12 +27,44 @@ if (!response.ok)
   );
 const envelope = (await response.json()) as { report: unknown };
 const report = industrialMarketReportSchema.parse(envelope.report);
+const [templateListResponse, assetsResponse] = await Promise.all([
+  fetch(`${api}/api/templates`),
+  fetch(`${api}/api/assets`),
+]);
+if (!templateListResponse.ok || !assetsResponse.ok)
+  throw new Error("Template or managed asset API is unavailable.");
+const templateSummaries = (await templateListResponse.json()) as {
+  templates: Array<{
+    id: string;
+    version: string;
+    status: "draft" | "published" | "archived";
+  }>;
+};
+const publishedTemplate = templateSummaries.templates.find(
+  (template) => template.status === "published",
+);
+if (!publishedTemplate)
+  throw new Error("Live acceptance requires a published master template.");
+const storedTemplateResponse = await fetch(
+  `${api}/api/templates/${encodeURIComponent(publishedTemplate.id)}/versions/${encodeURIComponent(publishedTemplate.version)}`,
+);
+if (!storedTemplateResponse.ok)
+  throw new Error("Published master template could not be loaded.");
+const storedTemplate = (await storedTemplateResponse.json()) as {
+  template: ReportTemplate;
+};
+const managedAssets = ((await assetsResponse.json()) as { assets: Asset[] })
+  .assets;
+const sourceTemplate = normalizeReportTemplateFonts(
+  { ...storedTemplate.template, assets: managedAssets },
+  managedAssets,
+);
 const selected = report.submarkets.map((item) => item.name);
 const selectedIds = report.submarkets
   .map((item) => item.id)
   .filter(Boolean) as string[];
 const presentation = buildPresentationModel(report);
-const readiness = evaluateReportReadiness(report, sampleTemplate, "ascendix");
+const readiness = evaluateReportReadiness(report, sourceTemplate, "ascendix");
 const inventory65200 = report.provenance.find(
   (record) => record.reconciliation?.varianceAbsolute === 65_200,
 );
@@ -64,6 +97,16 @@ if (readiness.blockers.some((issue) => issue.path === inventory65200.fieldPath))
   throw new Error(
     "The 65,200 SF reconciliation incorrectly blocks publication.",
   );
+if (
+  !inventory65200.reconciliation.details?.diagnosticOnly ||
+  !inventory65200.reconciliation.details.records.length ||
+  inventory65200.reconciliation.details.records.some(
+    (record) => record.expectedOfficialScope !== null,
+  )
+)
+  throw new Error(
+    "Chicago South reconciliation details must remain populated, diagnostic-only, and explicit that official row-level scope is unknown.",
+  );
 
 const westCookInventory = report.provenance.find(
   (record) =>
@@ -95,6 +138,16 @@ if (
   throw new Error(
     "Known West Cook reconciliation incorrectly blocks publication.",
   );
+if (
+  !westCookInventory.reconciliation.details?.diagnosticOnly ||
+  !westCookInventory.reconciliation.details.records.length ||
+  westCookInventory.reconciliation.details.records.some(
+    (record) => record.expectedOfficialScope !== null,
+  )
+)
+  throw new Error(
+    "West Cook reconciliation details must remain populated, diagnostic-only, and explicit that official row-level scope is unknown.",
+  );
 for (const record of report.provenance.filter(
   (item) => item.reconciliation?.classification === "blocking",
 ))
@@ -103,7 +156,7 @@ for (const record of report.provenance.filter(
       `Material reconciliation blocker was incorrectly downgraded: ${record.fieldPath}.`,
     );
 const prepared = prepareTemplateForReport(
-  sampleTemplate,
+  sourceTemplate,
   report,
   presentation,
   "ascendix",
@@ -112,6 +165,31 @@ const prepared = prepareTemplateForReport(
 const pages = expandTemplatePages(prepared, presentation, {
   submarketIds: selectedIds,
 });
+const generatedUnavailable = pages
+  .flatMap((page) => page.elements)
+  .filter(
+    (element) => element.type === "text" && element.name === "Data unavailable",
+  );
+if (!generatedUnavailable.length)
+  throw new Error("Expected live generated unavailable placeholders.");
+for (const element of generatedUnavailable) {
+  if (element.type !== "text") continue;
+  const typography = element.style.typography;
+  const face = managedAssets.find(
+    (asset) => asset.id === typography?.fontAssetId,
+  );
+  if (
+    !face ||
+    face.type !== "font" ||
+    face.checksum !== typography?.fontChecksum ||
+    face.fontFamily !== typography.fontFamily ||
+    face.fontWeight !== typography.fontWeight ||
+    face.fontStyle !== typography.fontStyle
+  )
+    throw new Error(
+      `${element.name} does not pin the exact available managed font face.`,
+    );
+}
 if (
   selected.length !== 18 ||
   selectedIds.length !== 18 ||
@@ -268,7 +346,7 @@ const pdfResponse = await fetch(`${api}/api/render/pdf`, {
   headers: { "content-type": "application/json" },
   body: JSON.stringify({
     template: {
-      ...sampleTemplate,
+      ...sourceTemplate,
       name: "2026 Q2 Chicago Industrial Market Report",
       pages,
     },
@@ -291,8 +369,10 @@ console.log(
   JSON.stringify(
     {
       selectedSubmarkets: selected.length,
+      publishedTemplateVersion: publishedTemplate.version,
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
+      managedUnavailablePlaceholders: generatedUnavailable.length,
       firstPages: pages.slice(0, 6).map((page) => page.name),
       lastPages: pages.slice(-4).map((page) => page.name),
       availabilitySponsors: report.availabilities
@@ -312,6 +392,10 @@ console.log(
         variancePercentage: westCookInventory.reconciliation.variancePercentage,
         classification: westCookInventory.reconciliation.classification,
         qaSeverity: westCookIssue.level,
+        detailDetermination:
+          westCookInventory.reconciliation.details.determination,
+        candidateRecordCount:
+          westCookInventory.reconciliation.details.records.length,
       },
       inventory65200Reconciliation: {
         path: inventory65200.fieldPath,
@@ -321,6 +405,10 @@ console.log(
         variancePercentage: inventory65200.reconciliation.variancePercentage,
         classification: inventory65200.reconciliation.classification,
         qaSeverity: inventory65200Issue.level,
+        detailDetermination:
+          inventory65200.reconciliation.details.determination,
+        candidateRecordCount:
+          inventory65200.reconciliation.details.records.length,
       },
       saleTypes: [
         ...new Set(

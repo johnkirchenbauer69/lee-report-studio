@@ -13,13 +13,32 @@ import {
 import { createReportDataService } from "./report-data-service/createReportDataService.ts";
 import { ChromiumPdfRenderer } from "./renderers/chromiumPdfRenderer.ts";
 import { FileSystemAssetStore } from "./assets/assetStore.ts";
+import { createTemplateRouter } from "./api/templateRoutes.ts";
+import { FileSystemTemplateRepository } from "./templates/FileSystemTemplateRepository.ts";
+import { sampleTemplate } from "../src/data/sampleTemplate.ts";
+import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
+const templateRepository = new FileSystemTemplateRepository(dataRoot);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
 await assetStore.initialize();
+await templateRepository.initialize(
+  normalizeReportTemplateFonts(
+    sampleTemplate,
+    (await assetStore.list()).filter(
+      (asset) => asset.type === "font" && asset.fontFamily,
+    ),
+  ),
+);
+const fontGovernance = await assetStore.enforceFontGovernance(
+  await templateRepository.listFontAssetReferences(),
+);
+console.log(
+  `Font governance: ${fontGovernance.approved.length} approved, ${fontGovernance.retired.length} retained historical, ${fontGovernance.deleted.length} deleted.`,
+);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -48,6 +67,7 @@ app.get("/api/health", (_request, response) =>
   }),
 );
 app.use("/api", createReportDataRouter(reportDataService));
+app.use("/api", createTemplateRouter(templateRepository));
 app.get("/api/assets", async (_request, response) =>
   response.json({ assets: await assetStore.list() }),
 );
@@ -71,9 +91,15 @@ app.get("/api/assets/:id/content", async (request, response) => {
   return response.sendFile(assetStore.resolve(asset));
 });
 app.delete("/api/assets/:id", async (request, response) => {
-  if (!(await assetStore.remove(request.params.id)))
+  const outcome = await assetStore.remove(
+    request.params.id,
+    await templateRepository.listFontAssetReferences(),
+  );
+  if (outcome === "not-found")
     return response.status(404).json({ error: "Asset not found" });
-  return response.status(204).end();
+  return outcome === "retained"
+    ? response.status(200).json({ outcome })
+    : response.status(204).end();
 });
 
 interface RenderJob {

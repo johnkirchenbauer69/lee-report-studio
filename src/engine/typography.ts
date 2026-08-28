@@ -1,7 +1,7 @@
 import type { ElementStyle, Typography } from "../types/report";
 
 export const typographyDefaults: Typography = {
-  fontFamily: "Inter",
+  fontFamily: "Nunito Sans",
   fontWeight: 400,
   fontSize: 16,
   color: "#111827",
@@ -19,6 +19,9 @@ export function resolveTypography(style: ElementStyle): Typography {
     ...typographyDefaults,
     fontFamily: style.fontFamily ?? typographyDefaults.fontFamily,
     fontWeight: style.fontWeight ?? typographyDefaults.fontWeight,
+    fontStyle: style.fontStyle,
+    fontAssetId: style.fontAssetId,
+    fontChecksum: style.fontChecksum,
     fontSize: style.fontSize ?? typographyDefaults.fontSize,
     color: style.color ?? typographyDefaults.color,
     letterSpacing: style.letterSpacing ?? typographyDefaults.letterSpacing,
