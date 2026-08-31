@@ -37,6 +37,7 @@ import {
 } from "./salesforceNormalization.ts";
 import {
   aggregateQuarterlyMarketPeriod,
+  aggregateAvailabilityBySize,
   calculateTrailing12MonthNetAbsorption,
   rollupPropertyData,
   verifiedSpeculativeShare,
@@ -88,6 +89,8 @@ const metricFields = [
   md.availabilityRate,
   md.askingNetRentPsf,
   md.salesVolume,
+  md.salesTransactions,
+  md.medianSalesPricePerBuildingSf,
 ] as const;
 
 function speculativeShare(record: SalesforceRecord) {
@@ -435,6 +438,8 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       selectedPropertyRows,
       submarkets.filter((row) => selectedNames.includes(row.name)),
     );
+    const availabilityBySize =
+      aggregateAvailabilityBySize(selectedPropertyRows);
     const overallMarket =
       request.calculationScope.type === "selected-submarkets" &&
       selectedNames.length === 1
@@ -593,6 +598,12 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           availabilities: detailHighlights[detailIndex]!.availabilities,
           deliveries: detailHighlights[detailIndex]!.deliveries,
           construction: detailHighlights[detailIndex]!.construction,
+          availabilityBySize: aggregateAvailabilityBySize(
+            propertyRows.filter(
+              (record) =>
+                canonicalChicagoSubmarket(text(record, pd.submarket)) === name,
+            ),
+          ),
         };
       },
     );
@@ -721,6 +732,34 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           inputCount: propertyHeadline ? selectedPropertyRows.length : 1,
         },
       });
+    for (const bucket of availabilityBySize)
+      provenance.push({
+        fieldPath: `availabilityBySize.${bucket.bucket}.availableSf`,
+        selectedValue: bucket.availableSf,
+        sources: [
+          {
+            sourceId: `property-data-availability-${bucket.bucket.toLowerCase().replace(/\W+/g, "-")}`,
+            sourceType: "calculated",
+            value: bucket.availableSf,
+            reference: `SUM(Property_Data__c.${pd.availableSf.apiName}) for ${bucket.bucket} across ${ELIGIBLE_MARKET_UNIVERSE_SCOPE} (${bucket.buildingCount} rows)`,
+            importedAt: retrievedAt,
+          },
+        ],
+        authority: "Property_Data__c eligible 20K+ availability-size rollup",
+        status: "calculated",
+        calculation: {
+          formula: `SUM(${pd.availableSf.apiName}) within the governed half-open size bucket`,
+          inputPaths: [
+            `Property_Data__c.${pd.availableSf.apiName}`,
+            `Property_Data__c.${pd.scope.apiName}`,
+            `Property_Data__c.${pd.quarter.apiName}`,
+            `Property_Data__c.${pd.submarket.apiName}`,
+          ],
+          inputCount: bucket.buildingCount,
+          inputPeriods: [bounds.label],
+          sourceObjects: ["Property_Data__c"],
+        },
+      });
     const historyById = new Map(history.map((record) => [record.Id, record]));
     for (const period of quarterlyHistoricalPeriods) {
       const sourceIds = period.sourceIds ?? [];
@@ -755,6 +794,66 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           sourceObjects: ["Market_Data__c"],
         },
       });
+      const chartMetrics = [
+        [
+          "vacancyRate",
+          period.vacancyRate,
+          md.vacancyRate,
+          "ratio of summed vacant SF to inventory",
+        ],
+        [
+          "availabilityRate",
+          period.availabilityRate,
+          md.availabilityRate,
+          "ratio of summed available SF to inventory",
+        ],
+        [
+          "underConstructionSf",
+          period.underConstructionSf,
+          md.underConstructionSf,
+          "sum",
+        ],
+        ["deliveredSf", period.deliveredSf, md.deliveredSf, "sum"],
+        ["salesVolume", period.salesVolume, md.salesVolume, "sum"],
+        [
+          "medianSalesPricePsf",
+          period.medianSalesPricePsf,
+          md.medianSalesPricePerBuildingSf,
+          "sales-transaction-weighted median of verified submarket medians",
+        ],
+      ] as const;
+      for (const [key, selectedValue, field, formula] of chartMetrics)
+        provenance.push({
+          fieldPath: `historicalPeriods.${period.period}.${key}`,
+          selectedValue,
+          sources: sourceIds.map((sourceId) => {
+            const record = historyById.get(sourceId)!;
+            return {
+              sourceId,
+              sourceType: "salesforce" as const,
+              value: value(record, field),
+              reference: `Market_Data__c.${field.apiName} (${period.period} / ${text(record, md.submarket)})`,
+              importedAt: retrievedAt,
+            };
+          }),
+          authority:
+            selectedNames.length === 1
+              ? "Market_Data__c official quarterly submarket snapshot"
+              : "Accepted Market_Data__c quarterly submarket aggregation",
+          status:
+            selectedNames.length === 1
+              ? ("matched" as const)
+              : ("calculated" as const),
+          calculation: {
+            formula,
+            inputPaths: sourceIds.map(
+              (sourceId) => `Market_Data__c.${sourceId}.${field.apiName}`,
+            ),
+            inputCount: sourceIds.length,
+            inputPeriods: [period.period],
+            sourceObjects: ["Market_Data__c"],
+          },
+        });
       const trailing = trailingCalculations.get(period.period)!;
       const trailingSources = trailing.sourceIds.map((sourceId) => {
         const record = historyById.get(sourceId)!;
@@ -950,6 +1049,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       availabilities: highlights.availabilities,
       deliveries: highlights.deliveries,
       construction: highlights.construction,
+      availabilityBySize,
       provenance,
       presentationOverrides: [],
       dataCompleteness: [

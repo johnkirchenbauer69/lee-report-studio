@@ -1,4 +1,5 @@
 import type {
+  ChartElement,
   ImageElement,
   ReportTemplate,
   TextElement,
@@ -52,8 +53,24 @@ export async function runExportPreflight(
           elementId: element.id,
           message: `${element.name} extends outside ${page.name}.`,
         });
-      if (element.type === "text") {
-        const typography = resolveTypography((element as TextElement).style);
+      if (element.type === "text" || element.type === "chart") {
+        const typography =
+          element.type === "text"
+            ? resolveTypography((element as TextElement).style)
+            : {
+                fontFamily:
+                  (element as ChartElement).chartStyle?.fontFamily ??
+                  BRAND_FONT_FAMILY,
+                fontWeight:
+                  (element as ChartElement).chartStyle?.fontWeight ?? 600,
+                fontStyle:
+                  (element as ChartElement).chartStyle?.fontStyle ??
+                  ("normal" as const),
+                fontAssetId: (element as ChartElement).chartStyle?.fontAssetId,
+                fontChecksum: (element as ChartElement).chartStyle
+                  ?.fontChecksum,
+                italic: false,
+              };
         const family = normalizeSemanticFontFamily(typography.fontFamily);
         const weight = Number(typography.fontWeight) || 400;
         const fontStyle =

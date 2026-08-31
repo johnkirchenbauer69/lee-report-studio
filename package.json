@@ -17,7 +17,8 @@
     "test:visual:update": "cross-env UPDATE_VISUAL_BASELINES=1 playwright test --config playwright.config.ts",
     "salesforce:check": "tsx scripts/salesforce-check.ts",
     "salesforce:benchmark:q2": "tsx scripts/salesforce-benchmark-q2.ts",
-    "salesforce:acceptance:q2": "tsx scripts/live-report-acceptance-q2.ts"
+    "salesforce:acceptance:q2": "tsx scripts/live-report-acceptance-q2.ts",
+    "template:draft:marketing-charts": "tsx scripts/create-marketing-chart-template-draft.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",

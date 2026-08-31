@@ -40,13 +40,22 @@ const templateSummaries = (await templateListResponse.json()) as {
     status: "draft" | "published" | "archived";
   }>;
 };
-const publishedTemplate = templateSummaries.templates.find(
-  (template) => template.status === "published",
-);
-if (!publishedTemplate)
-  throw new Error("Live acceptance requires a published master template.");
+const requestedTemplateVersion = process.env.LEE_ACCEPT_TEMPLATE_VERSION;
+const acceptanceTemplate = requestedTemplateVersion
+  ? templateSummaries.templates.find(
+      (template) => template.version === requestedTemplateVersion,
+    )
+  : templateSummaries.templates.find(
+      (template) => template.status === "published",
+    );
+if (!acceptanceTemplate)
+  throw new Error(
+    requestedTemplateVersion
+      ? `Requested acceptance template ${requestedTemplateVersion} was not found.`
+      : "Live acceptance requires a published master template.",
+  );
 const storedTemplateResponse = await fetch(
-  `${api}/api/templates/${encodeURIComponent(publishedTemplate.id)}/versions/${encodeURIComponent(publishedTemplate.version)}`,
+  `${api}/api/templates/${encodeURIComponent(acceptanceTemplate.id)}/versions/${encodeURIComponent(acceptanceTemplate.version)}`,
 );
 if (!storedTemplateResponse.ok)
   throw new Error("Published master template could not be loaded.");
@@ -165,13 +174,34 @@ const prepared = prepareTemplateForReport(
 const pages = expandTemplatePages(prepared, presentation, {
   submarketIds: selectedIds,
 });
+const managedCharts = pages.flatMap((page) =>
+  page.elements.filter(
+    (element) => element.type === "chart" && element.marketingChartId,
+  ),
+);
+if (managedCharts.length !== 76)
+  throw new Error(
+    `Expected 76 rendered marketing chart elements; received ${managedCharts.length}: ${pages.map((page) => `${page.name}=${page.elements.filter((element) => element.type === "chart" && element.marketingChartId).length}`).join(", ")}.`,
+  );
+for (const element of managedCharts) {
+  if (element.type !== "chart") continue;
+  const style = element.chartStyle;
+  const face = managedAssets.find((asset) => asset.id === style?.fontAssetId);
+  if (
+    style?.fontFamily !== "Nunito Sans" ||
+    style.fontWeight !== 600 ||
+    style.fontStyle !== "normal" ||
+    !face ||
+    face.type !== "font" ||
+    face.checksum !== style.fontChecksum
+  )
+    throw new Error(`${element.name} does not pin managed Nunito Sans 600.`);
+}
 const generatedUnavailable = pages
   .flatMap((page) => page.elements)
   .filter(
     (element) => element.type === "text" && element.name === "Data unavailable",
   );
-if (!generatedUnavailable.length)
-  throw new Error("Expected live generated unavailable placeholders.");
 for (const element of generatedUnavailable) {
   if (element.type !== "text") continue;
   const typography = element.style.typography;
@@ -369,9 +399,11 @@ console.log(
   JSON.stringify(
     {
       selectedSubmarkets: selected.length,
-      publishedTemplateVersion: publishedTemplate.version,
+      templateVersion: acceptanceTemplate.version,
+      templateStatus: acceptanceTemplate.status,
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
+      marketingChartElements: managedCharts.length,
       managedUnavailablePlaceholders: generatedUnavailable.length,
       firstPages: pages.slice(0, 6).map((page) => page.name),
       lastPages: pages.slice(-4).map((page) => page.name),
@@ -417,6 +449,44 @@ console.log(
           ),
         ),
       ],
+      chartDataQa: {
+        overallMarket: {
+          availabilityBySize: report.availabilityBySize,
+          historicalPeriods: report.historicalPeriods
+            .slice(0, 5)
+            .map((period) => ({
+              period: period.period,
+              quarterlyNetAbsorptionSf: period.quarterlyNetAbsorptionSf,
+              vacancyRate: period.vacancyRate,
+              availabilityRate: period.availabilityRate,
+              salesVolume: period.salesVolume,
+              medianSalesPricePsf: period.medianSalesPricePsf,
+              underConstructionSf: period.underConstructionSf,
+              deliveredSf: period.deliveredSf,
+            })),
+        },
+        representativeSubmarket: (() => {
+          const detail = report.submarketDetails.find(
+            (item) => item.name === "Central DuPage",
+          )!;
+          return {
+            name: detail.name,
+            availabilityBySize: detail.availabilityBySize,
+            historicalPeriods: detail.historicalPeriods
+              .slice(0, 5)
+              .map((period) => ({
+                period: period.period,
+                quarterlyNetAbsorptionSf: period.quarterlyNetAbsorptionSf,
+                vacancyRate: period.vacancyRate,
+                availabilityRate: period.availabilityRate,
+                salesVolume: period.salesVolume,
+                medianSalesPricePsf: period.medianSalesPricePsf,
+                underConstructionSf: period.underConstructionSf,
+                deliveredSf: period.deliveredSf,
+              })),
+          };
+        })(),
+      },
       output,
     },
     null,

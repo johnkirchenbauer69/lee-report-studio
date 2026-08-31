@@ -195,6 +195,12 @@ export interface TableElement extends BaseElement {
 
 export interface ChartElement extends BaseElement {
   type: "chart";
+  /** Selects the deterministic LEE marketing renderer for governed report charts. */
+  marketingChartId?:
+    | "availability_by_size"
+    | "net_absorption_vacancy_availability"
+    | "sales_volume_cap_rates"
+    | "construction_uc_deliveries";
   sourcePath: string;
   categoryPath: string;
   valuePath?: string;
@@ -254,6 +260,10 @@ export interface ChartStyle {
   gridColor?: string;
   labelColor?: string;
   fontFamily?: string;
+  fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   fontSize?: number;
 }
 
