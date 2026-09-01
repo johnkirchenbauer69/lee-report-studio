@@ -10,7 +10,11 @@ import {
   chronologicalQuarterWindow,
   compactCurrency,
   compactNumber,
+  compactSquareFeet,
   niceTicks,
+  paddedRateDomain,
+  percentageTicksForDomain,
+  salesPriceTicks,
   wholeCurrency,
 } from "./marketingChartScale";
 
@@ -83,6 +87,7 @@ function GridAxis({
   visibleLabels?: boolean;
 }) {
   const { width } = MARKETING_CHART_BASE;
+  const compactRightLabels = side === "right" && margin.right < 20;
   return (
     <>
       {ticks.map((tick) => (
@@ -97,9 +102,18 @@ function GridAxis({
           />
           {visibleLabels && (
             <PlotText
-              x={side === "left" ? margin.left - 5 : width - margin.right + 5}
+              data-axis-tick={side}
+              x={
+                side === "left"
+                  ? margin.left - 5
+                  : compactRightLabels
+                    ? width - 1
+                    : width - margin.right + 5
+              }
               y={y(tick) + 2.5}
-              textAnchor={side === "left" ? "end" : "start"}
+              textAnchor={
+                side === "left" || compactRightLabels ? "end" : "start"
+              }
               fontSize={marketingChartTheme.typography.tick}
             >
               {format(tick)}
@@ -273,7 +287,7 @@ function AvailabilityChart({
           fontSize={marketingChartTheme.typography.barLabel}
           fontWeight={600}
         >
-          {compactNumber(value)}
+          {compactSquareFeet(value)}
         </PlotText>
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
@@ -348,7 +362,7 @@ function ConstructionChart({
             textAnchor="middle"
             fontSize={marketingChartTheme.typography.barLabel}
           >
-            {compactNumber(value)}
+            {compactSquareFeet(value)}
           </PlotText>
         )),
       )}
@@ -399,21 +413,14 @@ function CombinationChart({
   const barMaximum = Math.max(1, ...bars);
   const barTicks = niceTicks(barMinimum * 1.1, barMaximum * 1.1, 5);
   const rightTicks = sales
-    ? (() => {
-        const minimum = Math.min(...lineValues);
-        const maximum = Math.max(...lineValues);
-        const padding = Math.max(1, (maximum - minimum) * 0.1);
-        return niceTicks(minimum - padding, maximum + padding, 5);
-      })()
-    : Array.from(
-        {
-          length: Math.max(
-            2,
-            Math.ceil(Math.max(...lineValues, 0.01) * 108) + 1,
-          ),
-        },
-        (_, index) => index / 100,
-      );
+    ? salesPriceTicks(lineValues)
+    : percentageTicksForDomain(paddedRateDomain(lineValues));
+  const rightDomain = sales
+    ? {
+        minimum: rightTicks[0] ?? 0,
+        maximum: rightTicks.at(-1) ?? 1,
+      }
+    : paddedRateDomain(lineValues);
   const plotWidth = MARKETING_CHART_BASE.width - margin.left - margin.right;
   const plotHeight = MARKETING_CHART_BASE.height - margin.top - margin.bottom;
   const x = (index: number) =>
@@ -427,14 +434,18 @@ function CombinationChart({
     );
   };
   const barY = (value: number) => scale(value, barTicks);
-  const rightY = (value: number) => scale(value, rightTicks);
+  const rightY = (value: number) =>
+    scale(value, [rightDomain.minimum, rightDomain.maximum]);
   const zero = barY(0);
   const barWidth = Math.min(30, (plotWidth / Math.max(rows.length, 1)) * 0.48);
   const colors = sales
     ? [marketingChartTheme.palette.navy]
     : [marketingChartTheme.palette.vacancy, marketingChartTheme.palette.navy];
   return (
-    <>
+    <g
+      data-right-axis-min={rightDomain.minimum}
+      data-right-axis-max={rightDomain.maximum}
+    >
       <GridAxis
         ticks={rightTicks}
         y={rightY}
@@ -467,7 +478,7 @@ function CombinationChart({
           textAnchor="middle"
           fontSize={marketingChartTheme.typography.barLabel}
         >
-          {sales ? compactCurrency(value) : compactNumber(value)}
+          {sales ? compactCurrency(value) : compactSquareFeet(value)}
         </PlotText>
       ))}
       {linePaths.map((path, pathIndex) => {
@@ -492,6 +503,16 @@ function CombinationChart({
         );
       })}
       <Categories rows={rows} element={element} x={x} y={188} />
+      {sales && !lineValues.length && (
+        <PlotText
+          x={MARKETING_CHART_BASE.width - margin.right}
+          y={margin.top + 8}
+          textAnchor="end"
+          fontSize={marketingChartTheme.typography.barLabel}
+        >
+          Median Sales Price unavailable
+        </PlotText>
+      )}
       {sales && (
         <AxisTitle
           x={350}
@@ -529,7 +550,7 @@ function CombinationChart({
               ]
         }
       />
-    </>
+    </g>
   );
 }
 

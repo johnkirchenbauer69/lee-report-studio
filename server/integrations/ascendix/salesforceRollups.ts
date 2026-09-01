@@ -45,32 +45,17 @@ export function aggregateAvailabilityBySize(
   });
 }
 
-const weightedMedian = (
-  rows: SalesforceRecord[],
-  valueField: { apiName: string },
-  weightField: { apiName: string },
-) => {
-  const values = rows
-    .map((row) => ({
-      value: numeric(row, valueField),
-      weight: numeric(row, weightField),
-    }))
-    .filter((item) => item.value > 0)
-    .sort((left, right) => left.value - right.value);
-  if (!values.length) return null;
-  const totalWeight = values.reduce((total, item) => total + item.weight, 0);
-  if (totalWeight <= 0) {
-    const middle = Math.floor(values.length / 2);
-    return values.length % 2
-      ? values[middle]!.value
-      : (values[middle - 1]!.value + values[middle]!.value) / 2;
-  }
-  let cumulative = 0;
-  for (const item of values) {
-    cumulative += item.weight;
-    if (cumulative >= totalWeight / 2) return item.value;
-  }
-  return values.at(-1)!.value;
+/**
+ * A Market_Data median is authoritative only for its own single submarket row.
+ * Multiple submarket medians cannot be combined into a transaction median.
+ */
+export const verifiedMedianSalesPricePsf = (rows: SalesforceRecord[]) => {
+  if (rows.length !== 1) return null;
+  const value = numeric(
+    rows[0]!,
+    mapping.marketData.medianSalesPricePerBuildingSf,
+  );
+  return value > 0 ? value : null;
 };
 export const verifiedSpeculativeShare = (
   underConstructionSf: number,
@@ -179,11 +164,7 @@ export function aggregateQuarterlyMarketPeriod(
     underConstructionSf: sum(rows, md.underConstructionSf),
     deliveredSf: sum(rows, md.deliveredSf),
     salesVolume: sum(rows, md.salesVolume),
-    medianSalesPricePsf: weightedMedian(
-      rows,
-      md.medianSalesPricePerBuildingSf,
-      md.salesTransactions,
-    ),
+    medianSalesPricePsf: verifiedMedianSalesPricePsf(rows),
     leasingActivitySf: sum(rows, md.leasingActivitySf),
     sourceIds: rows.map((row) => String(row.Id)).filter(Boolean),
   };

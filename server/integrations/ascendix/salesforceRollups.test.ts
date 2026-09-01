@@ -5,6 +5,7 @@ import {
   aggregateQuarterlyMarketPeriod,
   calculateTrailing12MonthNetAbsorption,
   rollupPropertyData,
+  verifiedMedianSalesPricePsf,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
 
@@ -41,7 +42,7 @@ describe("live-verified Salesforce rollups", () => {
       { bucket: "500k SF+", availableSf: 500_000, buildingCount: 1 },
     ]);
   });
-  it("maps construction, deliveries, sales volume, and the verified nominal median series", () => {
+  it("does not substitute a weighted median of submarket medians for an overall transaction median", () => {
     const result = aggregateQuarterlyMarketPeriod("2026 Q2", [
       {
         Id: "a",
@@ -75,8 +76,32 @@ describe("live-verified Salesforce rollups", () => {
       underConstructionSf: 50,
       deliveredSf: 25,
       salesVolume: 3_000,
-      medianSalesPricePsf: 130,
+      medianSalesPricePsf: null,
     });
+    expect(
+      verifiedMedianSalesPricePsf([
+        {
+          Id: "a",
+          Median_Sales_Price_Per_Building_SF__c: 100,
+          Sales_Transactions__c: 1,
+        },
+        {
+          Id: "b",
+          Median_Sales_Price_Per_Building_SF__c: 130,
+          Sales_Transactions__c: 3,
+        },
+      ]),
+    ).toBeNull();
+  });
+  it("retains a direct verified Market_Data median for one submarket", () => {
+    expect(
+      aggregateQuarterlyMarketPeriod("2026 Q2", [
+        {
+          Id: "a",
+          Median_Sales_Price_Per_Building_SF__c: 146.52,
+        },
+      ]).medianSalesPricePsf,
+    ).toBe(146.52);
   });
   it("uses ratio-of-sums for overall vacancy and availability", () => {
     const result = rollupPropertyData(

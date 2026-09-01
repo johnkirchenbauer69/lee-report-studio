@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ChartElement } from "../../types/report";
 import { MarketingChart } from "./MarketingChart";
+import { marketingChartTheme } from "./marketingChartTheme";
 
 const element = (
   marketingChartId: ChartElement["marketingChartId"],
@@ -136,19 +137,59 @@ describe("MarketingChart vector output", () => {
         source={history}
       />,
     );
-    expect(html).toContain("-350K");
+    expect(html).toContain("-350K SF");
+    expect(html).toContain('x="359"');
+    expect(html).toContain('text-anchor="end"');
   });
 
-  it("uses a padded data range rather than zero for the sales price axis", () => {
+  it("anchors the sales price axis at zero and leaves room for its title", () => {
     const html = renderToStaticMarkup(
       <MarketingChart
         element={element("sales_volume_cap_rates")}
         source={history}
       />,
     );
-    expect(html).toContain("$110");
-    expect(html).toContain("$135");
-    expect(html).not.toContain(">$0<");
+    expect(html).toContain(">$0<");
+    expect(html).toContain(">$140<");
+    expect(html).toContain('data-right-axis-min="0"');
+    expect(marketingChartTheme.margins.sales.right).toBe(48);
+  });
+
+  it("renders explicit compact SF zero labels", () => {
+    const zeroHistory = history.map((row) => ({
+      ...row,
+      quarterlyNetAbsorptionSf: 0,
+      deliveredSf: 0,
+    }));
+    const net = renderToStaticMarkup(
+      <MarketingChart
+        element={element("net_absorption_vacancy_availability")}
+        source={zeroHistory}
+      />,
+    );
+    const construction = renderToStaticMarkup(
+      <MarketingChart
+        element={element("construction_uc_deliveries")}
+        source={zeroHistory}
+      />,
+    );
+    expect(net).toContain("0 SF");
+    expect(construction).toContain("0 SF");
+  });
+
+  it("keeps sales volume while explicitly marking an unavailable aggregate median", () => {
+    const html = renderToStaticMarkup(
+      <MarketingChart
+        element={element("sales_volume_cap_rates")}
+        source={history.map((row) => ({
+          ...row,
+          medianSalesPricePsf: null,
+        }))}
+      />,
+    );
+    expect(html).toContain("$1.2B");
+    expect(html).toContain("Median Sales Price unavailable");
+    expect(html).not.toContain('data-axis-tick="right"');
   });
 
   it("uses clustered construction legend naming and order", () => {

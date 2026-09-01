@@ -819,7 +819,9 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           "medianSalesPricePsf",
           period.medianSalesPricePsf,
           md.medianSalesPricePerBuildingSf,
-          "sales-transaction-weighted median of verified submarket medians",
+          selectedNames.length === 1
+            ? "direct verified Market_Data__c submarket median"
+            : "unavailable: a true transaction median cannot be derived from aggregate submarket medians",
         ],
       ] as const;
       for (const [key, selectedValue, field, formula] of chartMetrics)

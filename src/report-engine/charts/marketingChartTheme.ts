@@ -21,8 +21,8 @@ export const marketingChartTheme = {
   dash: "4 3",
   margins: {
     availability: { left: 47.94, right: 13.33, top: 9.56, bottom: 35.63 },
-    combination: { left: 35.36, right: 35.49, top: 11.64, bottom: 35.49 },
-    sales: { left: 56.28, right: 36.07, top: 11.64, bottom: 35.49 },
+    combination: { left: 35.36, right: 11.5, top: 11.64, bottom: 35.49 },
+    sales: { left: 56.28, right: 48, top: 11.64, bottom: 35.49 },
     construction: { left: 35.36, right: 11.5, top: 11.64, bottom: 35.49 },
   },
   shadow: { dx: 3, dy: 3, blur: 1.4, opacity: 0.26 },

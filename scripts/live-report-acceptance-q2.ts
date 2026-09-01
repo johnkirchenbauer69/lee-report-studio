@@ -6,6 +6,13 @@ import { prepareTemplateForReport } from "../src/report-engine/generation/prepar
 import { industrialMarketReportSchema } from "../src/report-engine/schema/industrialMarketReport.ts";
 import { looksLikeSalesforceId } from "../src/shared/salesforceIds.ts";
 import { evaluateReportReadiness } from "../src/report-engine/validation/reportValidation.ts";
+import {
+  chronologicalQuarterWindow,
+  compactCurrency,
+  compactSquareFeet,
+  paddedRateDomain,
+  salesPriceTicks,
+} from "../src/report-engine/charts/marketingChartScale.ts";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 import type { Asset, ReportTemplate } from "../src/types/report.ts";
 
@@ -27,6 +34,32 @@ if (!response.ok)
   );
 const envelope = (await response.json()) as { report: unknown };
 const report = industrialMarketReportSchema.parse(envelope.report);
+const chartWindow = <T extends { period: string }>(rows: T[]) =>
+  chronologicalQuarterWindow(rows, (row) => row.period);
+const overallChartWindow = chartWindow(report.historicalPeriods);
+if (overallChartWindow.some((period) => period.medianSalesPricePsf !== null))
+  throw new Error(
+    "Overall Market Median Sales Price must remain unavailable unless a true transaction-level median is verified.",
+  );
+const directMedianChecks = [
+  ["Central DuPage", 146.52],
+  ["I-88 Corridor", 94.15],
+  ["North DuPage", 125.04],
+] as const;
+for (const [name, expected] of directMedianChecks) {
+  const detail = report.submarketDetails.find((item) => item.name === name);
+  const actual = detail?.historicalPeriods.find(
+    (period) => period.period === "2026 Q2",
+  )?.medianSalesPricePsf;
+  if (
+    actual === undefined ||
+    actual === null ||
+    Math.abs(actual - expected) > 0.001
+  )
+    throw new Error(
+      `${name} did not retain its direct verified Market_Data median: ${actual}.`,
+    );
+}
 const [templateListResponse, assetsResponse] = await Promise.all([
   fetch(`${api}/api/templates`),
   fetch(`${api}/api/assets`),
@@ -392,9 +425,53 @@ const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 const pdf = await PDFDocument.load(pdfBytes);
 if (pdf.getPageCount() !== 44)
   throw new Error(`Expected a 44-page PDF; received ${pdf.getPageCount()}.`);
-const output = "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
+const output =
+  process.env.LEE_ACCEPT_PDF_OUTPUT ??
+  "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
 await fs.mkdir("output/pdf", { recursive: true });
 await fs.writeFile(output, pdfBytes);
+const chartQa = (name: string, periods: typeof report.historicalPeriods) => {
+  const window = chartWindow(periods);
+  return {
+    name,
+    netRightAxisDomain: paddedRateDomain(
+      window.flatMap((period) => [period.vacancyRate, period.availabilityRate]),
+    ),
+    salesRightAxisTicks: salesPriceTicks(
+      window.flatMap((period) =>
+        period.medianSalesPricePsf === null ||
+        period.medianSalesPricePsf === undefined
+          ? []
+          : [period.medianSalesPricePsf],
+      ),
+    ),
+  };
+};
+const centralDuPage = report.submarketDetails.find(
+  (item) => item.name === "Central DuPage",
+)!;
+const northDuPage = report.submarketDetails.find(
+  (item) => item.name === "North DuPage",
+)!;
+const liveCompactLabels = {
+  availability: report.availabilityBySize.map((bucket) =>
+    compactSquareFeet(bucket.availableSf),
+  ),
+  netAbsorption: overallChartWindow.map((period) =>
+    compactSquareFeet(period.quarterlyNetAbsorptionSf),
+  ),
+  underConstruction: overallChartWindow.map((period) =>
+    compactSquareFeet(period.underConstructionSf),
+  ),
+  deliveries: overallChartWindow.map((period) =>
+    compactSquareFeet(period.deliveredSf ?? 0),
+  ),
+  salesVolume: overallChartWindow.map((period) =>
+    compactCurrency(period.salesVolume ?? 0),
+  ),
+  explicitZeroSf: compactSquareFeet(0),
+  explicitZeroSales: compactCurrency(0),
+};
 console.log(
   JSON.stringify(
     {
@@ -450,6 +527,18 @@ console.log(
         ),
       ],
       chartDataQa: {
+        axes: [
+          chartQa("Overall Market", report.historicalPeriods),
+          chartQa("Central DuPage", centralDuPage.historicalPeriods),
+          chartQa("North DuPage", northDuPage.historicalPeriods),
+        ],
+        directMedianChecks: directMedianChecks.map(([name, expected]) => ({
+          name,
+          officialMarketDataMedianPsf: expected,
+          retained: true,
+        })),
+        overallMedianSalesPriceDisposition: "unavailable",
+        compactLabels: liveCompactLabels,
         overallMarket: {
           availabilityBySize: report.availabilityBySize,
           historicalPeriods: report.historicalPeriods

@@ -47,6 +47,31 @@ for (const chart of charts) {
     const target = page.getByTestId(chart.id);
     await expect(target.locator("svg linearGradient")).toHaveCount(1);
     await expect(target.locator("svg filter")).toHaveCount(1);
+    if (chart.id === "chart-net") {
+      const axis = target.locator("svg g[data-right-axis-min]");
+      await expect(axis).toHaveAttribute("data-right-axis-min", "0.031");
+      await expect(axis).toHaveAttribute("data-right-axis-max", "0.115");
+      await expect(
+        target.locator("svg text").filter({ hasText: "SF" }),
+      ).not.toHaveCount(0);
+    }
+    if (chart.id === "chart-sales-unavailable") {
+      const axis = target.locator("svg g[data-right-axis-min]");
+      await expect(axis).toHaveAttribute("data-right-axis-min", "0");
+      const title = await target
+        .locator("svg text", { hasText: "PRICE ($/SF)" })
+        .boundingBox();
+      const tickBoxes = await target
+        .locator('svg text[data-axis-tick="right"]')
+        .evaluateAll((ticks) =>
+          ticks.map((tick) => {
+            const box = (tick as SVGTextElement).getBBox();
+            return { right: box.x + box.width };
+          }),
+        );
+      expect(title).not.toBeNull();
+      expect(Math.max(...tickBoxes.map((box) => box.right))).toBeLessThan(350);
+    }
     await expect(target).toHaveScreenshot(`${chart.name}.png`, {
       animations: "disabled",
       caret: "hide",

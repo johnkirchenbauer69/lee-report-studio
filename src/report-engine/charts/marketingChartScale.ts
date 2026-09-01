@@ -45,7 +45,41 @@ export const compactNumber = (value: number) => {
 };
 
 export const compactCurrency = (value: number) => `$${compactNumber(value)}`;
+export const compactSquareFeet = (value: number) =>
+  `${compactNumber(value)} SF`;
 export const wholeCurrency = (value: number) => `$${Math.round(value)}`;
+
+export interface AxisDomain {
+  minimum: number;
+  maximum: number;
+}
+
+export function paddedRateDomain(
+  values: number[],
+  paddingPercentagePoints = 0.02,
+): AxisDomain {
+  const finite = values.filter(Number.isFinite);
+  if (!finite.length) return { minimum: 0, maximum: paddingPercentagePoints };
+  const stable = (value: number) => Math.round(value * 1e12) / 1e12;
+  return {
+    minimum: stable(Math.max(0, Math.min(...finite) - paddingPercentagePoints)),
+    maximum: stable(Math.max(...finite) + paddingPercentagePoints),
+  };
+}
+
+export function percentageTicksForDomain(domain: AxisDomain) {
+  const ticks: number[] = [];
+  const firstPoint = Math.ceil(domain.minimum * 100 - Number.EPSILON);
+  const lastPoint = Math.floor(domain.maximum * 100 + Number.EPSILON);
+  for (let point = firstPoint; point <= lastPoint; point += 1)
+    ticks.push(point / 100);
+  return ticks;
+}
+
+export function salesPriceTicks(values: number[]) {
+  const maximum = Math.max(0, ...values.filter(Number.isFinite));
+  return maximum > 0 ? niceTicks(0, maximum, 8) : [];
+}
 
 export function catmullRomPath(points: Array<{ x: number; y: number }>) {
   if (points.length < 2) return "";
