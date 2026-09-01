@@ -54,6 +54,17 @@ for (const chart of charts) {
       await expect(
         target.locator("svg text").filter({ hasText: "SF" }),
       ).not.toHaveCount(0);
+      const tickBoxes = await target
+        .locator('svg text[data-axis-tick="right"]')
+        .evaluateAll((ticks) =>
+          ticks.map((tick) => {
+            const box = (tick as SVGTextElement).getBBox();
+            return { right: box.x + box.width };
+          }),
+        );
+      expect(
+        Math.max(...tickBoxes.map((box) => box.right)),
+      ).toBeLessThanOrEqual(360);
     }
     if (chart.id === "chart-sales-unavailable") {
       const axis = target.locator("svg g[data-right-axis-min]");
