@@ -42,6 +42,37 @@ for (const { index, number, name } of pages)
     const currentBuffer = await page
       .locator(".benchmark-page")
       .screenshot({ animations: "disabled" });
+    if (name === "market-overview") {
+      await expect(page.getByText("LEE DEAL", { exact: true })).toHaveCount(2);
+      await expect(page.locator('[data-testid="lee-deal-chip"]')).toHaveCount(
+        2,
+      );
+      const chipLayout = await page
+        .locator(".transaction-type-cell:has(.lee-deal-chip)")
+        .evaluateAll((cells) =>
+          cells.map((cell) => {
+            const value = cell.querySelector(".transaction-type-value")!;
+            const chip = cell.querySelector(".lee-deal-chip")!;
+            const cellBox = cell.getBoundingClientRect();
+            const valueBox = value.getBoundingClientRect();
+            const chipBox = chip.getBoundingClientRect();
+            return {
+              noOverlap: valueBox.right <= chipBox.left,
+              chipInside:
+                chipBox.left >= cellBox.left && chipBox.right <= cellBox.right,
+              verticallyCentered:
+                Math.abs(
+                  (chipBox.top + chipBox.bottom) / 2 -
+                    (cellBox.top + cellBox.bottom) / 2,
+                ) < 1,
+            };
+          }),
+        );
+      expect(chipLayout).toEqual([
+        { noOverlap: true, chipInside: true, verticallyCentered: true },
+        { noOverlap: true, chipInside: true, verticallyCentered: true },
+      ]);
+    }
     if (name === "data-methodology")
       await expect(page.getByText("Q2 2026", { exact: true })).toHaveCount(1);
     const baselinePath = join(

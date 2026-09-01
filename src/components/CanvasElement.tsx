@@ -510,11 +510,31 @@ export function CanvasElement(props: Props) {
                         : undefined
                     }
                   >
-                    {formatValue(getByPath(row, c.path), {
-                      path: c.path,
-                      format: c.format,
-                      decimals: c.decimals ?? 1,
-                    })}
+                    {element.variant === "transactions" && c.path === "type" ? (
+                      <div className="transaction-type-cell">
+                        <span className="transaction-type-value">
+                          {formatValue(getByPath(row, c.path), {
+                            path: c.path,
+                            format: c.format,
+                            decimals: c.decimals ?? 1,
+                          })}
+                        </span>
+                        {getByPath(row, "isLeeDeal") === true && (
+                          <span
+                            className="lee-deal-chip"
+                            data-testid="lee-deal-chip"
+                          >
+                            LEE DEAL
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      formatValue(getByPath(row, c.path), {
+                        path: c.path,
+                        format: c.format,
+                        decimals: c.decimals ?? 1,
+                      })
+                    )}
                   </td>
                 ))}
               </tr>

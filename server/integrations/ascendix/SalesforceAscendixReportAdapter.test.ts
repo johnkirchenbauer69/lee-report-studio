@@ -202,6 +202,7 @@ describe("Salesforce Ascendix live-verified contract", () => {
         Sort_Value__c: 125_000,
         Lease_SF__c: 125_000,
         Lease__c: "lease-unverified",
+        Is_Lee_Deal__c: true,
         Source_Record_ID__c: "lease-unverified",
         Tenant_Name__c: nativeTenant,
         Address__c: "200 Main St",
@@ -217,11 +218,15 @@ describe("Salesforce Ascendix live-verified contract", () => {
       tenant: "(Confidential)",
       tenantDisplayName: "(Confidential)",
       isDealConfidential: null,
+      isLeeDeal: null,
     });
     expect(JSON.stringify(result.report)).not.toContain(nativeTenant);
     expect(result.diagnostics).toContain(
       "Optional finalist enrichment unavailable for ascendix__Lease__c; contributor-native values were retained.",
     );
+    expect(
+      client.queries.find((query) => query.includes("FROM ascendix__Lease__c")),
+    ).toContain("Lee_Deal__c");
 
     const readiness = evaluateReportReadiness(
       result.report,

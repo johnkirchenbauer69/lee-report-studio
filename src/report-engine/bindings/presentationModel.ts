@@ -265,6 +265,9 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
             amount: `${integer((item as IndustrialMarketReport["leasing"][number]).sizeSf)} SF`,
             address: item.address,
             type: (item as IndustrialMarketReport["leasing"][number]).leaseType,
+            isLeeDeal:
+              (item as IndustrialMarketReport["leasing"][number]).isLeeDeal ===
+              true,
           }
         : {
             party: (item as IndustrialMarketReport["sales"][number]).buyer,
@@ -277,10 +280,19 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
               "Included"
                 ? "Sale type not published"
                 : (item as IndustrialMarketReport["sales"][number]).saleType,
+            isLeeDeal:
+              (item as IndustrialMarketReport["sales"][number]).isLeeDeal ===
+              true,
           },
     );
     while (rows.length < 3)
-      rows.push({ party: "-", amount: "-", address: "-", type: "-" });
+      rows.push({
+        party: "-",
+        amount: "-",
+        address: "-",
+        type: "-",
+        isLeeDeal: false,
+      });
     return rows;
   };
   const submarketDetails = report.submarketDetails.map((detail) => {

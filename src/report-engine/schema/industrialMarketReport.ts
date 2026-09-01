@@ -97,6 +97,8 @@ export const leaseRecordSchema = z.object({
   tenant: z.string().min(1),
   tenantDisplayName: z.string().min(1).optional(),
   isDealConfidential: z.boolean().nullable().optional(),
+  /** Verified linked Lease checkbox. Null/undefined means the source was unavailable. */
+  isLeeDeal: z.boolean().nullable().optional(),
   sizeSf: nonNegativeNumber,
   address: z.string().min(1),
   leaseType: z.string().min(1),
@@ -104,6 +106,8 @@ export const leaseRecordSchema = z.object({
 
 export const saleRecordSchema = z.object({
   buyer: z.string().min(1),
+  /** Verified linked Sale checkbox. Null/undefined means the source was unavailable. */
+  isLeeDeal: z.boolean().nullable().optional(),
   price: nonNegativeNumber,
   address: z.string().min(1),
   saleType: z.string().min(1),

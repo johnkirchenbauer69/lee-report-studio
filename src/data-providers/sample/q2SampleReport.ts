@@ -306,6 +306,7 @@ export const q2Leases: LeaseRecord[] = [
   {
     tenant: "Hyundai Translead",
     isDealConfidential: false,
+    isLeeDeal: true,
     sizeSf: 906517,
     address: "3835 Youngs Rd, Channahon, IL 60410",
     leaseType: "Direct / New",
@@ -329,6 +330,7 @@ export const q2Leases: LeaseRecord[] = [
 export const q2Sales: SaleRecord[] = [
   {
     buyer: "Realty Income Corporation",
+    isLeeDeal: true,
     price: 124000000,
     address: "23301 S Central Ave, University Park, IL 60484",
     saleType: "Investment",

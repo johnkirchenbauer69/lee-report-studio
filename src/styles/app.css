@@ -355,7 +355,7 @@ button {
   text-align: left;
   display: grid;
   grid-template-columns: 20px 1fr auto;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
   cursor: pointer;
 }
@@ -879,6 +879,39 @@ button {
 .report-table td {
   border-bottom: 1px solid #e4e7ec;
   padding: 8px;
+}
+.transaction-type-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+.transaction-type-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+}
+.lee-deal-chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  min-width: 52px;
+  height: 17px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(180deg, #cf123f 0%, #7a0d26 100%);
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 .chart-wrap {
   height: 100%;

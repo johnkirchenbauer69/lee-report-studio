@@ -400,6 +400,7 @@ export async function mapHistoricalContributors(
       tenant: tenantDisplayName,
       tenantDisplayName,
       isDealConfidential,
+      isLeeDeal: booleanValue(record, "Lease__r.Lee_Deal__c"),
       sizeSf: numeric(
         record,
         "Lease_SF__c",
@@ -430,6 +431,7 @@ export async function mapHistoricalContributors(
     );
     return {
       buyer: preferredBuyer || "Buyer not published",
+      isLeeDeal: booleanValue(record, "Sale__r.Lee_Deal__c"),
       price: numeric(
         record,
         "Sale_Price__c",
@@ -477,6 +479,12 @@ export async function mapHistoricalContributors(
           section === "leasing"
             ? booleanValue(row, "Lease__r.Is_Deal_Confidential__c")
             : undefined,
+        isLeeDeal:
+          section === "leasing"
+            ? leasing[index]?.isLeeDeal
+            : section === "sales"
+              ? sales[index]?.isLeeDeal
+              : undefined,
         tenantDisplayName:
           section === "leasing" ? leasing[index]?.tenantDisplayName : undefined,
         saleType: section === "sales" ? sales[index]?.saleType : undefined,
@@ -488,6 +496,25 @@ export async function mapHistoricalContributors(
           value: row.Source_Record_ID__c,
           reference: "Market_Data_Contributor__c",
         },
+        ...(section === "leasing" && row.Lease__c
+          ? [
+              {
+                sourceId: String(row.Lease__c),
+                sourceType: "salesforce" as const,
+                value: leasing[index]?.isLeeDeal,
+                reference: "ascendix__Lease__c.Lee_Deal__c",
+              },
+            ]
+          : section === "sales" && row.Sale__c
+            ? [
+                {
+                  sourceId: String(row.Sale__c),
+                  sourceType: "salesforce" as const,
+                  value: sales[index]?.isLeeDeal,
+                  reference: "ascendix__Sale__c.Lee_Deal__c",
+                },
+              ]
+            : []),
       ],
       authority: "Historical Market_Data_Contributor__c ranking",
       status: "matched",

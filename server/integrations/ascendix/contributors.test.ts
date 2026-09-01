@@ -300,6 +300,7 @@ describe("historical contributors", () => {
     ]);
     expect(mapped.sales[0]).toEqual({
       buyer: "Acme Holdings",
+      isLeeDeal: null,
       price: 2_000_000,
       address: "100 Main St",
       saleType: "Owner/User",
@@ -377,5 +378,78 @@ describe("historical contributors", () => {
     expect(JSON.stringify(mapped)).not.toContain(
       "Native Tenant That Must Never Leak",
     );
+  });
+
+  it("uses only verified linked Lease and Sale booleans for Lee Deal status", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "lease-lee",
+        Contributor_Category__c: "Lease",
+        Is_Lee_Deal__c: false,
+        Lease_SF__c: 125_000,
+        Address__c: "200 Main St",
+        Tenant_Name__c: "Secret Tenant That Must Not Leak",
+        Lease__c: "linked-lease",
+        Deal_Type__c: "New",
+        Lease__r: {
+          Is_Deal_Confidential__c: true,
+          Lee_Deal__c: true,
+        },
+      }),
+      row({
+        Id: "sale-lee",
+        Contributor_Category__c: "Sale",
+        Is_Lee_Deal__c: false,
+        Sale_Price__c: 2_000_000,
+        Address__c: "100 Main St",
+        Buyer_Name__c: "Acme Holdings",
+        Sale__c: "linked-sale",
+        Sale__r: { Lee_Deal__c: true, Sale_Type__c: "Investment" },
+      }),
+    ]);
+
+    expect(mapped.leasing[0]?.isLeeDeal).toBe(true);
+    expect(mapped.leasing[0]?.tenantDisplayName).toBe("(Confidential)");
+    expect(JSON.stringify(mapped.leasing[0])).not.toContain(
+      "Secret Tenant That Must Not Leak",
+    );
+    expect(mapped.sales[0]?.isLeeDeal).toBe(true);
+    expect(mapped.provenance[0]?.selectedValue).toMatchObject({
+      isLeeDeal: true,
+    });
+    expect(mapped.provenance[1]?.selectedValue).toMatchObject({
+      isLeeDeal: true,
+    });
+    expect(mapped.provenance[0]?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reference: "ascendix__Lease__c.Lee_Deal__c",
+          value: true,
+        }),
+      ]),
+    );
+    expect(mapped.provenance[1]?.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reference: "ascendix__Sale__c.Lee_Deal__c",
+          value: true,
+        }),
+      ]),
+    );
+  });
+
+  it("keeps Lee Deal status unknown when linked enrichment is unavailable", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "sale-unverified",
+        Contributor_Category__c: "Sale",
+        Is_Lee_Deal__c: true,
+        Sale_Price__c: 2_000_000,
+        Address__c: "100 Main St",
+        Buyer_Name__c: "Acme Holdings",
+      }),
+    ]);
+
+    expect(mapped.sales[0]?.isLeeDeal).toBeNull();
   });
 });

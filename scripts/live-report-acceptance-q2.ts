@@ -326,6 +326,72 @@ for (const detail of presentation.submarketDetails) {
         `${detail.displayName} does not have fixed highlight slots.`,
       );
 }
+const transactionTables = pages
+  .flatMap((page) =>
+    page.elements.map((element) => ({ page: page.name, element })),
+  )
+  .filter(
+    (entry) =>
+      entry.element.type === "table" &&
+      entry.element.variant === "transactions" &&
+      (entry.element.name === "Top Leases" ||
+        entry.element.name === "Top Sales"),
+  );
+if (transactionTables.length !== 38)
+  throw new Error(
+    `Expected 38 overall/submarket transaction tables; found ${transactionTables.length}.`,
+  );
+if (
+  transactionTables.some(
+    ({ element }) =>
+      element.type !== "table" ||
+      element.columns.length !== 4 ||
+      element.maxRows !== 3,
+  )
+)
+  throw new Error(
+    "A Top Lease or Top Sale table changed its governed four-column, three-row geometry.",
+  );
+const transactionSections = [
+  {
+    market: "Overall Market",
+    leases: presentation.topLeaseRows,
+    sales: presentation.topSaleRows,
+  },
+  ...presentation.submarketDetails.map((detail) => ({
+    market: detail.displayName,
+    leases: detail.topLeaseRows,
+    sales: detail.topSaleRows,
+  })),
+];
+const leeDealRows = transactionSections.flatMap((section) => [
+  ...section.leases
+    .filter((row) => row.isLeeDeal === true)
+    .map((row) => ({
+      market: section.market,
+      section: "Top Leases",
+      party: row.party,
+      address: row.address,
+      type: row.type,
+    })),
+  ...section.sales
+    .filter((row) => row.isLeeDeal === true)
+    .map((row) => ({
+      market: section.market,
+      section: "Top Sales",
+      party: row.party,
+      address: row.address,
+      type: row.type,
+    })),
+]);
+if (
+  transactionSections.some((section) =>
+    [...section.leases, ...section.sales].some(
+      (row) => row.party === "-" && row.isLeeDeal === true,
+    ),
+  )
+)
+  throw new Error("A placeholder transaction row received a Lee Deal chip.");
 const allLeases = [
   ...presentation.leasing,
   ...presentation.submarketDetails.flatMap((detail) => detail.leasing),
@@ -494,6 +560,10 @@ console.log(
       ),
       confidentialLeaseRows: confidentialLeases.length,
       unknownConfidentialityLeaseRows: unknownConfidentialityLeases.length,
+      leeDealChipCount: leeDealRows.length,
+      leeDealRows,
+      transactionTableCount: transactionTables.length,
+      transactionTableGeometry: "4 columns / 3 rows / chip inside final cell",
       westCookInventoryReconciliation: {
         authoritativeValue: westCookInventory.reconciliation.authoritativeValue,
         propertyDataValue: westCookInventory.reconciliation.comparisonValue,
