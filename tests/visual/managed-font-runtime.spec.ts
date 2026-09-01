@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
 const APPROVED_FAMILIES = [
+  "Avenir Next LT Pro",
+  "Avenir Next LT Pro Condensed",
   "Carrois Gothic",
   "Mada",
   "Metropolis",
@@ -99,7 +101,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
   const families = [...new Set(fonts.map((font) => font.fontFamily))].sort();
   test.skip(!fonts.length, "The local managed font store is not installed.");
   expect(families).toEqual([...APPROVED_FAMILIES].sort());
-  expect(fonts).toHaveLength(81);
+  expect(fonts).toHaveLength(113);
   expect(fonts.every((font) => font.fontGovernanceStatus === "approved")).toBe(
     true,
   );
@@ -108,7 +110,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
 
   await page.goto("/", { waitUntil: "load" });
   await page.locator(".rail").getByTitle("Fonts").click();
-  await expect(page.locator(".font-family-card")).toHaveCount(10);
+  await expect(page.locator(".font-family-card")).toHaveCount(12);
   for (const family of APPROVED_FAMILIES)
     await expect(
       page.locator(".font-family-card > header > strong", {
@@ -144,6 +146,8 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
     expect(pickerOptions).not.toContain(family);
 
   const representatives = [
+    "Avenir Next LT Pro",
+    "Avenir Next LT Pro Condensed",
     "Carrois Gothic",
     "Metropolis",
     "Open Sans Condensed",
@@ -151,7 +155,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
   ]
     .map((family) => fonts.find((font) => font.fontFamily === family))
     .filter((font): font is (typeof fonts)[number] => Boolean(font));
-  expect(representatives).toHaveLength(4);
+  expect(representatives).toHaveLength(6);
   const template = {
     id: "approved-font-pdf-acceptance",
     name: "Approved Font PDF Acceptance",
@@ -169,7 +173,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
           type: "text",
           name: `${asset.fontFamily} sample`,
           x: 48,
-          y: 70 + index * 120,
+          y: 55 + index * 105,
           width: 516,
           height: 70,
           text: `${asset.fontFamily}: The quick brown fox jumps over the lazy dog.`,

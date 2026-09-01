@@ -59,6 +59,10 @@ import {
   normalizeRotation,
 } from "./engine/geometry";
 import {
+  replaceImageAsset,
+  replaceTemplateImageAsset,
+} from "./engine/imageReplacement";
+import {
   fontFamilyToCss,
   groupFontAssets,
   installManagedFonts,
@@ -155,6 +159,7 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>();
   const [toast, setToast] = useState("");
   const [croppingId, setCroppingId] = useState<string>();
+  const [replacingImageId, setReplacingImageId] = useState<string>();
   const [tableEditingId, setTableEditingId] = useState<string>();
   const [tableSelection, setTableSelection] = useState<TableSelection>();
   const [draggedPageId, setDraggedPageId] = useState<string>();
@@ -609,7 +614,26 @@ export default function App() {
     }));
     setSelectedIds([id]);
   };
-  const addImageAsset = (asset: Asset) => {
+  const useImageAsset = (asset: Asset) => {
+    if (replacingImageId) {
+      if (asset.storage !== "backend") {
+        notify("Replacement images must be uploaded as managed assets.");
+        return;
+      }
+      updatePage((current) => ({
+        ...current,
+        elements: current.elements.map((element) =>
+          element.id === replacingImageId && element.type === "image"
+            ? replaceImageAsset(element, asset)
+            : element,
+        ),
+      }));
+      setSelectedIds([replacingImageId]);
+      setCroppingId(undefined);
+      setReplacingImageId(undefined);
+      notify(`${asset.name} replaced the selected image`);
+      return;
+    }
     const id = uid("image"),
       element: ReportElement = {
         id,
@@ -1129,17 +1153,39 @@ export default function App() {
     try {
       notify("Uploading assets…");
       const { assets, summary } = await assetStorage.upload(Array.from(files));
+      if (
+        replacingImageId &&
+        assets.some(
+          (asset) => asset.type !== "font" && asset.storage !== "backend",
+        )
+      ) {
+        notify("Replacement images must be uploaded as managed assets.");
+        return;
+      }
       const allAssets = [...(latestTemplate.current.assets ?? []), ...assets];
       managedServerAssets.current = allAssets.filter(
         (asset) => asset.storage === "backend",
       );
       setFontDiagnostics(await installManagedFonts(allAssets));
-      mutate((current) =>
-        normalizeReportTemplateFonts(
+      const replacement = replacingImageId
+        ? assets.find(
+            (asset) => asset.type !== "font" && asset.storage === "backend",
+          )
+        : undefined;
+      mutate((current) => {
+        const normalized = normalizeReportTemplateFonts(
           { ...current, assets: allAssets },
           allAssets,
-        ),
-      );
+        );
+        return replacement && replacingImageId
+          ? replaceTemplateImageAsset(normalized, replacingImageId, replacement)
+          : normalized;
+      });
+      if (replacement && replacingImageId) {
+        setSelectedIds([replacingImageId]);
+        setCroppingId(undefined);
+        setReplacingImageId(undefined);
+      }
       const details = [
         summary.duplicates
           ? `${summary.duplicates} duplicate${summary.duplicates === 1 ? "" : "s"} skipped`
@@ -1468,9 +1514,27 @@ export default function App() {
       return (
         <>
           <PanelTitle
-            title={leftTab === "uploads" ? "Uploads" : "Images"}
-            subtitle="Images, logos & fonts"
+            title={
+              replacingImageId
+                ? "Replace Image"
+                : leftTab === "uploads"
+                  ? "Uploads"
+                  : "Images"
+            }
+            subtitle={
+              replacingImageId
+                ? "Choose or upload a managed image"
+                : "Images, logos & fonts"
+            }
           />
+          {replacingImageId && (
+            <button
+              className="cancel-image-replacement"
+              onClick={() => setReplacingImageId(undefined)}
+            >
+              Cancel replacement
+            </button>
+          )}
           <button
             className="upload-drop"
             onClick={() => uploadRef.current?.click()}
@@ -1491,7 +1555,11 @@ export default function App() {
             {(template.assets ?? [])
               .filter((asset) => asset.type !== "font")
               .map((asset) => (
-                <button key={asset.id} onClick={() => addImageAsset(asset)}>
+                <button
+                  key={asset.id}
+                  aria-label={`${replacingImageId ? "Replace image with" : "Add"} ${asset.name}`}
+                  onClick={() => useImageAsset(asset)}
+                >
                   <img src={asset.source} alt="" />
                   <span>{asset.name}</span>
                 </button>
@@ -2243,6 +2311,11 @@ export default function App() {
               current === selected?.id ? undefined : selected?.id,
             )
           }
+          onReplaceImage={() => {
+            if (selected?.type !== "image") return;
+            setReplacingImageId(selected.id);
+            setLeftTab("images");
+          }}
           onChange={updateSelected}
           onAlign={align}
           onDistribute={distributeSelection}

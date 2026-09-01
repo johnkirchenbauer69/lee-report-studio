@@ -282,12 +282,48 @@ for (const page of staticPages.slice(0, 3))
     !page.elements.some(
       (element) =>
         element.type === "text" &&
-        element.name === "Quarter" &&
+        element.id === `${page.id}-period` &&
+        element.name === "Report Period" &&
         element.text === "Q2 2026" &&
         element.binding?.path === "reportDisplay.period",
     )
   )
     throw new Error(`${page.name} is missing its dynamic Q2 2026 header.`);
+for (const [page, expectedTitle] of [
+  [staticPages[0]!, "DATA METHODOLOGY"],
+  [staticPages[1]!, "DEFINITIONS"],
+] as const) {
+  const expectedIds = [
+    `${page.id}-header-mask`,
+    `${page.id}-logo`,
+    `${page.id}-title`,
+    `${page.id}-period`,
+  ];
+  for (const id of expectedIds)
+    if (page.elements.filter((element) => element.id === id).length !== 1)
+      throw new Error(`${page.name} must contain exactly one ${id}.`);
+  const title = page.elements.find(
+    (element) => element.id === `${page.id}-title`,
+  );
+  if (title?.type !== "text" || title.text !== expectedTitle)
+    throw new Error(`${page.name} is missing its editable native title.`);
+}
+for (const id of ["contacts-header-mask", "contacts-logo", "contacts-period"])
+  if (
+    staticPages[2]!.elements.filter((element) => element.id === id).length !== 1
+  )
+    throw new Error(`Contacts must contain exactly one ${id}.`);
+for (const page of staticPages.slice(0, 3)) {
+  const logo = page.elements.find(
+    (element) => element.id === `${page.id}-logo`,
+  );
+  if (
+    logo?.type !== "image" ||
+    logo.src !== "/report-assets/lee-logo-white.png" ||
+    logo.fit !== "contain"
+  )
+    throw new Error(`${page.name} is missing its transparent native LEE logo.`);
+}
 if (staticPages[3]!.elements.some((element) => element.binding))
   throw new Error("Who We Are must remain fully static.");
 if (!selectedIds.includes("i80-joliet"))

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZipFile } from "yazl";
 import {
+  classifyFontFamilyWidth,
   inferNamedWeight,
   isUnsafeZipEntry,
   parseFontMetadata,
@@ -71,5 +72,15 @@ describe("secure font bundle import", () => {
       inferNamedWeight("Metropolis Semi Bold Italic", "SemiBoldItalic"),
     ).toBe(600);
     expect(inferNamedWeight("Mada Black", "Mada-Black")).toBe(900);
+    expect(inferNamedWeight("Avenir Next LT Pro Demi", "Bold")).toBe(600);
+  });
+
+  it("keeps embedded condensed-width faces out of regular CSS slots", () => {
+    expect(classifyFontFamilyWidth("Avenir Next LT Pro", 5)).toBe(
+      "Avenir Next LT Pro",
+    );
+    expect(classifyFontFamilyWidth("Avenir Next LT Pro", 3)).toBe(
+      "Avenir Next LT Pro Condensed",
+    );
   });
 });

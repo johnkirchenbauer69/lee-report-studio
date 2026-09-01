@@ -9,6 +9,8 @@ export const MAX_ZIP_UNCOMPRESSED_BYTES = 80 * 1024 * 1024;
 
 export interface FontMetadata {
   family: string;
+  subfamily: string;
+  widthClass: number;
   weight: number;
   style: "normal" | "italic";
   postScriptName: string;
@@ -29,11 +31,14 @@ const normalizeFamily = (value: string) =>
     .replace(/\s+(?:6|8|9|10|11|12|14|16|18|24|32|36|48|60|72|96)pt$/i, "")
     .trim();
 
+export const classifyFontFamilyWidth = (family: string, widthClass: number) =>
+  widthClass < 5 && !/condensed/i.test(family) ? `${family} Condensed` : family;
+
 export const inferNamedWeight = (...values: Array<string | undefined>) => {
   const value = values.filter(Boolean).join(" ");
   for (const [pattern, weight] of [
     [/extra[\s-]*light|ultra[\s-]*light/i, 200],
-    [/semi[\s-]*bold|demi[\s-]*bold/i, 600],
+    [/semi[\s-]*bold|demi[\s-]*bold|\bdemi\b/i, 600],
     [/extra[\s-]*bold|ultra[\s-]*bold/i, 800],
     [/thin|hairline/i, 100],
     [/light/i, 300],
@@ -63,6 +68,7 @@ export function parseFontMetadata(buffer: Buffer): FontMetadata {
       "Font collections are not supported; upload individual font faces.",
     );
   const font = parsed as Font;
+  const widthClass = Math.min(9, Math.max(1, font["OS/2"]?.usWidthClass ?? 5));
   const os2Weight = Math.min(
     1000,
     Math.max(1, font["OS/2"]?.usWeightClass ?? 400),
@@ -76,20 +82,37 @@ export function parseFontMetadata(buffer: Buffer): FontMetadata {
       : "normal";
   const nameRecords = (
     font as Font & {
-      name?: { records?: { preferredFamily?: Record<string, string> } };
+      name?: {
+        records?: {
+          preferredFamily?: Record<string, string>;
+          preferredSubfamily?: Record<string, string>;
+        };
+      };
     }
   ).name?.records;
   const preferredFamily = nameRecords?.preferredFamily
     ? Object.values(nameRecords.preferredFamily)[0]
     : undefined;
-  const family = normalizeFamily(
+  const preferredSubfamily = nameRecords?.preferredSubfamily
+    ? Object.values(nameRecords.preferredSubfamily)[0]
+    : undefined;
+  const subfamily = preferredSubfamily || font.subfamilyName || "Regular";
+  const baseFamily = normalizeFamily(
     preferredFamily || font.familyName || font.fullName,
   );
+  const family = classifyFontFamilyWidth(baseFamily, widthClass);
   if (!family || !font.postscriptName)
     throw new Error(
       "The file does not contain usable OpenType naming metadata.",
     );
-  return { family, weight, style, postScriptName: font.postscriptName };
+  return {
+    family,
+    subfamily,
+    widthClass,
+    weight,
+    style,
+    postScriptName: font.postscriptName,
+  };
 }
 
 export const isUnsafeZipEntry = (name: string) => {

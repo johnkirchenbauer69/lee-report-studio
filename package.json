@@ -18,7 +18,9 @@
     "salesforce:check": "tsx scripts/salesforce-check.ts",
     "salesforce:benchmark:q2": "tsx scripts/salesforce-benchmark-q2.ts",
     "salesforce:acceptance:q2": "tsx scripts/live-report-acceptance-q2.ts",
-    "template:draft:marketing-charts": "tsx scripts/create-marketing-chart-template-draft.ts"
+    "template:draft:marketing-charts": "tsx scripts/create-marketing-chart-template-draft.ts",
+    "template:draft:static-headers": "tsx scripts/create-static-header-template-draft.ts",
+    "font:approve-family": "tsx scripts/approve-managed-font-family.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",

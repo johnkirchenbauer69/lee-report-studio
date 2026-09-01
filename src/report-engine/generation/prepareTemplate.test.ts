@@ -158,7 +158,7 @@ describe("production template preparation", () => {
       expect(
         prepared.pages
           .find((page) => page.id === id)
-          ?.elements.find((element) => element.name === "Quarter"),
+          ?.elements.find((element) => element.id === `${id}-period`),
       ).toMatchObject({ type: "text", text: "Q1 2027" });
     expect(
       prepared.pages

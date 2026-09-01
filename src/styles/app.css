@@ -469,6 +469,27 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.cancel-image-replacement,
+.replace-image-button {
+  width: 100%;
+  border: 1px solid #aebdcd;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #173b64;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.cancel-image-replacement {
+  margin-bottom: 8px;
+}
+.replace-image-button {
+  margin-bottom: 10px;
+}
+.cancel-image-replacement:hover,
+.replace-image-button:hover {
+  border-color: var(--accent);
+  background: #f7fafd;
+}
 .page-list {
   display: flex;
   flex-direction: column;

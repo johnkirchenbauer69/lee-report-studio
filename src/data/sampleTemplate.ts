@@ -1178,6 +1178,7 @@ function staticReferencePage(
   name: string,
   assetName: string,
   dynamicPeriod: boolean,
+  headerTitle?: string,
 ): ReportPage {
   return {
     id,
@@ -1196,12 +1197,76 @@ function staticReferencePage(
         `/report-assets/static-pages/${assetName}.png`,
         "stretch",
       ),
+      {
+        ...shape(
+          `${id}-header-mask`,
+          "Native Header Background",
+          0,
+          0,
+          816,
+          110,
+          "#cf123f",
+        ),
+        locked: true,
+        style: {
+          fill: {
+            type: "linear-gradient",
+            angle: 180,
+            stops: [
+              { id: `${id}-red`, color: "#cf123f", position: 0 },
+              { id: `${id}-wine`, color: "#3d0a16", position: 100 },
+            ],
+          },
+          opacity: 1,
+        },
+      },
+      {
+        ...image(
+          `${id}-logo`,
+          "LEE & Associates Logo",
+          31,
+          27,
+          190,
+          67,
+          "/report-assets/lee-logo-white.png",
+          "contain",
+        ),
+        style: { opacity: 1 },
+      },
+      ...(headerTitle
+        ? ([
+            {
+              ...text(
+                `${id}-title`,
+                headerTitle,
+                451,
+                67,
+                330,
+                25,
+                headerTitle,
+                20,
+                white,
+                400,
+                "right",
+              ),
+              style: {
+                fontFamily: "Nunito Sans",
+                fontSize: 20,
+                fontWeight: 400,
+                color: white,
+                textAlign: "right",
+                lineHeight: 1.14,
+                opacity: 1,
+              },
+            },
+          ] as ReportElement[])
+        : []),
       ...(dynamicPeriod
-        ? [
+        ? ([
             {
               ...text(
                 `${id}-period`,
-                "Quarter",
+                "Report Period",
                 598,
                 21,
                 184,
@@ -1212,9 +1277,18 @@ function staticReferencePage(
                 800,
                 "right",
               ),
+              style: {
+                fontFamily: "Nunito Sans",
+                fontSize: 35,
+                fontWeight: 800,
+                color: white,
+                textAlign: "right",
+                lineHeight: 1.14,
+                opacity: 1,
+              },
               binding: { path: "reportDisplay.period" },
             },
-          ]
+          ] as ReportElement[])
         : []),
     ],
   };
@@ -1225,12 +1299,14 @@ const dataMethodologyPage = staticReferencePage(
   "Data Methodology",
   "data-methodology",
   true,
+  "DATA METHODOLOGY",
 );
 const definitionsPage = staticReferencePage(
   "definitions",
   "Definitions",
   "definitions",
   true,
+  "DEFINITIONS",
 );
 const contactsPage = staticReferencePage(
   "contacts",

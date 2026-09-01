@@ -10,6 +10,8 @@ const pages = [
   { index: 2, number: 3, name: "market-overview" },
   { index: 3, number: 4, name: "market-highlights" },
   { index: 6, number: 41, name: "data-methodology" },
+  { index: 7, number: 42, name: "definitions" },
+  { index: 8, number: 43, name: "contacts" },
   { index: 9, number: 44, name: "who-we-are" },
 ] as const;
 const maximumDifference = {
@@ -18,6 +20,8 @@ const maximumDifference = {
   "market-overview": 0.12,
   "market-highlights": 0.12,
   "data-methodology": 0.03,
+  definitions: 0.03,
+  contacts: 0.03,
   "who-we-are": 0.03,
 } as const;
 
@@ -73,8 +77,27 @@ for (const { index, number, name } of pages)
         { noOverlap: true, chipInside: true, verticallyCentered: true },
       ]);
     }
-    if (name === "data-methodology")
+    if (["data-methodology", "definitions", "contacts"].includes(name))
       await expect(page.getByText("Q2 2026", { exact: true })).toHaveCount(1);
+    if (name === "data-methodology") {
+      await expect(page.getByTestId("data-methodology-logo")).toHaveCount(1);
+      await expect(page.getByTestId("data-methodology-title")).toHaveCount(1);
+      await expect(
+        page.getByText("DATA METHODOLOGY", { exact: true }),
+      ).toHaveCount(1);
+    }
+    if (name === "definitions") {
+      await expect(page.getByTestId("definitions-logo")).toHaveCount(1);
+      await expect(page.getByTestId("definitions-title")).toHaveCount(1);
+      await expect(page.getByText("DEFINITIONS", { exact: true })).toHaveCount(
+        1,
+      );
+    }
+    if (name === "contacts") {
+      await expect(page.getByTestId("contacts-logo")).toHaveCount(1);
+      await expect(page.getByTestId("contacts-period")).toHaveCount(1);
+      await expect(page.getByTestId("contacts-title")).toHaveCount(0);
+    }
     const baselinePath = join(
       testInfo.config.rootDir,
       "baselines",
