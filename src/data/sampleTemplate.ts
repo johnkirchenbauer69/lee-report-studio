@@ -522,14 +522,14 @@ const transactionColumns = [
     key: "address",
     label: "ADDRESS",
     path: "address",
-    width: 43,
+    width: 39,
     align: "left" as const,
   },
   {
     key: "type",
     label: "TYPE",
     path: "type",
-    width: 16,
+    width: 20,
     align: "left" as const,
   },
 ];

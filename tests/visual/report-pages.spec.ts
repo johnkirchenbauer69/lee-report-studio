@@ -62,6 +62,10 @@ for (const { index, number, name } of pages)
             const chipBox = chip.getBoundingClientRect();
             return {
               noOverlap: valueBox.right <= chipBox.left,
+              singleLine:
+                valueBox.height <=
+                Number.parseFloat(getComputedStyle(value).lineHeight) + 0.5,
+              fullyVisible: value.scrollWidth <= value.clientWidth,
               chipInside:
                 chipBox.left >= cellBox.left && chipBox.right <= cellBox.right,
               verticallyCentered:
@@ -73,8 +77,55 @@ for (const { index, number, name } of pages)
           }),
         );
       expect(chipLayout).toEqual([
-        { noOverlap: true, chipInside: true, verticallyCentered: true },
-        { noOverlap: true, chipInside: true, verticallyCentered: true },
+        {
+          noOverlap: true,
+          singleLine: true,
+          fullyVisible: true,
+          chipInside: true,
+          verticallyCentered: true,
+        },
+        {
+          noOverlap: true,
+          singleLine: true,
+          fullyVisible: true,
+          chipInside: true,
+          verticallyCentered: true,
+        },
+      ]);
+
+      const canonicalTypeLayout = await page
+        .locator(".transaction-type-cell:has(.lee-deal-chip)")
+        .evaluateAll((cells) => {
+          const values = [
+            ["Direct / New", "Direct / Renewal"],
+            ["Investment", "Owner / User", "Sale Leaseback"],
+          ];
+          return cells.map((cell, index) => {
+            const value = cell.querySelector(
+              ".transaction-type-value",
+            ) as HTMLElement;
+            return values[index]!.map((text) => {
+              value.textContent = text;
+              return {
+                text,
+                singleLine:
+                  value.getBoundingClientRect().height <=
+                  Number.parseFloat(getComputedStyle(value).lineHeight) + 0.5,
+                fullyVisible: value.scrollWidth <= value.clientWidth,
+              };
+            });
+          });
+        });
+      expect(canonicalTypeLayout).toEqual([
+        [
+          { text: "Direct / New", singleLine: true, fullyVisible: true },
+          { text: "Direct / Renewal", singleLine: true, fullyVisible: true },
+        ],
+        [
+          { text: "Investment", singleLine: true, fullyVisible: true },
+          { text: "Owner / User", singleLine: true, fullyVisible: true },
+          { text: "Sale Leaseback", singleLine: true, fullyVisible: true },
+        ],
       ]);
     }
     if (["data-methodology", "definitions", "contacts"].includes(name))

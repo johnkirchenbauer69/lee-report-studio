@@ -911,7 +911,9 @@ button {
 .transaction-type-value {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.05;
 }
 .lee-deal-chip {
