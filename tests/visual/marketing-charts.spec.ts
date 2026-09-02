@@ -93,9 +93,9 @@ for (const chart of charts) {
       await assertLegendCentered(target);
       const axis = target.locator("svg g[data-right-axis-min]");
       await expect(axis).toHaveAttribute("data-right-axis-min", "0");
-      const title = await target
-        .locator("svg text", { hasText: "PRICE ($/SF)" })
-        .boundingBox();
+      await expect(
+        target.locator("svg text", { hasText: "PRICE ($/SF)" }),
+      ).toHaveCount(0);
       const tickBoxes = await target
         .locator('svg text[data-axis-tick="right"]')
         .evaluateAll((ticks) =>
@@ -104,10 +104,25 @@ for (const chart of charts) {
             return { right: box.x + box.width };
           }),
         );
-      expect(title).not.toBeNull();
       expect(Math.max(...tickBoxes.map((box) => box.right))).toBeLessThan(350);
     }
-    if (chart.id === "construction-chart") await assertLegendCentered(target);
+    if (chart.id === "availability-chart") {
+      await expect(
+        target.locator("svg text", { hasText: "AVAILABLE (SF)" }),
+      ).toHaveCount(0);
+      await expect(
+        target.locator('svg text[data-axis-tick="left"]'),
+      ).not.toHaveCount(0);
+    }
+    if (chart.id === "construction-chart") {
+      await assertLegendCentered(target);
+      await expect(
+        target.locator("svg text", { hasText: "SQUARE FEET" }),
+      ).toHaveCount(0);
+      await expect(
+        target.locator('svg text[data-axis-tick="left"]'),
+      ).not.toHaveCount(0);
+    }
     await expect(target).toHaveScreenshot(`${chart.name}.png`, {
       animations: "disabled",
       caret: "hide",
@@ -125,7 +140,22 @@ test("repeating submarket charts inherit plot-centered legends", async ({
   await assertLegendCentered(
     page.getByTestId("detail-chart-sales-unavailable"),
   );
+  await expect(
+    page
+      .getByTestId("detail-chart-sales-unavailable")
+      .locator("svg text", { hasText: "PRICE ($/SF)" }),
+  ).toHaveCount(0);
 
   await page.goto("/?benchmark=1&page=5", { waitUntil: "load" });
+  await expect(
+    page
+      .getByTestId("detail-availability-chart")
+      .locator("svg text", { hasText: "AVAILABLE (SF)" }),
+  ).toHaveCount(0);
   await assertLegendCentered(page.getByTestId("detail-construction-chart"));
+  await expect(
+    page
+      .getByTestId("detail-construction-chart")
+      .locator("svg text", { hasText: "SQUARE FEET" }),
+  ).toHaveCount(0);
 });

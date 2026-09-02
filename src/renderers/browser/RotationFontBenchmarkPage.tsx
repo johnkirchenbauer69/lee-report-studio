@@ -31,6 +31,14 @@ const elements: ReportElement[] = [
         italic: true,
         underline: false,
       },
+      shadow: {
+        enabled: true,
+        color: "#000000",
+        offsetX: 3,
+        offsetY: 4,
+        blur: 5,
+        opacity: 0.35,
+      },
     },
   },
   {
@@ -54,6 +62,14 @@ const elements: ReportElement[] = [
         opacity: 1,
         style: "solid",
       },
+      shadow: {
+        enabled: true,
+        color: "#003c50",
+        offsetX: 6,
+        offsetY: 7,
+        blur: 9,
+        opacity: 0.4,
+      },
     },
   },
   {
@@ -68,7 +84,53 @@ const elements: ReportElement[] = [
     src: "/report-assets/availability-montgomery.png",
     fit: "cover",
     crop: { x: 50, y: 50, zoom: 1 },
-    style: { opacity: 1, borderRadius: 8 },
+    style: {
+      opacity: 1,
+      borderRadius: 22,
+      stroke: {
+        enabled: true,
+        color: "#c4123f",
+        width: 5,
+        opacity: 1,
+        style: "solid",
+      },
+    },
+  },
+  {
+    id: "effects-radius-only",
+    type: "image",
+    name: "Contain image with radius only",
+    x: 500,
+    y: 70,
+    width: 120,
+    height: 100,
+    src: "/report-assets/availability-montgomery.png",
+    fit: "contain",
+    crop: { x: 50, y: 50, zoom: 1 },
+    style: { opacity: 1, borderRadius: 20 },
+  },
+  {
+    id: "effects-stroke-only",
+    type: "image",
+    name: "Image with stroke only",
+    x: 500,
+    y: 205,
+    width: 120,
+    height: 100,
+    src: "/report-assets/availability-montgomery.png",
+    fit: "cover",
+    crop: { x: 60, y: 40, zoom: 1 },
+    style: {
+      opacity: 1,
+      borderRadius: 0,
+      stroke: {
+        enabled: true,
+        color: "#003c50",
+        width: 5,
+        opacity: 1,
+        style: "solid",
+      },
+    },
   },
   {
     id: "rotation-table",
@@ -159,6 +221,12 @@ const page: ReportPage = {
   height: 800,
   background: "#f4f7f9",
   elements,
+};
+export const rotationFontBenchmarkTemplate = {
+  id: "effects-render-fixture",
+  name: "Effects render fixture",
+  version: "1.0.0",
+  pages: [page],
 };
 const settings: EditorSettings = {
   unit: "px",

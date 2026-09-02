@@ -1,3 +1,4 @@
+import React from "react";
 import type { ChartElement } from "../../types/report";
 import { getByPath } from "../../engine/bindings";
 import { fontFamilyToCss } from "../../services/fontRegistry";
@@ -310,13 +311,6 @@ function AvailabilityChart({
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
       <AxisTitle
-        x={12}
-        y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-        rotate
-      >
-        AVAILABLE (SF)
-      </AxisTitle>
-      <AxisTitle
         x={(margin.left + MARKETING_CHART_BASE.width - margin.right) / 2}
         y={205}
       >
@@ -385,13 +379,6 @@ function ConstructionChart({
         )),
       )}
       <Categories rows={rows} element={element} x={x} y={188} />
-      <AxisTitle
-        x={10}
-        y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-        rotate
-      >
-        SQUARE FEET
-      </AxisTitle>
       <Legend
         centerX={marketingPlotCenterX(margin)}
         gradientId={id}
@@ -531,15 +518,6 @@ function CombinationChart({
         >
           Median Sales Price unavailable
         </PlotText>
-      )}
-      {sales && (
-        <AxisTitle
-          x={350}
-          y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-          rotate
-        >
-          PRICE ($/SF)
-        </AxisTitle>
       )}
       <Legend
         centerX={marketingPlotCenterX(margin)}

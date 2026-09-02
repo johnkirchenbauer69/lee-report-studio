@@ -712,6 +712,7 @@ button {
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
+  border-radius: inherit;
 }
 .text-content {
   width: 100%;

@@ -16,6 +16,7 @@ import {
   verticalAlignmentClass,
 } from "../engine/typography";
 import { fontFamilyToCss } from "../services/fontRegistry";
+import { dropShadowToCss } from "../engine/effects";
 
 interface Props {
   element: ReportElement;
@@ -283,6 +284,14 @@ export function CanvasElement(props: Props) {
     lineHeight: typography?.lineHeight ?? element.style.lineHeight,
     padding: element.style.padding,
     mixBlendMode: element.style.mixBlendMode,
+    textShadow:
+      element.type === "text"
+        ? dropShadowToCss(element.style.shadow)
+        : undefined,
+    boxShadow:
+      element.type === "shape"
+        ? dropShadowToCss(element.style.shadow)
+        : undefined,
     cursor: element.locked ? "not-allowed" : "move",
     ...strokeStyle(element),
   };
@@ -575,7 +584,12 @@ export function CanvasElement(props: Props) {
       }}
       onContextMenu={(e) => props.onContextMenu(e, element.id)}
     >
-      <div className="element-content-clip">{content}</div>
+      <div
+        className="element-content-clip"
+        data-image-clip={element.type === "image" ? "true" : undefined}
+      >
+        {content}
+      </div>
       {selected && <div className="selection-outline" />}
       {props.cropping && (
         <div className="crop-overlay">

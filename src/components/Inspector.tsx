@@ -1,5 +1,6 @@
 import type {
   Asset,
+  DropShadow,
   Fill,
   ReportElement,
   Stroke,
@@ -9,6 +10,7 @@ import type {
   Typography,
   Unit,
 } from "../types/report";
+import { resolveDropShadow } from "../engine/effects";
 import { formatUnit, toPixels, unitStep } from "../engine/editorMath";
 import { normalizeRotation } from "../engine/geometry";
 import {
@@ -250,6 +252,7 @@ export function Inspector({
   const setFill = (next: Fill) =>
     setStyle({ fill: next, background: undefined });
   const stroke = { ...strokeDefaults, ...element.style.stroke };
+  const shadow = resolveDropShadow(element.style.shadow);
   const bindingPath = element.binding
     ? resolveContextPath(element.binding.path, element.bindingContext)
     : undefined;
@@ -264,6 +267,8 @@ export function Inspector({
       : undefined;
   const setStroke = (patch: Partial<Stroke>) =>
     setStyle({ stroke: { ...stroke, ...patch } });
+  const setShadow = (patch: Partial<DropShadow>) =>
+    setStyle({ shadow: { ...shadow, ...patch } });
   const table =
     element.type === "table" ? (element as TableElement) : undefined;
   const selectedColumn = tableSelection
@@ -989,10 +994,92 @@ export function Inspector({
           )}
         </Section>
       )}
-      {element.type === "shape" && (
+      {(element.type === "shape" || element.type === "text") && (
+        <Section title="Drop Shadow">
+          <label className="toggle-row">
+            <input
+              aria-label="Drop Shadow"
+              type="checkbox"
+              checked={shadow.enabled}
+              onChange={(event) => setShadow({ enabled: event.target.checked })}
+            />
+            <span>{shadow.enabled ? "On" : "Off"}</span>
+          </label>
+          {shadow.enabled && (
+            <>
+              <ColorField
+                label="Shadow color"
+                value={shadow.color}
+                onChange={(color) => setShadow({ color })}
+              />
+              <div className="field-grid">
+                <label>
+                  X Offset <span>px</span>
+                  <input
+                    aria-label="Shadow X Offset"
+                    type="number"
+                    step=".5"
+                    value={shadow.offsetX}
+                    onChange={(event) =>
+                      setShadow({ offsetX: Number(event.target.value) })
+                    }
+                  />
+                </label>
+                <label>
+                  Y Offset <span>px</span>
+                  <input
+                    aria-label="Shadow Y Offset"
+                    type="number"
+                    step=".5"
+                    value={shadow.offsetY}
+                    onChange={(event) =>
+                      setShadow({ offsetY: Number(event.target.value) })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="field-grid">
+                <label>
+                  Blur <span>px</span>
+                  <input
+                    aria-label="Shadow Blur"
+                    type="number"
+                    min="0"
+                    step=".5"
+                    value={shadow.blur}
+                    onChange={(event) =>
+                      setShadow({ blur: Number(event.target.value) })
+                    }
+                  />
+                </label>
+                <label>
+                  Opacity <span>%</span>
+                  <input
+                    aria-label="Shadow Opacity"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={Math.round(shadow.opacity * 100)}
+                    onChange={(event) =>
+                      setShadow({
+                        opacity: Math.max(
+                          0,
+                          Math.min(1, Number(event.target.value) / 100),
+                        ),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </>
+          )}
+        </Section>
+      )}
+      {(element.type === "shape" || element.type === "image") && (
         <Section title="Stroke & Corners">
           <label className="toggle-row">
             <input
+              aria-label="Stroke"
               type="checkbox"
               checked={stroke.enabled}
               onChange={(e) => setStroke({ enabled: e.target.checked })}
@@ -1002,7 +1089,7 @@ export function Inspector({
           {stroke.enabled && (
             <>
               <ColorField
-                label="Color"
+                label="Stroke color"
                 value={stroke.color}
                 onChange={(color) => setStroke({ color })}
               />
@@ -1010,6 +1097,7 @@ export function Inspector({
                 <label>
                   Width <span>px</span>
                   <input
+                    aria-label="Stroke width"
                     type="number"
                     min="0"
                     step=".5"
@@ -1022,6 +1110,7 @@ export function Inspector({
                 <label>
                   Style
                   <select
+                    aria-label="Stroke style"
                     value={stroke.style}
                     onChange={(e) =>
                       setStroke({ style: e.target.value as Stroke["style"] })
@@ -1038,6 +1127,7 @@ export function Inspector({
           <label>
             Corner radius <span>px</span>
             <input
+              aria-label="Corner radius"
               type="range"
               min="0"
               max="100"
@@ -1047,6 +1137,7 @@ export function Inspector({
               }
             />
             <input
+              aria-label="Corner radius value"
               type="number"
               min="0"
               value={element.style.borderRadius ?? 0}

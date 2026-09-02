@@ -1,5 +1,8 @@
 import fs from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { getByContextPath } from "../src/engine/bindings.ts";
 import { buildPresentationModel } from "../src/report-engine/bindings/presentationModel.ts";
 import { expandTemplatePages } from "../src/report-engine/generation/repeaters.ts";
 import { prepareTemplateForReport } from "../src/report-engine/generation/prepareTemplate.ts";
@@ -17,6 +20,7 @@ import {
   MARKETING_CHART_BASE,
   marketingChartTheme,
 } from "../src/report-engine/charts/marketingChartTheme.ts";
+import { MarketingChart } from "../src/report-engine/charts/MarketingChart.tsx";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 import type { Asset, ReportTemplate } from "../src/types/report.ts";
 
@@ -220,6 +224,52 @@ if (managedCharts.length !== 76)
   throw new Error(
     `Expected 76 rendered marketing chart elements; received ${managedCharts.length}: ${pages.map((page) => `${page.name}=${page.elements.filter((element) => element.type === "chart" && element.marketingChartId).length}`).join(", ")}.`,
   );
+const renderedManagedCharts = managedCharts.map((element) => ({
+  id: element.marketingChartId,
+  markup: renderToStaticMarkup(
+    createElement(MarketingChart, {
+      element,
+      source: getByContextPath(
+        presentation,
+        element.sourcePath,
+        element.bindingContext,
+      ),
+    }),
+  ),
+}));
+for (const { id, markup } of renderedManagedCharts) {
+  const removedTitle =
+    id === "sales_volume_cap_rates"
+      ? "PRICE ($/SF)"
+      : id === "availability_by_size"
+        ? "AVAILABLE (SF)"
+        : id === "construction_uc_deliveries"
+          ? "SQUARE FEET"
+          : undefined;
+  if (removedTitle && markup.includes(removedTitle))
+    throw new Error(
+      `${id} still renders the removed Y-axis title ${removedTitle}.`,
+    );
+}
+for (const id of [
+  "availability_by_size",
+  "construction_uc_deliveries",
+] as const)
+  if (
+    !renderedManagedCharts.some(
+      (chart) =>
+        chart.id === id && chart.markup.includes('data-axis-tick="left"'),
+    )
+  )
+    throw new Error(`${id} lost all Y-axis tick labels.`);
+if (
+  !renderedManagedCharts.some(
+    ({ id, markup }) =>
+      id === "sales_volume_cap_rates" &&
+      markup.includes('data-axis-tick="right"'),
+  )
+)
+  throw new Error("Sales charts lost all right-side price-axis tick labels.");
 for (const element of managedCharts) {
   if (element.type !== "chart") continue;
   const style = element.chartStyle;
@@ -683,6 +733,11 @@ console.log(
       transactionTableGeometry:
         "4 columns / 3 rows / address 39% / type 20% / chip inside final cell",
       legendCenters,
+      removedMarketingAxisTitles: [
+        "PRICE ($/SF)",
+        "AVAILABLE (SF)",
+        "SQUARE FEET",
+      ],
       nativeStaticFooters: staticPages.map((page) => ({
         page: page.name,
         textElementIds: page.elements
