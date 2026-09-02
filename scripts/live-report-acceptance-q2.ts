@@ -6,6 +6,13 @@ import { prepareTemplateForReport } from "../src/report-engine/generation/prepar
 import { industrialMarketReportSchema } from "../src/report-engine/schema/industrialMarketReport.ts";
 import { looksLikeSalesforceId } from "../src/shared/salesforceIds.ts";
 import { evaluateReportReadiness } from "../src/report-engine/validation/reportValidation.ts";
+import {
+  chronologicalQuarterWindow,
+  compactCurrency,
+  compactSquareFeet,
+  paddedRateDomain,
+  salesPriceTicks,
+} from "../src/report-engine/charts/marketingChartScale.ts";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 import type { Asset, ReportTemplate } from "../src/types/report.ts";
 
@@ -27,6 +34,32 @@ if (!response.ok)
   );
 const envelope = (await response.json()) as { report: unknown };
 const report = industrialMarketReportSchema.parse(envelope.report);
+const chartWindow = <T extends { period: string }>(rows: T[]) =>
+  chronologicalQuarterWindow(rows, (row) => row.period);
+const overallChartWindow = chartWindow(report.historicalPeriods);
+if (overallChartWindow.some((period) => period.medianSalesPricePsf !== null))
+  throw new Error(
+    "Overall Market Median Sales Price must remain unavailable unless a true transaction-level median is verified.",
+  );
+const directMedianChecks = [
+  ["Central DuPage", 146.52],
+  ["I-88 Corridor", 94.15],
+  ["North DuPage", 125.04],
+] as const;
+for (const [name, expected] of directMedianChecks) {
+  const detail = report.submarketDetails.find((item) => item.name === name);
+  const actual = detail?.historicalPeriods.find(
+    (period) => period.period === "2026 Q2",
+  )?.medianSalesPricePsf;
+  if (
+    actual === undefined ||
+    actual === null ||
+    Math.abs(actual - expected) > 0.001
+  )
+    throw new Error(
+      `${name} did not retain its direct verified Market_Data median: ${actual}.`,
+    );
+}
 const [templateListResponse, assetsResponse] = await Promise.all([
   fetch(`${api}/api/templates`),
   fetch(`${api}/api/assets`),
@@ -40,13 +73,22 @@ const templateSummaries = (await templateListResponse.json()) as {
     status: "draft" | "published" | "archived";
   }>;
 };
-const publishedTemplate = templateSummaries.templates.find(
-  (template) => template.status === "published",
-);
-if (!publishedTemplate)
-  throw new Error("Live acceptance requires a published master template.");
+const requestedTemplateVersion = process.env.LEE_ACCEPT_TEMPLATE_VERSION;
+const acceptanceTemplate = requestedTemplateVersion
+  ? templateSummaries.templates.find(
+      (template) => template.version === requestedTemplateVersion,
+    )
+  : templateSummaries.templates.find(
+      (template) => template.status === "published",
+    );
+if (!acceptanceTemplate)
+  throw new Error(
+    requestedTemplateVersion
+      ? `Requested acceptance template ${requestedTemplateVersion} was not found.`
+      : "Live acceptance requires a published master template.",
+  );
 const storedTemplateResponse = await fetch(
-  `${api}/api/templates/${encodeURIComponent(publishedTemplate.id)}/versions/${encodeURIComponent(publishedTemplate.version)}`,
+  `${api}/api/templates/${encodeURIComponent(acceptanceTemplate.id)}/versions/${encodeURIComponent(acceptanceTemplate.version)}`,
 );
 if (!storedTemplateResponse.ok)
   throw new Error("Published master template could not be loaded.");
@@ -165,13 +207,34 @@ const prepared = prepareTemplateForReport(
 const pages = expandTemplatePages(prepared, presentation, {
   submarketIds: selectedIds,
 });
+const managedCharts = pages.flatMap((page) =>
+  page.elements.filter(
+    (element) => element.type === "chart" && element.marketingChartId,
+  ),
+);
+if (managedCharts.length !== 76)
+  throw new Error(
+    `Expected 76 rendered marketing chart elements; received ${managedCharts.length}: ${pages.map((page) => `${page.name}=${page.elements.filter((element) => element.type === "chart" && element.marketingChartId).length}`).join(", ")}.`,
+  );
+for (const element of managedCharts) {
+  if (element.type !== "chart") continue;
+  const style = element.chartStyle;
+  const face = managedAssets.find((asset) => asset.id === style?.fontAssetId);
+  if (
+    style?.fontFamily !== "Nunito Sans" ||
+    style.fontWeight !== 600 ||
+    style.fontStyle !== "normal" ||
+    !face ||
+    face.type !== "font" ||
+    face.checksum !== style.fontChecksum
+  )
+    throw new Error(`${element.name} does not pin managed Nunito Sans 600.`);
+}
 const generatedUnavailable = pages
   .flatMap((page) => page.elements)
   .filter(
     (element) => element.type === "text" && element.name === "Data unavailable",
   );
-if (!generatedUnavailable.length)
-  throw new Error("Expected live generated unavailable placeholders.");
 for (const element of generatedUnavailable) {
   if (element.type !== "text") continue;
   const typography = element.style.typography;
@@ -219,12 +282,48 @@ for (const page of staticPages.slice(0, 3))
     !page.elements.some(
       (element) =>
         element.type === "text" &&
-        element.name === "Quarter" &&
+        element.id === `${page.id}-period` &&
+        element.name === "Report Period" &&
         element.text === "Q2 2026" &&
         element.binding?.path === "reportDisplay.period",
     )
   )
     throw new Error(`${page.name} is missing its dynamic Q2 2026 header.`);
+for (const [page, expectedTitle] of [
+  [staticPages[0]!, "DATA METHODOLOGY"],
+  [staticPages[1]!, "DEFINITIONS"],
+] as const) {
+  const expectedIds = [
+    `${page.id}-header-mask`,
+    `${page.id}-logo`,
+    `${page.id}-title`,
+    `${page.id}-period`,
+  ];
+  for (const id of expectedIds)
+    if (page.elements.filter((element) => element.id === id).length !== 1)
+      throw new Error(`${page.name} must contain exactly one ${id}.`);
+  const title = page.elements.find(
+    (element) => element.id === `${page.id}-title`,
+  );
+  if (title?.type !== "text" || title.text !== expectedTitle)
+    throw new Error(`${page.name} is missing its editable native title.`);
+}
+for (const id of ["contacts-header-mask", "contacts-logo", "contacts-period"])
+  if (
+    staticPages[2]!.elements.filter((element) => element.id === id).length !== 1
+  )
+    throw new Error(`Contacts must contain exactly one ${id}.`);
+for (const page of staticPages.slice(0, 3)) {
+  const logo = page.elements.find(
+    (element) => element.id === `${page.id}-logo`,
+  );
+  if (
+    logo?.type !== "image" ||
+    logo.src !== "/report-assets/lee-logo-white.png" ||
+    logo.fit !== "contain"
+  )
+    throw new Error(`${page.name} is missing its transparent native LEE logo.`);
+}
 if (staticPages[3]!.elements.some((element) => element.binding))
   throw new Error("Who We Are must remain fully static.");
 if (!selectedIds.includes("i80-joliet"))
@@ -263,6 +362,72 @@ for (const detail of presentation.submarketDetails) {
         `${detail.displayName} does not have fixed highlight slots.`,
       );
 }
+const transactionTables = pages
+  .flatMap((page) =>
+    page.elements.map((element) => ({ page: page.name, element })),
+  )
+  .filter(
+    (entry) =>
+      entry.element.type === "table" &&
+      entry.element.variant === "transactions" &&
+      (entry.element.name === "Top Leases" ||
+        entry.element.name === "Top Sales"),
+  );
+if (transactionTables.length !== 38)
+  throw new Error(
+    `Expected 38 overall/submarket transaction tables; found ${transactionTables.length}.`,
+  );
+if (
+  transactionTables.some(
+    ({ element }) =>
+      element.type !== "table" ||
+      element.columns.length !== 4 ||
+      element.maxRows !== 3,
+  )
+)
+  throw new Error(
+    "A Top Lease or Top Sale table changed its governed four-column, three-row geometry.",
+  );
+const transactionSections = [
+  {
+    market: "Overall Market",
+    leases: presentation.topLeaseRows,
+    sales: presentation.topSaleRows,
+  },
+  ...presentation.submarketDetails.map((detail) => ({
+    market: detail.displayName,
+    leases: detail.topLeaseRows,
+    sales: detail.topSaleRows,
+  })),
+];
+const leeDealRows = transactionSections.flatMap((section) => [
+  ...section.leases
+    .filter((row) => row.isLeeDeal === true)
+    .map((row) => ({
+      market: section.market,
+      section: "Top Leases",
+      party: row.party,
+      address: row.address,
+      type: row.type,
+    })),
+  ...section.sales
+    .filter((row) => row.isLeeDeal === true)
+    .map((row) => ({
+      market: section.market,
+      section: "Top Sales",
+      party: row.party,
+      address: row.address,
+      type: row.type,
+    })),
+]);
+if (
+  transactionSections.some((section) =>
+    [...section.leases, ...section.sales].some(
+      (row) => row.party === "-" && row.isLeeDeal === true,
+    ),
+  )
+)
+  throw new Error("A placeholder transaction row received a Lee Deal chip.");
 const allLeases = [
   ...presentation.leasing,
   ...presentation.submarketDetails.flatMap((detail) => detail.leasing),
@@ -362,16 +527,62 @@ const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 const pdf = await PDFDocument.load(pdfBytes);
 if (pdf.getPageCount() !== 44)
   throw new Error(`Expected a 44-page PDF; received ${pdf.getPageCount()}.`);
-const output = "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
+const output =
+  process.env.LEE_ACCEPT_PDF_OUTPUT ??
+  "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
 await fs.mkdir("output/pdf", { recursive: true });
 await fs.writeFile(output, pdfBytes);
+const chartQa = (name: string, periods: typeof report.historicalPeriods) => {
+  const window = chartWindow(periods);
+  return {
+    name,
+    netRightAxisDomain: paddedRateDomain(
+      window.flatMap((period) => [period.vacancyRate, period.availabilityRate]),
+    ),
+    salesRightAxisTicks: salesPriceTicks(
+      window.flatMap((period) =>
+        period.medianSalesPricePsf === null ||
+        period.medianSalesPricePsf === undefined
+          ? []
+          : [period.medianSalesPricePsf],
+      ),
+    ),
+  };
+};
+const centralDuPage = report.submarketDetails.find(
+  (item) => item.name === "Central DuPage",
+)!;
+const northDuPage = report.submarketDetails.find(
+  (item) => item.name === "North DuPage",
+)!;
+const liveCompactLabels = {
+  availability: report.availabilityBySize.map((bucket) =>
+    compactSquareFeet(bucket.availableSf),
+  ),
+  netAbsorption: overallChartWindow.map((period) =>
+    compactSquareFeet(period.quarterlyNetAbsorptionSf),
+  ),
+  underConstruction: overallChartWindow.map((period) =>
+    compactSquareFeet(period.underConstructionSf),
+  ),
+  deliveries: overallChartWindow.map((period) =>
+    compactSquareFeet(period.deliveredSf ?? 0),
+  ),
+  salesVolume: overallChartWindow.map((period) =>
+    compactCurrency(period.salesVolume ?? 0),
+  ),
+  explicitZeroSf: compactSquareFeet(0),
+  explicitZeroSales: compactCurrency(0),
+};
 console.log(
   JSON.stringify(
     {
       selectedSubmarkets: selected.length,
-      publishedTemplateVersion: publishedTemplate.version,
+      templateVersion: acceptanceTemplate.version,
+      templateStatus: acceptanceTemplate.status,
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
+      marketingChartElements: managedCharts.length,
       managedUnavailablePlaceholders: generatedUnavailable.length,
       firstPages: pages.slice(0, 6).map((page) => page.name),
       lastPages: pages.slice(-4).map((page) => page.name),
@@ -385,6 +596,10 @@ console.log(
       ),
       confidentialLeaseRows: confidentialLeases.length,
       unknownConfidentialityLeaseRows: unknownConfidentialityLeases.length,
+      leeDealChipCount: leeDealRows.length,
+      leeDealRows,
+      transactionTableCount: transactionTables.length,
+      transactionTableGeometry: "4 columns / 3 rows / chip inside final cell",
       westCookInventoryReconciliation: {
         authoritativeValue: westCookInventory.reconciliation.authoritativeValue,
         propertyDataValue: westCookInventory.reconciliation.comparisonValue,
@@ -417,6 +632,56 @@ console.log(
           ),
         ),
       ],
+      chartDataQa: {
+        axes: [
+          chartQa("Overall Market", report.historicalPeriods),
+          chartQa("Central DuPage", centralDuPage.historicalPeriods),
+          chartQa("North DuPage", northDuPage.historicalPeriods),
+        ],
+        directMedianChecks: directMedianChecks.map(([name, expected]) => ({
+          name,
+          officialMarketDataMedianPsf: expected,
+          retained: true,
+        })),
+        overallMedianSalesPriceDisposition: "unavailable",
+        compactLabels: liveCompactLabels,
+        overallMarket: {
+          availabilityBySize: report.availabilityBySize,
+          historicalPeriods: report.historicalPeriods
+            .slice(0, 5)
+            .map((period) => ({
+              period: period.period,
+              quarterlyNetAbsorptionSf: period.quarterlyNetAbsorptionSf,
+              vacancyRate: period.vacancyRate,
+              availabilityRate: period.availabilityRate,
+              salesVolume: period.salesVolume,
+              medianSalesPricePsf: period.medianSalesPricePsf,
+              underConstructionSf: period.underConstructionSf,
+              deliveredSf: period.deliveredSf,
+            })),
+        },
+        representativeSubmarket: (() => {
+          const detail = report.submarketDetails.find(
+            (item) => item.name === "Central DuPage",
+          )!;
+          return {
+            name: detail.name,
+            availabilityBySize: detail.availabilityBySize,
+            historicalPeriods: detail.historicalPeriods
+              .slice(0, 5)
+              .map((period) => ({
+                period: period.period,
+                quarterlyNetAbsorptionSf: period.quarterlyNetAbsorptionSf,
+                vacancyRate: period.vacancyRate,
+                availabilityRate: period.availabilityRate,
+                salesVolume: period.salesVolume,
+                medianSalesPricePsf: period.medianSalesPricePsf,
+                underConstructionSf: period.underConstructionSf,
+                deliveredSf: period.deliveredSf,
+              })),
+          };
+        })(),
+      },
       output,
     },
     null,

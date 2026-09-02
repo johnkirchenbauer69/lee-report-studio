@@ -195,6 +195,12 @@ export interface TableElement extends BaseElement {
 
 export interface ChartElement extends BaseElement {
   type: "chart";
+  /** Selects the deterministic LEE marketing renderer for governed report charts. */
+  marketingChartId?:
+    | "availability_by_size"
+    | "net_absorption_vacancy_availability"
+    | "sales_volume_cap_rates"
+    | "construction_uc_deliveries";
   sourcePath: string;
   categoryPath: string;
   valuePath?: string;
@@ -254,6 +260,10 @@ export interface ChartStyle {
   gridColor?: string;
   labelColor?: string;
   fontFamily?: string;
+  fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  fontAssetId?: string;
+  fontChecksum?: string;
   fontSize?: number;
 }
 
@@ -282,13 +292,23 @@ export interface Asset {
   source: string;
   createdAt: string;
   fontFamily?: string;
+  /** Embedded OpenType subfamily, retained for governance/audit reporting. */
+  fontSubfamily?: string;
+  /** Embedded OS/2 width class (1 ultra-condensed through 9 ultra-expanded). */
+  fontWidthClass?: number;
   fontWeight?: number;
   fontStyle?: "normal" | "italic";
   postScriptName?: string;
   checksum?: string;
   scope?: "builtin" | "organization" | "template";
   storageKey?: string;
-  license?: { type?: string; fileName?: string };
+  license?: {
+    type?: string;
+    fileName?: string;
+    attestedAt?: string;
+    attestedBy?: string;
+    usageScope?: string;
+  };
   /** Production-use policy. Missing legacy values are inferred from license metadata. */
   fontGovernanceStatus?: FontGovernanceStatus;
   version?: number;

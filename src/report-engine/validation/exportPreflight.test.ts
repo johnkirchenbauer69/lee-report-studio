@@ -227,6 +227,49 @@ describe("runExportPreflight image content-type check", () => {
     ]);
   });
 
+  it("applies the same managed-font pin and checksum preflight to vector charts", async () => {
+    vi.stubGlobal("document", { fonts: { check: vi.fn(() => true) } });
+    const semibold = {
+      ...managedNunito,
+      id: "nunito-semibold",
+      name: "Nunito Sans Semibold",
+      fontWeight: 600,
+      checksum: "semibold-checksum",
+    };
+    const chart = {
+      id: "chart",
+      type: "chart" as const,
+      name: "Marketing chart",
+      x: 0,
+      y: 0,
+      width: 360,
+      height: 216,
+      sourcePath: "historicalPeriods",
+      categoryPath: "period",
+      chartType: "combination" as const,
+      marketingChartId: "sales_volume_cap_rates" as const,
+      style: {},
+      chartStyle: {
+        fontFamily: "Nunito Sans",
+        fontWeight: 600,
+        fontStyle: "normal" as const,
+        fontAssetId: semibold.id,
+        fontChecksum: semibold.checksum,
+      },
+    };
+    expect(await runExportPreflight(templateWith(chart, [semibold]))).toEqual(
+      [],
+    );
+    chart.chartStyle.fontChecksum = "changed";
+    expect(await runExportPreflight(templateWith(chart, [semibold]))).toEqual([
+      expect.objectContaining({
+        level: "error",
+        kind: "font",
+        message: expect.stringContaining("missing or changed"),
+      }),
+    ]);
+  });
+
   it("blocks a new publication using a retired face but permits immutable historical reproduction", async () => {
     vi.stubGlobal("document", { fonts: { check: vi.fn(() => true) } });
     const retired = {

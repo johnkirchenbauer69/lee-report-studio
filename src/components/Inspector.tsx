@@ -45,6 +45,7 @@ interface Props {
   onDistribute: (axis: "x" | "y") => void;
   cropping?: boolean;
   onToggleCrop?: () => void;
+  onReplaceImage?: () => void;
   data?: unknown;
   report?: IndustrialMarketReport;
   tableEditing?: boolean;
@@ -126,6 +127,7 @@ export function Inspector({
   fontDiagnostics = [],
   cropping,
   onToggleCrop,
+  onReplaceImage,
   onChange,
   onAlign,
   onDistribute,
@@ -1258,6 +1260,9 @@ export function Inspector({
       )}
       {element.type === "image" && (
         <Section title="Image">
+          <button className="replace-image-button" onClick={onReplaceImage}>
+            Replace Image
+          </button>
           <label>
             Fit
             <select

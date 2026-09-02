@@ -32,6 +32,13 @@ export interface FontGovernanceEnforcementResult {
   deleted: string[];
 }
 
+export interface FontLicenseAttestation {
+  type: string;
+  attestedAt: string;
+  attestedBy: string;
+  usageScope: string;
+}
+
 export function classifyFontFace(
   assets: Pick<
     StoredAsset,
@@ -255,6 +262,8 @@ export class FileSystemAssetStore {
       source: `/api/assets/${id}/content`,
       createdAt: new Date().toISOString(),
       fontFamily: metadata.family,
+      fontSubfamily: metadata.subfamily,
+      fontWidthClass: metadata.widthClass,
       fontWeight: metadata.weight,
       fontStyle: metadata.style,
       postScriptName: metadata.postScriptName,
@@ -378,6 +387,40 @@ export class FileSystemAssetStore {
       );
       await this.save(kept);
       return result;
+    });
+  }
+
+  async approveFontFamilies(
+    families: ReadonlySet<string>,
+    attestation: FontLicenseAttestation,
+  ): Promise<StoredAsset[]> {
+    return this.enqueue(async () => {
+      const assets = await this.list();
+      const approved: StoredAsset[] = [];
+      const next = assets.map((asset) => {
+        if (
+          asset.type !== "font" ||
+          !asset.fontFamily ||
+          !families.has(asset.fontFamily)
+        )
+          return asset;
+        const updated: StoredAsset = {
+          ...asset,
+          fontGovernanceStatus: "approved",
+          license: {
+            ...asset.license,
+            ...attestation,
+          },
+        };
+        approved.push(updated);
+        return updated;
+      });
+      if (!approved.length)
+        throw new Error(
+          "No managed font faces matched the requested families.",
+        );
+      await this.save(next);
+      return approved;
     });
   }
 

@@ -355,7 +355,7 @@ button {
   text-align: left;
   display: grid;
   grid-template-columns: 20px 1fr auto;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
   cursor: pointer;
 }
@@ -468,6 +468,27 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.cancel-image-replacement,
+.replace-image-button {
+  width: 100%;
+  border: 1px solid #aebdcd;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #173b64;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.cancel-image-replacement {
+  margin-bottom: 8px;
+}
+.replace-image-button {
+  margin-bottom: 10px;
+}
+.cancel-image-replacement:hover,
+.replace-image-button:hover {
+  border-color: var(--accent);
+  background: #f7fafd;
 }
 .page-list {
   display: flex;
@@ -880,6 +901,39 @@ button {
   border-bottom: 1px solid #e4e7ec;
   padding: 8px;
 }
+.transaction-type-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+.transaction-type-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+}
+.lee-deal-chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  min-width: 52px;
+  height: 17px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(180deg, #cf123f 0%, #7a0d26 100%);
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
 .chart-wrap {
   height: 100%;
   padding: 16px 18px;
@@ -893,6 +947,15 @@ button {
   width: 100%;
   height: calc(100% - 24px);
   overflow: visible;
+}
+.marketing-chart {
+  padding: 0;
+  background: transparent;
+}
+.marketing-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .inspector-header {
   height: 58px;

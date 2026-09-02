@@ -16,6 +16,13 @@ const regular: Asset = {
   checksum: "regular-checksum",
   fontGovernanceStatus: "approved",
 };
+const semibold: Asset = {
+  ...regular,
+  id: "nunito-semibold",
+  name: "Nunito Sans Semibold",
+  fontWeight: 600,
+  checksum: "semibold-checksum",
+};
 
 describe("template typography migration", () => {
   it("normalizes editable legacy stacks and checksum-pins available managed faces", () => {
@@ -52,6 +59,25 @@ describe("template typography migration", () => {
         .flatMap((page) => page.elements)
         .find((item) => item.id === image.id),
     ).toEqual(image);
+  });
+
+  it("pins marketing chart SVG text to the exact managed semibold face", () => {
+    const migrated = normalizeReportTemplateFonts(sampleTemplate, [
+      regular,
+      semibold,
+    ]);
+    const chart = migrated.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "chart" && element.marketingChartId);
+    expect(
+      chart?.type === "chart" ? chart.chartStyle : undefined,
+    ).toMatchObject({
+      fontFamily: "Nunito Sans",
+      fontWeight: 600,
+      fontStyle: "normal",
+      fontAssetId: semibold.id,
+      fontChecksum: semibold.checksum,
+    });
   });
 
   it("preserves a stale checksum pin so strict preflight can reject it", () => {

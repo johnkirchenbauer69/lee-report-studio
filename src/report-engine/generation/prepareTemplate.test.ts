@@ -66,17 +66,23 @@ describe("production template preparation", () => {
   });
 
   it("keeps QA diagnostics in the editor but sanitizes all published copy", () => {
-    const presentation = buildPresentationModel(q2SampleReport);
+    const report = structuredClone(q2SampleReport);
+    report.dataCompleteness = report.dataCompleteness.map((item) =>
+      item.section === "construction"
+        ? { ...item, status: "missing" as const }
+        : item,
+    );
+    const presentation = buildPresentationModel(report);
     const editor = prepareTemplateForReport(
       sampleTemplate,
-      q2SampleReport,
+      report,
       presentation,
       "ascendix",
       "editor",
     );
     const published = prepareTemplateForReport(
       sampleTemplate,
-      q2SampleReport,
+      report,
       presentation,
       "ascendix",
       "published",
@@ -100,10 +106,16 @@ describe("production template preparation", () => {
       ...structuredClone(sampleTemplate),
       assets: [managedNunito600],
     };
-    const presentation = buildPresentationModel(q2SampleReport);
+    const report = structuredClone(q2SampleReport);
+    report.dataCompleteness = report.dataCompleteness.map((item) =>
+      item.section === "construction"
+        ? { ...item, status: "missing" as const }
+        : item,
+    );
+    const presentation = buildPresentationModel(report);
     const editor = prepareTemplateForReport(
       source,
-      q2SampleReport,
+      report,
       presentation,
       "ascendix",
       "editor",
@@ -146,7 +158,7 @@ describe("production template preparation", () => {
       expect(
         prepared.pages
           .find((page) => page.id === id)
-          ?.elements.find((element) => element.name === "Quarter"),
+          ?.elements.find((element) => element.id === `${id}-period`),
       ).toMatchObject({ type: "text", text: "Q1 2027" });
     expect(
       prepared.pages

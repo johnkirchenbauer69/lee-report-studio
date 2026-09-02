@@ -2,6 +2,7 @@ import { CanvasElement } from "../../components/CanvasElement";
 import { sampleTemplate } from "../../data/sampleTemplate";
 import { sampleData } from "../../data/sampleData";
 import type { EditorSettings } from "../../types/report";
+import { marketingChartFixture } from "../../report-engine/charts/marketingChartFixture";
 
 const settings: EditorSettings = {
   unit: "px",
@@ -29,9 +30,14 @@ export function BenchmarkPage({
     sampleTemplate.pages[
       Math.max(0, Math.min(sampleTemplate.pages.length - 1, pageIndex))
     ];
+  const fixtureData = {
+    ...sampleData,
+    availabilityBySize: marketingChartFixture.availabilityBySize,
+    historicalPeriods: marketingChartFixture.historicalPeriods,
+  };
   const data = highlightStates
     ? {
-        ...sampleData,
+        ...fixtureData,
         topAvailabilities: [
           {
             ...sampleData.topAvailabilities[0],
@@ -53,7 +59,7 @@ export function BenchmarkPage({
           { address: "", detail: "", image: "", state: "none" },
         ],
       }
-    : sampleData;
+    : fixtureData;
   return (
     <main className="benchmark-shell">
       <section

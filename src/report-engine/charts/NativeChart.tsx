@@ -5,6 +5,7 @@ import {
   getByPath,
 } from "../../engine/bindings";
 import { fontFamilyToCss } from "../../services/fontRegistry";
+import { MarketingChart } from "./MarketingChart";
 
 export function NativeChart({
   element,
@@ -18,6 +19,8 @@ export function NativeChart({
     element.sourcePath,
     element.bindingContext,
   );
+  if (element.marketingChartId)
+    return <MarketingChart element={element} source={source} />;
   const rows = Array.isArray(source) ? source : [];
   const series = element.series?.length
     ? element.series

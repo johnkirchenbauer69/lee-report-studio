@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { formatReportValue } from "../../../src/report-engine/formatting/formatValue.ts";
 import {
+  aggregateAvailabilityBySize,
+  aggregateQuarterlyMarketPeriod,
   calculateTrailing12MonthNetAbsorption,
   rollupPropertyData,
+  verifiedMedianSalesPricePsf,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
 
@@ -23,6 +26,83 @@ const market = (
   salesVolume: 0,
 });
 describe("live-verified Salesforce rollups", () => {
+  it("buckets Property_Data availability with exact half-open boundaries", () => {
+    const rows = [
+      20_000, 74_999, 75_000, 149_999, 150_000, 249_999, 250_000, 499_999,
+      500_000,
+    ].map((value, index) => ({
+      Id: `row-${index}`,
+      Available_SF_Total__c: value,
+    }));
+    expect(aggregateAvailabilityBySize(rows)).toEqual([
+      { bucket: "20-75k SF", availableSf: 94_999, buildingCount: 2 },
+      { bucket: "75-150k SF", availableSf: 224_999, buildingCount: 2 },
+      { bucket: "150-250k SF", availableSf: 399_999, buildingCount: 2 },
+      { bucket: "250-500k SF", availableSf: 749_999, buildingCount: 2 },
+      { bucket: "500k SF+", availableSf: 500_000, buildingCount: 1 },
+    ]);
+  });
+  it("does not substitute a weighted median of submarket medians for an overall transaction median", () => {
+    const result = aggregateQuarterlyMarketPeriod("2026 Q2", [
+      {
+        Id: "a",
+        Inventory_SF__c: 100,
+        Total_Vacant_SF__c: 5,
+        Total_Available_SF__c: 8,
+        Under_Construction_SF__c: 20,
+        Delivered_SF__c: 10,
+        Total_Net_Absorption_SF__c: -5,
+        Total_Leasing_Activity_SF__c: 3,
+        Sales_Volume_USD__c: 1_000,
+        Sales_Transactions__c: 1,
+        Median_Sales_Price_Per_Building_SF__c: 100,
+      },
+      {
+        Id: "b",
+        Inventory_SF__c: 300,
+        Total_Vacant_SF__c: 15,
+        Total_Available_SF__c: 24,
+        Under_Construction_SF__c: 30,
+        Delivered_SF__c: 15,
+        Total_Net_Absorption_SF__c: 10,
+        Total_Leasing_Activity_SF__c: 4,
+        Sales_Volume_USD__c: 2_000,
+        Sales_Transactions__c: 3,
+        Median_Sales_Price_Per_Building_SF__c: 130,
+      },
+    ]);
+    expect(result).toMatchObject({
+      quarterlyNetAbsorptionSf: 5,
+      underConstructionSf: 50,
+      deliveredSf: 25,
+      salesVolume: 3_000,
+      medianSalesPricePsf: null,
+    });
+    expect(
+      verifiedMedianSalesPricePsf([
+        {
+          Id: "a",
+          Median_Sales_Price_Per_Building_SF__c: 100,
+          Sales_Transactions__c: 1,
+        },
+        {
+          Id: "b",
+          Median_Sales_Price_Per_Building_SF__c: 130,
+          Sales_Transactions__c: 3,
+        },
+      ]),
+    ).toBeNull();
+  });
+  it("retains a direct verified Market_Data median for one submarket", () => {
+    expect(
+      aggregateQuarterlyMarketPeriod("2026 Q2", [
+        {
+          Id: "a",
+          Median_Sales_Price_Per_Building_SF__c: 146.52,
+        },
+      ]).medianSalesPricePsf,
+    ).toBe(146.52);
+  });
   it("uses ratio-of-sums for overall vacancy and availability", () => {
     const result = rollupPropertyData(
       [

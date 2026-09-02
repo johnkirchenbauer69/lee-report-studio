@@ -74,13 +74,31 @@ export const historicalMarketPeriodSchema = z.object({
   vacancyRate: rate,
   availabilityRate: rate,
   underConstructionSf: nonNegativeNumber,
+  deliveredSf: nonNegativeNumber.optional(),
+  salesVolume: nonNegativeNumber.optional(),
+  /** Verified nominal Market_Data price series; null when the source has no value. */
+  medianSalesPricePsf: nonNegativeNumber.nullable().optional(),
   leasingActivitySf: nonNegativeNumber,
+});
+
+export const availabilitySizeBucketSchema = z.object({
+  bucket: z.enum([
+    "20-75k SF",
+    "75-150k SF",
+    "150-250k SF",
+    "250-500k SF",
+    "500k SF+",
+  ]),
+  availableSf: nonNegativeNumber,
+  buildingCount: z.number().int().nonnegative(),
 });
 
 export const leaseRecordSchema = z.object({
   tenant: z.string().min(1),
   tenantDisplayName: z.string().min(1).optional(),
   isDealConfidential: z.boolean().nullable().optional(),
+  /** Verified linked Lease checkbox. Null/undefined means the source was unavailable. */
+  isLeeDeal: z.boolean().nullable().optional(),
   sizeSf: nonNegativeNumber,
   address: z.string().min(1),
   leaseType: z.string().min(1),
@@ -88,6 +106,8 @@ export const leaseRecordSchema = z.object({
 
 export const saleRecordSchema = z.object({
   buyer: z.string().min(1),
+  /** Verified linked Sale checkbox. Null/undefined means the source was unavailable. */
+  isLeeDeal: z.boolean().nullable().optional(),
   price: nonNegativeNumber,
   address: z.string().min(1),
   saleType: z.string().min(1),
@@ -119,6 +139,7 @@ export const submarketDetailSchema = z.object({
   availabilities: z.array(propertyHighlightSchema),
   deliveries: z.array(propertyHighlightSchema),
   construction: z.array(propertyHighlightSchema),
+  availabilityBySize: z.array(availabilitySizeBucketSchema).optional(),
 });
 
 export const provenanceRecordSchema = z.object({
@@ -222,6 +243,7 @@ export const industrialMarketReportSchema = z.object({
   availabilities: z.array(propertyHighlightSchema),
   deliveries: z.array(propertyHighlightSchema),
   construction: z.array(propertyHighlightSchema),
+  availabilityBySize: z.array(availabilitySizeBucketSchema).optional(),
   provenance: z.array(provenanceRecordSchema),
   presentationOverrides: z.array(presentationOverrideSchema),
   dataCompleteness: z.array(datasetSectionStatusSchema),
@@ -235,6 +257,9 @@ export type MarketMetrics = z.infer<typeof marketMetricsSchema>;
 export type SubmarketMetrics = z.infer<typeof submarketMetricsSchema>;
 export type HistoricalMarketPeriod = z.infer<
   typeof historicalMarketPeriodSchema
+>;
+export type AvailabilitySizeBucket = z.infer<
+  typeof availabilitySizeBucketSchema
 >;
 export type LeaseRecord = z.infer<typeof leaseRecordSchema>;
 export type SaleRecord = z.infer<typeof saleRecordSchema>;

@@ -131,10 +131,25 @@ const normalizeElement = (
         )
       : undefined;
   }
-  if (next.type === "chart" && next.chartStyle?.fontFamily)
-    next.chartStyle.fontFamily = normalizeSemanticFontFamily(
-      next.chartStyle.fontFamily,
+  if (next.type === "chart" && next.chartStyle?.fontFamily) {
+    const fontFamily = normalizeSemanticFontFamily(next.chartStyle.fontFamily);
+    const fontWeight = next.chartStyle.fontWeight ?? 600;
+    const fontStyle = next.chartStyle.fontStyle ?? "normal";
+    const face = resolveFaceWithoutHealingInvalidPin(
+      assets,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      next.chartStyle,
     );
+    next.chartStyle = {
+      ...next.chartStyle,
+      fontFamily,
+      fontWeight: face?.fontWeight ?? fontWeight,
+      fontStyle: face?.fontStyle ?? fontStyle,
+      ...resolvedPin(next.chartStyle, face),
+    };
+  }
   return next;
 };
 

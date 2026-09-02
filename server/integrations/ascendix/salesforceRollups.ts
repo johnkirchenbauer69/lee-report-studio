@@ -1,4 +1,5 @@
 import type {
+  AvailabilitySizeBucket,
   HistoricalMarketPeriod,
   MarketMetrics,
   SubmarketMetrics,
@@ -17,6 +18,45 @@ const numeric = (record: SalesforceRecord, field: { apiName: string }) => {
 };
 const sum = (rows: SalesforceRecord[], field: { apiName: string }) =>
   rows.reduce((total, row) => total + numeric(row, field), 0);
+
+export const AVAILABILITY_SIZE_BUCKETS = [
+  { bucket: "20-75k SF", minimum: 20_000, maximum: 75_000 },
+  { bucket: "75-150k SF", minimum: 75_000, maximum: 150_000 },
+  { bucket: "150-250k SF", minimum: 150_000, maximum: 250_000 },
+  { bucket: "250-500k SF", minimum: 250_000, maximum: 500_000 },
+  { bucket: "500k SF+", minimum: 500_000, maximum: Number.POSITIVE_INFINITY },
+] as const;
+
+/** Buckets the already-scoped eligible Property_Data rows without exposing records client-side. */
+export function aggregateAvailabilityBySize(
+  rows: SalesforceRecord[],
+): AvailabilitySizeBucket[] {
+  const field = mapping.propertyData.availableSf;
+  return AVAILABILITY_SIZE_BUCKETS.map(({ bucket, minimum, maximum }) => {
+    const members = rows.filter((row) => {
+      const availableSf = numeric(row, field);
+      return availableSf >= minimum && availableSf < maximum;
+    });
+    return {
+      bucket,
+      availableSf: sum(members, field),
+      buildingCount: members.length,
+    };
+  });
+}
+
+/**
+ * A Market_Data median is authoritative only for its own single submarket row.
+ * Multiple submarket medians cannot be combined into a transaction median.
+ */
+export const verifiedMedianSalesPricePsf = (rows: SalesforceRecord[]) => {
+  if (rows.length !== 1) return null;
+  const value = numeric(
+    rows[0]!,
+    mapping.marketData.medianSalesPricePerBuildingSf,
+  );
+  return value > 0 ? value : null;
+};
 export const verifiedSpeculativeShare = (
   underConstructionSf: number,
   underConstructionAvailableSf: number,
@@ -122,6 +162,9 @@ export function aggregateQuarterlyMarketPeriod(
     availabilityRate:
       inventory > 0 ? sum(rows, md.totalAvailableSf) / inventory : 0,
     underConstructionSf: sum(rows, md.underConstructionSf),
+    deliveredSf: sum(rows, md.deliveredSf),
+    salesVolume: sum(rows, md.salesVolume),
+    medianSalesPricePsf: verifiedMedianSalesPricePsf(rows),
     leasingActivitySf: sum(rows, md.leasingActivitySf),
     sourceIds: rows.map((row) => String(row.Id)).filter(Boolean),
   };

@@ -60,7 +60,7 @@ test("generated unavailable copy remains exactly pinned through publication pref
         assets,
       );
       await registryModule.installManagedFonts(assets);
-      let report = sampleModule.q2SampleReport;
+      let report = structuredClone(sampleModule.q2SampleReport);
       if (summary.live) {
         const reportResponse = await fetch(
           "/api/report-data/industrial-market",
@@ -82,6 +82,12 @@ test("generated unavailable copy remains exactly pinned through publication pref
           );
         report = schemaModule.industrialMarketReportSchema.parse(
           (await reportResponse.json()).report,
+        );
+      } else {
+        report.dataCompleteness = report.dataCompleteness.map((item) =>
+          item.section === "construction"
+            ? { ...item, status: "missing" }
+            : item,
         );
       }
       const presentation = modelModule.buildPresentationModel(report);

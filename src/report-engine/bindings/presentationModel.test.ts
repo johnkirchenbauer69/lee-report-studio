@@ -42,12 +42,16 @@ describe("buildPresentationModel", () => {
       const expectedPlaceholders = Math.max(0, 3 - count);
       expect(
         model.topLeaseRows.filter((row) =>
-          Object.values(row).every((value) => value === "-"),
+          [row.party, row.amount, row.address, row.type].every(
+            (value) => value === "-",
+          ),
         ),
       ).toHaveLength(expectedPlaceholders);
       expect(
         model.topSaleRows.filter((row) =>
-          Object.values(row).every((value) => value === "-"),
+          [row.party, row.amount, row.address, row.type].every(
+            (value) => value === "-",
+          ),
         ),
       ).toHaveLength(expectedPlaceholders);
     },
@@ -86,5 +90,26 @@ describe("buildPresentationModel", () => {
     const model = buildPresentationModel(report);
     expect(model.topSaleRows[0]!.type).toBe("Sale type not published");
     expect(JSON.stringify(model.topSaleRows)).not.toContain("Included");
+  });
+
+  it("normalizes verified Lee Deal booleans and never marks placeholder rows", () => {
+    const report = structuredClone(q2SampleReport);
+    report.leasing = [
+      { ...report.leasing[0]!, isLeeDeal: true },
+      { ...report.leasing[1]!, isLeeDeal: false },
+    ];
+    report.sales = [{ ...report.sales[0]!, isLeeDeal: null }];
+    const model = buildPresentationModel(report);
+
+    expect(model.topLeaseRows.map((row) => row.isLeeDeal)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(model.topSaleRows.map((row) => row.isLeeDeal)).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 });

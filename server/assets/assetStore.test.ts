@@ -27,6 +27,8 @@ const stored = (checksum: string): StoredAsset => ({
 describe("font asset identity", () => {
   const metadata = {
     family: "Nunito Sans",
+    subfamily: "Bold",
+    widthClass: 5,
     weight: 700,
     style: "normal" as const,
     postScriptName: "NunitoSans-Bold",
@@ -182,5 +184,38 @@ describe("FileSystemAssetStore.importBuffer", () => {
     expect(await store.remove(historical.id, new Set([historical.id]))).toBe(
       "retained",
     );
+  });
+
+  it("records an explicit organization license attestation before approving a family", async () => {
+    const unverified = {
+      ...stored("licensed-avenir"),
+      fontFamily: "Avenir Next LT Pro",
+      fontGovernanceStatus: "unverified" as const,
+    };
+    await writeFile(
+      path.join(dataRoot, "assets.json"),
+      JSON.stringify([unverified]),
+    );
+
+    const approved = await store.approveFontFamilies(
+      new Set(["Avenir Next LT Pro"]),
+      {
+        type: "Organization-owned commercial license",
+        attestedAt: "2026-09-01T00:00:00.000Z",
+        attestedBy: "organization owner",
+        usageScope: "internal use only",
+      },
+    );
+
+    expect(approved).toHaveLength(1);
+    expect((await store.list())[0]).toMatchObject({
+      fontGovernanceStatus: "approved",
+      license: {
+        type: "Organization-owned commercial license",
+        attestedAt: "2026-09-01T00:00:00.000Z",
+        attestedBy: "organization owner",
+        usageScope: "internal use only",
+      },
+    });
   });
 });
