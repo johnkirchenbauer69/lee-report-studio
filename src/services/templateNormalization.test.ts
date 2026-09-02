@@ -23,6 +23,13 @@ const semibold: Asset = {
   fontWeight: 600,
   checksum: "semibold-checksum",
 };
+const black: Asset = {
+  ...regular,
+  id: "nunito-black",
+  name: "Nunito Sans Black",
+  fontWeight: 900,
+  checksum: "black-checksum",
+};
 
 describe("template typography migration", () => {
   it("normalizes editable legacy stacks and checksum-pins available managed faces", () => {
@@ -78,6 +85,28 @@ describe("template typography migration", () => {
       fontAssetId: semibold.id,
       fontChecksum: semibold.checksum,
     });
+  });
+
+  it("pins transaction chips to the exact managed Nunito Sans 900 face", () => {
+    const migrated = normalizeReportTemplateFonts(sampleTemplate, [black]);
+    const tables = migrated.pages
+      .flatMap((page) => page.elements)
+      .filter(
+        (element) =>
+          element.type === "table" && element.variant === "transactions",
+      );
+
+    expect(tables).toHaveLength(4);
+    for (const table of tables)
+      expect(
+        table.type === "table" && table.transactionChipStyle,
+      ).toMatchObject({
+        fontFamily: "Nunito Sans",
+        fontWeight: 900,
+        fontStyle: "normal",
+        fontAssetId: black.id,
+        fontChecksum: black.checksum,
+      });
   });
 
   it("preserves a stale checksum pin so strict preflight can reject it", () => {

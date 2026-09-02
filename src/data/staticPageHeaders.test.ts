@@ -50,4 +50,44 @@ describe("native static-page headers", () => {
       false,
     );
   });
+
+  it.each([
+    ["data-methodology", 41],
+    ["definitions", 42],
+    ["contacts", 43],
+    ["who-we-are", 44],
+  ])("promotes every %s footer text block to native elements", (id, number) => {
+    const elements = page(id).elements;
+    expect(
+      elements.find((element) => element.id === `${id}-footer-mask`),
+    ).toMatchObject({
+      type: "shape",
+      locked: true,
+      x: 0,
+      y: 1020,
+      width: 816,
+      height: 36,
+    });
+    expect(
+      elements.find((element) => element.id === `${id}-footer-brand`),
+    ).toMatchObject({
+      type: "text",
+      name: "Footer Brand",
+      text: "LEE & ASSOCIATES OF ILLINOIS",
+    });
+    expect(
+      elements.find((element) => element.id === `${id}-footer-address`),
+    ).toMatchObject({
+      type: "text",
+      name: "Footer Address",
+      text: "9450 W. BRYN MAWR AVE, SUITE 550 | ROSEMONT, IL 60018",
+    });
+    expect(
+      elements.find((element) => element.id === `${id}-footer-page-number`),
+    ).toMatchObject({
+      type: "text",
+      name: "Footer Page Number",
+      text: String(number),
+    });
+  });
 });

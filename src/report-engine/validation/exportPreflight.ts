@@ -35,6 +35,80 @@ export async function runExportPreflight(
         elementId: usage.elementId,
         message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
       }));
+  const checkTypography = (
+    pageId: string,
+    elementId: string,
+    elementName: string,
+    typography: {
+      fontFamily: string;
+      fontWeight?: number | string;
+      fontStyle?: "normal" | "italic";
+      fontAssetId?: string;
+      fontChecksum?: string;
+      italic?: boolean;
+    },
+  ) => {
+    const family = normalizeSemanticFontFamily(typography.fontFamily);
+    const weight = Number(typography.fontWeight) || 400;
+    const fontStyle =
+      typography.fontStyle ?? (typography.italic ? "italic" : "normal");
+    const managed = typography.fontAssetId
+      ? template.assets?.find((asset) => asset.id === typography.fontAssetId)
+      : undefined;
+    const expectedManaged = resolveManagedFontFace(
+      template.assets ?? [],
+      family,
+      weight,
+      fontStyle,
+      options.historical,
+    );
+    if (
+      typography.fontAssetId &&
+      (!managed ||
+        managed.type !== "font" ||
+        managed.checksum !== typography.fontChecksum ||
+        normalizeSemanticFontFamily(managed.fontFamily) !== family ||
+        (managed.fontWeight ?? 400) !== weight ||
+        (managed.fontStyle ?? "normal") !== fontStyle)
+    )
+      issues.push({
+        level: "error",
+        kind: "font",
+        pageId,
+        elementId,
+        message: `${elementName} references a missing or changed managed font face.`,
+      });
+    else if (expectedManaged && !typography.fontAssetId)
+      issues.push({
+        level: "error",
+        kind: "font",
+        pageId,
+        elementId,
+        message: `${elementName} does not pin the available managed ${family} face.`,
+      });
+    else if (family === BRAND_FONT_FAMILY && !expectedManaged)
+      issues.push({
+        level: "error",
+        kind: "font",
+        pageId,
+        elementId,
+        message: `${elementName} requires managed ${BRAND_FONT_FAMILY} ${typography.fontWeight} ${typography.fontStyle ?? "normal"}, but that face is unavailable.`,
+      });
+    else if (
+      family &&
+      !document.fonts.check(
+        `${fontStyle} ${weight} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
+        "LEE managed font verification",
+      )
+    )
+      issues.push({
+        level: managed ? "error" : "warning",
+        kind: "font",
+        pageId,
+        elementId,
+        message: `${family} is unavailable; PDF line wrapping may differ.`,
+      });
+  };
   for (const page of template.pages) {
     for (const element of page.elements) {
       if (element.hidden) continue;
@@ -71,69 +145,15 @@ export async function runExportPreflight(
                   ?.fontChecksum,
                 italic: false,
               };
-        const family = normalizeSemanticFontFamily(typography.fontFamily);
-        const weight = Number(typography.fontWeight) || 400;
-        const fontStyle =
-          typography.fontStyle ?? (typography.italic ? "italic" : "normal");
-        const managed = typography?.fontAssetId
-          ? template.assets?.find(
-              (asset) => asset.id === typography.fontAssetId,
-            )
-          : undefined;
-        const expectedManaged = resolveManagedFontFace(
-          template.assets ?? [],
-          family,
-          weight,
-          fontStyle,
-          options.historical,
-        );
-        if (
-          typography?.fontAssetId &&
-          (!managed ||
-            managed.type !== "font" ||
-            managed.checksum !== typography.fontChecksum ||
-            normalizeSemanticFontFamily(managed.fontFamily) !== family ||
-            (managed.fontWeight ?? 400) !== weight ||
-            (managed.fontStyle ?? "normal") !== fontStyle)
-        )
-          issues.push({
-            level: "error",
-            kind: "font",
-            pageId: page.id,
-            elementId: element.id,
-            message: `${element.name} references a missing or changed managed font face.`,
-          });
-        else if (expectedManaged && !typography.fontAssetId)
-          issues.push({
-            level: "error",
-            kind: "font",
-            pageId: page.id,
-            elementId: element.id,
-            message: `${element.name} does not pin the available managed ${family} face.`,
-          });
-        else if (family === BRAND_FONT_FAMILY && !expectedManaged)
-          issues.push({
-            level: "error",
-            kind: "font",
-            pageId: page.id,
-            elementId: element.id,
-            message: `${element.name} requires managed ${BRAND_FONT_FAMILY} ${typography.fontWeight} ${typography.fontStyle ?? "normal"}, but that face is unavailable.`,
-          });
-        else if (
-          family &&
-          !document.fonts.check(
-            `${fontStyle} ${weight} 12px "${managed ? managedFontAssetFamily(managed.id) : family}"`,
-            "LEE managed font verification",
-          )
-        )
-          issues.push({
-            level: managed ? "error" : "warning",
-            kind: "font",
-            pageId: page.id,
-            elementId: element.id,
-            message: `${family} is unavailable; PDF line wrapping may differ.`,
-          });
+        checkTypography(page.id, element.id, element.name, typography);
       }
+      if (element.type === "table" && element.transactionChipStyle)
+        checkTypography(page.id, element.id, `${element.name} LEE DEAL chip`, {
+          ...element.transactionChipStyle,
+          fontFamily:
+            element.transactionChipStyle.fontFamily ?? BRAND_FONT_FAMILY,
+          fontWeight: element.transactionChipStyle.fontWeight ?? 900,
+        });
       if (element.type === "image" && (element as ImageElement).src) {
         const src = (element as ImageElement).src;
         const contentTypeIssue = await checkImageContentType(src);

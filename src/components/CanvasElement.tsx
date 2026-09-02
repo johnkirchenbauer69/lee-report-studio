@@ -523,6 +523,16 @@ export function CanvasElement(props: Props) {
                           <span
                             className="lee-deal-chip"
                             data-testid="lee-deal-chip"
+                            data-font-asset-id={
+                              element.transactionChipStyle?.fontAssetId
+                            }
+                            data-font-checksum={
+                              element.transactionChipStyle?.fontChecksum
+                            }
+                            style={{
+                              ...tableStyle(element.transactionChipStyle),
+                              fontSynthesis: "none",
+                            }}
                           >
                             LEE DEAL
                           </span>

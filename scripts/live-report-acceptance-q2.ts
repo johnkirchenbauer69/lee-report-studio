@@ -13,6 +13,10 @@ import {
   paddedRateDomain,
   salesPriceTicks,
 } from "../src/report-engine/charts/marketingChartScale.ts";
+import {
+  MARKETING_CHART_BASE,
+  marketingChartTheme,
+} from "../src/report-engine/charts/marketingChartTheme.ts";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 import type { Asset, ReportTemplate } from "../src/types/report.ts";
 
@@ -295,7 +299,6 @@ for (const [page, expectedTitle] of [
 ] as const) {
   const expectedIds = [
     `${page.id}-header-mask`,
-    `${page.id}-logo`,
     `${page.id}-title`,
     `${page.id}-period`,
   ];
@@ -308,21 +311,56 @@ for (const [page, expectedTitle] of [
   if (title?.type !== "text" || title.text !== expectedTitle)
     throw new Error(`${page.name} is missing its editable native title.`);
 }
-for (const id of ["contacts-header-mask", "contacts-logo", "contacts-period"])
+for (const id of ["contacts-header-mask", "contacts-period"])
   if (
     staticPages[2]!.elements.filter((element) => element.id === id).length !== 1
   )
     throw new Error(`Contacts must contain exactly one ${id}.`);
 for (const page of staticPages.slice(0, 3)) {
-  const logo = page.elements.find(
-    (element) => element.id === `${page.id}-logo`,
+  const logos = page.elements.filter(
+    (element) =>
+      element.type === "image" &&
+      element.y < 110 &&
+      element.id !== `${page.id}-artwork`,
+  );
+  if (logos.length !== 1)
+    throw new Error(
+      `${page.name} must contain exactly one native header logo.`,
+    );
+  const logo = logos[0]!;
+  if (logo?.type !== "image" || logo.fit !== "contain")
+    throw new Error(`${page.name} is missing its transparent native LEE logo.`);
+}
+for (const [index, page] of staticPages.entries()) {
+  const expectedNumber = String(index + 41);
+  const footerIds = [
+    `${page.id}-footer-mask`,
+    `${page.id}-footer-brand`,
+    `${page.id}-footer-address`,
+    `${page.id}-footer-page-number`,
+  ];
+  for (const id of footerIds)
+    if (page.elements.filter((element) => element.id === id).length !== 1)
+      throw new Error(`${page.name} must contain exactly one native ${id}.`);
+  const footerText = page.elements.filter(
+    (element) =>
+      element.type === "text" && element.id.startsWith(`${page.id}-footer-`),
   );
   if (
-    logo?.type !== "image" ||
-    logo.src !== "/report-assets/lee-logo-white.png" ||
-    logo.fit !== "contain"
+    footerText.length !== 3 ||
+    footerText.some(
+      (element) =>
+        element.type !== "text" ||
+        !element.style.typography?.fontAssetId ||
+        !element.style.typography.fontChecksum,
+    )
   )
-    throw new Error(`${page.name} is missing its transparent native LEE logo.`);
+    throw new Error(`${page.name} native footer text is not fully managed.`);
+  const pageNumber = page.elements.find(
+    (element) => element.id === `${page.id}-footer-page-number`,
+  );
+  if (pageNumber?.type !== "text" || pageNumber.text !== expectedNumber)
+    throw new Error(`${page.name} native footer page number is incorrect.`);
 }
 if (staticPages[3]!.elements.some((element) => element.binding))
   throw new Error("Who We Are must remain fully static.");
@@ -382,11 +420,36 @@ if (
     ({ element }) =>
       element.type !== "table" ||
       element.columns.length !== 4 ||
-      element.maxRows !== 3,
+      element.maxRows !== 3 ||
+      element.columns.find((column) => column.key === "address")?.width !==
+        39 ||
+      element.columns.find((column) => column.key === "type")?.width !== 20,
   )
 )
   throw new Error(
-    "A Top Lease or Top Sale table changed its governed four-column, three-row geometry.",
+    "A Top Lease or Top Sale table changed its governed four-column, three-row, 39/20 geometry.",
+  );
+const chipFace = managedAssets.find(
+  (asset) =>
+    asset.type === "font" &&
+    asset.fontFamily === "Nunito Sans" &&
+    asset.fontWeight === 900 &&
+    asset.fontStyle === "normal",
+);
+if (
+  !chipFace?.checksum ||
+  transactionTables.some(
+    ({ element }) =>
+      element.type !== "table" ||
+      element.transactionChipStyle?.fontFamily !== "Nunito Sans" ||
+      element.transactionChipStyle.fontWeight !== 900 ||
+      element.transactionChipStyle.fontStyle !== "normal" ||
+      element.transactionChipStyle.fontAssetId !== chipFace.id ||
+      element.transactionChipStyle.fontChecksum !== chipFace.checksum,
+  )
+)
+  throw new Error(
+    "A Top Lease or Top Sale table does not pin its LEE DEAL chip to managed Nunito Sans 900 normal.",
   );
 const transactionSections = [
   {
@@ -574,6 +637,17 @@ const liveCompactLabels = {
   explicitZeroSf: compactSquareFeet(0),
   explicitZeroSales: compactCurrency(0),
 };
+const plotCenter = (margin: { left: number; right: number }) =>
+  margin.left + (MARKETING_CHART_BASE.width - margin.left - margin.right) / 2;
+const legendCenters = {
+  netAbsorptionVacancyAvailability: plotCenter(
+    marketingChartTheme.margins.combination,
+  ),
+  salesVolumeMedianPrice: plotCenter(marketingChartTheme.margins.sales),
+  underConstructionDeliveries: plotCenter(
+    marketingChartTheme.margins.construction,
+  ),
+};
 console.log(
   JSON.stringify(
     {
@@ -598,8 +672,27 @@ console.log(
       unknownConfidentialityLeaseRows: unknownConfidentialityLeases.length,
       leeDealChipCount: leeDealRows.length,
       leeDealRows,
+      leeDealChipFont: {
+        family: chipFace.fontFamily,
+        weight: chipFace.fontWeight,
+        style: chipFace.fontStyle,
+        assetId: chipFace.id,
+        checksum: chipFace.checksum,
+      },
       transactionTableCount: transactionTables.length,
-      transactionTableGeometry: "4 columns / 3 rows / chip inside final cell",
+      transactionTableGeometry:
+        "4 columns / 3 rows / address 39% / type 20% / chip inside final cell",
+      legendCenters,
+      nativeStaticFooters: staticPages.map((page) => ({
+        page: page.name,
+        textElementIds: page.elements
+          .filter(
+            (element) =>
+              element.type === "text" &&
+              element.id.startsWith(`${page.id}-footer-`),
+          )
+          .map((element) => element.id),
+      })),
       westCookInventoryReconciliation: {
         authoritativeValue: westCookInventory.reconciliation.authoritativeValue,
         propertyDataValue: westCookInventory.reconciliation.comparisonValue,

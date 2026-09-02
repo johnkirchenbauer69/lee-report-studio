@@ -190,6 +190,8 @@ export interface TableElement extends BaseElement {
   rowHeight?: number;
   headerStyle?: TableCellStyle;
   bodyStyle?: TableCellStyle;
+  /** Managed typography for the row-integrated LEE DEAL transaction badge. */
+  transactionChipStyle?: TableCellStyle;
   cellStyles?: Record<string, TableCellStyle>;
 }
 

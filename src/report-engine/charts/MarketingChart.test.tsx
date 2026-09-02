@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ChartElement } from "../../types/report";
-import { MarketingChart } from "./MarketingChart";
+import { MarketingChart, marketingPlotCenterX } from "./MarketingChart";
 import { marketingChartTheme } from "./marketingChartTheme";
 
 const element = (
@@ -202,5 +202,35 @@ describe("MarketingChart vector output", () => {
     expect(html.indexOf("Under Construction")).toBeLessThan(
       html.indexOf("Deliveries"),
     );
+  });
+
+  it.each([
+    [
+      "net_absorption_vacancy_availability",
+      marketingChartTheme.margins.combination,
+    ],
+    ["sales_volume_cap_rates", marketingChartTheme.margins.sales],
+    ["construction_uc_deliveries", marketingChartTheme.margins.construction],
+  ] as const)("centers the %s legend on its plot area", (id, margin) => {
+    const html = renderToStaticMarkup(
+      <MarketingChart element={element(id)} source={history} />,
+    );
+    const center = marketingPlotCenterX(margin);
+
+    expect(html).toContain(`data-chart-legend="true"`);
+    expect(html).toContain(`data-legend-center-x="${center}"`);
+    expect(html).toContain(`data-plot-center-x="${center}"`);
+  });
+
+  it("does not add a legend to Availability by Size", () => {
+    const html = renderToStaticMarkup(
+      <MarketingChart
+        element={element("availability_by_size")}
+        source={[
+          { bucket: "20-75k SF", availableSf: 100_000, buildingCount: 2 },
+        ]}
+      />,
+    );
+    expect(html).not.toContain("data-chart-legend");
   });
 });

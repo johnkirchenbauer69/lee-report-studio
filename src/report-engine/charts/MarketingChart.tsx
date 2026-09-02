@@ -21,6 +21,9 @@ import {
 type Row = Record<string, unknown>;
 type Margin = { left: number; right: number; top: number; bottom: number };
 
+export const marketingPlotCenterX = (margin: Pick<Margin, "left" | "right">) =>
+  margin.left + (MARKETING_CHART_BASE.width - margin.left - margin.right) / 2;
+
 const numberAt = (row: Row, path: string) => {
   const value = getByPath(row, path);
   return typeof value === "number" && Number.isFinite(value)
@@ -179,6 +182,7 @@ function AxisTitle({
 
 function Legend({
   items,
+  centerX,
   y = 211,
   gradientId,
 }: {
@@ -189,6 +193,7 @@ function Legend({
     dashed?: boolean;
     line?: boolean;
   }>;
+  centerX: number;
   y?: number;
   gradientId?: string;
 }) {
@@ -196,9 +201,22 @@ function Legend({
   const total =
     widths.reduce((sum, value) => sum + value, 0) +
     Math.max(0, items.length - 1) * 8;
-  let cursor = (MARKETING_CHART_BASE.width - total) / 2;
+  let cursor = centerX - total / 2;
   return (
-    <>
+    <g
+      data-chart-legend="true"
+      data-legend-center-x={centerX}
+      data-plot-center-x={centerX}
+      data-layout-width={total}
+    >
+      <rect
+        x={centerX - total / 2}
+        y={y - 8}
+        width={total}
+        height="12"
+        fill="transparent"
+        aria-hidden="true"
+      />
       {items.map((item, index) => {
         const x = cursor;
         cursor += widths[index]! + 8;
@@ -239,7 +257,7 @@ function Legend({
           </g>
         );
       })}
-    </>
+    </g>
   );
 }
 
@@ -375,6 +393,7 @@ function ConstructionChart({
         SQUARE FEET
       </AxisTitle>
       <Legend
+        centerX={marketingPlotCenterX(margin)}
         gradientId={id}
         items={[
           { label: "Under Construction", gradient: true },
@@ -523,6 +542,7 @@ function CombinationChart({
         </AxisTitle>
       )}
       <Legend
+        centerX={marketingPlotCenterX(margin)}
         gradientId={id}
         items={
           sales

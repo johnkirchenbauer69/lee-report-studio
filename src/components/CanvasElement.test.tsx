@@ -26,6 +26,13 @@ const table: TableElement = {
   sourcePath: "rows",
   maxRows: 3,
   variant: "transactions",
+  transactionChipStyle: {
+    fontFamily: "Nunito Sans",
+    fontWeight: 900,
+    fontStyle: "normal",
+    fontAssetId: "nunito-black",
+    fontChecksum: "nunito-black-checksum",
+  },
   columns: [
     { key: "party", label: "TENANT", path: "party", width: 70 },
     { key: "type", label: "LEASE TYPE", path: "type", width: 30 },
@@ -64,6 +71,11 @@ describe("CanvasElement transaction Lee Deal chip", () => {
     expect(markup.match(/data-testid="lee-deal-chip"/g)).toHaveLength(1);
     expect(markup).toContain("transaction-type-cell");
     expect(markup).toContain("LEE DEAL");
+    expect(markup).toContain('data-font-asset-id="nunito-black"');
+    expect(markup).toContain('data-font-checksum="nunito-black-checksum"');
+    expect(markup).toContain("LEE Managed nunito-black");
+    expect(markup).toContain("font-weight:900");
+    expect(markup).toContain("font-style:normal");
   });
 
   it("does not render a chip for a placeholder row", () => {

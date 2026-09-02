@@ -5,6 +5,7 @@ import type {
   ImageElement,
   ReportElement,
   ReportTemplate,
+  TableCellStyle,
 } from "../../types/report";
 
 const managedNunito: Asset = {
@@ -266,6 +267,58 @@ describe("runExportPreflight image content-type check", () => {
         level: "error",
         kind: "font",
         message: expect.stringContaining("missing or changed"),
+      }),
+    ]);
+  });
+
+  it("requires the exact managed Nunito Sans 900 pin for LEE DEAL chips", async () => {
+    vi.stubGlobal("document", { fonts: { check: vi.fn(() => true) } });
+    const black = {
+      ...managedNunito,
+      id: "nunito-black",
+      name: "Nunito Sans Black",
+      fontWeight: 900,
+      checksum: "black-checksum",
+    };
+    const table = {
+      id: "top-sales",
+      type: "table" as const,
+      name: "Top Sales",
+      x: 0,
+      y: 0,
+      width: 729,
+      height: 114,
+      sourcePath: "topSaleRows",
+      variant: "transactions" as const,
+      columns: [{ key: "type", label: "SALE TYPE", path: "type" }],
+      style: {},
+      transactionChipStyle: {
+        fontFamily: "Nunito Sans",
+        fontWeight: 900,
+        fontStyle: "normal" as const,
+        fontAssetId: black.id,
+        fontChecksum: black.checksum,
+      } as TableCellStyle,
+    };
+
+    expect(await runExportPreflight(templateWith(table, [black]))).toEqual([]);
+
+    table.transactionChipStyle.fontChecksum = "stale-checksum";
+    expect(await runExportPreflight(templateWith(table, [black]))).toEqual([
+      expect.objectContaining({
+        level: "error",
+        kind: "font",
+        message: expect.stringContaining("missing or changed managed font"),
+      }),
+    ]);
+
+    table.transactionChipStyle.fontChecksum = undefined;
+    table.transactionChipStyle.fontAssetId = undefined;
+    expect(await runExportPreflight(templateWith(table, [black]))).toEqual([
+      expect.objectContaining({
+        level: "error",
+        kind: "font",
+        message: expect.stringContaining("does not pin the available managed"),
       }),
     ]);
   });

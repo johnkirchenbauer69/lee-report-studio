@@ -931,7 +931,9 @@ button {
   background: linear-gradient(180deg, #cf123f 0%, #7a0d26 100%);
   font-family: inherit;
   font-size: 7px;
-  font-weight: 700;
+  font-weight: 900;
+  font-style: normal;
+  font-synthesis: none;
   line-height: 1;
   letter-spacing: 0;
   white-space: nowrap;
