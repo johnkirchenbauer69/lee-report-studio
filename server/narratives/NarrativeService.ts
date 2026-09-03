@@ -13,9 +13,43 @@ import {
   type NarrativeRecord,
 } from "../../src/report-engine/narratives/schema.ts";
 import type { ReportInstance } from "../../src/report-engine/schema/generation.ts";
+import type { ExternalNarrativeJob } from "../../src/report-engine/schema/generation.ts";
 import { buildNarrativeContext, publicNarrativeContext } from "./contextBuilder.ts";
 import type { NarrativeModelClient } from "./modelClient.ts";
+import {
+  narrativeHandoffPrompt,
+  REQUIRED_NARRATIVE_MCP_TOOLS,
+  type NarrativeMcpBridgeClient,
+  type NarrativeMcpSubmittedNarrative,
+} from "./NarrativeMcpBridgeClient.ts";
+import {
+  EXTERNAL_NARRATIVE_MODEL,
+  externalBatchFailureMessage,
+  planExternalBatchImport,
+} from "./externalBatchImport.ts";
 import { validateNarrativeResult } from "./validation.ts";
+
+/**
+ * How the user-facing Generate buttons produce narratives.
+ *
+ * chatgpt_mcp  ChatGPT writes them through the remote LEE Intelligence MCP.
+ *              No OPENAI_API_KEY is required.
+ * direct_model In-process model client. Retained for CI and future use.
+ *
+ * There is one generation workflow. This is an internal mode, never a
+ * user-facing provider picker.
+ */
+export type NarrativeGenerationMode = "chatgpt_mcp" | "direct_model";
+
+export interface NarrativeServiceOptions {
+  mode?: NarrativeGenerationMode;
+  bridge?: NarrativeMcpBridgeClient;
+}
+
+export interface ExternalNarrativeJobState {
+  job?: ExternalNarrativeJob;
+  instance: ReportInstance;
+}
 
 export interface NarrativeGenerationJob {
   id: string;
@@ -97,23 +131,71 @@ const replaceRecord = (
 export class NarrativeService {
   private readonly jobs = new Map<string, NarrativeGenerationJob>();
 
+  readonly mode: NarrativeGenerationMode;
+  private readonly bridge?: NarrativeMcpBridgeClient;
+
   constructor(
     private readonly repository: ReportInstanceRepository,
     readonly modelClient: NarrativeModelClient,
     readonly concurrency = 3,
     private readonly logger: (entry: Record<string, unknown>) => void = (entry) =>
       console.info(JSON.stringify(entry)),
-  ) {}
+    options: NarrativeServiceOptions = {},
+  ) {
+    this.mode = options.mode ?? "direct_model";
+    this.bridge = options.bridge;
+  }
 
-  config() {
+  /**
+   * Whether the Generate buttons are live, and why.
+   *
+   * In chatgpt_mcp mode this is decided by the bridge — remote MCP reachable
+   * and all four narrative job tools present — never by OPENAI_API_KEY.
+   */
+  async config() {
+    if (this.mode !== "chatgpt_mcp")
+      return {
+        mode: this.mode,
+        provider: "direct_model" as const,
+        configured: this.modelClient.configured,
+        model: this.modelClient.model,
+        concurrency: this.concurrency,
+        message: this.modelClient.configured
+          ? "AI narrative generation is configured."
+          : "AI narrative generation is not configured.",
+      };
+    const health = await this.bridgeHealth();
     return {
-      configured: this.modelClient.configured,
-      model: this.modelClient.model,
+      mode: this.mode,
+      provider: "chatgpt_mcp" as const,
+      configured: health.configured,
+      model: EXTERNAL_NARRATIVE_MODEL,
       concurrency: this.concurrency,
-      message: this.modelClient.configured
-        ? "AI narrative generation is configured."
-        : "AI narrative generation is not configured.",
+      message: health.configured
+        ? "ChatGPT narrative generation is ready."
+        : "LEE Intelligence MCP narrative bridge is unavailable.",
+      chatGptAppUrl: this.bridge?.chatGptAppUrl,
+      pollIntervalMs: this.bridge?.pollIntervalMs ?? 1_500,
+      bridge: health,
     };
+  }
+
+  /** Poll cadence the browser should use against this server. */
+  get pollIntervalMs() {
+    return this.bridge?.pollIntervalMs ?? 1_500;
+  }
+
+  async bridgeHealth(options: { force?: boolean } = {}) {
+    if (!this.bridge)
+      return {
+        configured: false,
+        reachable: false,
+        requiredToolsFound: [] as string[],
+        missingTools: [...REQUIRED_NARRATIVE_MCP_TOOLS],
+        checkedAt: new Date().toISOString(),
+        error: "The narrative MCP bridge is not configured.",
+      };
+    return this.bridge.health(options);
   }
 
   async context(reportInstanceId: string, marketId: string) {
@@ -275,6 +357,272 @@ export class NarrativeService {
       });
       return failed;
     }
+  }
+
+  // --- ChatGPT / MCP external generation -----------------------------------
+
+  private requireBridge() {
+    if (this.mode !== "chatgpt_mcp" || !this.bridge)
+      throw new Error("ChatGPT narrative generation is not enabled for this server.");
+    return this.bridge;
+  }
+
+  /**
+   * Markets Generate All should send. Approved and edited narratives are held
+   * back unless the caller explicitly confirms overwriting them, so a batch can
+   * never silently replace reviewed work.
+   */
+  private generateAllMarketIds(
+    instance: ReportInstance,
+    options: { marketIds?: string[]; includeReviewed?: boolean } = {},
+  ) {
+    if (options.marketIds?.length) {
+      for (const marketId of options.marketIds) this.find(instance, marketId);
+      return [...options.marketIds];
+    }
+    return instance.narratives
+      .filter((record) =>
+        options.includeReviewed
+          ? record.status !== "generating"
+          : record.status === "not_generated" || record.status === "stale",
+      )
+      .map((record) => record.marketId);
+  }
+
+  /**
+   * Creates a narrative job on the remote MCP and parks the report in
+   * "Waiting for ChatGPT". Only publication-safe context leaves this process:
+   * publicNarrativeContext() strips server-only provenance and throws on any
+   * raw Salesforce identifier.
+   */
+  async startExternalGeneration(
+    reportInstanceId: string,
+    options: {
+      marketIds?: string[];
+      includeReviewed?: boolean;
+      instruction?: string;
+      confirmApproved?: boolean;
+    } = {},
+  ) {
+    const bridge = this.requireBridge();
+    const instance = await this.required(reportInstanceId);
+    const marketIds = this.generateAllMarketIds(instance, options);
+    if (!marketIds.length)
+      throw new Error(
+        "Every narrative is already generated or approved. Unlock a narrative to regenerate it.",
+      );
+    if (!options.confirmApproved)
+      for (const marketId of marketIds)
+        if (this.find(instance, marketId).status === "approved")
+          throw new Error(
+            "Approved narratives require explicit Unlock / Revise confirmation.",
+          );
+
+    const contexts = marketIds.map((marketId) =>
+      buildNarrativeContext({ reportInstance: instance, marketId }),
+    );
+    const publicContexts = contexts.map((context) => publicNarrativeContext(context));
+    for (const context of publicContexts)
+      for (const fact of context.facts)
+        if ("internalSourceIds" in fact)
+          throw new Error(
+            "Refusing to send narrative context containing server-only source identifiers.",
+          );
+
+    const scope: "all" | "selected" =
+      marketIds.length === instance.narratives.length ? "all" : "selected";
+    const instruction = options.instruction?.trim().slice(0, 300) || undefined;
+    const created = await bridge.createJob({
+      reportInstanceId,
+      templateVersion: instance.templateVersion,
+      period: instance.dataSnapshot.report.period,
+      market: instance.generationRequest.market,
+      generationScope: scope,
+      marketIds,
+      reportDataHash: instance.sourceSnapshotHash,
+      editorialInstruction: instruction,
+      contexts: publicContexts,
+    });
+
+    const now = new Date().toISOString();
+    const job: ExternalNarrativeJob = {
+      provider: "chatgpt_mcp",
+      jobId: created.jobId,
+      status: "waiting_for_chatgpt",
+      createdAt: created.createdAt || now,
+      updatedAt: now,
+      marketIds,
+      generationScope: scope,
+      appUrl: bridge.chatGptAppUrl,
+      handoffPrompt: narrativeHandoffPrompt(created.jobId),
+      expiresAt: created.expiresAt || undefined,
+      // Recorded locally so import can detect that report data moved while
+      // ChatGPT was writing, without trusting the remote to report it.
+      contextHashes: Object.fromEntries(
+        contexts.map((context) => [context.marketId, context.contextHash]),
+      ),
+      instruction,
+    };
+    this.logger({
+      event: "narrative_external_job_created",
+      reportInstanceId,
+      jobId: created.jobId,
+      narrativeCount: marketIds.length,
+      generationScope: scope,
+    });
+    return this.repository.update(reportInstanceId, (current) => ({
+      ...current,
+      externalNarrativeJob: job,
+    }));
+  }
+
+  /**
+   * Polls the remote job on behalf of the browser and imports the batch the
+   * moment ChatGPT submits it. The browser only ever talks to this server.
+   */
+  async externalJobState(reportInstanceId: string): Promise<ExternalNarrativeJobState> {
+    const instance = await this.required(reportInstanceId);
+    const job = instance.externalNarrativeJob;
+    if (!job) return { instance };
+    if (job.status === "complete" || job.status === "failed")
+      return { job, instance };
+
+    const bridge = this.requireBridge();
+    let remote;
+    try {
+      remote = await bridge.getJob(job.jobId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const gone = /expired|was not found/i.test(message);
+      const updated = await this.patchExternalJob(reportInstanceId, {
+        status: gone ? "expired" : "waiting_for_chatgpt",
+        error: message,
+      });
+      return { job: updated.externalNarrativeJob, instance: updated };
+    }
+
+    if (remote.status === "expired") {
+      const updated = await this.patchExternalJob(reportInstanceId, {
+        status: "expired",
+        error:
+          "The narrative job expired before ChatGPT submitted it. Start Generate All again.",
+      });
+      return { job: updated.externalNarrativeJob, instance: updated };
+    }
+    if (remote.status !== "complete" || !remote.narratives?.length) {
+      const updated = await this.patchExternalJob(reportInstanceId, {
+        status: "waiting_for_chatgpt",
+        error: undefined,
+      });
+      return { job: updated.externalNarrativeJob, instance: updated };
+    }
+
+    const imported = await this.importExternalGenerationBatch(reportInstanceId, {
+      jobId: job.jobId,
+      narratives: remote.narratives,
+      remoteContextHashes: remote.contextHashes,
+    });
+    return { job: imported.externalNarrativeJob, instance: imported };
+  }
+
+  /**
+   * Imports an externally generated batch through Report Studio validators.
+   * Atomic: if any requested market fails, nothing is imported and existing
+   * narratives are left untouched, so a quarter cannot end up half-current.
+   */
+  async importExternalGenerationBatch(
+    reportInstanceId: string,
+    input: {
+      jobId: string;
+      narratives: NarrativeMcpSubmittedNarrative[];
+      remoteContextHashes?: Record<string, string>;
+    },
+  ) {
+    const now = new Date().toISOString();
+    return this.repository.update(reportInstanceId, (instance) => {
+      const job = instance.externalNarrativeJob;
+      if (!job || job.jobId !== input.jobId)
+        throw new Error("This narrative batch does not belong to the current job.");
+      const plan = planExternalBatchImport({
+        narratives: input.narratives,
+        requestedMarketIds: job.marketIds,
+        jobContextHashes: job.contextHashes ?? {},
+        remoteContextHashes: input.remoteContextHashes,
+        currentRecord: (marketId) =>
+          instance.narratives.find((item) => item.marketId === marketId),
+        currentContext: (marketId) =>
+          buildNarrativeContext({ reportInstance: instance, marketId }),
+        reportDataHash: instance.sourceSnapshotHash ?? "",
+        now,
+        revision: narrativeRevision,
+      });
+
+      if (!plan.ok) {
+        this.logger({
+          event: "narrative_external_batch_rejected",
+          reportInstanceId,
+          jobId: input.jobId,
+          failureCount: plan.failures.length,
+          staleMarketIds: plan.staleMarketIds,
+        });
+        const staleIds = new Set(plan.staleMarketIds);
+        return withNarrativeReadiness({
+          ...instance,
+          narratives: instance.narratives.map((record) =>
+            staleIds.has(record.marketId) && record.status !== "approved"
+              ? { ...record, status: "stale" as const, approvedAt: undefined }
+              : record,
+          ),
+          externalNarrativeJob: {
+            ...job,
+            status: "failed",
+            updatedAt: now,
+            error: externalBatchFailureMessage(plan.failures),
+          },
+        });
+      }
+
+      const byMarket = new Map(plan.records.map((record) => [record.marketId, record]));
+      let next: ReportInstance = {
+        ...instance,
+        narratives: instance.narratives.map(
+          (record) => byMarket.get(record.marketId) ?? record,
+        ),
+        externalNarrativeJob: {
+          ...job,
+          status: "complete",
+          updatedAt: now,
+          importedAt: now,
+          error: undefined,
+        },
+      };
+      for (const record of plan.records) next = applyText(next, record);
+      this.logger({
+        event: "narrative_external_batch_imported",
+        reportInstanceId,
+        jobId: input.jobId,
+        narrativeCount: plan.records.length,
+      });
+      return withNarrativeReadiness(next);
+    });
+  }
+
+  private patchExternalJob(
+    reportInstanceId: string,
+    patch: Partial<ExternalNarrativeJob>,
+  ) {
+    return this.repository.update(reportInstanceId, (instance) =>
+      instance.externalNarrativeJob
+        ? {
+            ...instance,
+            externalNarrativeJob: {
+              ...instance.externalNarrativeJob,
+              ...patch,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : instance,
+    );
   }
 
   async startGenerateAll(reportInstanceId: string) {

@@ -20,11 +20,13 @@
     "salesforce:acceptance:q2": "tsx scripts/live-report-acceptance-q2.ts",
     "narrative:acceptance:q2": "tsx scripts/narrative-acceptance-q2.ts",
     "narrative:acceptance:q2:live": "cross-env NARRATIVE_ACCEPTANCE_LIVE_AI=1 tsx scripts/narrative-acceptance-q2.ts",
+    "narrative:bridge:acceptance": "tsx scripts/narrative-bridge-acceptance.ts",
     "template:draft:marketing-charts": "tsx scripts/create-marketing-chart-template-draft.ts",
     "template:draft:static-headers": "tsx scripts/create-static-header-template-draft.ts",
     "font:approve-family": "tsx scripts/approve-managed-font-family.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "@vitejs/plugin-react": "latest",
