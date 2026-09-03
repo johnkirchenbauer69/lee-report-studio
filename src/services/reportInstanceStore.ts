@@ -1,11 +1,36 @@
 import type { PublicNarrativeContext } from "../report-engine/narratives/schema";
-import type { ReportInstance } from "../report-engine/schema/generation";
+import type {
+  ExternalNarrativeJob,
+  ReportInstance,
+} from "../report-engine/schema/generation";
+
+export interface NarrativeMcpHealth {
+  configured: boolean;
+  reachable: boolean;
+  mcpUrl?: string;
+  toolCount?: number;
+  requiredToolsFound: string[];
+  missingTools: string[];
+  checkedAt: string;
+  error?: string;
+}
 
 export interface NarrativeConfig {
   configured: boolean;
   model: string;
   concurrency: number;
   message: string;
+  mode?: "chatgpt_mcp" | "direct_model";
+  provider?: "chatgpt_mcp" | "direct_model";
+  chatGptAppUrl?: string;
+  pollIntervalMs?: number;
+  bridge?: NarrativeMcpHealth;
+}
+
+export interface ExternalNarrativeJobState {
+  job: ExternalNarrativeJob | null;
+  instance: ReportInstance;
+  pollIntervalMs: number;
 }
 
 export interface NarrativeJob {
@@ -71,6 +96,27 @@ export const reportInstanceStore = {
       `/api/report-instances/${encodeURIComponent(id)}/narratives/${encodeURIComponent(marketId)}/generate`,
       "POST",
       options,
+    ),
+  narrativeMcpHealth: () =>
+    json<NarrativeMcpHealth>(fetch("/api/integrations/narrative-mcp/health")),
+  startExternalGeneration: (
+    id: string,
+    options: {
+      marketIds?: string[];
+      instruction?: string;
+      confirmApproved?: boolean;
+    } = {},
+  ) =>
+    send<ReportInstance>(
+      `/api/report-instances/${encodeURIComponent(id)}/narratives/external-job`,
+      "POST",
+      options,
+    ),
+  externalJob: (id: string) =>
+    json<ExternalNarrativeJobState>(
+      fetch(
+        `/api/report-instances/${encodeURIComponent(id)}/narratives/external-job`,
+      ),
     ),
   startGenerateAll: (id: string) =>
     send<NarrativeJob>(

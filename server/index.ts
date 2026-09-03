@@ -23,7 +23,11 @@ import {
   MockNarrativeModelClient,
   OpenAINarrativeModelClient,
 } from "./narratives/modelClient.ts";
-import { NarrativeService } from "./narratives/NarrativeService.ts";
+import { NarrativeMcpBridgeClient } from "./narratives/NarrativeMcpBridgeClient.ts";
+import {
+  NarrativeService,
+  type NarrativeGenerationMode,
+} from "./narratives/NarrativeService.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
@@ -36,10 +40,24 @@ const narrativeModelClient =
   process.env.NARRATIVE_MODEL_PROVIDER === "mock"
     ? new MockNarrativeModelClient()
     : new OpenAINarrativeModelClient();
+// One generation workflow, selected by internal mode — never a user-facing
+// provider picker. In chatgpt_mcp mode OPENAI_API_KEY is not required.
+const narrativeGenerationMode = (process.env.NARRATIVE_GENERATION_MODE ??
+  "chatgpt_mcp") as NarrativeGenerationMode;
+const narrativeMcpBridge = new NarrativeMcpBridgeClient({
+  url: process.env.NARRATIVE_MCP_URL,
+  chatGptAppUrl: process.env.NARRATIVE_MCP_CHATGPT_APP_URL,
+  pollIntervalMs: Math.max(
+    250,
+    Number(process.env.NARRATIVE_MCP_POLL_MS ?? 1500) || 1500,
+  ),
+});
 const narrativeService = new NarrativeService(
   reportInstanceRepository,
   narrativeModelClient,
   Math.max(1, Number(process.env.NARRATIVE_GENERATION_CONCURRENCY ?? 3) || 3),
+  undefined,
+  { mode: narrativeGenerationMode, bridge: narrativeMcpBridge },
 );
 await assetStore.initialize();
 await reportInstanceRepository.initialize();
@@ -189,6 +207,13 @@ app.use(
     });
   },
 );
-app.listen(port, "127.0.0.1", () =>
-  console.log(`LEE Report Studio API listening on http://127.0.0.1:${port}`),
-);
+app.listen(port, "127.0.0.1", async () => {
+  console.log(`LEE Report Studio API listening on http://127.0.0.1:${port}`);
+  if (narrativeGenerationMode !== "chatgpt_mcp") return;
+  const health = await narrativeService.bridgeHealth({ force: true });
+  console.log(
+    health.configured
+      ? `Narrative MCP bridge ready at ${health.mcpUrl} (${health.toolCount} tools).`
+      : `Narrative MCP bridge unavailable: ${health.error ?? `missing ${health.missingTools.join(", ")}`}`,
+  );
+});

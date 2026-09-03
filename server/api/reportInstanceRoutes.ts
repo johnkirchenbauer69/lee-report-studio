@@ -15,9 +15,24 @@ export function createReportInstanceRouter(
   narratives: NarrativeService,
 ) {
   const router = Router();
-  router.get("/narratives/config", (_request, response) =>
-    response.json(narratives.config()),
-  );
+  router.get("/narratives/config", async (_request, response, next) => {
+    try {
+      response.json(await narratives.config());
+    } catch (error) {
+      next(error);
+    }
+  });
+  // Health of the remote LEE Intelligence MCP narrative bridge. Reports
+  // reachability and tool discovery only — never credentials.
+  router.get("/integrations/narrative-mcp/health", async (request, response, next) => {
+    try {
+      response.json(
+        await narratives.bridgeHealth({ force: request.query.force === "1" }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
   router.post("/report-instances", async (request, response, next) => {
     try {
       const instance = request.body as ReportInstance;
@@ -61,6 +76,49 @@ export function createReportInstanceRouter(
       next(error);
     }
   });
+  // Creates the remote narrative job and parks the report in "Waiting for
+  // ChatGPT". The browser never speaks MCP; this server does.
+  router.post(
+    "/report-instances/:id/narratives/external-job",
+    async (request, response, next) => {
+      try {
+        const body = (request.body ?? {}) as {
+          marketIds?: string[];
+          instruction?: string;
+          confirmApproved?: boolean;
+          includeReviewed?: boolean;
+        };
+        response.status(202).json(
+          await narratives.startExternalGeneration(request.params.id, {
+            marketIds: Array.isArray(body.marketIds) ? body.marketIds : undefined,
+            instruction:
+              typeof body.instruction === "string" ? body.instruction : undefined,
+            confirmApproved: body.confirmApproved === true,
+            includeReviewed: body.includeReviewed === true,
+          }),
+        );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  // Browser poll target. This server polls the remote MCP and imports the
+  // batch automatically once ChatGPT submits it.
+  router.get(
+    "/report-instances/:id/narratives/external-job",
+    async (request, response, next) => {
+      try {
+        const state = await narratives.externalJobState(request.params.id);
+        response.json({
+          job: state.job ?? null,
+          instance: state.instance,
+          pollIntervalMs: narratives.pollIntervalMs,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.get("/report-instances/:id/narrative-jobs/:jobId", async (request, response, next) => {
     try {
       const job = narratives.job(request.params.jobId);

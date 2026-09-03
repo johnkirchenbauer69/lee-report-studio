@@ -4,7 +4,10 @@ import type {
   PublicNarrativeContext,
 } from "../report-engine/narratives/schema";
 import { NARRATIVE_PROMPT_PROFILES } from "../report-engine/narratives/schema";
-import type { ReportInstance } from "../report-engine/schema/generation";
+import type {
+  ExternalNarrativeJob,
+  ReportInstance,
+} from "../report-engine/schema/generation";
 import {
   reportInstanceStore,
   type NarrativeConfig,
@@ -31,6 +34,68 @@ const labels: Record<NarrativeContextCategory, string> = {
 const statusLabel = (status: string) =>
   status.replace(/_/g, " ").replace(/^./, (value) => value.toUpperCase());
 
+function ExternalJobPanel({
+  job,
+  appUrl,
+  copied,
+  onOpenApp,
+  onCopy,
+}: {
+  job: ExternalNarrativeJob;
+  appUrl?: string;
+  copied: boolean;
+  onOpenApp: () => void;
+  onCopy: () => void;
+}) {
+  const shortId = job.jobId.slice(0, 8);
+  const waiting =
+    job.status === "waiting_for_chatgpt" || job.status === "creating";
+  const heading =
+    job.status === "complete"
+      ? "ChatGPT narratives imported"
+      : job.status === "failed"
+      ? "ChatGPT batch rejected"
+      : job.status === "expired"
+      ? "Narrative job expired"
+      : "Waiting for ChatGPT";
+  return (
+    <div
+      className={`narrative-external-job status-${job.status}`}
+      role="status"
+      data-testid="narrative-external-job"
+    >
+      <div className="narrative-external-job-header">
+        <strong>{heading}</strong>
+        <span>
+          Narrative job: <code>{shortId}</code>
+        </span>
+        <span>{job.marketIds.length} narrative contexts prepared</span>
+      </div>
+      {waiting && (
+        <>
+          <div className="narrative-external-job-actions">
+            {appUrl && (
+              <button type="button" onClick={onOpenApp}>
+                Open ChatGPT
+              </button>
+            )}
+            <button type="button" onClick={onCopy}>
+              {copied ? "Handoff Prompt Copied" : "Copy Handoff Prompt"}
+            </button>
+          </div>
+          {job.handoffPrompt && (
+            <p className="narrative-handoff-prompt">{job.handoffPrompt}</p>
+          )}
+          <p className="narrative-external-job-status">
+            Status: Waiting for LEE Intelligence to submit narratives...
+          </p>
+        </>
+      )}
+      {job.error && <p className="narrative-error">{job.error}</p>}
+    </div>
+  );
+}
+
 export function NarrativeWorkspace({ instance, onChange }: Props) {
   const [selectedMarketId, setSelectedMarketId] = useState(
     instance.narratives[0]?.marketId ?? "overall-market",
@@ -45,6 +110,11 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
   const [job, setJob] = useState<NarrativeJob>();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
+  const [copied, setCopied] = useState(false);
+  const externalJob = instance.externalNarrativeJob;
+  const waitingForChatGpt =
+    externalJob?.status === "waiting_for_chatgpt" || externalJob?.status === "creating";
+  const chatGptMode = config?.mode === "chatgpt_mcp";
 
   useEffect(() => setDraftText(selected.text), [selected.marketId, selected.text]);
   useEffect(() => {
@@ -64,6 +134,31 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
       .then(setContext)
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, [instance.id, selected.marketId]);
+  // Poll only this server. The Report Studio API polls the remote MCP and
+  // imports the batch the moment ChatGPT submits it.
+  useEffect(() => {
+    if (!waitingForChatGpt) return;
+    let cancelled = false;
+    const interval = config?.pollIntervalMs ?? 1_500;
+    const timer = window.setInterval(async () => {
+      try {
+        const state = await reportInstanceStore.externalJob(instance.id);
+        if (cancelled) return;
+        onChange(state.instance);
+        if (state.job?.status !== "waiting_for_chatgpt") setBusy(undefined);
+        if (state.job?.status === "failed" || state.job?.status === "expired")
+          setError(state.job.error);
+      } catch (reason) {
+        if (cancelled) return;
+        setError(reason instanceof Error ? reason.message : String(reason));
+      }
+    }, interval);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [config?.pollIntervalMs, instance.id, onChange, waitingForChatGpt]);
+
   useEffect(() => {
     if (!job || job.status === "complete") return;
     const timer = window.setInterval(async () => {
@@ -102,14 +197,54 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
       setBusy(undefined);
     }
   };
+  const copyHandoff = async (prompt?: string) => {
+    if (!prompt) return;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 4_000);
+    } catch {
+      setCopied(false);
+    }
+  };
+  // Opened synchronously from the click so the browser keeps the user gesture.
+  const openChatGptApp = () => {
+    if (config?.chatGptAppUrl)
+      window.open(config.chatGptAppUrl, "_blank", "noopener,noreferrer");
+  };
+  const startExternal = async (
+    scope: "all" | "selected",
+    options: { instruction?: string; confirmApproved?: boolean } = {},
+  ) => {
+    setBusy(scope === "all" ? "all" : selected.marketId);
+    setError(undefined);
+    openChatGptApp();
+    try {
+      const next = await reportInstanceStore.startExternalGeneration(instance.id, {
+        marketIds: scope === "selected" ? [selected.marketId] : undefined,
+        ...options,
+      });
+      onChange(next);
+      await copyHandoff(next.externalNarrativeJob?.handoffPrompt);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setBusy(undefined);
+    }
+  };
   const generate = () =>
-    update(() =>
-      reportInstanceStore.generate(instance.id, selected.marketId, {
-        instruction: instruction.trim() || undefined,
-        confirmApproved: selected.status === "approved",
-      }),
-    );
+    chatGptMode
+      ? startExternal("selected", {
+          instruction: instruction.trim() || undefined,
+          confirmApproved: selected.status === "approved",
+        })
+      : update(() =>
+          reportInstanceStore.generate(instance.id, selected.marketId, {
+            instruction: instruction.trim() || undefined,
+            confirmApproved: selected.status === "approved",
+          }),
+        );
   const generateAll = async () => {
+    if (chatGptMode) return startExternal("all");
     setBusy("all");
     setError(undefined);
     try {
@@ -137,10 +272,17 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
       </div>
       {config && !config.configured && (
         <div className="wizard-note warning" role="status">
-          <strong>AI narrative generation is not configured.</strong>
+          <strong>{config.message}</strong>
           <span>Manual narrative editing and approval remain available.</span>
         </div>
       )}
+      {externalJob && <ExternalJobPanel
+        job={externalJob}
+        appUrl={config?.chatGptAppUrl}
+        copied={copied}
+        onOpenApp={openChatGptApp}
+        onCopy={() => copyHandoff(externalJob.handoffPrompt)}
+      />}
       {job && (
         <div className="narrative-progress" role="status">
           Generating narratives {job.completed} / {job.total}
