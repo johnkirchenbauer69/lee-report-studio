@@ -49,6 +49,27 @@ test("Narratives review tracks 19 markets, manual edits, approval, evidence, and
   await expect(page.locator(".narrative-editor .status-stale")).toBeVisible();
 });
 
+test("the review page leads on to the report editor", async ({ page, request }) => {
+  const instance = await createFixture(request);
+  await page.goto(`/?narrativeReview=${encodeURIComponent(instance.id)}`);
+  const readiness = page.locator(".narrative-review-readiness");
+  await expect(readiness).toContainText("0 approved / 19 required");
+  await expect(readiness).toContainText("19 publication blockers");
+
+  // Reachable while narratives are still draft — the wizard behaves the same
+  // way, and PDF export is what publication readiness gates.
+  const open = page.getByTestId("open-report-editor");
+  await expect(open).toBeEnabled();
+  await open.click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    await page.evaluate(() =>
+      localStorage.getItem("lee-report-studio.report-instance.v1"),
+    ),
+  ).toBe(instance.id);
+});
+
 test("Generate All uses the server mock, reports progress, and retains partial results", async ({ page, request }) => {
   const instance = await createFixture(request);
   let current = structuredClone(instance);
