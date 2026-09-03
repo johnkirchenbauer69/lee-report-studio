@@ -2,22 +2,36 @@ import { useMemo, useRef, useState } from "react";
 import { q2Submarkets } from "../data-providers/sample/q2SampleReport";
 import type {
   ReportGenerationRequest,
+  ReportInstance,
   ReportProviderId,
 } from "../report-engine/schema/generation";
 import { chicagoSubmarketId } from "../report-engine/submarkets";
 import type { StoredTemplateVersion } from "../types/templateLibrary";
+import { NarrativeWorkspace } from "./NarrativeWorkspace";
 
 interface Props {
   onClose: () => void;
-  onGenerate: (request: ReportGenerationRequest) => Promise<void>;
-  publishedTemplate: StoredTemplateVersion;
+  onPrepare: (request: ReportGenerationRequest) => Promise<ReportInstance>;
+  onReportChange: (instance: ReportInstance) => void;
+  onComplete: () => void;
+  generationTemplate: StoredTemplateVersion;
 }
-const steps = ["Template", "Period", "Source", "Geographies", "Review"];
+const steps = [
+  "Template",
+  "Period",
+  "Source",
+  "Geographies",
+  "Data Validation",
+  "Narratives",
+  "Review",
+];
 
 export function CreateReportWizard({
   onClose,
-  onGenerate,
-  publishedTemplate,
+  onPrepare,
+  onReportChange,
+  onComplete,
+  generationTemplate,
 }: Props) {
   const [step, setStep] = useState(0),
     [period, setPeriod] = useState("2026 Q2"),
@@ -32,7 +46,8 @@ export function CreateReportWizard({
     [detailedSelected, setDetailedSelected] = useState<string[]>([]),
     [file, setFile] = useState<File>(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState<string>();
+    [error, setError] = useState<string>(),
+    [prepared, setPrepared] = useState<ReportInstance>();
   const fileRef = useRef<HTMLInputElement>(null);
   const canContinue =
     provider === "sample" || provider === "ascendix" || !!file;
@@ -55,7 +70,7 @@ export function CreateReportWizard({
         ? items.filter((item) => item !== name)
         : [...items, name],
     );
-  const generate = async () => {
+  const prepare = async () => {
     setBusy(true);
     setError(undefined);
     try {
@@ -67,10 +82,10 @@ export function CreateReportWizard({
             ? { payload: new TextDecoder().decode(data), fileName: file.name }
             : { data, fileName: file.name };
       }
-      await onGenerate({
-        templateId: publishedTemplate.id,
-        templateVersion: publishedTemplate.version,
-        templateChecksum: publishedTemplate.checksum,
+      const instance = await onPrepare({
+        templateId: generationTemplate.id,
+        templateVersion: generationTemplate.version,
+        templateChecksum: generationTemplate.checksum,
         market,
         period,
         calculationScope:
@@ -83,6 +98,8 @@ export function CreateReportWizard({
         pageSelection: { submarketIds: detailedSelected },
         source: { provider, configuration },
       });
+      setPrepared(instance);
+      setStep(5);
     } catch (reason) {
       const issue = reason as { message?: string; issues?: string[] };
       setError(
@@ -128,15 +145,14 @@ export function CreateReportWizard({
             <div className="wizard-choice selected">
               <span className="template-preview">IM</span>
               <div>
-                <strong>{publishedTemplate.name}</strong>
+                <strong>{generationTemplate.name}</strong>
                 <p>
                   LEE & Associates quarterly market template · 4 fixed
                   overall-market pages with optional repeating submarket
                   sections.
                 </p>
                 <small>
-                  Published version {publishedTemplate.version} · Letter
-                  portrait
+                  {generationTemplate.status === "draft" ? "Draft" : "Published"} version {generationTemplate.version} · Letter portrait
                 </small>
               </div>
               <span className="choice-check">✓</span>
@@ -348,7 +364,7 @@ export function CreateReportWizard({
               <div>
                 <span>Template</span>
                 <strong>
-                  {publishedTemplate.name} v{publishedTemplate.version}
+                  {generationTemplate.name} v{generationTemplate.version}
                 </strong>
               </div>
               <div>
@@ -394,7 +410,52 @@ export function CreateReportWizard({
                 <i>→</i>
                 <span>Validate</span>
                 <i>→</i>
-                <span>Generate</span>
+                <span>Validate</span>
+              </div>
+              {prepared && (
+                <div className="wizard-note">
+                  <strong>Data snapshot ready</strong>
+                  <span>
+                    {prepared.dataSnapshot.submarkets.length} canonical submarkets validated · {prepared.narratives.length} narrative records initialized.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {step === 5 && prepared && (
+            <NarrativeWorkspace
+              instance={prepared}
+              onChange={(instance) => {
+                setPrepared(instance);
+                onReportChange(instance);
+              }}
+            />
+          )}
+          {step === 6 && prepared && (
+            <div className="review-card narrative-review-summary">
+              <div>
+                <span>Report</span>
+                <strong>{period} {market} Industrial Market Report</strong>
+              </div>
+              <div>
+                <span>Narratives</span>
+                <strong>
+                  {prepared.narratives.filter((item) => item.status === "approved").length} approved / 19 required
+                </strong>
+              </div>
+              <div>
+                <span>Publication readiness</span>
+                <strong>
+                  {prepared.readiness.canPublish
+                    ? "Ready"
+                    : `${prepared.readiness.blockers.length} blockers`}
+                </strong>
+              </div>
+              <div className="wizard-note">
+                <strong>Draft editing remains available</strong>
+                <span>
+                  Published PDF export remains blocked until all narratives are approved, current, and fit their text boxes.
+                </span>
               </div>
             </div>
           )}
@@ -410,7 +471,7 @@ export function CreateReportWizard({
             <span>
               {step + 1} of {steps.length}
             </span>
-            {step < steps.length - 1 ? (
+            {step < 4 ? (
               <button
                 className="primary"
                 disabled={
@@ -423,9 +484,25 @@ export function CreateReportWizard({
               >
                 Continue
               </button>
+            ) : step === 4 ? (
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={prepared ? () => setStep(5) : prepare}
+              >
+                {busy
+                  ? "Loading & validating…"
+                  : prepared
+                    ? "Continue"
+                    : "Load & Validate Data"}
+              </button>
+            ) : step === 5 ? (
+              <button className="primary" onClick={() => setStep(6)}>
+                Review Report
+              </button>
             ) : (
-              <button className="primary" disabled={busy} onClick={generate}>
-                {busy ? "Generating…" : "Generate Report"}
+              <button className="primary" onClick={onComplete}>
+                Open Report Editor
               </button>
             )}
           </div>

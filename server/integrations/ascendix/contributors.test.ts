@@ -257,6 +257,46 @@ describe("historical contributors", () => {
       rankContributors(rows, "availabilities").map((item) => item.Id),
     ).toEqual(["i80", "i55", "ohare"]);
   });
+  it("maps deterministic positive and negative absorption contributors", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "positive",
+        Contributor_Category__c: "Largest Positive Net Absorption",
+        Metric_Value__c: 650_000,
+        Source_Record_Name__c: "Positive Distribution Center",
+        Address__c: "100 Growth Way",
+      }),
+      row({
+        Id: "negative",
+        Contributor_Category__c: "Largest Negative Net Absorption",
+        Metric_Value__c: 225_000,
+        Source_Record_Name__c: "Vacated Warehouse",
+        Address__c: "200 Loss Lane",
+      }),
+    ]);
+    expect(mapped.absorptionContributors).toEqual([
+      expect.objectContaining({
+        propertyName: "Positive Distribution Center",
+        contributionSf: 650_000,
+        direction: "positive",
+        deterministicallyIdentified: true,
+      }),
+      expect.objectContaining({
+        propertyName: "Vacated Warehouse",
+        contributionSf: -225_000,
+        direction: "negative",
+        deterministicallyIdentified: true,
+      }),
+    ]);
+    expect(mapped.provenance).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldPath: "absorptionContributors.0",
+          authority: expect.stringContaining("absorption ranking"),
+        }),
+      ]),
+    );
+  });
   it("prefers frozen contributor-native values over mutable enrichment", async () => {
     const mapped = await mapHistoricalContributors([
       row({

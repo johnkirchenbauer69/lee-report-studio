@@ -1,6 +1,7 @@
 import type { FontReference, ReportPage } from "../../types/report";
 import type { ReportValidationIssue } from "../validation/reportValidation";
 import type { IndustrialMarketReport } from "./industrialMarketReport";
+import type { NarrativeRecord } from "../narratives/schema";
 
 export type ReportProviderId = "sample" | "json" | "excel" | "ascendix";
 
@@ -56,6 +57,8 @@ export interface ReportInstance {
   pages: ReportPage[];
   fontReferences: FontReference[];
   manualOverrides: ManualOverride[];
+  /** Quarter-specific editorial content. Master templates remain layout-only. */
+  narratives: NarrativeRecord[];
   readiness: ReportReadiness;
   status: "draft" | "approved" | "published";
 }

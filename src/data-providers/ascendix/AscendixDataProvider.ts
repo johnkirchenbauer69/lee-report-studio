@@ -14,7 +14,13 @@ export class AscendixDataProvider implements ReportDataProvider {
   ) {}
 
   async loadReportData(request: ReportGenerationRequest) {
-    const response = await fetch(this.endpoint, {
+    const endpoint = this.endpoint.startsWith("/")
+      ? new URL(
+          this.endpoint,
+          globalThis.location?.origin ?? "http://127.0.0.1:8787",
+        ).toString()
+      : this.endpoint;
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

@@ -75,6 +75,7 @@ import {
   inferFontGovernanceStatus,
 } from "./services/fontGovernance";
 import { templateStore } from "./services/templateStore";
+import { reportInstanceStore } from "./services/reportInstanceStore";
 import type {
   StoredTemplateVersion,
   TemplateVersionSummary,
@@ -314,6 +315,36 @@ export default function App() {
         openTemplateRecord(
           await templateStore.get(preferred.id, preferred.version),
         );
+        const reportId = reportInstanceStore.lastId();
+        if (reportId) {
+          try {
+            const restored = await reportInstanceStore.get(reportId);
+            const source = await templateStore.get(
+              restored.templateId,
+              restored.templateVersion,
+            );
+            const browserAssets = (source.template.assets ?? []).filter(
+              (asset) => asset.storage !== "backend",
+            );
+            const reportTemplate = hydrate({
+              ...source.template,
+              name: `${restored.generationRequest.period} ${restored.generationRequest.market} Industrial Market Report`,
+              assets: [...browserAssets, ...managedServerAssets.current],
+              pages: restored.pages,
+            });
+            setTemplate(reportTemplate);
+            latestTemplate.current = reportTemplate;
+            setReportData(buildPresentationModel(restored.dataSnapshot));
+            setNormalizedReport(restored.dataSnapshot);
+            setReportInstance(restored);
+            setDocumentMode("report-instance");
+            setPageId(reportTemplate.pages[0].id);
+            setMode("data");
+          } catch (error) {
+            reportInstanceStore.forget();
+            console.warn("Saved report instance could not be restored.", error);
+          }
+        }
       })
       .catch((error) => {
         setLibrarySaveState("local");
@@ -1023,9 +1054,9 @@ export default function App() {
     }
   };
   const startCreateReport = () => {
-    if (!publishedTemplate) {
+    if (!activeTemplateRecord && !publishedTemplate) {
       setLeftTab("templates");
-      notify("Publish a master template before generating a report.");
+      notify("Open a master template before generating a report.");
       return;
     }
     setShowWizard(true);
@@ -1056,6 +1087,32 @@ export default function App() {
       try {
         await exportChromiumPdf(publicationTemplate, reportData, fileName);
       } catch (chromiumError) {
+        if (
+          chromiumError instanceof Error &&
+          chromiumError.message.includes(
+            "Narrative overflow blocks publication",
+          )
+        ) {
+          setLeftTab("validate");
+          if (reportInstance) {
+            const marketIds = chromiumError.message
+              .replace(/^.*Narrative overflow blocks publication:\s*/, "")
+              .replace(/\.$/, "")
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean);
+            let updated = reportInstance;
+            for (const marketId of marketIds)
+              updated = await reportInstanceStore.overflow(
+                updated.id,
+                marketId,
+                true,
+              );
+            handleReportInstanceChange(updated);
+          }
+          notify(chromiumError.message);
+          return;
+        }
         chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
           "Chromium renderer unavailable; using deterministic fallback.",
@@ -1086,38 +1143,41 @@ export default function App() {
       setExportingPdf(false);
     }
   };
-  const handleGenerate = async (request: ReportGenerationRequest) => {
+  const handleReportInstanceChange = (instance: ReportInstance) => {
+    reportInstanceStore.remember(instance.id);
+    setReportData(buildPresentationModel(instance.dataSnapshot));
+    setNormalizedReport(instance.dataSnapshot);
+    setReportInstance(instance);
+  };
+  const handleGenerate = async (
+    request: ReportGenerationRequest,
+  ): Promise<ReportInstance> => {
     const sourceTemplate = await templateStore.get(
       request.templateId,
       request.templateVersion,
     );
-    if (sourceTemplate.status !== "published")
-      throw new Error(
-        "Report generation requires a published template version.",
-      );
     const instance = await generateReportInstance(
       sourceTemplate.template,
       request,
       setGenerationProgress,
     );
+    const persisted = await reportInstanceStore.create(instance);
     const next = hydrate({
       ...sourceTemplate.template,
       name: `${request.period} ${request.market} Industrial Market Report`,
-      pages: instance.pages,
+      pages: persisted.pages,
     });
     setTemplate(next);
     latestTemplate.current = next;
-    setReportData(buildPresentationModel(instance.dataSnapshot));
-    setNormalizedReport(instance.dataSnapshot);
-    setReportInstance(instance);
+    handleReportInstanceChange(persisted);
     setDocumentMode("report-instance");
     setPageId(next.pages[0].id);
     setSelectedIds([]);
     setPast([]);
     setFuture([]);
     setMode("data");
-    setShowWizard(false);
-    notify("Editable report generated");
+    notify("Data validated · narratives ready for review");
+    return persisted;
   };
   const reset = () => {
     const source = activeTemplateRecord?.template ?? sampleTemplate;
@@ -1129,6 +1189,7 @@ export default function App() {
       normalizeReportTemplateFonts({ ...source, assets }, assets),
     );
     localPersistence.clear();
+    reportInstanceStore.forget();
     setTemplate(next);
     latestTemplate.current = next;
     setReportData(sampleData);
@@ -2381,11 +2442,16 @@ export default function App() {
         </div>
       )}
       {toast && <div className="toast">✓ {toast}</div>}
-      {showWizard && publishedTemplate && (
+      {showWizard && (activeTemplateRecord ?? publishedTemplate) && (
         <CreateReportWizard
           onClose={() => setShowWizard(false)}
-          onGenerate={handleGenerate}
-          publishedTemplate={publishedTemplate}
+          onPrepare={handleGenerate}
+          onReportChange={handleReportInstanceChange}
+          onComplete={() => {
+            setShowWizard(false);
+            notify("Editable report opened");
+          }}
+          generationTemplate={(activeTemplateRecord ?? publishedTemplate)!}
         />
       )}
       {draftToDelete && (

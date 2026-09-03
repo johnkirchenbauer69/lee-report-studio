@@ -1,4 +1,5 @@
 import type {
+  AbsorptionContributor,
   LeaseRecord,
   PropertyHighlight,
   ProvenanceRecord,
@@ -268,6 +269,8 @@ export function selectContributorFinalists(rows: SalesforceRecord[]) {
     "availabilities",
     "deliveries",
     "construction",
+    "positiveAbsorption",
+    "negativeAbsorption",
   ].flatMap((section) => rankContributors(rows, section as ContributorSection));
   return [...new Map(selected.map((row) => [row.Id, row])).values()];
 }
@@ -382,6 +385,8 @@ export async function mapHistoricalContributors(
   const availabilityRows = rankContributors(rows, "availabilities");
   const deliveryRows = rankContributors(rows, "deliveries");
   const constructionRows = rankContributors(rows, "construction");
+  const positiveAbsorptionRows = rankContributors(rows, "positiveAbsorption", 5);
+  const negativeAbsorptionRows = rankContributors(rows, "negativeAbsorption", 5);
   const leasing: LeaseRecord[] = leaseRows.map((record) => {
     const isDealConfidential = booleanValue(
       record,
@@ -520,6 +525,51 @@ export async function mapHistoricalContributors(
       status: "matched",
     }),
   );
+  const absorptionContributors: AbsorptionContributor[] = [
+    ...positiveAbsorptionRows.map((record) => ({ record, direction: "positive" as const })),
+    ...negativeAbsorptionRows.map((record) => ({ record, direction: "negative" as const })),
+  ].map(({ record, direction }) => {
+    const raw = numeric(record, "Metric_Value__c", "Sort_Value__c", "Display_Value__c");
+    const contributionSf = direction === "negative" ? -Math.abs(raw) : Math.abs(raw);
+    return {
+      propertyName:
+        displayText(
+          record,
+          "Source_Record_Name__c",
+          "Property__r.Name",
+          "Display_Title__c",
+        ) || "Property contributor",
+      address: address(record, "Property") || undefined,
+      contributionSf,
+      direction,
+      evidenceType: "property_data_net_absorption" as const,
+      deterministicallyIdentified: true as const,
+    };
+  });
+  provenance.push(
+    ...[...positiveAbsorptionRows, ...negativeAbsorptionRows].map(
+      (row, index): ProvenanceRecord => ({
+        fieldPath: `absorptionContributors.${index}`,
+        selectedValue: {
+          category: row.Contributor_Category__c,
+          submarket: row.Submarket__c,
+          sourceRecordName: row.Source_Record_Name__c,
+          metricValue: row.Metric_Value__c,
+          sortValue: row.Sort_Value__c,
+        },
+        sources: [
+          {
+            sourceId: row.Id,
+            sourceType: "salesforce",
+            value: row.Source_Record_ID__c,
+            reference: "Market_Data_Contributor__c",
+          },
+        ],
+        authority: "Historical Market_Data_Contributor__c absorption ranking",
+        status: "matched",
+      }),
+    ),
+  );
   const [availabilityHighlights, deliveryHighlights, constructionHighlights] =
     await Promise.all([
       Promise.all(
@@ -549,6 +599,7 @@ export async function mapHistoricalContributors(
     availabilities: availabilityHighlights.map((entry) => entry.highlight),
     deliveries: deliveryHighlights.map((entry) => entry.highlight),
     construction: constructionHighlights.map((entry) => entry.highlight),
+    absorptionContributors,
     provenance,
     imageWarnings,
   };

@@ -23,10 +23,13 @@ describe("generateReportInstance", () => {
     expect(report.templateChecksum).toMatch(/^[a-f0-9]{64}$/);
     expect(report.pages).toHaveLength(8);
     expect(report.dataSnapshot.submarkets).toHaveLength(18);
+    expect(report.narratives).toHaveLength(19);
+    expect(report.dataSnapshot.overallMarket.narrative).toBe("");
+    expect(report.readiness.canPublish).toBe(false);
     expect(report.status).toBe("draft");
     expect(progress).toHaveBeenLastCalledWith({
       stage: "complete",
-      message: "Report ready to edit and publish",
+      message: "Draft ready with 19 publication blockers",
     });
   });
 
@@ -209,11 +212,16 @@ describe("generateReportInstance", () => {
     });
     expect(report.readiness.canEdit).toBe(true);
     expect(report.readiness.canPublish).toBe(false);
-    expect(report.readiness.blockers).toEqual([
+    expect(report.readiness.blockers).toContainEqual(
       expect.objectContaining({
         level: "blocking",
         message: expect.stringContaining("non-approved managed font Walrus"),
       }),
-    ]);
+    );
+    expect(report.readiness.blockers).toContainEqual(
+      expect.objectContaining({
+        message: "Overall Market narrative has not been approved.",
+      }),
+    );
   });
 });

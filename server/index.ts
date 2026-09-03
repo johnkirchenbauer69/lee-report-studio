@@ -17,6 +17,13 @@ import { createTemplateRouter } from "./api/templateRoutes.ts";
 import { FileSystemTemplateRepository } from "./templates/FileSystemTemplateRepository.ts";
 import { sampleTemplate } from "../src/data/sampleTemplate.ts";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
+import { createReportInstanceRouter } from "./api/reportInstanceRoutes.ts";
+import { FileSystemReportInstanceRepository } from "./report-instances/FileSystemReportInstanceRepository.ts";
+import {
+  MockNarrativeModelClient,
+  OpenAINarrativeModelClient,
+} from "./narratives/modelClient.ts";
+import { NarrativeService } from "./narratives/NarrativeService.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
@@ -24,7 +31,18 @@ const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
 const templateRepository = new FileSystemTemplateRepository(dataRoot);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
+const reportInstanceRepository = new FileSystemReportInstanceRepository(dataRoot);
+const narrativeModelClient =
+  process.env.NARRATIVE_MODEL_PROVIDER === "mock"
+    ? new MockNarrativeModelClient()
+    : new OpenAINarrativeModelClient();
+const narrativeService = new NarrativeService(
+  reportInstanceRepository,
+  narrativeModelClient,
+  Math.max(1, Number(process.env.NARRATIVE_GENERATION_CONCURRENCY ?? 3) || 3),
+);
 await assetStore.initialize();
+await reportInstanceRepository.initialize();
 await templateRepository.initialize(
   normalizeReportTemplateFonts(
     sampleTemplate,
@@ -68,6 +86,10 @@ app.get("/api/health", (_request, response) =>
 );
 app.use("/api", createReportDataRouter(reportDataService));
 app.use("/api", createTemplateRouter(templateRepository));
+app.use(
+  "/api",
+  createReportInstanceRouter(reportInstanceRepository, narrativeService),
+);
 app.get("/api/assets", async (_request, response) =>
   response.json({ assets: await assetStore.list() }),
 );
