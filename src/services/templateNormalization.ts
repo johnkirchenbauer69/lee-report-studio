@@ -117,6 +117,10 @@ const normalizeElement = (
   if (next.type === "table") {
     next.headerStyle = normalizeCellStyle(next.headerStyle, assets);
     next.bodyStyle = normalizeCellStyle(next.bodyStyle, assets);
+    next.transactionChipStyle = normalizeCellStyle(
+      next.transactionChipStyle,
+      assets,
+    );
     next.columns = next.columns.map((column) => ({
       ...column,
       headerStyle: normalizeCellStyle(column.headerStyle, assets),

@@ -712,6 +712,7 @@ button {
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
+  border-radius: inherit;
 }
 .text-content {
   width: 100%;
@@ -911,7 +912,9 @@ button {
 .transaction-type-value {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.05;
 }
 .lee-deal-chip {
@@ -929,7 +932,9 @@ button {
   background: linear-gradient(180deg, #cf123f 0%, #7a0d26 100%);
   font-family: inherit;
   font-size: 7px;
-  font-weight: 700;
+  font-weight: 900;
+  font-style: normal;
+  font-synthesis: none;
   line-height: 1;
   letter-spacing: 0;
   white-space: nowrap;

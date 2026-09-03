@@ -82,6 +82,69 @@ describe("FileSystemTemplateRepository", () => {
     ).toBe("published");
   });
 
+  it("persists structured shadows and image stroke/corners through save and versioning", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    const template = structuredClone(sampleTemplate);
+    const text = template.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "text")!;
+    const shape = template.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "shape")!;
+    const image = template.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "image")!;
+    text.style.shadow = {
+      enabled: true,
+      color: "#112233",
+      offsetX: 2,
+      offsetY: 3,
+      blur: 4,
+      opacity: 0.25,
+    };
+    shape.style.shadow = {
+      enabled: true,
+      color: "#334455",
+      offsetX: -2,
+      offsetY: 5,
+      blur: 7,
+      opacity: 0.4,
+    };
+    image.style.borderRadius = 18;
+    image.style.stroke = {
+      enabled: true,
+      color: "#c4123f",
+      width: 4,
+      opacity: 1,
+      style: "solid",
+    };
+
+    await repository.initialize(template);
+    const initial = (await repository.list())[0]!;
+    await repository.saveDraft(initial.id, initial.version, template);
+    const next = await repository.createVersion(initial.id, initial.version);
+    const reopened = new FileSystemTemplateRepository(root);
+    const versioned = (await reopened.get(next.id, next.version))!.template;
+
+    expect(
+      versioned.pages
+        .flatMap((page) => page.elements)
+        .find((element) => element.id === text.id)?.style.shadow,
+    ).toEqual(text.style.shadow);
+    expect(
+      versioned.pages
+        .flatMap((page) => page.elements)
+        .find((element) => element.id === shape.id)?.style.shadow,
+    ).toEqual(shape.style.shadow);
+    expect(
+      versioned.pages
+        .flatMap((page) => page.elements)
+        .find((element) => element.id === image.id)?.style,
+    ).toMatchObject({ borderRadius: 18, stroke: image.style.stroke });
+  });
+
   it("deletes only a draft, persists deletion, and leaves other versions and shared assets intact", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
     roots.push(root);

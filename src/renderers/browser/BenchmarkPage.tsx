@@ -34,6 +34,11 @@ export function BenchmarkPage({
     ...sampleData,
     availabilityBySize: marketingChartFixture.availabilityBySize,
     historicalPeriods: marketingChartFixture.historicalPeriods,
+    market: {
+      ...sampleData.submarketDetails[0],
+      availabilityBySize: marketingChartFixture.availabilityBySize,
+      historicalPeriods: marketingChartFixture.historicalPeriods,
+    },
   };
   const data = highlightStates
     ? {

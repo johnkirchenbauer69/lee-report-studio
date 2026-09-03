@@ -1,3 +1,4 @@
+import React from "react";
 import type { ChartElement } from "../../types/report";
 import { getByPath } from "../../engine/bindings";
 import { fontFamilyToCss } from "../../services/fontRegistry";
@@ -20,6 +21,9 @@ import {
 
 type Row = Record<string, unknown>;
 type Margin = { left: number; right: number; top: number; bottom: number };
+
+export const marketingPlotCenterX = (margin: Pick<Margin, "left" | "right">) =>
+  margin.left + (MARKETING_CHART_BASE.width - margin.left - margin.right) / 2;
 
 const numberAt = (row: Row, path: string) => {
   const value = getByPath(row, path);
@@ -179,6 +183,7 @@ function AxisTitle({
 
 function Legend({
   items,
+  centerX,
   y = 211,
   gradientId,
 }: {
@@ -189,6 +194,7 @@ function Legend({
     dashed?: boolean;
     line?: boolean;
   }>;
+  centerX: number;
   y?: number;
   gradientId?: string;
 }) {
@@ -196,9 +202,22 @@ function Legend({
   const total =
     widths.reduce((sum, value) => sum + value, 0) +
     Math.max(0, items.length - 1) * 8;
-  let cursor = (MARKETING_CHART_BASE.width - total) / 2;
+  let cursor = centerX - total / 2;
   return (
-    <>
+    <g
+      data-chart-legend="true"
+      data-legend-center-x={centerX}
+      data-plot-center-x={centerX}
+      data-layout-width={total}
+    >
+      <rect
+        x={centerX - total / 2}
+        y={y - 8}
+        width={total}
+        height="12"
+        fill="transparent"
+        aria-hidden="true"
+      />
       {items.map((item, index) => {
         const x = cursor;
         cursor += widths[index]! + 8;
@@ -239,7 +258,7 @@ function Legend({
           </g>
         );
       })}
-    </>
+    </g>
   );
 }
 
@@ -291,13 +310,6 @@ function AvailabilityChart({
         </PlotText>
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
-      <AxisTitle
-        x={12}
-        y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-        rotate
-      >
-        AVAILABLE (SF)
-      </AxisTitle>
       <AxisTitle
         x={(margin.left + MARKETING_CHART_BASE.width - margin.right) / 2}
         y={205}
@@ -367,14 +379,8 @@ function ConstructionChart({
         )),
       )}
       <Categories rows={rows} element={element} x={x} y={188} />
-      <AxisTitle
-        x={10}
-        y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-        rotate
-      >
-        SQUARE FEET
-      </AxisTitle>
       <Legend
+        centerX={marketingPlotCenterX(margin)}
         gradientId={id}
         items={[
           { label: "Under Construction", gradient: true },
@@ -513,16 +519,8 @@ function CombinationChart({
           Median Sales Price unavailable
         </PlotText>
       )}
-      {sales && (
-        <AxisTitle
-          x={350}
-          y={(margin.top + MARKETING_CHART_BASE.height - margin.bottom) / 2}
-          rotate
-        >
-          PRICE ($/SF)
-        </AxisTitle>
-      )}
       <Legend
+        centerX={marketingPlotCenterX(margin)}
         gradientId={id}
         items={
           sales

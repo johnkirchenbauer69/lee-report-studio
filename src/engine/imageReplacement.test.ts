@@ -37,7 +37,17 @@ const image: ImageElement = {
   },
   src: "/old.png",
   assetId: "old",
-  style: { opacity: 0.42, borderRadius: 9 },
+  style: {
+    opacity: 0.42,
+    borderRadius: 9,
+    stroke: {
+      enabled: true,
+      color: "#c4123f",
+      width: 3,
+      opacity: 1,
+      style: "solid",
+    },
+  },
 };
 
 describe("managed image replacement", () => {
@@ -62,7 +72,17 @@ describe("managed image replacement", () => {
       rotation: 37,
       locked: true,
       fit: "contain",
-      style: { opacity: 0.42, borderRadius: 9 },
+      style: {
+        opacity: 0.42,
+        borderRadius: 9,
+        stroke: {
+          enabled: true,
+          color: "#c4123f",
+          width: 3,
+          opacity: 1,
+          style: "solid",
+        },
+      },
     });
   });
 

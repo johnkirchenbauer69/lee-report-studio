@@ -37,6 +37,15 @@ export interface Stroke {
   style: "solid" | "dashed" | "dotted";
 }
 
+export interface DropShadow {
+  enabled: boolean;
+  color: string;
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  opacity: number;
+}
+
 export interface Typography {
   fontFamily: string;
   fontWeight: number | string;
@@ -88,6 +97,7 @@ export interface ElementStyle {
   opacity?: number;
   fill?: Fill;
   stroke?: Stroke;
+  shadow?: DropShadow;
   typography?: Typography;
   letterSpacing?: number;
   lineHeight?: number;
@@ -190,6 +200,8 @@ export interface TableElement extends BaseElement {
   rowHeight?: number;
   headerStyle?: TableCellStyle;
   bodyStyle?: TableCellStyle;
+  /** Managed typography for the row-integrated LEE DEAL transaction badge. */
+  transactionChipStyle?: TableCellStyle;
   cellStyles?: Record<string, TableCellStyle>;
 }
 

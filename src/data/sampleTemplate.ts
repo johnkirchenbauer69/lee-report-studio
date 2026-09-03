@@ -522,17 +522,22 @@ const transactionColumns = [
     key: "address",
     label: "ADDRESS",
     path: "address",
-    width: 43,
+    width: 39,
     align: "left" as const,
   },
   {
     key: "type",
     label: "TYPE",
     path: "type",
-    width: 16,
+    width: 20,
     align: "left" as const,
   },
 ];
+const transactionChipStyle = {
+  fontFamily: "Nunito Sans",
+  fontWeight: 900,
+  fontStyle: "normal" as const,
+};
 
 const overviewPage: ReportPage = {
   id: "market-overview",
@@ -813,6 +818,7 @@ const overviewPage: ReportPage = {
       sourcePath: "topLeaseRows",
       maxRows: 3,
       variant: "transactions",
+      transactionChipStyle,
       columns: [
         { ...transactionColumns[0], label: "TENANT" },
         { ...transactionColumns[1], label: "SIZE (SF)" },
@@ -875,6 +881,7 @@ const overviewPage: ReportPage = {
       sourcePath: "topSaleRows",
       maxRows: 3,
       variant: "transactions",
+      transactionChipStyle,
       columns: [
         { ...transactionColumns[0], label: "BUYER" },
         { ...transactionColumns[1], label: "PRICE ($)" },
@@ -1173,10 +1180,98 @@ const submarketHighlightsPage: ReportPage = {
   elements: highlightsPage.elements.map(detailElement),
 };
 
+function staticFooterElements(id: string, pageNumber: number): ReportElement[] {
+  const footerText = (
+    elementId: string,
+    name: string,
+    x: number,
+    width: number,
+    value: string,
+    weight: number,
+    align: "left" | "right" = "left",
+  ): ReportElement => ({
+    ...text(
+      elementId,
+      name,
+      x,
+      1029,
+      width,
+      17,
+      value,
+      9,
+      white,
+      weight,
+      align,
+    ),
+    style: {
+      fontFamily: "Nunito Sans",
+      fontSize: 9,
+      fontWeight: weight,
+      fontStyle: "normal",
+      color: white,
+      textAlign: align,
+      letterSpacing: 0,
+      lineHeight: 1.14,
+      opacity: 1,
+    },
+  });
+  return [
+    {
+      ...shape(
+        `${id}-footer-mask`,
+        "Native Footer Background",
+        0,
+        1020,
+        816,
+        36,
+        "#4e131e",
+      ),
+      locked: true,
+      style: {
+        fill: {
+          type: "linear-gradient",
+          angle: 90,
+          stops: [
+            { id: `${id}-footer-wine`, color: "#4e131e", position: 0 },
+            { id: `${id}-footer-red`, color: "#cd163f", position: 100 },
+          ],
+        },
+        opacity: 1,
+      },
+    },
+    footerText(
+      `${id}-footer-brand`,
+      "Footer Brand",
+      32,
+      165,
+      "LEE & ASSOCIATES OF ILLINOIS",
+      800,
+    ),
+    footerText(
+      `${id}-footer-address`,
+      "Footer Address",
+      197,
+      300,
+      "9450 W. BRYN MAWR AVE, SUITE 550 | ROSEMONT, IL 60018",
+      400,
+    ),
+    footerText(
+      `${id}-footer-page-number`,
+      "Footer Page Number",
+      770,
+      14,
+      String(pageNumber),
+      800,
+      "right",
+    ),
+  ];
+}
+
 function staticReferencePage(
   id: string,
   name: string,
   assetName: string,
+  pageNumber: number,
   dynamicPeriod: boolean,
   headerTitle?: string,
 ): ReportPage {
@@ -1197,6 +1292,7 @@ function staticReferencePage(
         `/report-assets/static-pages/${assetName}.png`,
         "stretch",
       ),
+      ...staticFooterElements(id, pageNumber),
       {
         ...shape(
           `${id}-header-mask`,
@@ -1298,6 +1394,7 @@ const dataMethodologyPage = staticReferencePage(
   "data-methodology",
   "Data Methodology",
   "data-methodology",
+  41,
   true,
   "DATA METHODOLOGY",
 );
@@ -1305,6 +1402,7 @@ const definitionsPage = staticReferencePage(
   "definitions",
   "Definitions",
   "definitions",
+  42,
   true,
   "DEFINITIONS",
 );
@@ -1312,12 +1410,14 @@ const contactsPage = staticReferencePage(
   "contacts",
   "Contacts",
   "contacts",
+  43,
   true,
 );
 const whoWeArePage = staticReferencePage(
   "who-we-are",
   "Who We Are",
   "who-we-are",
+  44,
   false,
 );
 

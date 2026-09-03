@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ChartElement } from "../../types/report";
-import { MarketingChart } from "./MarketingChart";
+import { MarketingChart, marketingPlotCenterX } from "./MarketingChart";
 import { marketingChartTheme } from "./marketingChartTheme";
 
 const element = (
@@ -126,8 +126,9 @@ describe("MarketingChart vector output", () => {
         (position, index) => index === 0 || position > positions[index - 1]!,
       ),
     ).toBe(true);
-    expect(html).toContain("AVAILABLE (SF)");
+    expect(html).not.toContain("AVAILABLE (SF)");
     expect(html).toContain("Size Bucket");
+    expect(html).toContain('data-axis-tick="left"');
   });
 
   it("keeps a negative net absorption bar below the zero baseline", () => {
@@ -142,7 +143,7 @@ describe("MarketingChart vector output", () => {
     expect(html).toContain('text-anchor="end"');
   });
 
-  it("anchors the sales price axis at zero and leaves room for its title", () => {
+  it("keeps the sales price axis and ticks while omitting its title", () => {
     const html = renderToStaticMarkup(
       <MarketingChart
         element={element("sales_volume_cap_rates")}
@@ -152,6 +153,8 @@ describe("MarketingChart vector output", () => {
     expect(html).toContain(">$0<");
     expect(html).toContain(">$140<");
     expect(html).toContain('data-right-axis-min="0"');
+    expect(html).toContain('data-axis-tick="right"');
+    expect(html).not.toContain("PRICE ($/SF)");
     expect(marketingChartTheme.margins.sales.right).toBe(48);
   });
 
@@ -202,5 +205,37 @@ describe("MarketingChart vector output", () => {
     expect(html.indexOf("Under Construction")).toBeLessThan(
       html.indexOf("Deliveries"),
     );
+    expect(html).toContain('data-axis-tick="left"');
+    expect(html).not.toContain("SQUARE FEET");
+  });
+
+  it.each([
+    [
+      "net_absorption_vacancy_availability",
+      marketingChartTheme.margins.combination,
+    ],
+    ["sales_volume_cap_rates", marketingChartTheme.margins.sales],
+    ["construction_uc_deliveries", marketingChartTheme.margins.construction],
+  ] as const)("centers the %s legend on its plot area", (id, margin) => {
+    const html = renderToStaticMarkup(
+      <MarketingChart element={element(id)} source={history} />,
+    );
+    const center = marketingPlotCenterX(margin);
+
+    expect(html).toContain(`data-chart-legend="true"`);
+    expect(html).toContain(`data-legend-center-x="${center}"`);
+    expect(html).toContain(`data-plot-center-x="${center}"`);
+  });
+
+  it("does not add a legend to Availability by Size", () => {
+    const html = renderToStaticMarkup(
+      <MarketingChart
+        element={element("availability_by_size")}
+        source={[
+          { bucket: "20-75k SF", availableSf: 100_000, buildingCount: 2 },
+        ]}
+      />,
+    );
+    expect(html).not.toContain("data-chart-legend");
   });
 });
