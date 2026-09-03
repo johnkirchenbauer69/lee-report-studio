@@ -1,6 +1,7 @@
 import type { FontReference, ReportPage } from "../../types/report";
 import type { ReportValidationIssue } from "../validation/reportValidation";
 import type { IndustrialMarketReport } from "./industrialMarketReport";
+import type { NarrativeRecord } from "../narratives/schema";
 
 export type ReportProviderId = "sample" | "json" | "excel" | "ascendix";
 
@@ -40,6 +41,38 @@ export interface ReportReadiness {
   issues: ReportValidationIssue[];
 }
 
+export type ExternalNarrativeJobStatus =
+  | "creating"
+  | "waiting_for_chatgpt"
+  | "complete"
+  | "failed"
+  | "expired";
+
+export interface ExternalNarrativeJob {
+  provider: "chatgpt_mcp";
+  jobId: string;
+  status: ExternalNarrativeJobStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** Markets this job asked ChatGPT to generate. */
+  marketIds: string[];
+  generationScope: "all" | "selected";
+  /** Configured ChatGPT custom-app URL, when one is set. */
+  appUrl?: string;
+  handoffPrompt?: string;
+  expiresAt?: string;
+  importedAt?: string;
+  error?: string;
+  /** Optional editorial steer sent with the job. */
+  instruction?: string;
+  /**
+   * contextHash per market as it was when the job was created. Import
+   * compares these against freshly rebuilt local contexts to detect report
+   * data that moved while the narratives were being written.
+   */
+  contextHashes?: Record<string, string>;
+}
+
 export interface ReportInstance {
   id: string;
   templateId: string;
@@ -56,6 +89,13 @@ export interface ReportInstance {
   pages: ReportPage[];
   fontReferences: FontReference[];
   manualOverrides: ManualOverride[];
+  /** Quarter-specific editorial content. Master templates remain layout-only. */
+  narratives: NarrativeRecord[];
+  /**
+   * Runtime handoff state for narrative generation performed outside Report
+   * Studio. Belongs to the instance, never to the master template.
+   */
+  externalNarrativeJob?: ExternalNarrativeJob;
   readiness: ReportReadiness;
   status: "draft" | "approved" | "published";
 }

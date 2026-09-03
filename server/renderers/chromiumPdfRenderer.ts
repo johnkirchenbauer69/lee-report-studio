@@ -48,6 +48,23 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
           ),
         );
       });
+      const narrativeOverflows = await page.evaluate(() =>
+        Array.from(
+          document.querySelectorAll<HTMLElement>("[data-narrative-id]"),
+        )
+          .filter((element) => {
+            const content =
+              element.querySelector<HTMLElement>(".text-content");
+            return Boolean(
+              content && content.scrollHeight > content.clientHeight + 1,
+            );
+          })
+          .map((element) => element.dataset.narrativeId ?? "unknown"),
+      );
+      if (narrativeOverflows.length)
+        throw new Error(
+          `Narrative overflow blocks publication: ${[...new Set(narrativeOverflows)].join(", ")}.`,
+        );
       const chromiumBytes = await page.pdf({
         format: "Letter",
         printBackground: true,

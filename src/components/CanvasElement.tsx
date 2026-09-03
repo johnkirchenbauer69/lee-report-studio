@@ -566,9 +566,21 @@ export function CanvasElement(props: Props) {
     content = <NativeChart element={element} data={data} />;
   }
   if (element.hidden) return null;
+  const narrativeMarketId =
+    element.type === "text" &&
+    element.binding?.path === "overallMarket.narrative"
+      ? "overall-market"
+      : element.type === "text" && element.binding?.path === "market.narrative"
+        ? String(
+            getByContextPath(data, "market.id", element.bindingContext) ??
+              getByContextPath(data, "market.name", element.bindingContext) ??
+              "submarket",
+          )
+        : undefined;
   return (
     <div
       data-testid={element.id}
+      data-narrative-id={narrativeMarketId}
       className={`canvas-element ${selected ? "is-selected" : ""} ${props.cropping ? "is-cropping" : ""} ${props.tableEditing ? "is-table-editing" : ""}`}
       style={style}
       onPointerDown={startDrag}

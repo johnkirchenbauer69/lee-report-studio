@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  containsSalesforceIdToken,
   isSalesforceAttachmentOrFileId,
   looksLikeSalesforceId,
   sanitizeSalesforceDisplayValue,
@@ -13,6 +14,10 @@ describe("Salesforce display value safety", () => {
       "Venture One",
     );
     expect(sanitizeSalesforceDisplayValue(null)).toBe("");
+    expect(
+      containsSalesforceIdToken("Tenant note 001al00000dS4qYAAS internal"),
+    ).toBe(true);
+    expect(containsSalesforceIdToken("Tenant note for Q2 2026")).toBe(false);
   });
 
   it("limits file-id detection to Attachment and Content prefixes", () => {

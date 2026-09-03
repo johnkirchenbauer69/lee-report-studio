@@ -600,6 +600,8 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           availabilities: detailHighlights[detailIndex]!.availabilities,
           deliveries: detailHighlights[detailIndex]!.deliveries,
           construction: detailHighlights[detailIndex]!.construction,
+          absorptionContributors:
+            detailHighlights[detailIndex]!.absorptionContributors,
           availabilityBySize: aggregateAvailabilityBySize(
             propertyRows.filter(
               (record) =>
@@ -1009,6 +1011,12 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     );
     provenance.push(
       ...highlights.provenance,
+      ...detailHighlights.flatMap((detail, index) =>
+        detail.provenance.map((record) => ({
+          ...record,
+          fieldPath: `submarketDetails.${CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS[index]}.${record.fieldPath}`,
+        })),
+      ),
       ...scoped.issues.map((issue) => ({
         fieldPath: `contributors.${issue.contributorId}.parentConsistency`,
         selectedValue: false,
@@ -1053,6 +1061,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       availabilities: highlights.availabilities,
       deliveries: highlights.deliveries,
       construction: highlights.construction,
+      absorptionContributors: highlights.absorptionContributors,
       availabilityBySize,
       provenance,
       presentationOverrides: [],

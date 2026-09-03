@@ -3,6 +3,7 @@ server/data/assets/*
 server/data/assets.json
 server/data/salesforceImages.json
 server/data/templates/
+server/data/report-instances/
 !server/data/assets/.gitkeep
 dist
 /tmp/
