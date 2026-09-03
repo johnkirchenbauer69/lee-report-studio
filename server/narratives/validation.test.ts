@@ -54,6 +54,46 @@ describe("validateNarrativeResult", () => {
     expect(validation.qualityFlags).toContain("numeric_validation_warning");
   });
 
+  // Real market names carry digits and slashes. A character class that
+  // excluded them truncated "I-55" to "I-" and rejected correct prose:
+  // ChatGPT's first live batch failed on exactly these four markets.
+  it.each([
+    ["i55-corridor", "I-55 Corridor", "The I-55 Corridor closed 2026 Q2 with vacancy at 4.8%."],
+    ["i57-corridor", "I-57 Corridor", "The I-57 Corridor ended 2026 Q2 with vacancy at 4.8%."],
+    ["i80-joliet", "I-80/Joliet Area", "The I-80/Joliet Area closed 2026 Q2 with vacancy at 4.8%."],
+    ["i88-corridor", "I-88 Corridor", "The I-88 Corridor ended 2026 Q2 with vacancy at 4.8%."],
+  ])("accepts prose naming %s, whose name contains digits or a slash", (marketId, marketName, narrative) => {
+    const corridor: NarrativeContext = { ...context, marketId, marketName };
+    const issues = validateNarrativeResult(corridor, {
+      narrative,
+      claims: [
+        {
+          claim: "Vacancy was 4.8%.",
+          supportKeys: ["metric.vacancy.current"],
+          evidenceClass: "direct",
+        },
+      ],
+      contextKeysUsed: ["metric.vacancy.current"],
+      qualityFlags: [],
+    }).issues;
+    expect(issues.filter((item) => item.kind === "entity")).toEqual([]);
+  });
+
+  it("still rejects a hallucinated entity that contains digits", () => {
+    const corridor: NarrativeContext = {
+      ...context,
+      marketId: "i55-corridor",
+      marketName: "I-55 Corridor",
+    };
+    const issues = validateNarrativeResult(
+      corridor,
+      valid("The I-99 Corridor closed 2026 Q2 with vacancy at 4.8%."),
+    ).issues;
+    expect(issues).toContainEqual(
+      expect.objectContaining({ kind: "entity", severity: "error" }),
+    );
+  });
+
   it("enforces the hard word limit", () => {
     const issues = validateNarrativeResult(context, valid(Array(162).fill("market").join(" "))).issues;
     expect(issues).toContainEqual(expect.objectContaining({ kind: "length", severity: "error" }));

@@ -102,6 +102,17 @@ export function createReportInstanceRouter(
       }
     },
   );
+  // Re-imports a batch still held by the MCP after a rejected import.
+  router.post(
+    "/report-instances/:id/narratives/external-job/reimport",
+    async (request, response, next) => {
+      try {
+        response.json(await narratives.retryExternalJobImport(request.params.id));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   // Browser poll target. This server polls the remote MCP and imports the
   // batch automatically once ChatGPT submits it.
   router.get(

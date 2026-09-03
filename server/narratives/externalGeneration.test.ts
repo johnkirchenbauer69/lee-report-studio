@@ -421,6 +421,43 @@ describe("ChatGPT MCP narrative generation", () => {
         /prompt profile submarket-v9/i,
       ));
 
+    it("re-imports a rejected batch that is still held by the MCP", async () => {
+      const { instance, service, mcp } = await setup();
+      const started = await service.startExternalGeneration(instance.id, {
+        marketIds: ["central-dupage", "ohare"],
+      });
+      const job = started.externalNarrativeJob!;
+      const good = job.marketIds.map((marketId) =>
+        grounded(buildNarrativeContext({ reportInstance: started, marketId })),
+      );
+      // First submission is ungrounded and is rejected whole.
+      mcp.complete(
+        job.jobId,
+        good.map((item, index) =>
+          index === 0 ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." } : item,
+        ),
+      );
+      const rejected = await service.externalJobState(instance.id);
+      expect(rejected.job?.status).toBe("failed");
+      expect(rejected.instance.narratives.filter((item) => item.status === "draft")).toHaveLength(0);
+      // A failed job is not retried by polling alone.
+      expect((await service.externalJobState(instance.id)).job?.status).toBe("failed");
+
+      // The corrected batch is still on the MCP, so no new ChatGPT round trip.
+      mcp.complete(job.jobId, good);
+      const reimported = await service.retryExternalJobImport(instance.id);
+      expect(reimported.externalNarrativeJob?.status).toBe("complete");
+      expect(reimported.narratives.filter((item) => item.status === "draft")).toHaveLength(2);
+    });
+
+    it("refuses to re-import a job ChatGPT has not submitted", async () => {
+      const { instance, service } = await setup();
+      await service.startExternalGeneration(instance.id, { marketIds: ["ohare"] });
+      await expect(service.retryExternalJobImport(instance.id)).rejects.toThrow(
+        /has not submitted/i,
+      );
+    });
+
     it("rejects a stale context and marks the market stale for regeneration", async () => {
       const { repository, instance, service, mcp } = await setup();
       const started = await service.startExternalGeneration(instance.id, {

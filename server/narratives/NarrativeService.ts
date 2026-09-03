@@ -526,6 +526,30 @@ export class NarrativeService {
   }
 
   /**
+   * Re-imports a batch that is still sitting on the MCP after a rejected
+   * import. A grounding fix or a data refresh should not force the analyst
+   * through another ChatGPT round trip while the batch is still retrievable.
+   */
+  async retryExternalJobImport(reportInstanceId: string) {
+    const bridge = this.requireBridge();
+    const instance = await this.required(reportInstanceId);
+    const job = instance.externalNarrativeJob;
+    if (!job) throw new Error("This report has no external narrative job to import.");
+    const remote = await bridge.getJob(job.jobId);
+    if (remote.status === "expired")
+      throw new Error(
+        "The narrative job expired before it could be re-imported. Start Generate All again.",
+      );
+    if (remote.status !== "complete" || !remote.narratives?.length)
+      throw new Error("ChatGPT has not submitted this narrative job yet.");
+    return this.importExternalGenerationBatch(reportInstanceId, {
+      jobId: job.jobId,
+      narratives: remote.narratives,
+      remoteContextHashes: remote.contextHashes,
+    });
+  }
+
+  /**
    * Imports an externally generated batch through Report Studio validators.
    * Atomic: if any requested market fails, nothing is imported and existing
    * narratives are left untouched, so a quarter cannot end up half-current.

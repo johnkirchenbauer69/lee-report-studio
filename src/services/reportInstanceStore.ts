@@ -112,6 +112,11 @@ export const reportInstanceStore = {
       "POST",
       options,
     ),
+  retryExternalImport: (id: string) =>
+    send<ReportInstance>(
+      `/api/report-instances/${encodeURIComponent(id)}/narratives/external-job/reimport`,
+      "POST",
+    ),
   externalJob: (id: string) =>
     json<ExternalNarrativeJobState>(
       fetch(

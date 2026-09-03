@@ -83,12 +83,21 @@ never by mutating JSON in React. For every returned narrative it:
 4. re-runs `validateNarrativeResult()`: support-key grounding, numeric support,
    named-entity support, raw Salesforce identifiers, and hard word limits.
 
+The entity check treats digits and slashes as part of a name, because real
+markets are called `I-55 Corridor` and `I-80/Joliet Area`. A class that
+excluded them truncated `I-55` to `I-` and rejected correct prose.
+
 **Import is atomic.** If any requested market fails — unknown market, duplicate
 market, missing market, stale context, prompt mismatch, or a validation error —
 nothing is imported, existing narratives are untouched, and the panel shows
 "ChatGPT returned a batch that failed Report Studio grounding validation." That
 avoids a mixed quarter where some markets reflect current data and others do
 not. The analyst can retry.
+
+A rejected batch usually still sits on the MCP until its TTL expires, so
+**Retry Import** re-runs the import against the same job
+(`POST /report-instances/:id/narratives/external-job/reimport`). A grounding
+fix does not require another ChatGPT round trip.
 
 Successful records become ordinary Draft `NarrativeRecord`s with
 `source: "ai"`, `model: "chatgpt-mcp"`, the locally verified `contextHash`, the

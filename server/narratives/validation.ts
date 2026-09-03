@@ -150,8 +150,11 @@ export function validateNarrativeResult(
       });
   });
 
+  // Digits and slashes are part of real market names — I-55 Corridor,
+  // I-80/Joliet Area. Excluding them truncates "I-55" to "I-" and reports the
+  // fragment as an unsupported entity.
   const entityCandidates = result.narrative.match(
-    /\b[A-Z][A-Za-z&’'-]+(?:\s+[A-Z][A-Za-z&’'-]+){1,3}\b/g,
+    /\b[A-Z][A-Za-z0-9&’'/-]+(?:\s+[A-Z][A-Za-z0-9&’'/-]+){1,3}\b/g,
   ) ?? [];
   for (const candidate of entityCandidates)
     if (!knownEntity(candidate, context))

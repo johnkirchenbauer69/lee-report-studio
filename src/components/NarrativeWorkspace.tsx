@@ -38,14 +38,18 @@ function ExternalJobPanel({
   job,
   appUrl,
   copied,
+  busy,
   onOpenApp,
   onCopy,
+  onRetryImport,
 }: {
   job: ExternalNarrativeJob;
   appUrl?: string;
   copied: boolean;
+  busy: boolean;
   onOpenApp: () => void;
   onCopy: () => void;
+  onRetryImport: () => void;
 }) {
   const shortId = job.jobId.slice(0, 8);
   const waiting =
@@ -90,6 +94,13 @@ function ExternalJobPanel({
             Status: Waiting for LEE Intelligence to submit narratives...
           </p>
         </>
+      )}
+      {job.status === "failed" && (
+        <div className="narrative-external-job-actions">
+          <button type="button" disabled={busy} onClick={onRetryImport}>
+            {busy ? "Retrying Import..." : "Retry Import"}
+          </button>
+        </div>
       )}
       {job.error && <p className="narrative-error">{job.error}</p>}
     </div>
@@ -231,6 +242,19 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
       setBusy(undefined);
     }
   };
+  // The batch usually still sits on the MCP after a rejected import, so a
+  // grounding fix does not need another ChatGPT round trip.
+  const retryImport = async () => {
+    setBusy("reimport");
+    setError(undefined);
+    try {
+      onChange(await reportInstanceStore.retryExternalImport(instance.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(undefined);
+    }
+  };
   const generate = () =>
     chatGptMode
       ? startExternal("selected", {
@@ -280,8 +304,10 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
         job={externalJob}
         appUrl={config?.chatGptAppUrl}
         copied={copied}
+        busy={busy === "reimport"}
         onOpenApp={openChatGptApp}
         onCopy={() => copyHandoff(externalJob.handoffPrompt)}
+        onRetryImport={retryImport}
       />}
       {job && (
         <div className="narrative-progress" role="status">
