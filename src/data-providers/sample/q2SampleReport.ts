@@ -447,6 +447,7 @@ export const q2SampleReport: IndustrialMarketReport = {
     availabilities: [],
     deliveries: [],
     construction: [],
+    absorptionContributors: [],
   })),
   historicalPeriods: q2HistoricalPeriods,
   leasing: q2Leases,
@@ -454,6 +455,7 @@ export const q2SampleReport: IndustrialMarketReport = {
   availabilities: q2Availabilities,
   deliveries: q2Deliveries,
   construction: q2Construction,
+  absorptionContributors: [],
   provenance: [
     {
       fieldPath: "overallMarket.quarterlyNetAbsorptionSf",

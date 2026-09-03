@@ -18,6 +18,10 @@ import {
   collectManagedFontReferences,
   findNonApprovedFontUsages,
 } from "../../services/fontGovernance";
+import {
+  initializeNarratives,
+  narrativeReadinessIssues,
+} from "../narratives/workflow";
 
 export interface GenerationProgress {
   stage:
@@ -41,6 +45,14 @@ const progress = (
 
 const templateChecksum = async (template: ReportTemplate) => {
   const bytes = new TextEncoder().encode(JSON.stringify(template));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
+
+const reportDataChecksum = async (report: unknown) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(report));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -162,12 +174,20 @@ export async function generateReportInstance(
     level: "blocking" as const,
     category: "readiness" as const,
   }));
+  const reportDataHash =
+    providerResult.snapshot?.hash ?? (await reportDataChecksum(reconciled));
+  const narratives = initializeNarratives(request.period, reportDataHash);
+  const narrativeIssues = narrativeReadinessIssues(narratives);
   const readiness = {
     ...dataReadiness,
-    canApprove: dataReadiness.canApprove && fontIssues.length === 0,
-    canPublish: dataReadiness.canPublish && fontIssues.length === 0,
-    blockers: [...dataReadiness.blockers, ...fontIssues],
-    issues: [...dataReadiness.issues, ...fontIssues],
+    canApprove: false,
+    canPublish: false,
+    blockers: [
+      ...dataReadiness.blockers,
+      ...fontIssues,
+      ...narrativeIssues,
+    ],
+    issues: [...dataReadiness.issues, ...fontIssues, ...narrativeIssues],
   };
   const structuralErrors = readiness.issues.filter(
     (issue) => issue.level === "error",
@@ -183,10 +203,18 @@ export async function generateReportInstance(
     "building-presentation",
     "Building formatted presentation values",
   );
-  const presentationData = buildPresentationModel(reconciled);
+  const narrativeReadyReport = {
+    ...reconciled,
+    overallMarket: { ...reconciled.overallMarket, narrative: "" },
+    submarketDetails: reconciled.submarketDetails.map((detail) => ({
+      ...detail,
+      narrative: "",
+    })),
+  };
+  const presentationData = buildPresentationModel(narrativeReadyReport);
   const preparedTemplate = prepareTemplateForReport(
     template,
-    reconciled,
+    narrativeReadyReport,
     presentationData,
     providerResult.provider,
   );
@@ -215,10 +243,11 @@ export async function generateReportInstance(
     sourceSnapshotHash: providerResult.snapshot?.hash,
     reportDefinitionVersion: providerResult.snapshot?.reportDefinitionVersion,
     generatedAt: new Date().toISOString(),
-    dataSnapshot: structuredClone(reconciled),
+    dataSnapshot: structuredClone(narrativeReadyReport),
     pages,
     fontReferences: collectManagedFontReferences({ ...template, pages }),
     manualOverrides: [],
+    narratives,
     readiness,
     status: "draft",
   };

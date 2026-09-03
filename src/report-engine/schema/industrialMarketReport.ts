@@ -126,6 +126,15 @@ export const propertyHighlightSchema = z.object({
   developer: z.string().optional(),
 });
 
+export const absorptionContributorSchema = z.object({
+  propertyName: z.string().min(1),
+  address: z.string().optional(),
+  contributionSf: finiteNumber,
+  direction: z.enum(["positive", "negative"]),
+  evidenceType: z.literal("property_data_net_absorption"),
+  deterministicallyIdentified: z.literal(true),
+});
+
 export const submarketDetailSchema = z.object({
   id: z.string().min(1).optional(),
   canonicalName: z.string().min(1).optional(),
@@ -139,6 +148,7 @@ export const submarketDetailSchema = z.object({
   availabilities: z.array(propertyHighlightSchema),
   deliveries: z.array(propertyHighlightSchema),
   construction: z.array(propertyHighlightSchema),
+  absorptionContributors: z.array(absorptionContributorSchema).default([]),
   availabilityBySize: z.array(availabilitySizeBucketSchema).optional(),
 });
 
@@ -243,6 +253,7 @@ export const industrialMarketReportSchema = z.object({
   availabilities: z.array(propertyHighlightSchema),
   deliveries: z.array(propertyHighlightSchema),
   construction: z.array(propertyHighlightSchema),
+  absorptionContributors: z.array(absorptionContributorSchema).default([]),
   availabilityBySize: z.array(availabilitySizeBucketSchema).optional(),
   provenance: z.array(provenanceRecordSchema),
   presentationOverrides: z.array(presentationOverrideSchema),
@@ -264,6 +275,9 @@ export type AvailabilitySizeBucket = z.infer<
 export type LeaseRecord = z.infer<typeof leaseRecordSchema>;
 export type SaleRecord = z.infer<typeof saleRecordSchema>;
 export type PropertyHighlight = z.infer<typeof propertyHighlightSchema>;
+export type AbsorptionContributor = z.infer<
+  typeof absorptionContributorSchema
+>;
 export type SubmarketDetail = z.infer<typeof submarketDetailSchema>;
 export type ProvenanceRecord = z.infer<typeof provenanceRecordSchema>;
 export type PresentationOverride = z.infer<typeof presentationOverrideSchema>;
