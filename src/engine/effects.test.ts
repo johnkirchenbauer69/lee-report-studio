@@ -4,6 +4,8 @@ import {
   dropShadowToCss,
   resolveDropShadow,
   shadowColorToCss,
+  bevelToCss,
+  elementBoxShadowToCss,
 } from "./effects";
 
 describe("element drop shadows", () => {
@@ -24,5 +26,22 @@ describe("element drop shadows", () => {
       }),
     ).toBe("-3px 5px 8px rgba(18, 52, 86, 0.4)");
     expect(shadowColorToCss("#000", 2)).toBe("rgba(0, 0, 0, 1)");
+  });
+
+  it("composes a directional bevel with the existing drop shadow", () => {
+    const bevel = bevelToCss({
+      enabled: true,
+      size: 3,
+      direction: "raised",
+      highlightColor: "#ffffff",
+      highlightOpacity: 0.5,
+      shadowColor: "#000000",
+      shadowOpacity: 0.25,
+    });
+    expect(bevel).toContain("inset 3px 3px 3px rgba(255, 255, 255, 0.5)");
+    expect(bevel).toContain("inset -3px -3px 3px rgba(0, 0, 0, 0.25)");
+    expect(elementBoxShadowToCss(undefined, { enabled: true })).toContain(
+      "inset",
+    );
   });
 });

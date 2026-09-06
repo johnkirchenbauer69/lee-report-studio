@@ -1,5 +1,6 @@
 import type {
   Asset,
+  BevelStyle,
   DropShadow,
   Fill,
   ReportElement,
@@ -10,7 +11,12 @@ import type {
   Typography,
   Unit,
 } from "../types/report";
-import { resolveDropShadow } from "../engine/effects";
+import { resolveBevel, resolveDropShadow } from "../engine/effects";
+import {
+  resolveCornerRadii,
+  updateCornerRadius,
+  type CornerKey,
+} from "../engine/corners";
 import { formatUnit, toPixels, unitStep } from "../engine/editorMath";
 import { normalizeRotation } from "../engine/geometry";
 import {
@@ -45,6 +51,9 @@ interface Props {
     value: "left" | "center" | "right" | "top" | "middle" | "bottom",
   ) => void;
   onDistribute: (axis: "x" | "y") => void;
+  canUnion?: boolean;
+  unionReason?: string;
+  onUnion?: () => void;
   cropping?: boolean;
   onToggleCrop?: () => void;
   onReplaceImage?: () => void;
@@ -133,6 +142,9 @@ export function Inspector({
   onChange,
   onAlign,
   onDistribute,
+  canUnion,
+  unionReason,
+  onUnion,
   data,
   report,
   tableEditing,
@@ -152,6 +164,58 @@ export function Inspector({
           <strong>Nothing selected</strong>
           <span>Select an element on the canvas to edit its properties.</span>
         </div>
+      </aside>
+    );
+  if (selectionCount > 1)
+    return (
+      <aside className="inspector">
+        <div className="inspector-header">
+          <div>
+            <strong>{selectionCount} elements</strong>
+            <span>Multi-selection</span>
+          </div>
+          <span className="type-chip">multi</span>
+        </div>
+        <Section title="Arrange">
+          <span className="control-label">Align selected boxes</span>
+          <div className="icon-grid six" aria-label="Box alignment controls">
+            {(
+              [
+                ["left", "⇤"],
+                ["center", "↔"],
+                ["right", "⇥"],
+                ["top", "↥"],
+                ["middle", "↕"],
+                ["bottom", "↧"],
+              ] as const
+            ).map(([value, icon]) => (
+              <button
+                key={value}
+                title={`Align selected boxes ${value}`}
+                onClick={() => onAlign(value)}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+          {selectionCount > 2 && (
+            <div className="segmented">
+              <button onClick={() => onDistribute("x")}>Distribute H</button>
+              <button onClick={() => onDistribute("y")}>Distribute V</button>
+            </div>
+          )}
+        </Section>
+        <Section title="Combine">
+          <button
+            className="primary-button inspector-action"
+            disabled={!canUnion}
+            onClick={onUnion}
+            title={unionReason}
+          >
+            Union shapes
+          </button>
+          <small>{unionReason}</small>
+        </Section>
       </aside>
     );
   const setStyle = (patch: Record<string, unknown>) =>
@@ -253,6 +317,12 @@ export function Inspector({
     setStyle({ fill: next, background: undefined });
   const stroke = { ...strokeDefaults, ...element.style.stroke };
   const shadow = resolveDropShadow(element.style.shadow);
+  const bevel = resolveBevel(element.style.bevel);
+  const radii = resolveCornerRadii(
+    element.style,
+    element.width,
+    element.height,
+  );
   const bindingPath = element.binding
     ? resolveContextPath(element.binding.path, element.bindingContext)
     : undefined;
@@ -269,6 +339,18 @@ export function Inspector({
     setStyle({ stroke: { ...stroke, ...patch } });
   const setShadow = (patch: Partial<DropShadow>) =>
     setStyle({ shadow: { ...shadow, ...patch } });
+  const setBevel = (patch: Partial<BevelStyle>) =>
+    setStyle({ bevel: { ...bevel, ...patch } });
+  const setCorner = (corner: CornerKey, value: number) =>
+    setStyle({
+      cornerRadii: updateCornerRadius(
+        radii,
+        corner,
+        value,
+        element.width,
+        element.height,
+      ),
+    });
   const table =
     element.type === "table" ? (element as TableElement) : undefined;
   const selectedColumn = tableSelection
@@ -838,6 +920,90 @@ export function Inspector({
             value={selectedCellStyle?.borderColor ?? "#e4e7ec"}
             onChange={(borderColor) => updateTableCellStyle({ borderColor })}
           />
+          <strong>Text shadow</strong>
+          <label className="toggle-row">
+            <input
+              aria-label="Table selection text shadow"
+              type="checkbox"
+              checked={resolveDropShadow(selectedCellStyle?.shadow).enabled}
+              onChange={(event) =>
+                updateTableCellStyle({
+                  shadow: {
+                    ...resolveDropShadow(selectedCellStyle?.shadow),
+                    enabled: event.target.checked,
+                  },
+                })
+              }
+            />
+            <span>
+              {resolveDropShadow(selectedCellStyle?.shadow).enabled
+                ? "On"
+                : "Off"}
+            </span>
+          </label>
+          {resolveDropShadow(selectedCellStyle?.shadow).enabled && (
+            <>
+              <ColorField
+                label="Text shadow color"
+                value={resolveDropShadow(selectedCellStyle?.shadow).color}
+                onChange={(color) =>
+                  updateTableCellStyle({
+                    shadow: {
+                      ...resolveDropShadow(selectedCellStyle?.shadow),
+                      color,
+                    },
+                  })
+                }
+              />
+              <div className="field-grid">
+                {(["offsetX", "offsetY", "blur"] as const).map((key) => (
+                  <label key={key}>
+                    {key === "offsetX"
+                      ? "X offset"
+                      : key === "offsetY"
+                        ? "Y offset"
+                        : "Blur"}
+                    <input
+                      aria-label={`Table text shadow ${key}`}
+                      type="number"
+                      min={key === "blur" ? 0 : undefined}
+                      step=".5"
+                      value={resolveDropShadow(selectedCellStyle?.shadow)[key]}
+                      onChange={(event) =>
+                        updateTableCellStyle({
+                          shadow: {
+                            ...resolveDropShadow(selectedCellStyle?.shadow),
+                            [key]: Number(event.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+                <label>
+                  Opacity %
+                  <input
+                    aria-label="Table text shadow opacity"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={Math.round(
+                      resolveDropShadow(selectedCellStyle?.shadow).opacity *
+                        100,
+                    )}
+                    onChange={(event) =>
+                      updateTableCellStyle({
+                        shadow: {
+                          ...resolveDropShadow(selectedCellStyle?.shadow),
+                          opacity: Number(event.target.value) / 100,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </>
+          )}
           {tableSelection.section === "body" && (
             <>
               <label>
@@ -994,7 +1160,96 @@ export function Inspector({
           )}
         </Section>
       )}
-      {(element.type === "shape" || element.type === "text") && (
+      {element.type === "shape" && (
+        <Section title="Bevel">
+          <label className="toggle-row">
+            <input
+              aria-label="Bevel"
+              type="checkbox"
+              checked={bevel.enabled}
+              onChange={(event) => setBevel({ enabled: event.target.checked })}
+            />
+            <span>{bevel.enabled ? "On" : "Off"}</span>
+          </label>
+          {bevel.enabled && (
+            <>
+              <div className="field-grid">
+                <label>
+                  Size <span>px</span>
+                  <input
+                    aria-label="Bevel size"
+                    type="number"
+                    min="0"
+                    value={bevel.size}
+                    onChange={(event) =>
+                      setBevel({ size: Number(event.target.value) })
+                    }
+                  />
+                </label>
+                <label>
+                  Direction
+                  <select
+                    aria-label="Bevel direction"
+                    value={bevel.direction}
+                    onChange={(event) =>
+                      setBevel({
+                        direction: event.target
+                          .value as BevelStyle["direction"],
+                      })
+                    }
+                  >
+                    <option value="raised">Raised</option>
+                    <option value="inset">Inset</option>
+                  </select>
+                </label>
+              </div>
+              <ColorField
+                label="Highlight"
+                value={bevel.highlightColor}
+                onChange={(highlightColor) => setBevel({ highlightColor })}
+              />
+              <label>
+                Highlight opacity <span>%</span>
+                <input
+                  aria-label="Bevel highlight opacity"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={Math.round(bevel.highlightOpacity * 100)}
+                  onChange={(event) =>
+                    setBevel({
+                      highlightOpacity: Number(event.target.value) / 100,
+                    })
+                  }
+                />
+              </label>
+              <ColorField
+                label="Shadow"
+                value={bevel.shadowColor}
+                onChange={(shadowColor) => setBevel({ shadowColor })}
+              />
+              <label>
+                Shadow opacity <span>%</span>
+                <input
+                  aria-label="Bevel shadow opacity"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={Math.round(bevel.shadowOpacity * 100)}
+                  onChange={(event) =>
+                    setBevel({
+                      shadowOpacity: Number(event.target.value) / 100,
+                    })
+                  }
+                />
+              </label>
+            </>
+          )}
+        </Section>
+      )}
+      {(element.type === "shape" ||
+        element.type === "text" ||
+        element.type === "image") && (
         <Section title="Drop Shadow">
           <label className="toggle-row">
             <input
@@ -1124,28 +1379,69 @@ export function Inspector({
               </div>
             </>
           )}
-          <label>
-            Corner radius <span>px</span>
+          <label className="toggle-row">
             <input
-              aria-label="Corner radius"
-              type="range"
-              min="0"
-              max="100"
-              value={element.style.borderRadius ?? 0}
-              onChange={(e) =>
-                setStyle({ borderRadius: Number(e.target.value) })
+              aria-label="Link corner radii"
+              type="checkbox"
+              checked={radii.linked}
+              onChange={(event) =>
+                setStyle({
+                  cornerRadii: { ...radii, linked: event.target.checked },
+                })
               }
             />
-            <input
-              aria-label="Corner radius value"
-              type="number"
-              min="0"
-              value={element.style.borderRadius ?? 0}
-              onChange={(e) =>
-                setStyle({ borderRadius: Number(e.target.value) })
-              }
-            />
+            <span>Link corners</span>
           </label>
+          {radii.linked ? (
+            <label>
+              All corners <span>px</span>
+              <input
+                aria-label="Corner radius"
+                type="range"
+                min="0"
+                max={Math.min(element.width, element.height) / 2}
+                value={radii.topLeft}
+                onChange={(event) =>
+                  setCorner("topLeft", Number(event.target.value))
+                }
+              />
+              <input
+                aria-label="Corner radius value"
+                type="number"
+                min="0"
+                max={Math.min(element.width, element.height) / 2}
+                value={Math.round(radii.topLeft * 10) / 10}
+                onChange={(event) =>
+                  setCorner("topLeft", Number(event.target.value))
+                }
+              />
+            </label>
+          ) : (
+            <div className="field-grid">
+              {(
+                [
+                  ["topLeft", "Top left"],
+                  ["topRight", "Top right"],
+                  ["bottomLeft", "Bottom left"],
+                  ["bottomRight", "Bottom right"],
+                ] as const
+              ).map(([corner, label]) => (
+                <label key={corner}>
+                  {label} <span>px</span>
+                  <input
+                    aria-label={`${label} radius`}
+                    type="number"
+                    min="0"
+                    max={Math.min(element.width, element.height) / 2}
+                    value={Math.round(radii[corner] * 10) / 10}
+                    onChange={(event) =>
+                      setCorner(corner, Number(event.target.value))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          )}
         </Section>
       )}
       {element.type === "text" && (

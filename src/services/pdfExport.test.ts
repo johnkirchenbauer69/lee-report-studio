@@ -55,6 +55,24 @@ describe("deterministic PDF export", () => {
     );
   });
 
+  it("requires Chromium instead of silently degrading advanced editor effects", async () => {
+    const template = structuredClone(sampleTemplate);
+    const image = template.pages[0].elements.find(
+      (element) => element.type === "image",
+    )!;
+    image.style.shadow = {
+      enabled: true,
+      color: "#000000",
+      offsetX: 2,
+      offsetY: 2,
+      blur: 4,
+      opacity: 0.25,
+    };
+    await expect(createReportPdfBytes(template, sampleData)).rejects.toThrow(
+      /Advanced shape, image, or table styling requires the Chromium PDF renderer/,
+    );
+  });
+
   it("exports 44 pages for all 18 selected detailed submarkets", async () => {
     const selected = q2SampleReport.submarkets.map((item) => item.name);
     const instance = await generateReportInstance(sampleTemplate, {

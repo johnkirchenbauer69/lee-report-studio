@@ -128,7 +128,9 @@ test("text and shape shadows plus image stroke and clipping persist through save
     const imageNode = page.getByTestId(image.id);
     await imageNode.evaluate((node) => (node as HTMLElement).click());
     await expect(imageNode).toHaveClass(/is-selected/);
-    await expect(section(page, "Drop Shadow")).toHaveCount(0);
+    const imageShadow = section(page, "Drop Shadow");
+    await expect(imageShadow).toBeVisible();
+    await expect(imageShadow.getByLabel("Drop Shadow")).not.toBeChecked();
     const imageStyle = section(page, "Stroke & Corners");
     await expect(imageStyle).toBeVisible();
     await imageStyle.getByLabel("Stroke").check();
