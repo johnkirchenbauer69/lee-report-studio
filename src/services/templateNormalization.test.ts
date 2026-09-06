@@ -141,4 +141,128 @@ describe("template typography migration", () => {
       fontChecksum: "stale-checksum",
     });
   });
+
+  it("preserves structured bevel, corner, image-shadow, and table cell-shadow styles", () => {
+    const source = structuredClone(sampleTemplate);
+    const shape = source.pages[0].elements.find(
+      (element) => element.type === "shape",
+    )!;
+    shape.style.bevel = {
+      enabled: true,
+      size: 4,
+      direction: "raised",
+      highlightColor: "#ffffff",
+      highlightOpacity: 0.5,
+      shadowColor: "#000000",
+      shadowOpacity: 0.3,
+    };
+    shape.style.cornerRadii = {
+      topLeft: 12,
+      topRight: 8,
+      bottomRight: 4,
+      bottomLeft: 0,
+      linked: false,
+    };
+    const image = source.pages[0].elements.find(
+      (element) => element.type === "image",
+    )!;
+    image.style.shadow = {
+      enabled: true,
+      color: "#123456",
+      offsetX: 2,
+      offsetY: 3,
+      blur: 6,
+      opacity: 0.4,
+    };
+    const table = source.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "table");
+    if (!table || table.type !== "table")
+      throw new Error("Fixture table missing");
+    table.columns[0].headerStyle = {
+      ...table.columns[0].headerStyle,
+      shadow: {
+        enabled: true,
+        color: "#000000",
+        offsetX: 1,
+        offsetY: 1,
+        blur: 2,
+        opacity: 0.25,
+      },
+    };
+    table.cellStyles = {
+      ...table.cellStyles,
+      "body:0:0": {
+        shadow: {
+          enabled: true,
+          color: "#000000",
+          offsetX: 1,
+          offsetY: 2,
+          blur: 3,
+          opacity: 0.5,
+        },
+      },
+    };
+
+    const normalized = normalizeReportTemplateFonts(source, []);
+    expect(
+      normalized.pages[0].elements.find((element) => element.id === shape.id)
+        ?.style,
+    ).toMatchObject({
+      bevel: shape.style.bevel,
+      cornerRadii: shape.style.cornerRadii,
+    });
+    expect(
+      normalized.pages[0].elements.find((element) => element.id === image.id)
+        ?.style.shadow,
+    ).toEqual(image.style.shadow);
+    const normalizedTable = normalized.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === table.id);
+    expect(
+      normalizedTable?.type === "table" &&
+        normalizedTable.columns[0].headerStyle?.shadow,
+    ).toEqual(table.columns[0].headerStyle?.shadow);
+    expect(
+      normalizedTable?.type === "table" &&
+        normalizedTable.cellStyles?.["body:0:0"]?.shadow,
+    ).toEqual(table.cellStyles["body:0:0"].shadow);
+  });
+
+  it("carries targeted table shadows into a generated report instance", async () => {
+    const { generateReportInstance } =
+      await import("../report-engine/generation/generateReport");
+    const source = structuredClone(sampleTemplate);
+    const table = source.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.type === "table");
+    if (!table || table.type !== "table")
+      throw new Error("Fixture table missing");
+    table.columns[0].bodyStyle = {
+      ...table.columns[0].bodyStyle,
+      shadow: {
+        enabled: true,
+        color: "#000000",
+        offsetX: 1,
+        offsetY: 1,
+        blur: 2,
+        opacity: 0.25,
+      },
+    };
+    const instance = await generateReportInstance(source, {
+      templateId: source.id,
+      templateVersion: source.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarkets: [] },
+      source: { provider: "sample" },
+    });
+    const generated = instance.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === table.id);
+    expect(
+      generated?.type === "table" && generated.columns[0].bodyStyle?.shadow,
+    ).toEqual(table.columns[0].bodyStyle?.shadow);
+  });
 });

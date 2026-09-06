@@ -1,5 +1,6 @@
 import type { Fill, ReportElement, Unit } from "../types/report";
 import { elementRect, getRotatedAabb, rotatePoint } from "./geometry";
+import { normalizeElementCorners } from "./corners";
 
 /** Browser/CSS reference pixel density used throughout the editor. */
 export const PX_PER_INCH = 96;
@@ -169,6 +170,26 @@ export function distribute(
   return result;
 }
 
+/** Moves an ad-hoc multi-selection as one rigid set from the dragged source. */
+export function translateSelectedElements(
+  elements: ReportElement[],
+  selectedIds: readonly string[],
+  sourceId: string,
+  nextX: number,
+  nextY: number,
+): ReportElement[] {
+  const selected = new Set(selectedIds);
+  const source = elements.find((element) => element.id === sourceId);
+  if (!source || !selected.has(sourceId) || selected.size < 2) return elements;
+  const dx = nextX - source.x;
+  const dy = nextY - source.y;
+  return elements.map((element) =>
+    selected.has(element.id)
+      ? { ...element, x: element.x + dx, y: element.y + dy }
+      : element,
+  );
+}
+
 /** Scales every member around the group's top-left bound when one member is resized. */
 export function scaleGroupedElements(
   elements: ReportElement[],
@@ -191,13 +212,13 @@ export function scaleGroupedElements(
   const originY = minY + (patch.y != null ? patch.y - source.y : 0);
   return elements.map((element) =>
     element.groupId === source.groupId
-      ? {
+      ? normalizeElementCorners({
           ...element,
           x: originX + (element.x - minX) * ratio,
           y: originY + (element.y - minY) * ratio,
           width: Math.max(1, element.width * ratio),
           height: Math.max(1, element.height * ratio),
-        }
+        } as ReportElement)
       : element,
   );
 }

@@ -463,16 +463,16 @@ async function drawElement(
           centerY,
           element.rotation ?? 0,
         );
-        pdfPage.drawText(line, {
-          x: anchor.x,
-          y: anchor.y,
-          size,
-          font,
-          color: color(typography.color),
-          opacity,
-          rotate: rotation,
-          maxWidth: width,
-        });
+      pdfPage.drawText(line, {
+        x: anchor.x,
+        y: anchor.y,
+        size,
+        font,
+        color: color(typography.color),
+        opacity,
+        rotate: rotation,
+        maxWidth: width,
+      });
     });
     return;
   }
@@ -544,6 +544,33 @@ export async function createReportPdfBytes(
   if ((template.assets ?? []).some((asset) => asset.type === "font"))
     throw new Error(
       "Managed-font reports require the Chromium PDF renderer so editor and PDF typography remain identical.",
+    );
+  const chromiumStyled = template.pages
+    .flatMap((page) => page.elements)
+    .find(
+      (element) =>
+        (element.type === "shape" &&
+          (element.shape === "path" || element.style.bevel?.enabled)) ||
+        ((element.type === "shape" || element.type === "image") &&
+          (element.style.shadow?.enabled ||
+            Boolean(
+              element.style.cornerRadii && !element.style.cornerRadii.linked,
+            ))) ||
+        (element.type === "table" &&
+          (element.headerStyle?.shadow?.enabled ||
+            element.bodyStyle?.shadow?.enabled ||
+            element.columns.some(
+              (column) =>
+                column.headerStyle?.shadow?.enabled ||
+                column.bodyStyle?.shadow?.enabled,
+            ) ||
+            Object.values(element.cellStyles ?? {}).some(
+              (style) => style.shadow?.enabled,
+            ))),
+    );
+  if (chromiumStyled)
+    throw new Error(
+      "Advanced shape, image, or table styling requires the Chromium PDF renderer so editor and PDF effects remain identical.",
     );
   const rotatedComplex = template.pages
     .flatMap((page) => page.elements)

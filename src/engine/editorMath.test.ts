@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { rotateGroupedElements, scaleGroupedElements } from "./editorMath";
+import {
+  rotateGroupedElements,
+  scaleGroupedElements,
+  translateSelectedElements,
+} from "./editorMath";
 import type { ReportElement } from "../types/report";
 
 const textElement = (
@@ -58,5 +62,23 @@ describe("scaleGroupedElements (regression guard)", () => {
     const b = textElement({ id: "b", groupId: "g", x: 100, y: 0, width: 50 });
     const [, scaledB] = scaleGroupedElements([a, b], "a", { width: 200 });
     expect(scaledB.width).toBe(100);
+  });
+});
+
+describe("translateSelectedElements", () => {
+  it("moves an ad-hoc multi-selection rigidly and leaves other elements still", () => {
+    const a = textElement({ id: "a", x: 10, y: 20 });
+    const b = textElement({ id: "b", x: 80, y: 90 });
+    const other = textElement({ id: "other", x: 400, y: 300 });
+    const result = translateSelectedElements(
+      [a, b, other],
+      ["a", "b"],
+      "a",
+      35,
+      5,
+    );
+    expect(result[0]).toMatchObject({ x: 35, y: 5 });
+    expect(result[1]).toMatchObject({ x: 105, y: 75 });
+    expect(result[2]).toEqual(other);
   });
 });

@@ -182,7 +182,14 @@ describe("CanvasElement effects", () => {
       width: 120,
       height: 60,
       style: {
-        borderRadius: 18,
+        cornerRadii: {
+          topLeft: 18,
+          topRight: 12,
+          bottomRight: 6,
+          bottomLeft: 2,
+          linked: false,
+        },
+        shadow,
         stroke: {
           enabled: true,
           color: "#c4123f",
@@ -193,10 +200,69 @@ describe("CanvasElement effects", () => {
       },
     });
 
-    expect(markup).toContain("border-radius:18px");
+    expect(markup).toContain("border-radius:18px 12px 6px 2px");
+    expect(markup).toContain("box-shadow:-3px 5px 8px rgba(18, 52, 86, 0.4)");
     expect(markup).toContain("border-width:4px");
     expect(markup).toContain("border-color:#c4123f");
     expect(markup).toContain('data-image-clip="true"');
     expect(markup).toContain("object-fit:cover");
+  });
+
+  it("applies a targeted table header shadow without affecting body cells", () => {
+    const styledTable: TableElement = {
+      ...table,
+      columns: [
+        { ...table.columns[0], headerStyle: { shadow } },
+        table.columns[1],
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={styledTable}
+        elements={[styledTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    expect(
+      markup.match(/text-shadow:-3px 5px 8px rgba\(18, 52, 86, 0.4\)/g),
+    ).toHaveLength(1);
+  });
+
+  it("renders union path geometry as editable SVG", () => {
+    const markup = renderElement({
+      id: "union",
+      type: "shape",
+      shape: "path",
+      name: "Union",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      style: { fill: { type: "solid", color: "#c4123f" } },
+      pathGeometry: {
+        rings: [
+          [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+            { x: 0, y: 1 },
+          ],
+        ],
+      },
+    });
+    expect(markup).toContain("shape-path-svg");
+    expect(markup).toContain('fill="#c4123f"');
+    expect(markup).toContain("M0 0 L100 0 L100 50 L0 50 Z");
   });
 });

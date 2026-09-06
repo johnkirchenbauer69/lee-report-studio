@@ -5,18 +5,31 @@ import type {
   ReportElement,
   TableCellStyle,
   TableSelection,
+  ShapeElement,
 } from "../types/report";
 import type { SnapGuide } from "../engine/editorMath";
 import { fillToCss, snapPosition } from "../engine/editorMath";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 import { NativeChart } from "../report-engine/charts/NativeChart";
 import { normalizeRotation, snapRotation } from "../engine/geometry";
+import { getRotatedAabb, elementRect } from "../engine/geometry";
 import {
   resolveTypography,
   verticalAlignmentClass,
 } from "../engine/typography";
 import { fontFamilyToCss } from "../services/fontRegistry";
-import { dropShadowToCss } from "../engine/effects";
+import {
+  dropShadowToCss,
+  elementBoxShadowToCss,
+  resolveBevel,
+} from "../engine/effects";
+import {
+  cornerRadiiToCss,
+  resolveCornerRadii,
+  updateCornerRadius,
+  type CornerKey,
+} from "../engine/corners";
+import { shapePathToSvg } from "../engine/shapeUnion";
 
 interface Props {
   element: ReportElement;
@@ -26,6 +39,7 @@ interface Props {
   data: unknown;
   mode: PreviewMode;
   selected: boolean;
+  selectedIds?: string[];
   zoom: number;
   onSelect: (id: string, additive: boolean) => void;
   onChange: (id: string, patch: Partial<ReportElement>) => void;
@@ -53,6 +67,7 @@ const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
   borderColor: style?.borderColor,
   borderWidth: style?.borderWidth,
   borderStyle: style?.borderWidth ? "solid" : undefined,
+  textShadow: dropShadowToCss(style?.shadow),
 });
 
 const strokeStyle = (element: ReportElement): React.CSSProperties => {
@@ -79,6 +94,7 @@ export function CanvasElement(props: Props) {
     data,
     mode,
     selected,
+    selectedIds = [],
     zoom,
     onSelect,
     onChange,
@@ -89,12 +105,30 @@ export function CanvasElement(props: Props) {
     if (props.tableEditing && element.type === "table") return;
     if (element.locked) return;
     e.stopPropagation();
-    onSelect(element.id, e.shiftKey || e.metaKey || e.ctrlKey);
+    const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+    if (!selected || additive) onSelect(element.id, additive);
     props.onInteractionStart();
     const sx = e.clientX,
       sy = e.clientY,
       ox = element.x,
       oy = element.y;
+    const movingIds =
+      selected && selectedIds.length > 1
+        ? new Set(selectedIds)
+        : new Set([element.id]);
+    const moving = elements.filter((item) => movingIds.has(item.id));
+    const movingBounds = moving.reduce(
+      (bounds, item) => {
+        const box = getRotatedAabb(elementRect(item));
+        return {
+          minX: Math.min(bounds.minX, box.x),
+          minY: Math.min(bounds.minY, box.y),
+          maxX: Math.max(bounds.maxX, box.x + box.width),
+          maxY: Math.max(bounds.maxY, box.y + box.height),
+        };
+      },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    );
     const crop =
       element.type === "image"
         ? (element.crop ?? { x: 50, y: 50, zoom: 1 })
@@ -121,14 +155,14 @@ export function CanvasElement(props: Props) {
         return;
       }
       const result = snapPosition({
-        x: ox + (ev.clientX - sx) / zoom,
-        y: oy + (ev.clientY - sy) / zoom,
-        width: element.width,
-        height: element.height,
-        rotation: element.rotation,
+        x: movingBounds.minX + (ev.clientX - sx) / zoom,
+        y: movingBounds.minY + (ev.clientY - sy) / zoom,
+        width: movingBounds.maxX - movingBounds.minX,
+        height: movingBounds.maxY - movingBounds.minY,
+        rotation: 0,
         pageWidth: pageSize.width,
         pageHeight: pageSize.height,
-        others: elements.filter((item) => item.id !== element.id),
+        others: elements.filter((item) => !movingIds.has(item.id)),
         gridSpacing: settings.gridSpacingPx,
         snapGrid: settings.snapToGrid,
         snapElements: settings.snapToElements,
@@ -142,12 +176,55 @@ export function CanvasElement(props: Props) {
       });
       onGuides(result.guides);
       onChange(element.id, {
-        x: result.x,
-        y: result.y,
+        x: ox + result.x - movingBounds.minX,
+        y: oy + result.y - movingBounds.minY,
       } as Partial<ReportElement>);
     };
     const up = () => {
       onGuides([]);
+      props.onInteractionEnd();
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  const startCornerRadius = (e: React.PointerEvent, corner: CornerKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    props.onInteractionStart();
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const initial = resolveCornerRadii(
+      element.style,
+      element.width,
+      element.height,
+    );
+    const direction =
+      corner === "topRight" || corner === "bottomRight" ? -1 : 1;
+    const radians = (normalizeRotation(element.rotation) * Math.PI) / 180;
+    const cosine = Math.cos(radians);
+    const sine = Math.sin(radians);
+    const move = (event: PointerEvent) => {
+      const screenX = (event.clientX - sx) / zoom;
+      const screenY = (event.clientY - sy) / zoom;
+      const localX = cosine * screenX + sine * screenY;
+      const value = initial[corner] + direction * localX;
+      onChange(element.id, {
+        style: {
+          ...element.style,
+          cornerRadii: updateCornerRadius(
+            initial,
+            corner,
+            value,
+            element.width,
+            element.height,
+          ),
+        },
+      } as Partial<ReportElement>);
+    };
+    const up = () => {
       props.onInteractionEnd();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -246,6 +323,12 @@ export function CanvasElement(props: Props) {
     element.type === "text"
       ? resolveTypography(element.style)
       : element.style.typography;
+  const radii = resolveCornerRadii(
+    element.style,
+    element.width,
+    element.height,
+  );
+  const isPath = element.type === "shape" && element.shape === "path";
   const style: React.CSSProperties = {
     position: "absolute",
     left: element.x,
@@ -259,8 +342,10 @@ export function CanvasElement(props: Props) {
     borderRadius:
       element.type === "shape" && element.shape === "circle"
         ? "50%"
-        : (element.style.borderRadius ?? 0),
-    background: fillToCss(element.style.fill, element.style.background),
+        : cornerRadiiToCss(radii),
+    background: isPath
+      ? "transparent"
+      : fillToCss(element.style.fill, element.style.background),
     color: typography?.color ?? element.style.color,
     fontFamily: fontFamilyToCss(
       typography?.fontFamily ?? element.style.fontFamily,
@@ -289,12 +374,20 @@ export function CanvasElement(props: Props) {
         ? dropShadowToCss(element.style.shadow)
         : undefined,
     boxShadow:
-      element.type === "shape"
-        ? dropShadowToCss(element.style.shadow)
+      element.type === "shape" || element.type === "image"
+        ? isPath
+          ? undefined
+          : elementBoxShadowToCss(
+              element.style.shadow,
+              element.type === "shape" ? element.style.bevel : undefined,
+            )
         : undefined,
     cursor: element.locked ? "not-allowed" : "move",
     ...strokeStyle(element),
   };
+  if (isPath) {
+    style.border = 0;
+  }
   if (element.type === "shape" && element.shape === "triangle")
     style.clipPath = "polygon(50% 0, 100% 100%, 0 100%)";
   if (element.type === "shape" && element.shape === "diamond")
@@ -307,7 +400,79 @@ export function CanvasElement(props: Props) {
   }
 
   let content: React.ReactNode = null;
-  if (element.type === "text") {
+  if (isPath) {
+    const path = shapePathToSvg(element as ShapeElement);
+    const fill = element.style.fill;
+    const gradientId = `union-gradient-${element.id}`;
+    const bevel = resolveBevel(element.style.bevel);
+    content = (
+      <svg
+        className="shape-path-svg"
+        viewBox={`0 0 ${element.width} ${element.height}`}
+        preserveAspectRatio="none"
+        style={{
+          filter: dropShadowToCss(element.style.shadow)
+            ?.replace(/^/, "drop-shadow(")
+            .replace(/$/, ")"),
+        }}
+      >
+        {fill?.type === "linear-gradient" && (
+          <defs>
+            <linearGradient
+              id={gradientId}
+              gradientTransform={`rotate(${fill.angle} .5 .5)`}
+            >
+              {fill.stops.map((stop) => (
+                <stop
+                  key={stop.id}
+                  offset={`${stop.position}%`}
+                  stopColor={stop.color}
+                />
+              ))}
+            </linearGradient>
+          </defs>
+        )}
+        {bevel.enabled && (
+          <path
+            d={path}
+            fill="none"
+            stroke={
+              bevel.direction === "raised"
+                ? bevel.highlightColor
+                : bevel.shadowColor
+            }
+            strokeOpacity={
+              bevel.direction === "raised"
+                ? bevel.highlightOpacity
+                : bevel.shadowOpacity
+            }
+            strokeWidth={bevel.size}
+          />
+        )}
+        <path
+          d={path}
+          fill={
+            fill?.type === "linear-gradient"
+              ? `url(#${gradientId})`
+              : (fill?.color ?? element.style.background ?? "transparent")
+          }
+          fillRule="evenodd"
+          stroke={
+            element.style.stroke?.enabled ? element.style.stroke.color : "none"
+          }
+          strokeOpacity={element.style.stroke?.opacity}
+          strokeWidth={element.style.stroke?.width}
+          strokeDasharray={
+            element.style.stroke?.style === "dashed"
+              ? "6 4"
+              : element.style.stroke?.style === "dotted"
+                ? "1 3"
+                : undefined
+          }
+        />
+      </svg>
+    );
+  } else if (element.type === "text") {
     const cardState =
       mode === "data" &&
       element.binding &&
@@ -584,9 +749,16 @@ export function CanvasElement(props: Props) {
       className={`canvas-element ${selected ? "is-selected" : ""} ${props.cropping ? "is-cropping" : ""} ${props.tableEditing ? "is-table-editing" : ""}`}
       style={style}
       onPointerDown={startDrag}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(element.id, e.shiftKey || e.metaKey || e.ctrlKey);
+      onClick={(event) => {
+        event.stopPropagation();
+        // Pointer selection is handled on pointerdown so drag can begin
+        // immediately. Keep zero-detail clicks for keyboard/programmatic
+        // activation without toggling a real Shift-click twice.
+        if (event.detail === 0)
+          onSelect(
+            element.id,
+            event.shiftKey || event.metaKey || event.ctrlKey,
+          );
       }}
       onDoubleClick={(event) => {
         if (element.type === "table" && selected) {
@@ -630,6 +802,38 @@ export function CanvasElement(props: Props) {
           )}
         </>
       )}
+      {selected &&
+        !element.locked &&
+        !props.cropping &&
+        (element.type === "image" ||
+          (element.type === "shape" &&
+            ![
+              "circle",
+              "ellipse",
+              "line",
+              "triangle",
+              "diamond",
+              "path",
+            ].includes(element.shape ?? "rectangle"))) &&
+        (
+          ["topLeft", "topRight", "bottomRight", "bottomLeft"] as CornerKey[]
+        ).map((corner) => (
+          <button
+            key={corner}
+            className={`corner-radius-handle radius-${corner}`}
+            aria-label={`${corner} corner radius`}
+            title={`${corner} radius: ${Math.round(radii[corner])}px`}
+            style={{
+              [corner === "topLeft" || corner === "bottomLeft"
+                ? "left"
+                : "right"]: Math.max(4, radii[corner] - 5),
+              [corner === "topLeft" || corner === "topRight"
+                ? "top"
+                : "bottom"]: -5,
+            }}
+            onPointerDown={(event) => startCornerRadius(event, corner)}
+          />
+        ))}
       {selected && (
         <div className="element-badge">
           {element.name}

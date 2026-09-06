@@ -20,7 +20,15 @@ import {
   PX_PER_INCH,
   rotateGroupedElements,
   scaleGroupedElements,
+  translateSelectedElements,
 } from "./engine/editorMath";
+import { normalizeElementCorners } from "./engine/corners";
+import { createUnionShape, evaluateShapeUnion } from "./engine/shapeUnion";
+import {
+  openedTemplateEditorState,
+  savedTemplateEditorState,
+} from "./engine/editorNavigation";
+import { nextSelection } from "./engine/selection";
 import { CanvasElement } from "./components/CanvasElement";
 import { Inspector } from "./components/Inspector";
 import { DataBrowser } from "./components/DataBrowser";
@@ -107,21 +115,24 @@ function hydrate(input: ReportTemplate): ReportTemplate {
     settings: { ...defaultSettings, ...input.settings },
     pages: input.pages.map((page) => ({
       ...page,
-      elements: page.elements.map((element) => ({
-        ...element,
-        rotation: normalizeRotation(element.rotation),
-        style: {
-          ...element.style,
-          typography: element.style.typography
-            ? {
-                ...element.style.typography,
-                fontStyle:
-                  element.style.typography.fontStyle ??
-                  (element.style.typography.italic ? "italic" : "normal"),
-              }
-            : undefined,
-        },
-      })),
+      elements: page.elements.map((rawElement) => {
+        const element = normalizeElementCorners(rawElement);
+        return {
+          ...element,
+          rotation: normalizeRotation(element.rotation),
+          style: {
+            ...element.style,
+            typography: element.style.typography
+              ? {
+                  ...element.style.typography,
+                  fontStyle:
+                    element.style.typography.fontStyle ??
+                    (element.style.typography.italic ? "italic" : "normal"),
+                }
+              : undefined,
+          },
+        };
+      }),
     })),
   };
 }
@@ -147,9 +158,7 @@ export default function App() {
     );
   });
   const latestTemplate = useRef(template);
-  const [pageId, setPageId] = useState(
-    () => template.pages[1]?.id ?? template.pages[0].id,
-  );
+  const [pageId, setPageId] = useState(() => template.pages[0].id);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mode, setMode] = useState<PreviewMode>("design");
   const [zoom, setZoom] = useState(0.72);
@@ -205,6 +214,10 @@ export default function App() {
     selectedIds.includes(element.id),
   );
   const selected = selectedElements[0];
+  const unionAvailability = useMemo(
+    () => evaluateShapeUnion(selectedElements),
+    [selectedElements],
+  );
   const reconciliationRecord = normalizedReport.provenance.find(
     (record) => record.fieldPath === reconciliationPath,
   );
@@ -283,12 +296,37 @@ export default function App() {
     setReportInstance(undefined);
     setReportData(sampleData);
     setNormalizedReport(q2SampleReport);
-    setPageId(next.pages[1]?.id ?? next.pages[0].id);
-    setSelectedIds([]);
+    const editorState = openedTemplateEditorState(next);
+    setPageId(editorState.pageId);
+    setSelectedIds(editorState.selectedIds);
     setPast([]);
     setFuture([]);
     setLibrarySaveState("saved");
   }, []);
+  const applySavedTemplateRecord = (record: StoredTemplateVersion) => {
+    const browserAssets = (record.template.assets ?? []).filter(
+      (asset) => asset.storage !== "backend",
+    );
+    const next = hydrate(
+      normalizeReportTemplateFonts(
+        {
+          ...record.template,
+          assets: [...browserAssets, ...managedServerAssets.current],
+        },
+        [...browserAssets, ...managedServerAssets.current],
+      ),
+    );
+    const editorState = savedTemplateEditorState(next, pageId, selectedIds);
+    setActiveTemplateRecord(record);
+    setTemplate(next);
+    latestTemplate.current = next;
+    setDocumentMode("master-template");
+    setPageId(editorState.pageId);
+    setSelectedIds(editorState.selectedIds);
+    setPast([]);
+    setFuture([]);
+    setLibrarySaveState("saved");
+  };
   useEffect(() => {
     latestTemplate.current = template;
     const timer = window.setTimeout(() => localPersistence.save(template), 250);
@@ -374,6 +412,27 @@ export default function App() {
         const source = current.elements.find((element) => element.id === id),
           dx = source && patch.x != null ? patch.x - source.x : 0,
           dy = source && patch.y != null ? patch.y - source.y : 0;
+        const positionOnly = Object.keys(patch).every(
+          (key) => key === "x" || key === "y",
+        );
+        if (
+          source &&
+          selectedIds.length > 1 &&
+          selectedIds.includes(id) &&
+          positionOnly &&
+          (patch.x != null || patch.y != null)
+        ) {
+          return {
+            ...current,
+            elements: translateSelectedElements(
+              current.elements,
+              selectedIds,
+              id,
+              patch.x ?? source.x,
+              patch.y ?? source.y,
+            ),
+          };
+        }
         if (source?.groupId && (patch.width != null || patch.height != null)) {
           return {
             ...current,
@@ -394,7 +453,13 @@ export default function App() {
           ...current,
           elements: current.elements.map((element) => {
             if (element.id === id)
-              return { ...element, ...patch } as ReportElement;
+              return normalizeElementCorners({
+                ...element,
+                ...patch,
+                style: patch.style
+                  ? { ...element.style, ...patch.style }
+                  : element.style,
+              } as ReportElement);
             if (
               source?.groupId &&
               element.groupId === source.groupId &&
@@ -405,7 +470,7 @@ export default function App() {
           }),
         };
       }, record),
-    [updatePage],
+    [selectedIds, updatePage],
   );
   const updateSelected = (patch: Partial<ReportElement>) => {
     if (
@@ -440,7 +505,7 @@ export default function App() {
       ...current,
       elements: current.elements.map((element) =>
         selectedIds.includes(element.id)
-          ? ({
+          ? normalizeElementCorners({
               ...element,
               ...patch,
               style: patch.style
@@ -548,13 +613,7 @@ export default function App() {
       setTableEditingId(undefined);
       setTableSelection(undefined);
     }
-    setSelectedIds((current) =>
-      additive
-        ? current.includes(id)
-          ? current.filter((item) => item !== id)
-          : [...current, id]
-        : [id],
-    );
+    setSelectedIds((current) => nextSelection(current, id, additive));
   };
   const addText = (variant: "heading" | "subheading" | "body" = "body") => {
     const id = uid("text"),
@@ -636,6 +695,13 @@ export default function App() {
           style: "solid",
         },
         borderRadius: round ? 999 : shape === "rounded-rectangle" ? 16 : 0,
+        cornerRadii: {
+          topLeft: round ? 70 : shape === "rounded-rectangle" ? 16 : 0,
+          topRight: round ? 70 : shape === "rounded-rectangle" ? 16 : 0,
+          bottomRight: round ? 70 : shape === "rounded-rectangle" ? 16 : 0,
+          bottomLeft: round ? 70 : shape === "rounded-rectangle" ? 16 : 0,
+          linked: true,
+        },
         opacity: 1,
       },
     };
@@ -678,7 +744,17 @@ export default function App() {
         assetId: asset.id,
         fit: "cover",
         crop: { x: 50, y: 50, zoom: 1 },
-        style: { opacity: 1, borderRadius: 8 },
+        style: {
+          opacity: 1,
+          borderRadius: 8,
+          cornerRadii: {
+            topLeft: 8,
+            topRight: 8,
+            bottomRight: 8,
+            bottomLeft: 8,
+            linked: true,
+          },
+        },
       };
     updatePage((current) => ({
       ...current,
@@ -781,6 +857,40 @@ export default function App() {
           : element,
       ),
     }));
+
+  const unionSelectedShapes = () => {
+    if (!unionAvailability.enabled) {
+      notify(unionAvailability.reason);
+      return;
+    }
+    const chosen = page.elements.filter(
+      (element): element is Extract<ReportElement, { type: "shape" }> =>
+        selectedIds.includes(element.id) && element.type === "shape",
+    );
+    try {
+      const unionShape = createUnionShape(chosen, uid("shape-union"));
+      updatePage((current) => {
+        const chosenIds = new Set(chosen.map((element) => element.id));
+        const topIndex = Math.max(
+          ...current.elements.map((element, index) =>
+            chosenIds.has(element.id) ? index : -1,
+          ),
+        );
+        const elements = current.elements.filter(
+          (element) => !chosenIds.has(element.id),
+        );
+        const insertion = Math.max(0, topIndex - chosen.length + 1);
+        elements.splice(insertion, 0, unionShape);
+        return { ...current, elements };
+      });
+      setSelectedIds([unionShape.id]);
+      notify("Shapes united");
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : "Shapes could not be united",
+      );
+    }
+  };
 
   const align = (
     value: "left" | "center" | "right" | "top" | "middle" | "bottom",
@@ -952,7 +1062,7 @@ export default function App() {
         activeTemplateRecord,
         normalized,
       );
-      openTemplateRecord(saved);
+      applySavedTemplateRecord(saved);
       await refreshTemplateLibrary();
       setLibrarySaveState("saved");
       notify(`Template v${saved.version} saved to library`);
@@ -974,7 +1084,7 @@ export default function App() {
           sourceTemplate.assets ?? [],
         ),
       );
-      openTemplateRecord(created);
+      applySavedTemplateRecord(created);
       await refreshTemplateLibrary();
       notify(`Draft v${created.version} created`);
     } catch (error) {
@@ -995,7 +1105,7 @@ export default function App() {
         ),
       );
       const published = await templateStore.publish(saved);
-      openTemplateRecord(published);
+      applySavedTemplateRecord(published);
       await refreshTemplateLibrary();
       notify(`Template v${published.version} published`);
     } catch (error) {
@@ -1196,7 +1306,7 @@ export default function App() {
     setNormalizedReport(q2SampleReport);
     setReportInstance(undefined);
     setDocumentMode("master-template");
-    setPageId(next.pages[1]?.id ?? next.pages[0].id);
+    setPageId(next.pages[0].id);
     setSelectedIds([]);
     setPast([]);
     setFuture([]);
@@ -2161,6 +2271,7 @@ export default function App() {
           onClick={(event) => {
             if ((event.target as HTMLElement).closest(".canvas-element"))
               return;
+            if (event.shiftKey) return;
             setSelectedIds([]);
             setTableEditingId(undefined);
             setTableSelection(undefined);
@@ -2301,6 +2412,7 @@ export default function App() {
                   data={reportData}
                   mode={mode}
                   selected={selectedIds.includes(element.id)}
+                  selectedIds={selectedIds}
                   cropping={croppingId === element.id}
                   tableEditing={tableEditingId === element.id}
                   tableSelection={
@@ -2380,6 +2492,9 @@ export default function App() {
           onChange={updateSelected}
           onAlign={align}
           onDistribute={distributeSelection}
+          canUnion={unionAvailability.enabled}
+          unionReason={unionAvailability.reason}
+          onUnion={unionSelectedShapes}
         />
       </div>
       <footer className="statusbar">

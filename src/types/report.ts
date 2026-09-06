@@ -8,7 +8,8 @@ export type ShapeKind =
   | "ellipse"
   | "line"
   | "triangle"
-  | "diamond";
+  | "diamond"
+  | "path";
 export interface ImageCrop {
   x: number;
   y: number;
@@ -44,6 +45,29 @@ export interface DropShadow {
   offsetY: number;
   blur: number;
   opacity: number;
+}
+
+export interface BevelStyle {
+  enabled: boolean;
+  size: number;
+  direction: "raised" | "inset";
+  highlightColor: string;
+  highlightOpacity: number;
+  shadowColor: string;
+  shadowOpacity: number;
+}
+
+export interface CornerRadii {
+  topLeft: number;
+  topRight: number;
+  bottomRight: number;
+  bottomLeft: number;
+  linked: boolean;
+}
+
+export interface ShapePathGeometry {
+  /** Closed polygon rings in coordinates normalized to the element bounds. */
+  rings: Array<Array<{ x: number; y: number }>>;
 }
 
 export interface Typography {
@@ -93,11 +117,13 @@ export interface ElementStyle {
   borderColor?: string;
   borderWidth?: number;
   borderRadius?: number;
+  cornerRadii?: CornerRadii;
   padding?: number;
   opacity?: number;
   fill?: Fill;
   stroke?: Stroke;
   shadow?: DropShadow;
+  bevel?: BevelStyle;
   typography?: Typography;
   letterSpacing?: number;
   lineHeight?: number;
@@ -138,6 +164,7 @@ export interface TextElement extends BaseElement {
 export interface ShapeElement extends BaseElement {
   type: "shape";
   shape?: ShapeKind;
+  pathGeometry?: ShapePathGeometry;
 }
 
 export interface ImageElement extends BaseElement {
@@ -181,6 +208,7 @@ export interface TableCellStyle {
   padding?: number;
   borderColor?: string;
   borderWidth?: number;
+  shadow?: DropShadow;
 }
 
 export interface TableSelection {
