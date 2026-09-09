@@ -39,7 +39,10 @@ test("Generate All hands off to ChatGPT and imports the batch without an OpenAI 
 
   // The bridge decides configuration, not OPENAI_API_KEY.
   const health = await (await request.get("/api/integrations/narrative-mcp/health")).json();
-  expect(health).toMatchObject({ configured: true, reachable: true });
+  expect(health, JSON.stringify(health)).toMatchObject({
+    configured: true,
+    reachable: true,
+  });
   expect(health.missingTools).toEqual([]);
   expect(health.requiredToolsFound).toHaveLength(4);
   expect(JSON.stringify(health)).not.toMatch(/api[_-]?key|secret|token/i);

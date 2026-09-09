@@ -3,6 +3,8 @@ import type { ReportValidationIssue } from "../validation/reportValidation";
 import type { IndustrialMarketReport } from "./industrialMarketReport";
 import type { NarrativeRecord } from "../narratives/schema";
 
+export const REPORT_INSTANCE_SCHEMA_VERSION = 1 as const;
+
 export type ReportProviderId = "sample" | "json" | "excel" | "ascendix";
 
 export interface ReportGenerationRequest {
@@ -42,11 +44,7 @@ export interface ReportReadiness {
 }
 
 export type ExternalNarrativeJobStatus =
-  | "creating"
-  | "waiting_for_chatgpt"
-  | "complete"
-  | "failed"
-  | "expired";
+  "creating" | "waiting_for_chatgpt" | "complete" | "failed" | "expired";
 
 export interface ExternalNarrativeJob {
   provider: "chatgpt_mcp";
@@ -74,6 +72,10 @@ export interface ExternalNarrativeJob {
 }
 
 export interface ReportInstance {
+  /** Persisted storage schema; independent of the report template version. */
+  schemaVersion: typeof REPORT_INSTANCE_SCHEMA_VERSION;
+  /** Monotonic server-assigned concurrency revision. */
+  revision: number;
   id: string;
   templateId: string;
   templateVersion: string;

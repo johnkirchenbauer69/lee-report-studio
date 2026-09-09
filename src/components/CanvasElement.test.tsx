@@ -109,6 +109,52 @@ describe("CanvasElement transaction Lee Deal chip", () => {
   });
 });
 
+describe("CanvasElement report manual overrides", () => {
+  it("renders the durable override instead of the generated binding value", () => {
+    const element: ReportElement = {
+      id: "bound-text",
+      type: "text",
+      name: "Bound text",
+      text: "Template fallback",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 40,
+      binding: { path: "market.name" },
+      style: {},
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={element}
+        elements={[element]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ market: { name: "Generated market" } }}
+        manualOverrides={[
+          {
+            elementId: element.id,
+            bindingPath: "market.name",
+            generatedValue: "Generated market",
+            overrideValue: "Reviewed market",
+            createdAt: "2026-09-08T10:00:00.000Z",
+          },
+        ]}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    expect(markup).toContain("Reviewed market");
+    expect(markup).not.toContain("Generated market");
+  });
+});
+
 describe("CanvasElement effects", () => {
   const shadow = {
     enabled: true,

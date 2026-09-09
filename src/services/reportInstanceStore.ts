@@ -1,8 +1,10 @@
 import type { PublicNarrativeContext } from "../report-engine/narratives/schema";
 import type {
+  ManualOverride,
   ExternalNarrativeJob,
   ReportInstance,
 } from "../report-engine/schema/generation";
+import type { ReportPage } from "../types/report";
 
 export interface NarrativeMcpHealth {
   configured: boolean;
@@ -43,25 +45,66 @@ export interface NarrativeJob {
   marketIds: string[];
 }
 
+export class ReportSaveConflictError extends Error {
+  constructor(
+    message: string,
+    readonly baseRevision: number,
+    readonly currentRevision: number,
+  ) {
+    super(message);
+    this.name = "ReportSaveConflictError";
+  }
+}
+
 const json = async <T>(input: Response | Promise<Response>): Promise<T> => {
   const response = await input;
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
+  const body = (await response.json().catch(() => ({}))) as T & {
+    error?: string;
+    code?: string;
+    baseRevision?: number;
+    currentRevision?: number;
+  };
+  if (response.status === 409 && body.code === "REPORT_INSTANCE_CONFLICT")
+    throw new ReportSaveConflictError(
+      body.error ?? "The report changed on the server.",
+      body.baseRevision ?? -1,
+      body.currentRevision ?? -1,
+    );
   if (!response.ok)
     throw new Error(body.error ?? `Report API returned ${response.status}.`);
   return body;
 };
 
-const send = <T>(url: string, method: string, body?: unknown) =>
-  json<T>(
-    fetch(url, {
-      method,
-      headers: body === undefined ? undefined : { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }),
-  );
+const send = async <T>(
+  url: string,
+  method: string,
+  body?: unknown,
+  timeoutMs?: number,
+) => {
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timer = timeoutMs
+    ? window.setTimeout(() => controller?.abort(), timeoutMs)
+    : undefined;
+  try {
+    return await json<T>(
+      fetch(url, {
+        method,
+        headers:
+          body === undefined
+            ? undefined
+            : { "content-type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller?.signal,
+      }),
+    );
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+};
 
 export const reportInstanceStore = {
-  lastId: () => localStorage.getItem("lee-report-studio.report-instance.v1") ?? undefined,
+  lastId: () =>
+    localStorage.getItem("lee-report-studio.report-instance.v1") ?? undefined,
   remember: (id: string) =>
     localStorage.setItem("lee-report-studio.report-instance.v1", id),
   forget: () => localStorage.removeItem("lee-report-studio.report-instance.v1"),
@@ -69,12 +112,28 @@ export const reportInstanceStore = {
   create: (instance: ReportInstance) =>
     send<ReportInstance>("/api/report-instances", "POST", instance),
   get: (id: string) =>
-    json<ReportInstance>(fetch(`/api/report-instances/${encodeURIComponent(id)}`)),
+    json<ReportInstance>(
+      fetch(`/api/report-instances/${encodeURIComponent(id)}`),
+    ),
   save: (instance: ReportInstance) =>
     send<ReportInstance>(
       `/api/report-instances/${encodeURIComponent(instance.id)}`,
       "PUT",
       instance,
+    ),
+  saveDocument: (
+    id: string,
+    input: {
+      baseRevision: number;
+      pages: ReportPage[];
+      manualOverrides: ManualOverride[];
+    },
+  ) =>
+    send<ReportInstance>(
+      `/api/report-instances/${encodeURIComponent(id)}/document`,
+      "PATCH",
+      input,
+      15_000,
     ),
   refresh: (id: string) =>
     send<ReportInstance>(

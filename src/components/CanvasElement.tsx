@@ -30,6 +30,7 @@ import {
   type CornerKey,
 } from "../engine/corners";
 import { shapePathToSvg } from "../engine/shapeUnion";
+import type { ManualOverride } from "../report-engine/schema/generation";
 
 interface Props {
   element: ReportElement;
@@ -37,6 +38,7 @@ interface Props {
   pageSize: { width: number; height: number };
   settings: EditorSettings;
   data: unknown;
+  manualOverrides?: ManualOverride[];
   mode: PreviewMode;
   selected: boolean;
   selectedIds?: string[];
@@ -483,19 +485,28 @@ export function CanvasElement(props: Props) {
             element.bindingContext,
           )
         : undefined;
+    const manualOverride = element.binding
+      ? props.manualOverrides?.find(
+          (item) =>
+            item.elementId === element.id &&
+            item.bindingPath === element.binding?.path,
+        )
+      : undefined;
     const raw =
       cardState === "none"
         ? ""
-        : mode === "data" && element.binding
-          ? formatValue(
-              getByContextPath(
-                data,
-                element.binding.path,
-                element.bindingContext,
-              ),
-              element.binding,
-            )
-          : element.text;
+        : mode === "data" && manualOverride
+          ? String(manualOverride.overrideValue ?? "")
+          : mode === "data" && element.binding
+            ? formatValue(
+                getByContextPath(
+                  data,
+                  element.binding.path,
+                  element.bindingContext,
+                ),
+                element.binding,
+              )
+            : element.text;
     content = (
       <div
         className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}

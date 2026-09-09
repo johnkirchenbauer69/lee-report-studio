@@ -35,7 +35,10 @@ const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
 const templateRepository = new FileSystemTemplateRepository(dataRoot);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
-const reportInstanceRepository = new FileSystemReportInstanceRepository(dataRoot);
+const reportInstanceRepository = new FileSystemReportInstanceRepository(
+  dataRoot,
+  (entry) => console.info(JSON.stringify(entry)),
+);
 const narrativeModelClient =
   process.env.NARRATIVE_MODEL_PROVIDER === "mock"
     ? new MockNarrativeModelClient()
