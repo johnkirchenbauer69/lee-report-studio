@@ -124,9 +124,11 @@ export class FileSystemAssetStore {
 
   async list(): Promise<StoredAsset[]> {
     try {
-      const stored = JSON.parse(
-        await readFile(this.manifestPath, "utf8"),
-      ) as Array<StoredAsset & { fileName?: string }>;
+      const parsed = JSON.parse(await readFile(this.manifestPath, "utf8")) as
+        Array<StoredAsset & { fileName?: string }> | unknown;
+      if (!Array.isArray(parsed))
+        throw new Error("Asset manifest must contain an array.");
+      const stored = parsed;
       return stored
         .filter((asset) => asset.storageKey || asset.fileName)
         .map(({ fileName, ...asset }) => {
@@ -141,8 +143,9 @@ export class FileSystemAssetStore {
               }
             : normalized;
         });
-    } catch {
-      return [];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw new Error("Asset metadata could not be read.", { cause: error });
     }
   }
 

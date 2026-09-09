@@ -235,6 +235,12 @@ export async function generateReportInstance(
     templateId: template.id,
     templateVersion: template.version,
     templateChecksum: loadedTemplateChecksum,
+    sourceTemplateSnapshot: {
+      name: template.name,
+      settings: template.settings
+        ? structuredClone(template.settings)
+        : undefined,
+    },
     generationRequest: structuredClone(request),
     provider: providerResult.provider,
     sourceMetadata: structuredClone(providerResult.sourceMetadata),

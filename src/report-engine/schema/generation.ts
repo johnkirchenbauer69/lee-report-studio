@@ -1,4 +1,8 @@
-import type { FontReference, ReportPage } from "../../types/report";
+import type {
+  EditorSettings,
+  FontReference,
+  ReportPage,
+} from "../../types/report";
 import type { ReportValidationIssue } from "../validation/reportValidation";
 import type { IndustrialMarketReport } from "./industrialMarketReport";
 import type { NarrativeRecord } from "../narratives/schema";
@@ -32,6 +36,15 @@ export interface ProviderSourceMetadata {
   importedAt: string;
   sourceName?: string;
   sourceVersion?: string;
+}
+
+/**
+ * Immutable template metadata needed to reopen generated pages without
+ * loading the mutable/deletable source template record.
+ */
+export interface ReportTemplateSnapshot {
+  name: string;
+  settings?: EditorSettings;
 }
 
 export interface ReportReadiness {
@@ -80,6 +93,8 @@ export interface ReportInstance {
   templateId: string;
   templateVersion: string;
   templateChecksum: string;
+  /** Provenance-adjacent editor metadata; generated pages remain authoritative. */
+  sourceTemplateSnapshot?: ReportTemplateSnapshot;
   generationRequest: ReportGenerationRequest;
   provider: ReportProviderId;
   sourceMetadata: ProviderSourceMetadata;

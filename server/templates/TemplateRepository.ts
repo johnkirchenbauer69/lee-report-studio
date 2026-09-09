@@ -7,6 +7,7 @@ import type {
 export interface TemplateRepository {
   initialize(seed?: ReportTemplate): Promise<void>;
   list(): Promise<TemplateVersionSummary[]>;
+  listAll(): Promise<StoredTemplateVersion[]>;
   listVersions(id: string): Promise<TemplateVersionSummary[]>;
   get(id: string, version: string): Promise<StoredTemplateVersion | undefined>;
   getPublished(id: string): Promise<StoredTemplateVersion | undefined>;

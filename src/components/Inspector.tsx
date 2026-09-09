@@ -62,6 +62,7 @@ interface Props {
   tableEditing?: boolean;
   tableSelection?: TableSelection;
   generated?: boolean;
+  readOnly?: boolean;
   onToggleTableEdit?: () => void;
   onTableSelectionChange?: (selection: TableSelection | undefined) => void;
 }
@@ -150,12 +151,13 @@ export function Inspector({
   tableEditing,
   tableSelection,
   generated,
+  readOnly = false,
   onToggleTableEdit,
   onTableSelectionChange,
 }: Props) {
   if (!element)
     return (
-      <aside className="inspector">
+      <aside className="inspector" inert={readOnly ? true : undefined}>
         <div className="inspector-header">
           <strong>Inspector</strong>
         </div>
@@ -168,7 +170,7 @@ export function Inspector({
     );
   if (selectionCount > 1)
     return (
-      <aside className="inspector">
+      <aside className="inspector" inert={readOnly ? true : undefined}>
         <div className="inspector-header">
           <div>
             <strong>{selectionCount} elements</strong>
@@ -436,7 +438,7 @@ export function Inspector({
         })
       : undefined;
   return (
-    <aside className="inspector">
+    <aside className="inspector" inert={readOnly ? true : undefined}>
       <div className="inspector-header">
         <div>
           <strong>
@@ -852,7 +854,9 @@ export function Inspector({
                 min="6"
                 value={selectedCellStyle?.fontSize ?? table.style.fontSize ?? 9}
                 onChange={(event) =>
-                  updateTableCellStyle({ fontSize: Number(event.target.value) })
+                  updateTableCellStyle({
+                    fontSize: Number(event.target.value),
+                  })
                 }
               />
             </label>
@@ -864,7 +868,9 @@ export function Inspector({
                 min="0"
                 value={selectedCellStyle?.padding ?? 8}
                 onChange={(event) =>
-                  updateTableCellStyle({ padding: Number(event.target.value) })
+                  updateTableCellStyle({
+                    padding: Number(event.target.value),
+                  })
                 }
               />
             </label>
@@ -1779,7 +1785,9 @@ export function Inspector({
               <input
                 value={element.title ?? ""}
                 onChange={(e) =>
-                  onChange({ title: e.target.value } as Partial<ReportElement>)
+                  onChange({
+                    title: e.target.value,
+                  } as Partial<ReportElement>)
                 }
               />
             </label>
@@ -2023,7 +2031,9 @@ export function Inspector({
               type="checkbox"
               checked={!!element.locked}
               onChange={(e) =>
-                onChange({ locked: e.target.checked } as Partial<ReportElement>)
+                onChange({
+                  locked: e.target.checked,
+                } as Partial<ReportElement>)
               }
             />{" "}
             Lock
@@ -2033,7 +2043,9 @@ export function Inspector({
               type="checkbox"
               checked={!!element.hidden}
               onChange={(e) =>
-                onChange({ hidden: e.target.checked } as Partial<ReportElement>)
+                onChange({
+                  hidden: e.target.checked,
+                } as Partial<ReportElement>)
               }
             />{" "}
             Hide
@@ -2088,7 +2100,10 @@ export function Inspector({
                 value={element.binding.fallback ?? ""}
                 onChange={(e) =>
                   onChange({
-                    binding: { ...element.binding!, fallback: e.target.value },
+                    binding: {
+                      ...element.binding!,
+                      fallback: e.target.value,
+                    },
                   } as Partial<ReportElement>)
                 }
               />

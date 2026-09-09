@@ -20,6 +20,32 @@ const nonNegative = finite.nonnegative();
 const nonEmpty = z.string().min(1);
 const timestamp = nonEmpty;
 
+const editorSettingsSchema = z
+  .object({
+    unit: z.enum(["px", "in"]),
+    gridEnabled: z.boolean(),
+    gridSpacingPx: finite.positive(),
+    gridOpacity: finite.min(0).max(1),
+    snapToGrid: z.boolean(),
+    snapToElements: z.boolean(),
+    snapToMargins: z.boolean(),
+    marginPx: nonNegative,
+    marginsEnabled: z.boolean(),
+    rulersEnabled: z.boolean().optional(),
+    customGuides: z
+      .array(
+        z
+          .object({
+            id: nonEmpty,
+            axis: z.enum(["x", "y"]),
+            position: finite,
+          })
+          .strict(),
+      )
+      .optional(),
+  })
+  .strict();
+
 const bindingSchema = z
   .object({
     path: nonEmpty,
@@ -515,6 +541,13 @@ export const reportInstanceSchema = z
     templateId: nonEmpty,
     templateVersion: nonEmpty,
     templateChecksum: nonEmpty,
+    sourceTemplateSnapshot: z
+      .object({
+        name: nonEmpty,
+        settings: editorSettingsSchema.optional(),
+      })
+      .strict()
+      .optional(),
     generationRequest: generationRequestSchema,
     provider: z.enum(["sample", "json", "excel", "ascendix"]),
     sourceMetadata: z

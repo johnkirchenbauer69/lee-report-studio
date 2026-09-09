@@ -143,6 +143,26 @@ describe("FileSystemAssetStore.importBuffer", () => {
     ).rejects.toThrow("Unsupported image type.");
   });
 
+  it("fails closed when the asset manifest is malformed", async () => {
+    await writeFile(path.join(dataRoot, "assets.json"), "{not-json", "utf8");
+
+    await expect(store.list()).rejects.toThrow(
+      "Asset metadata could not be read.",
+    );
+  });
+
+  it("fails closed when the asset manifest is not an array", async () => {
+    await writeFile(
+      path.join(dataRoot, "assets.json"),
+      JSON.stringify({ assets: [] }),
+      "utf8",
+    );
+
+    await expect(store.list()).rejects.toThrow(
+      "Asset metadata could not be read.",
+    );
+  });
+
   it("physically deletes an unused unverified font and persists removal across restart", async () => {
     const unverified = {
       ...stored("unverified"),

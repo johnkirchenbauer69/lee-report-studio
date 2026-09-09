@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import type {
   ManualOverride,
@@ -10,6 +17,7 @@ import {
   serializeReportInstance,
 } from "../../src/report-engine/schema/reportInstancePersistence.ts";
 import type { ReportPage } from "../../src/types/report.ts";
+import { ArtifactIntegrityCoordinator } from "../integrity/ArtifactIntegrityCoordinator.ts";
 
 export interface ReportDocumentPatch {
   baseRevision: number;
@@ -43,6 +51,7 @@ export interface ReportInstanceRepository {
     options?: RepositoryWriteOptions,
   ): Promise<ReportInstance>;
   get(id: string): Promise<ReportInstance | null>;
+  list(): Promise<ReportInstance[]>;
   update(
     id: string,
     updater: (
@@ -76,6 +85,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
   constructor(
     dataRoot: string,
     private readonly logger: RepositoryLog = () => undefined,
+    private readonly integrity = new ArtifactIntegrityCoordinator(),
   ) {
     this.root = path.join(dataRoot, "report-instances");
   }
@@ -99,32 +109,36 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
     const current = new Promise<void>((resolve) => (release = resolve));
     this.queues.set(key, current);
     await previous;
-    const started = Date.now();
-    this.logger({
-      event: "report_save_start",
-      operation,
-      reportId: key,
-    });
     try {
-      return await task();
-    } catch (error) {
-      this.logger({
-        event:
-          error instanceof ReportInstanceConflictError
-            ? "report_save_conflict"
-            : "report_save_failure",
-        operation,
-        reportId: key,
-        ...(error instanceof ReportInstanceConflictError
-          ? {
-              baseRevision: error.baseRevision,
-              currentRevision: error.currentRevision,
-            }
-          : {}),
-        durationMs: Date.now() - started,
-        errorName: error instanceof Error ? error.name : "UnknownError",
+      return await this.integrity.runShared(async () => {
+        const started = Date.now();
+        this.logger({
+          event: "report_save_start",
+          operation,
+          reportId: key,
+        });
+        try {
+          return await task();
+        } catch (error) {
+          this.logger({
+            event:
+              error instanceof ReportInstanceConflictError
+                ? "report_save_conflict"
+                : "report_save_failure",
+            operation,
+            reportId: key,
+            ...(error instanceof ReportInstanceConflictError
+              ? {
+                  baseRevision: error.baseRevision,
+                  currentRevision: error.currentRevision,
+                }
+              : {}),
+            durationMs: Date.now() - started,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+          });
+          throw error;
+        }
       });
-      throw error;
     } finally {
       release();
       if (this.queues.get(key) === current) this.queues.delete(key);
@@ -252,6 +266,24 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
 
   async get(id: string) {
     return this.readCurrent(id);
+  }
+
+  async list() {
+    await this.initialize();
+    const entries = await readdir(this.root, { withFileTypes: true });
+    const ids = entries
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          entry.name.startsWith("report-") &&
+          entry.name.endsWith(".json"),
+      )
+      .map((entry) => entry.name.slice(0, -".json".length))
+      .sort();
+    const instances = await Promise.all(ids.map((id) => this.readCurrent(id)));
+    return instances.filter(
+      (instance): instance is ReportInstance => instance !== null,
+    );
   }
 
   async update(

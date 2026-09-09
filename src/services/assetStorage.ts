@@ -91,7 +91,17 @@ export const assetStorage: AssetStorageService = {
   },
   async remove(id) {
     const response = await fetch(`/api/assets/${id}`, { method: "DELETE" });
-    if (!response.ok && response.status !== 404)
-      throw new Error("Asset could not be removed.");
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+      if (response.status === 404) return;
+      throw new Error(
+        body.code === "ASSET_IN_USE"
+          ? (body.error ?? "Asset is in use and cannot be removed.")
+          : (body.error ?? "Asset could not be removed."),
+      );
+    }
   },
 };

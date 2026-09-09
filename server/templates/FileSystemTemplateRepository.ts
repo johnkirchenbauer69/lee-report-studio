@@ -11,6 +11,7 @@ import type {
   TemplateVersionSummary,
 } from "../../src/types/templateLibrary.ts";
 import type { TemplateRepository } from "./TemplateRepository.ts";
+import { ArtifactIntegrityCoordinator } from "../integrity/ArtifactIntegrityCoordinator.ts";
 
 const clone = <T>(value: T): T => structuredClone(value);
 const checksum = (value: unknown) =>
@@ -47,13 +48,15 @@ export class FileSystemTemplateRepository implements TemplateRepository {
   constructor(
     private readonly dataRoot: string,
     private readonly now = () => new Date(),
+    private readonly integrity = new ArtifactIntegrityCoordinator(),
   ) {
     this.templatesRoot = path.join(dataRoot, "templates");
     this.manifestPath = path.join(this.templatesRoot, "templates.json");
   }
 
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const result = this.writeQueue.then(task, task);
+    const guarded = () => this.integrity.runShared(task);
+    const result = this.writeQueue.then(guarded, guarded);
     this.writeQueue = result.then(
       () => undefined,
       () => undefined,
@@ -121,6 +124,10 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     return (await this.read())
       .map(summary)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async listAll() {
+    return clone(await this.read());
   }
 
   async listVersions(id: string) {
