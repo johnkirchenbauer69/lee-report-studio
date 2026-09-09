@@ -23,8 +23,9 @@ import {
 import { MarketingChart } from "../src/report-engine/charts/MarketingChart.tsx";
 import { normalizeReportTemplateFonts } from "../src/services/templateNormalization.ts";
 import type { Asset, ReportTemplate } from "../src/types/report.ts";
+import { resolveApiBaseUrl } from "../src/shared/apiBaseUrl.ts";
 
-const api = process.env.LEE_API_URL ?? "http://127.0.0.1:8787";
+const api = resolveApiBaseUrl({ environment: process.env });
 const response = await fetch(`${api}/api/report-data/industrial-market`, {
   method: "POST",
   headers: { "content-type": "application/json" },

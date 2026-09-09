@@ -1,4 +1,5 @@
 import type { ProvenanceRecord } from "../report-engine/schema/industrialMarketReport";
+import { sanitizeSalesforceDisplayValue } from "../shared/salesforceIds";
 
 const sf = (value: number | null) =>
   value == null
@@ -101,7 +102,12 @@ export function ReconciliationDrilldown({
                           {item.address && <small>{item.address}</small>}
                         </td>
                         <td>
-                          <code>{item.propertyId ?? "Unavailable"}</code>
+                          <code>
+                            {sanitizeSalesforceDisplayValue(
+                              item.propertyId,
+                              "Property Data record",
+                            ) || "Property Data record"}
+                          </code>
                         </td>
                         <td>{sf(item.buildingSf)}</td>
                         <td>{item.canonicalSubmarket}</td>

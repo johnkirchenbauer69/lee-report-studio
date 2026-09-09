@@ -233,6 +233,21 @@ export default function App() {
   const reportChangeSequence = useRef(0);
   const reportRetryCount = useRef(0);
   const runReportSaveRef = useRef<() => void>(() => undefined);
+  const transientScope = `${documentMode}:${reportInstance?.id ?? `${template.id}@${template.version}`}:${pageId}`;
+  const previousTransientScope = useRef(transientScope);
+
+  useEffect(() => {
+    if (previousTransientScope.current === transientScope) return;
+    previousTransientScope.current = transientScope;
+    setCroppingId(undefined);
+    setReplacingImageId(undefined);
+    setTableEditingId(undefined);
+    setTableSelection(undefined);
+    setDraggedPageId(undefined);
+    setContextMenu(undefined);
+    setGuides([]);
+    interactionStart.current = undefined;
+  }, [transientScope]);
 
   const setReportSaveState = useCallback(
     (status: ReportSaveStatus, error?: string) => {
@@ -1733,7 +1748,10 @@ export default function App() {
       // Bound-text edits and their audit override share the editor history.
       // Route undo/redo through that history even while the textarea is focused.
       if (isFormControl && !(mod && event.key.toLowerCase() === "z")) return;
-      if (event.key === "Escape" && tableEditingId) {
+      if (event.key === "Escape" && croppingId) {
+        event.preventDefault();
+        setCroppingId(undefined);
+      } else if (event.key === "Escape" && tableEditingId) {
         event.preventDefault();
         setTableEditingId(undefined);
         setTableSelection(undefined);
@@ -1801,6 +1819,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [
     copySelected,
+    croppingId,
     deleteSelected,
     duplicateSelected,
     paste,

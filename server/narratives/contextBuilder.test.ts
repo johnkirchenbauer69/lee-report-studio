@@ -78,4 +78,21 @@ describe("buildNarrativeContext", () => {
     expect(clientContext).not.toContain("001A0000009z3ZI");
     expect(clientContext).not.toContain("001A0000009z3ZIAAZ");
   });
+
+  it("preserves missing metrics as null/Unavailable and genuine zeros as zero", async () => {
+    const instance = await fixture();
+    const metrics = instance.dataSnapshot.overallMarket as unknown as Record<string, unknown>;
+    metrics.askingNetRentPsf = undefined;
+    metrics.salesVolume = 0;
+    const context = buildNarrativeContext({ reportInstance: instance, marketId: "overall-market" });
+    expect(context.facts.find((item) => item.contextKey === "metric.asking_rent.current")).toMatchObject({
+      value: null,
+      displayValue: "Unavailable",
+    });
+    expect(context.facts.find((item) => item.contextKey === "metric.sales_volume.current")).toMatchObject({
+      value: 0,
+      displayValue: "$0",
+    });
+  });
+
 });

@@ -117,15 +117,19 @@ const metricFacts = (
         internalSourceIds: provenanceIds(report, path),
       }),
     );
-  metric("inventory", "Inventory", metrics.inventorySf, sf(metrics.inventorySf).replace(/^\+/, ""), `${prefix}.inventorySf`);
-  metric("vacancy", "Vacancy rate", metrics.vacancyRate, percentage(metrics.vacancyRate), `${prefix}.vacancyRate`);
-  metric("availability", "Availability rate", metrics.availabilityRate, percentage(metrics.availabilityRate), `${prefix}.availabilityRate`);
-  metric("net_absorption", "Quarterly net absorption", metrics.quarterlyNetAbsorptionSf, sf(metrics.quarterlyNetAbsorptionSf), `${prefix}.quarterlyNetAbsorptionSf`);
-  metric("asking_rent", "Asking net rent", metrics.askingNetRentPsf, `$${metrics.askingNetRentPsf.toFixed(2)}/SF`, `${prefix}.askingNetRentPsf`);
-  metric("under_construction", "Under construction", metrics.underConstructionSf, sf(metrics.underConstructionSf).replace(/^\+/, ""), `${prefix}.underConstructionSf`);
-  metric("deliveries", "Quarterly deliveries", metrics.deliveredSf, sf(metrics.deliveredSf).replace(/^\+/, ""), `${prefix}.deliveredSf`);
-  metric("speculative_share", "Speculative share", metrics.speculativeShare, percentage(metrics.speculativeShare), `${prefix}.speculativeShare`);
-  metric("sales_volume", "Sales volume", metrics.salesVolume, dollars(metrics.salesVolume), `${prefix}.salesVolume`);
+  const optionalMetric = (key: string, label: string, value: unknown, formatter: (available: number) => string, path: string) => {
+    const available = typeof value === "number" && Number.isFinite(value) ? value : null;
+    metric(key, label, available, available === null ? "Unavailable" : formatter(available), path);
+  };
+  optionalMetric("inventory", "Inventory", metrics.inventorySf, (value) => sf(value).replace(/^\+/, ""), `${prefix}.inventorySf`);
+  optionalMetric("vacancy", "Vacancy rate", metrics.vacancyRate, percentage, `${prefix}.vacancyRate`);
+  optionalMetric("availability", "Availability rate", metrics.availabilityRate, percentage, `${prefix}.availabilityRate`);
+  optionalMetric("net_absorption", "Quarterly net absorption", metrics.quarterlyNetAbsorptionSf, sf, `${prefix}.quarterlyNetAbsorptionSf`);
+  optionalMetric("asking_rent", "Asking net rent", metrics.askingNetRentPsf, (value) => `${value.toFixed(2)}/SF`, `${prefix}.askingNetRentPsf`);
+  optionalMetric("under_construction", "Under construction", metrics.underConstructionSf, (value) => sf(value).replace(/^\+/, ""), `${prefix}.underConstructionSf`);
+  optionalMetric("deliveries", "Quarterly deliveries", metrics.deliveredSf, (value) => sf(value).replace(/^\+/, ""), `${prefix}.deliveredSf`);
+  optionalMetric("speculative_share", "Speculative share", metrics.speculativeShare, percentage, `${prefix}.speculativeShare`);
+  optionalMetric("sales_volume", "Sales volume", metrics.salesVolume, dollars, `${prefix}.salesVolume`);
 
   if (current) {
     metric("net_absorption_t12", "Trailing 12-month net absorption", current.trailing12MonthNetAbsorptionSf, current.trailing12MonthNetAbsorptionSf == null ? "Unavailable" : sf(current.trailing12MonthNetAbsorptionSf), `historicalPeriods.${current.period}.trailing12MonthNetAbsorptionSf`);

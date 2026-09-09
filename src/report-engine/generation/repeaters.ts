@@ -1,4 +1,4 @@
-import { getByPath } from "../../engine/bindings";
+import { getByContextPath, getByPath } from "../../engine/bindings";
 import type {
   ReportElement,
   ReportPage,
@@ -6,6 +6,24 @@ import type {
   RepeatRule,
 } from "../../types/report";
 import { chicagoSubmarketId, resolveChicagoSubmarket } from "../submarkets";
+
+const resolveBoundImage = (
+  element: ReportElement,
+  data: unknown,
+  context: { name: string; path: string },
+): ReportElement => {
+  if (element.type !== "image" || !element.binding) return element;
+  const value = getByContextPath(data, element.binding.path, context);
+  const src = typeof value === "string" ? value.trim() : "";
+  return {
+    ...element,
+    src,
+    // A repeated slot with no source is an explicit data-availability state,
+    // not a broken image URL. Non-empty sources remain publication-required
+    // and are verified by server preflight.
+    ...(src ? {} : { publicationRequired: false }),
+  };
+};
 
 function orderedItems(
   data: unknown,
@@ -43,9 +61,13 @@ export function expandRepeatingElements(
     if (!element.repeat) return element;
     const rule = element.repeat;
     const spacing = rule.spacing ?? 12;
-    return orderedItems(data, rule).map(
-      ({ index }, outputIndex) =>
-        ({
+    return orderedItems(data, rule).map(({ index }, outputIndex) => {
+      const context = {
+        name: rule.contextName ?? "item",
+        path: `${rule.sourcePath}[${index}]`,
+      };
+      return resolveBoundImage(
+        {
           ...structuredClone(element),
           id: `${element.id}-repeat-${index}`,
           name: `${element.name} ${outputIndex + 1}`,
@@ -60,12 +82,12 @@ export function expandRepeatingElements(
               ? (element.height + spacing) * outputIndex
               : 0),
           repeat: undefined,
-          bindingContext: {
-            name: rule.contextName ?? "item",
-            path: `${rule.sourcePath}[${index}]`,
-          },
-        }) as ReportElement,
-    );
+          bindingContext: context,
+        } as ReportElement,
+        data,
+        context,
+      );
+    });
   });
 }
 
@@ -150,30 +172,37 @@ export function expandTemplatePages(
             repeat: undefined,
             bindingContext: context,
             elements: expandRepeatingElements(groupPage.elements, data).map(
-              (element) => ({
-                ...element,
-                ...(element.type === "image" &&
-                element.binding?.path === "market.mapAssetUrl"
-                  ? { src: String(getByPath(item, "mapAssetUrl") ?? "") }
-                  : {}),
-                ...(element.type === "table" &&
-                element.id.includes("indicator-table") &&
-                Array.isArray(periods)
-                  ? {
-                      columns: element.columns.map((column, columnIndex) =>
-                        columnIndex === 0
-                          ? column
-                          : {
-                              ...column,
-                              label: formatPeriod(
-                                getByPath(periods[columnIndex - 1], "period"),
-                              ),
-                            },
-                      ),
-                    }
-                  : {}),
-                bindingContext: element.bindingContext ?? context,
-              }),
+              (element) => {
+                const bound = resolveBoundImage(
+                  element,
+                  data,
+                  element.bindingContext ?? context,
+                );
+                return {
+                  ...bound,
+                  ...(element.type === "image" &&
+                  element.binding?.path === "market.mapAssetUrl"
+                    ? { src: String(getByPath(item, "mapAssetUrl") ?? "") }
+                    : {}),
+                  ...(element.type === "table" &&
+                  element.id.includes("indicator-table") &&
+                  Array.isArray(periods)
+                    ? {
+                        columns: element.columns.map((column, columnIndex) =>
+                          columnIndex === 0
+                            ? column
+                            : {
+                                ...column,
+                                label: formatPeriod(
+                                  getByPath(periods[columnIndex - 1], "period"),
+                                ),
+                              },
+                        ),
+                      }
+                    : {}),
+                  bindingContext: element.bindingContext ?? context,
+                };
+              },
             ),
           });
         });

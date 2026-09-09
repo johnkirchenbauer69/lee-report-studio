@@ -21,6 +21,7 @@ import {
 
 type Row = Record<string, unknown>;
 type Margin = { left: number; right: number; top: number; bottom: number };
+type OptionalNumber = number | undefined;
 
 export const marketingPlotCenterX = (margin: Pick<Margin, "left" | "right">) =>
   margin.left + (MARKETING_CHART_BASE.width - margin.left - margin.right) / 2;
@@ -39,6 +40,22 @@ const chartRows = (element: ChartElement, source: unknown): Row[] => {
     : chronologicalQuarterWindow(rows, (row) =>
         String(getByPath(row, element.categoryPath)),
       );
+};
+
+const contiguousPointSegments = (
+  values: OptionalNumber[],
+  point: (value: number, index: number) => { x: number; y: number },
+) => {
+  const segments: Array<Array<{ x: number; y: number }>> = [];
+  let current: Array<{ x: number; y: number }> = [];
+  values.forEach((value, index) => {
+    if (value === undefined) {
+      if (current.length) segments.push(current);
+      current = [];
+    } else current.push(point(value, index));
+  });
+  if (current.length) segments.push(current);
+  return segments;
 };
 
 function Defs({ id }: { id: string }) {
@@ -272,10 +289,13 @@ function AvailabilityChart({
   id: string;
 }) {
   const margin = marketingChartTheme.margins.availability;
-  const values = rows.map(
-    (row) => numberAt(row, element.valuePath ?? "availableSf") ?? 0,
+  const values = rows.map((row) =>
+    numberAt(row, element.valuePath ?? "availableSf"),
   );
-  const ticks = niceTicks(0, Math.max(1, ...values) * 1.14, 5);
+  const available = values.filter(
+    (value): value is number => value !== undefined,
+  );
+  const ticks = niceTicks(0, Math.max(1, ...available) * 1.14, 5);
   const maximum = ticks.at(-1) ?? 1;
   const plotWidth = MARKETING_CHART_BASE.width - margin.left - margin.right;
   const plotHeight = MARKETING_CHART_BASE.height - margin.top - margin.bottom;
@@ -286,27 +306,35 @@ function AvailabilityChart({
   return (
     <>
       <GridAxis ticks={ticks} y={y} margin={margin} format={compactNumber} />
-      {values.map((value, index) => (
-        <g key={index} filter={`url(#${id}-shadow)`}>
-          <rect
-            x={x(index) - barWidth / 2}
-            y={y(value)}
-            width={barWidth}
-            height={Math.max(0, y(0) - y(value))}
-            fill={`url(#${id}-red-gradient)`}
-          />
-        </g>
-      ))}
+      {values.flatMap((value, index) =>
+        value === undefined ? (
+          []
+        ) : (
+          <g key={index} filter={`url(#${id}-shadow)`}>
+            <rect
+              x={x(index) - barWidth / 2}
+              y={y(value)}
+              width={barWidth}
+              height={Math.max(0, y(0) - y(value))}
+              fill={`url(#${id}-red-gradient)`}
+            />
+          </g>
+        ),
+      )}
       {values.map((value, index) => (
         <PlotText
           key={`label-${index}`}
           x={x(index)}
-          y={Math.max(margin.top + 6, y(value) - 4)}
+          y={
+            value === undefined
+              ? y(0) - 4
+              : Math.max(margin.top + 6, y(value) - 4)
+          }
           textAnchor="middle"
           fontSize={marketingChartTheme.typography.barLabel}
           fontWeight={600}
         >
-          {compactSquareFeet(value)}
+          {value === undefined ? "Unavailable" : compactSquareFeet(value)}
         </PlotText>
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
@@ -330,9 +358,12 @@ function ConstructionChart({
   id: string;
 }) {
   const margin = marketingChartTheme.margins.construction;
-  const under = rows.map((row) => numberAt(row, "underConstructionSf") ?? 0);
-  const deliveries = rows.map((row) => numberAt(row, "deliveredSf") ?? 0);
-  const ticks = niceTicks(0, Math.max(1, ...under, ...deliveries) * 1.14, 6);
+  const under = rows.map((row) => numberAt(row, "underConstructionSf"));
+  const deliveries = rows.map((row) => numberAt(row, "deliveredSf"));
+  const available = [...under, ...deliveries].filter(
+    (value): value is number => value !== undefined,
+  );
+  const ticks = niceTicks(0, Math.max(1, ...available) * 1.14, 6);
   const maximum = ticks.at(-1) ?? 1;
   const plotWidth = MARKETING_CHART_BASE.width - margin.left - margin.right;
   const plotHeight = MARKETING_CHART_BASE.height - margin.top - margin.bottom;
@@ -353,28 +384,36 @@ function ConstructionChart({
     <>
       <GridAxis ticks={ticks} y={y} margin={margin} format={compactNumber} />
       {bars.flatMap((series, seriesIndex) =>
-        series.values.map((value, index) => (
-          <g key={`${seriesIndex}-${index}`} filter={`url(#${id}-shadow)`}>
-            <rect
-              x={x(index) + series.offset - barWidth / 2}
-              y={y(value)}
-              width={barWidth}
-              height={Math.max(0, y(0) - y(value))}
-              fill={series.fill}
-            />
-          </g>
-        )),
+        series.values.flatMap((value, index) =>
+          value === undefined ? (
+            []
+          ) : (
+            <g key={`${seriesIndex}-${index}`} filter={`url(#${id}-shadow)`}>
+              <rect
+                x={x(index) + series.offset - barWidth / 2}
+                y={y(value)}
+                width={barWidth}
+                height={Math.max(0, y(0) - y(value))}
+                fill={series.fill}
+              />
+            </g>
+          ),
+        ),
       )}
       {bars.flatMap((series, seriesIndex) =>
         series.values.map((value, index) => (
           <PlotText
             key={`label-${seriesIndex}-${index}`}
             x={x(index) + series.offset}
-            y={Math.max(margin.top + 5, y(value) - 3)}
+            y={
+              value === undefined
+                ? y(0) - 3
+                : Math.max(margin.top + 5, y(value) - 3)
+            }
             textAnchor="middle"
             fontSize={marketingChartTheme.typography.barLabel}
           >
-            {compactSquareFeet(value)}
+            {value === undefined ? "Unavailable" : compactSquareFeet(value)}
           </PlotText>
         )),
       )}
@@ -409,14 +448,17 @@ function CombinationChart({
   const linePaths = sales
     ? ["medianSalesPricePsf"]
     : ["vacancyRate", "availabilityRate"];
-  const bars = rows.map((row) => numberAt(row, barPath) ?? 0);
+  const bars = rows.map((row) => numberAt(row, barPath));
+  const availableBars = bars.filter(
+    (value): value is number => value !== undefined,
+  );
   const lineValues = linePaths.flatMap((path) =>
     rows
       .map((row) => numberAt(row, path))
       .filter((value): value is number => value !== undefined),
   );
-  const barMinimum = Math.min(0, ...bars);
-  const barMaximum = Math.max(1, ...bars);
+  const barMinimum = Math.min(0, ...availableBars);
+  const barMaximum = Math.max(1, ...availableBars);
   const barTicks = niceTicks(barMinimum * 1.1, barMaximum * 1.1, 5);
   const rightTicks = sales
     ? salesPriceTicks(lineValues)
@@ -461,51 +503,76 @@ function CombinationChart({
         }
         side="right"
       />
-      {bars.map((value, index) => (
-        <g key={`bar-${index}`} filter={`url(#${id}-shadow)`}>
-          <rect
-            x={x(index) - barWidth / 2}
-            y={Math.min(barY(value), zero)}
-            width={barWidth}
-            height={Math.max(0.5, Math.abs(zero - barY(value)))}
-            fill={`url(#${id}-red-gradient)`}
-          />
-        </g>
-      ))}
+      {bars.flatMap((value, index) =>
+        value === undefined ? (
+          []
+        ) : (
+          <g key={`bar-${index}`} filter={`url(#${id}-shadow)`}>
+            <rect
+              data-bar-index={index}
+              x={x(index) - barWidth / 2}
+              y={Math.min(barY(value), zero)}
+              width={barWidth}
+              height={Math.max(0.5, Math.abs(zero - barY(value)))}
+              fill={`url(#${id}-red-gradient)`}
+            />
+          </g>
+        ),
+      )}
       {bars.map((value, index) => (
         <PlotText
           key={`bar-label-${index}`}
           x={x(index)}
           y={
-            value >= 0
-              ? Math.max(margin.top + 5, barY(value) - 3)
-              : Math.min(margin.top + plotHeight - 2, barY(value) + 8)
+            value === undefined
+              ? zero - 3
+              : value >= 0
+                ? Math.max(margin.top + 5, barY(value) - 3)
+                : Math.min(margin.top + plotHeight - 2, barY(value) + 8)
           }
           textAnchor="middle"
           fontSize={marketingChartTheme.typography.barLabel}
         >
-          {sales ? compactCurrency(value) : compactSquareFeet(value)}
+          {value === undefined
+            ? "Unavailable"
+            : sales
+              ? compactCurrency(value)
+              : compactSquareFeet(value)}
         </PlotText>
       ))}
       {linePaths.map((path, pathIndex) => {
-        const points = rows.flatMap((row, index) => {
-          const value = numberAt(row, path);
-          return value === undefined ? [] : [{ x: x(index), y: rightY(value) }];
-        });
+        const values = rows.map((row) => numberAt(row, path));
+        const segments = contiguousPointSegments(values, (value, index) => ({
+          x: x(index),
+          y: rightY(value),
+        }));
         return (
-          <path
-            key={path}
-            d={catmullRomPath(points)}
-            fill="none"
-            stroke={colors[pathIndex]}
-            strokeWidth={marketingChartTheme.lineWidth}
-            strokeDasharray={
-              !sales && pathIndex === 0 ? marketingChartTheme.dash : undefined
-            }
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter={`url(#${id}-shadow)`}
-          />
+          <g key={path} data-series={path}>
+            {segments.map((points, segmentIndex) => (
+              <path
+                key={segmentIndex}
+                d={catmullRomPath(points)}
+                fill="none"
+                stroke={colors[pathIndex]}
+                strokeWidth={marketingChartTheme.lineWidth}
+                strokeDasharray={
+                  !sales && pathIndex === 0
+                    ? marketingChartTheme.dash
+                    : undefined
+                }
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={`url(#${id}-shadow)`}
+              />
+            ))}
+            {values.map((value, index) =>
+              value === undefined ? (
+                <title key={`unavailable-${index}`}>
+                  {`${String(getByPath(rows[index]!, element.categoryPath))}: Unavailable`}
+                </title>
+              ) : null,
+            )}
+          </g>
         );
       })}
       <Categories rows={rows} element={element} x={x} y={188} />

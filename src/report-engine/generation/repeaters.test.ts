@@ -55,7 +55,7 @@ const template: ReportTemplate = {
   ],
 };
 
-describe("report repeaters", () =>
+describe("report repeaters", () => {
   it("expands pages and components with contextual bindings", () => {
     const pages = expandTemplatePages(template, {
       submarkets: [{ name: "O’Hare" }, { name: "I-55" }],
@@ -74,7 +74,44 @@ describe("report repeaters", () =>
       name: "lease",
       path: "leasing[0]",
     });
-  }));
+  });
+
+  it("resolves repeated image sources and makes empty data slots optional", () => {
+    const imageTemplate = structuredClone(template);
+    imageTemplate.pages[0]!.elements.push({
+      id: "property-image",
+      type: "image",
+      name: "Property Image",
+      x: 0,
+      y: 60,
+      width: 100,
+      height: 100,
+      src: "/sample.jpg",
+      binding: { path: "property.image" },
+      repeat: {
+        sourcePath: "properties",
+        contextName: "property",
+        direction: "horizontal",
+      },
+      style: {},
+    });
+
+    const pages = expandTemplatePages(imageTemplate, {
+      submarkets: [{ name: "O’Hare" }],
+      leasing: [],
+      properties: [{ image: "/api/assets/image/content" }, { image: "" }],
+    });
+    const images = pages[0]!.elements.filter(
+      (element) => element.type === "image",
+    );
+    expect(images[0]).toMatchObject({ src: "/api/assets/image/content" });
+    expect(images[0]!.publicationRequired).not.toBe(false);
+    expect(images[1]).toMatchObject({
+      src: "",
+      publicationRequired: false,
+    });
+  });
+});
 
 describe("industrial detail page selection", () => {
   const data = buildPresentationModel(q2SampleReport);

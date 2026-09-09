@@ -14,6 +14,7 @@ import { NarrativeService } from "../server/narratives/NarrativeService.ts";
 import { MockNarrativeModelClient } from "../server/narratives/modelClient.ts";
 import { FileSystemReportInstanceRepository } from "../server/report-instances/FileSystemReportInstanceRepository.ts";
 import { createMockNarrativeMcp } from "../tests/support/mockNarrativeMcpServer.ts";
+import { resolveApiBaseUrl } from "../src/shared/apiBaseUrl.ts";
 
 /**
  * Deterministic cross-repository acceptance for the ChatGPT/MCP narrative
@@ -30,7 +31,7 @@ import { createMockNarrativeMcp } from "../tests/support/mockNarrativeMcpServer.
  * LEE Intelligence MCP to run the same flow against the real connector.
  */
 
-const api = process.env.LEE_API_URL ?? "http://127.0.0.1:8787";
+const api = resolveApiBaseUrl({ environment: process.env });
 const externalMcpUrl = process.env.NARRATIVE_BRIDGE_ACCEPTANCE_MCP_URL;
 
 const responseJson = async <T>(response: Response) => {

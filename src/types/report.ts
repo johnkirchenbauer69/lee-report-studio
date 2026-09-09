@@ -170,6 +170,8 @@ export interface ShapeElement extends BaseElement {
 export interface ImageElement extends BaseElement {
   type: "image";
   src: string;
+  /** Visible images are required for publication unless explicitly opted out. */
+  publicationRequired?: boolean;
   fit?: "cover" | "contain" | "stretch" | "original";
   assetId?: string;
   crop?: ImageCrop;

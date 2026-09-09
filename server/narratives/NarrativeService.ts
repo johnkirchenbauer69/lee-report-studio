@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { ReportInstanceRepository } from "../report-instances/FileSystemReportInstanceRepository.ts";
 import {
   approveNarrative,
@@ -10,11 +10,15 @@ import {
 } from "../../src/report-engine/narratives/workflow.ts";
 import {
   countNarrativeWords,
+  type NarrativeContext,
   type NarrativeRecord,
 } from "../../src/report-engine/narratives/schema.ts";
 import type { ReportInstance } from "../../src/report-engine/schema/generation.ts";
 import type { ExternalNarrativeJob } from "../../src/report-engine/schema/generation.ts";
-import { buildNarrativeContext, publicNarrativeContext } from "./contextBuilder.ts";
+import {
+  buildNarrativeContext,
+  publicNarrativeContext,
+} from "./contextBuilder.ts";
 import type { NarrativeModelClient } from "./modelClient.ts";
 import {
   narrativeHandoffPrompt,
@@ -62,12 +66,21 @@ export interface NarrativeGenerationJob {
 }
 
 const friendlyError = (error: unknown) => {
-  const message = error instanceof Error ? error.message : "Narrative generation failed.";
-  if (/rate.?limit|429/i.test(message)) return "The narrative service is temporarily rate limited. Please retry.";
-  if (/timeout|timed out|ETIMEDOUT/i.test(message)) return "The narrative request timed out. Please retry.";
-  if (/not configured/i.test(message)) return "AI narrative generation is not configured.";
-  if (/refus/i.test(message)) return "The narrative model declined this request. Review the context and retry.";
-  if (/support key|numeric fact|named entity|word|structured output|incomplete/i.test(message))
+  const message =
+    error instanceof Error ? error.message : "Narrative generation failed.";
+  if (/rate.?limit|429/i.test(message))
+    return "The narrative service is temporarily rate limited. Please retry.";
+  if (/timeout|timed out|ETIMEDOUT/i.test(message))
+    return "The narrative request timed out. Please retry.";
+  if (/not configured/i.test(message))
+    return "AI narrative generation is not configured.";
+  if (/refus/i.test(message))
+    return "The narrative model declined this request. Review the context and retry.";
+  if (
+    /support key|numeric fact|named entity|word|structured output|incomplete/i.test(
+      message,
+    )
+  )
     return message;
   return "The narrative service is temporarily unavailable. Please retry.";
 };
@@ -77,7 +90,8 @@ const applyText = (
   record: NarrativeRecord,
 ): ReportInstance => {
   const dataSnapshot = structuredClone(instance.dataSnapshot);
-  if (record.marketKind === "overall") dataSnapshot.overallMarket.narrative = record.text;
+  if (record.marketKind === "overall")
+    dataSnapshot.overallMarket.narrative = record.text;
   else {
     const detail = dataSnapshot.submarketDetails.find(
       (item) =>
@@ -112,10 +126,7 @@ const withNarrativeReadiness = (instance: ReportInstance): ReportInstance => {
   };
 };
 
-const replaceRecord = (
-  instance: ReportInstance,
-  record: NarrativeRecord,
-) =>
+const replaceRecord = (instance: ReportInstance, record: NarrativeRecord) =>
   withNarrativeReadiness(
     applyText(
       {
@@ -130,6 +141,11 @@ const replaceRecord = (
 
 export class NarrativeService {
   private readonly jobs = new Map<string, NarrativeGenerationJob>();
+  private readonly externalPolls = new Map<
+    string,
+    Promise<ExternalNarrativeJobState>
+  >();
+  private readonly externalStarts = new Map<string, Promise<ReportInstance>>();
 
   readonly mode: NarrativeGenerationMode;
   private readonly bridge?: NarrativeMcpBridgeClient;
@@ -138,8 +154,9 @@ export class NarrativeService {
     private readonly repository: ReportInstanceRepository,
     readonly modelClient: NarrativeModelClient,
     readonly concurrency = 3,
-    private readonly logger: (entry: Record<string, unknown>) => void = (entry) =>
-      console.info(JSON.stringify(entry)),
+    private readonly logger: (entry: Record<string, unknown>) => void = (
+      entry,
+    ) => console.info(JSON.stringify(entry)),
     options: NarrativeServiceOptions = {},
   ) {
     this.mode = options.mode ?? "direct_model";
@@ -198,17 +215,73 @@ export class NarrativeService {
     return this.bridge.health(options);
   }
 
+  /** Repairs only process-local work that cannot survive a server restart. */
+  async recoverInterruptedJobs() {
+    const instances = await this.repository.list();
+    for (const candidate of instances) {
+      const interruptedDirect = candidate.narratives.some(
+        (record) => record.status === "generating",
+      );
+      const interruptedExternal =
+        candidate.externalNarrativeJob?.status === "creating";
+      if (!interruptedDirect && !interruptedExternal) continue;
+      await this.repository.update(
+        candidate.id,
+        (instance) =>
+          withNarrativeReadiness({
+            ...instance,
+            narratives: instance.narratives.map((record) =>
+              record.status === "generating"
+                ? {
+                    ...record,
+                    status: "failed" as const,
+                    error:
+                      "Narrative generation was interrupted by a server restart. Retry generation.",
+                  }
+                : record,
+            ),
+            externalNarrativeJob:
+              instance.externalNarrativeJob?.status === "creating"
+                ? {
+                    ...instance.externalNarrativeJob,
+                    status: "failed" as const,
+                    updatedAt: new Date().toISOString(),
+                    error:
+                      "Narrative job creation was interrupted by a server restart. Retry Generate All.",
+                    errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+                  }
+                : instance.externalNarrativeJob,
+          }),
+        { operation: "narrative_restart_recovery" },
+      );
+      this.logger({
+        event: "narrative_polling_recovered",
+        reportInstanceId: candidate.id,
+        recovery: "interrupted_ephemeral_job_failed",
+      });
+    }
+  }
+
   async context(reportInstanceId: string, marketId: string) {
     const instance = await this.required(reportInstanceId);
-    return publicNarrativeContext(buildNarrativeContext({ reportInstance: instance, marketId }));
+    return publicNarrativeContext(
+      buildNarrativeContext({ reportInstance: instance, marketId }),
+    );
   }
 
   async refreshStaleness(reportInstanceId: string) {
     return this.repository.update(reportInstanceId, (instance) => {
       const narratives = instance.narratives.map((record) => {
-        if (!record.contextHash || record.status === "not_generated" || record.status === "generating")
+        if (
+          !record.contextHash ||
+          record.status === "not_generated" ||
+          record.status === "generating"
+        )
           return record;
-        const current = buildNarrativeContext({ reportInstance: instance, marketId: record.marketId });
+        const current = buildNarrativeContext({
+          reportInstance: instance,
+          marketId: record.marketId,
+        });
         return current.contextHash === record.contextHash
           ? record
           : { ...record, status: "stale" as const, approvedAt: undefined };
@@ -220,7 +293,10 @@ export class NarrativeService {
   async edit(reportInstanceId: string, marketId: string, text: string) {
     return this.repository.update(reportInstanceId, (instance) => {
       const current = this.find(instance, marketId);
-      const context = buildNarrativeContext({ reportInstance: instance, marketId });
+      const context = buildNarrativeContext({
+        reportInstance: instance,
+        marketId,
+      });
       return replaceRecord(instance, {
         ...editNarrative(current, text),
         contextHash: context.contextHash,
@@ -233,10 +309,20 @@ export class NarrativeService {
   async approve(reportInstanceId: string, marketId: string) {
     return this.repository.update(reportInstanceId, (instance) => {
       const current = this.find(instance, marketId);
-      const context = buildNarrativeContext({ reportInstance: instance, marketId });
+      const context = buildNarrativeContext({
+        reportInstance: instance,
+        marketId,
+      });
       if (current.contextHash && current.contextHash !== context.contextHash)
-        return replaceRecord(instance, { ...current, status: "stale", approvedAt: undefined });
-      return replaceRecord(instance, approveNarrative({ ...current, contextHash: context.contextHash }));
+        return replaceRecord(instance, {
+          ...current,
+          status: "stale",
+          approvedAt: undefined,
+        });
+      return replaceRecord(
+        instance,
+        approveNarrative({ ...current, contextHash: context.contextHash }),
+      );
     });
   }
 
@@ -246,7 +332,11 @@ export class NarrativeService {
     );
   }
 
-  async restore(reportInstanceId: string, marketId: string, revisionId: string) {
+  async restore(
+    reportInstanceId: string,
+    marketId: string,
+    revisionId: string,
+  ) {
     return this.repository.update(reportInstanceId, (instance) =>
       replaceRecord(
         instance,
@@ -255,7 +345,11 @@ export class NarrativeService {
     );
   }
 
-  async setOverflow(reportInstanceId: string, marketId: string, overflow: boolean) {
+  async setOverflow(
+    reportInstanceId: string,
+    marketId: string,
+    overflow: boolean,
+  ) {
     return this.repository.update(reportInstanceId, (instance) =>
       replaceRecord(instance, { ...this.find(instance, marketId), overflow }),
     );
@@ -271,18 +365,24 @@ export class NarrativeService {
       reportInstance: await this.required(reportInstanceId),
       marketId,
     });
-    const initial = await this.repository.update(reportInstanceId, (instance) => {
-      const record = this.find(instance, marketId);
-      if (record.status === "approved" && !options.confirmApproved)
-        throw new Error("Approved narratives require explicit Unlock / Revise confirmation.");
-      context = buildNarrativeContext({ reportInstance: instance, marketId });
-      return replaceRecord(instance, {
-        ...record,
-        status: "generating",
-        error: undefined,
-        regenerationInstruction: options.instruction?.trim().slice(0, 300) || undefined,
-      });
-    });
+    const initial = await this.repository.update(
+      reportInstanceId,
+      (instance) => {
+        const record = this.find(instance, marketId);
+        if (record.status === "approved" && !options.confirmApproved)
+          throw new Error(
+            "Approved narratives require explicit Unlock / Revise confirmation.",
+          );
+        context = buildNarrativeContext({ reportInstance: instance, marketId });
+        return replaceRecord(instance, {
+          ...record,
+          status: "generating",
+          error: undefined,
+          regenerationInstruction:
+            options.instruction?.trim().slice(0, 300) || undefined,
+        });
+      },
+    );
     const record = this.find(initial, marketId);
     this.logger({
       event: "narrative_generation_requested",
@@ -293,37 +393,47 @@ export class NarrativeService {
       contextHash: context.contextHash,
     });
     try {
-      const response = await this.modelClient.generate(context, options.instruction);
+      const response = await this.modelClient.generate(
+        context,
+        options.instruction,
+      );
       const validation = validateNarrativeResult(context, response.result);
-      const errors = validation.issues.filter((issue) => issue.severity === "error");
-      if (errors.length) throw new Error(errors.map((issue) => issue.message).join(" "));
-      const completed = await this.repository.update(reportInstanceId, (instance) => {
-        const latest = this.find(instance, marketId);
-        const now = new Date().toISOString();
-        const next: NarrativeRecord = {
-          ...latest,
-          text: response.result.narrative,
-          status: "draft",
-          source: "ai",
-          promptVersion: context.promptVersion,
-          model: response.model,
-          contextHash: context.contextHash,
-          reportDataHash: instance.sourceSnapshotHash ?? latest.reportDataHash,
-          generatedAt: now,
-          approvedAt: undefined,
-          claims: response.result.claims,
-          contextKeysUsed: response.result.contextKeysUsed,
-          qualityFlags: validation.qualityFlags,
-          revisions: latest.text
-            ? [...latest.revisions, narrativeRevision(latest, now)]
-            : latest.revisions,
-          wordCount: countNarrativeWords(response.result.narrative),
-          overflow: false,
-          error: undefined,
-          usage: response.usage,
-        };
-        return replaceRecord(instance, next);
-      });
+      const errors = validation.issues.filter(
+        (issue) => issue.severity === "error",
+      );
+      if (errors.length)
+        throw new Error(errors.map((issue) => issue.message).join(" "));
+      const completed = await this.repository.update(
+        reportInstanceId,
+        (instance) => {
+          const latest = this.find(instance, marketId);
+          const now = new Date().toISOString();
+          const next: NarrativeRecord = {
+            ...latest,
+            text: response.result.narrative,
+            status: "draft",
+            source: "ai",
+            promptVersion: context.promptVersion,
+            model: response.model,
+            contextHash: context.contextHash,
+            reportDataHash:
+              instance.sourceSnapshotHash ?? latest.reportDataHash,
+            generatedAt: now,
+            approvedAt: undefined,
+            claims: response.result.claims,
+            contextKeysUsed: response.result.contextKeysUsed,
+            qualityFlags: validation.qualityFlags,
+            revisions: latest.text
+              ? [...latest.revisions, narrativeRevision(latest, now)]
+              : latest.revisions,
+            wordCount: countNarrativeWords(response.result.narrative),
+            overflow: false,
+            error: undefined,
+            usage: response.usage,
+          };
+          return replaceRecord(instance, next);
+        },
+      );
       this.logger({
         event: "narrative_generation_completed",
         reportInstanceId,
@@ -337,13 +447,15 @@ export class NarrativeService {
       return completed;
     } catch (error) {
       const message = friendlyError(error);
-      const failed = await this.repository.update(reportInstanceId, (instance) =>
-        replaceRecord(instance, {
-          ...this.find(instance, marketId),
-          status: "failed",
-          error: message,
-          approvedAt: undefined,
-        }),
+      const failed = await this.repository.update(
+        reportInstanceId,
+        (instance) =>
+          replaceRecord(instance, {
+            ...this.find(instance, marketId),
+            status: "failed",
+            error: message,
+            approvedAt: undefined,
+          }),
       );
       this.logger({
         event: "narrative_generation_completed",
@@ -363,7 +475,9 @@ export class NarrativeService {
 
   private requireBridge() {
     if (this.mode !== "chatgpt_mcp" || !this.bridge)
-      throw new Error("ChatGPT narrative generation is not enabled for this server.");
+      throw new Error(
+        "ChatGPT narrative generation is not enabled for this server.",
+      );
     return this.bridge;
   }
 
@@ -395,7 +509,29 @@ export class NarrativeService {
    * publicNarrativeContext() strips server-only provenance and throws on any
    * raw Salesforce identifier.
    */
-  async startExternalGeneration(
+  startExternalGeneration(
+    reportInstanceId: string,
+    options: {
+      marketIds?: string[];
+      includeReviewed?: boolean;
+      instruction?: string;
+      confirmApproved?: boolean;
+    } = {},
+  ) {
+    const active = this.externalStarts.get(reportInstanceId);
+    if (active) return active;
+    const start = this.createExternalGeneration(
+      reportInstanceId,
+      options,
+    ).finally(() => {
+      if (this.externalStarts.get(reportInstanceId) === start)
+        this.externalStarts.delete(reportInstanceId);
+    });
+    this.externalStarts.set(reportInstanceId, start);
+    return start;
+  }
+
+  private async createExternalGeneration(
     reportInstanceId: string,
     options: {
       marketIds?: string[];
@@ -405,85 +541,194 @@ export class NarrativeService {
     } = {},
   ) {
     const bridge = this.requireBridge();
-    const instance = await this.required(reportInstanceId);
-    const marketIds = this.generateAllMarketIds(instance, options);
-    if (!marketIds.length)
-      throw new Error(
-        "Every narrative is already generated or approved. Unlock a narrative to regenerate it.",
-      );
-    if (!options.confirmApproved)
-      for (const marketId of marketIds)
-        if (this.find(instance, marketId).status === "approved")
-          throw new Error(
-            "Approved narratives require explicit Unlock / Revise confirmation.",
-          );
-
-    const contexts = marketIds.map((marketId) =>
-      buildNarrativeContext({ reportInstance: instance, marketId }),
-    );
-    const publicContexts = contexts.map((context) => publicNarrativeContext(context));
-    for (const context of publicContexts)
-      for (const fact of context.facts)
-        if ("internalSourceIds" in fact)
-          throw new Error(
-            "Refusing to send narrative context containing server-only source identifiers.",
-          );
-
-    const scope: "all" | "selected" =
-      marketIds.length === instance.narratives.length ? "all" : "selected";
+    const idempotencyKey = `narrative-attempt-${randomUUID()}`;
+    let ownsReservation = false;
+    let contexts: NarrativeContext[] = [];
     const instruction = options.instruction?.trim().slice(0, 300) || undefined;
-    const created = await bridge.createJob({
+    const reserved = await this.repository.update(
       reportInstanceId,
-      templateVersion: instance.templateVersion,
-      period: instance.dataSnapshot.report.period,
-      market: instance.generationRequest.market,
-      generationScope: scope,
-      marketIds,
-      reportDataHash: instance.sourceSnapshotHash,
-      editorialInstruction: instruction,
-      contexts: publicContexts,
-    });
+      (instance) => {
+        const active = instance.externalNarrativeJob;
+        if (
+          active &&
+          ["creating", "waiting_for_chatgpt", "importing"].includes(
+            active.status,
+          )
+        ) {
+          this.logger({
+            event: "narrative_generation_request_reused",
+            reportInstanceId,
+            jobId: active.jobId,
+          });
+          return instance;
+        }
+        const marketIds = this.generateAllMarketIds(instance, options);
+        if (!marketIds.length)
+          throw new Error(
+            "Every narrative is already generated or approved. Unlock a narrative to regenerate it.",
+          );
+        if (!options.confirmApproved)
+          for (const marketId of marketIds)
+            if (this.find(instance, marketId).status === "approved")
+              throw new Error(
+                "Approved narratives require explicit Unlock / Revise confirmation.",
+              );
+        contexts = marketIds.map((marketId) =>
+          buildNarrativeContext({ reportInstance: instance, marketId }),
+        );
+        const generationScope: "all" | "selected" =
+          marketIds.length === instance.narratives.length ? "all" : "selected";
+        const now = new Date().toISOString();
+        ownsReservation = true;
+        this.logger({
+          event: "narrative_generation_reservation_created",
+          reportInstanceId,
+          idempotencyKey,
+          narrativeCount: marketIds.length,
+        });
+        return {
+          ...instance,
+          externalNarrativeJob: {
+            provider: "chatgpt_mcp",
+            jobId: idempotencyKey,
+            idempotencyKey,
+            status: "creating",
+            createdAt: now,
+            updatedAt: now,
+            marketIds,
+            generationScope,
+            appUrl: bridge.chatGptAppUrl,
+            contextHashes: Object.fromEntries(
+              contexts.map((context) => [
+                context.marketId,
+                context.contextHash,
+              ]),
+            ),
+            instruction,
+          },
+        };
+      },
+      { operation: "narrative_generation_reserve" },
+    );
+    if (!ownsReservation) return reserved;
 
+    const reservation = reserved.externalNarrativeJob!;
+    const publicContexts = contexts.map((context) =>
+      publicNarrativeContext(context),
+    );
+    let created: Awaited<ReturnType<NarrativeMcpBridgeClient["createJob"]>>;
+    try {
+      created = await bridge.createJob({
+        reportInstanceId,
+        templateVersion: reserved.templateVersion,
+        period: reserved.dataSnapshot.report.period,
+        market: reserved.generationRequest.market,
+        generationScope: reservation.generationScope,
+        marketIds: reservation.marketIds,
+        reportDataHash: reserved.sourceSnapshotHash,
+        editorialInstruction: instruction,
+        contexts: publicContexts,
+        idempotencyKey,
+      });
+    } catch (error) {
+      this.logger({
+        event: "narrative_external_job_create_failed",
+        reportInstanceId,
+        idempotencyKey,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      return this.repository.update(
+        reportInstanceId,
+        (current) =>
+          current.externalNarrativeJob?.idempotencyKey === idempotencyKey
+            ? {
+                ...current,
+                externalNarrativeJob: {
+                  ...current.externalNarrativeJob,
+                  status: "failed",
+                  updatedAt: new Date().toISOString(),
+                  error:
+                    "The remote narrative job could not be created. Retry Generate All.",
+                  errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+                },
+              }
+            : current,
+        { operation: "narrative_remote_job_create_failed" },
+      );
+    }
     const now = new Date().toISOString();
-    const job: ExternalNarrativeJob = {
-      provider: "chatgpt_mcp",
-      jobId: created.jobId,
-      status: "waiting_for_chatgpt",
-      createdAt: created.createdAt || now,
-      updatedAt: now,
-      marketIds,
-      generationScope: scope,
-      appUrl: bridge.chatGptAppUrl,
-      handoffPrompt: narrativeHandoffPrompt(created.jobId),
-      expiresAt: created.expiresAt || undefined,
-      // Recorded locally so import can detect that report data moved while
-      // ChatGPT was writing, without trusting the remote to report it.
-      contextHashes: Object.fromEntries(
-        contexts.map((context) => [context.marketId, context.contextHash]),
-      ),
-      instruction,
-    };
     this.logger({
       event: "narrative_external_job_created",
       reportInstanceId,
       jobId: created.jobId,
-      narrativeCount: marketIds.length,
-      generationScope: scope,
+      idempotencyKey,
+      narrativeCount: reservation.marketIds.length,
+      generationScope: reservation.generationScope,
     });
-    return this.repository.update(reportInstanceId, (current) => ({
-      ...current,
-      externalNarrativeJob: job,
-    }));
+    return this.repository.update(
+      reportInstanceId,
+      (current) => {
+        if (current.externalNarrativeJob?.idempotencyKey !== idempotencyKey)
+          throw new Error(
+            "Narrative generation reservation was replaced unexpectedly.",
+          );
+        return {
+          ...current,
+          externalNarrativeJob: {
+            ...current.externalNarrativeJob,
+            jobId: created.jobId,
+            status: "waiting_for_chatgpt",
+            createdAt: created.createdAt || reservation.createdAt,
+            updatedAt: now,
+            handoffPrompt: narrativeHandoffPrompt(created.jobId),
+            expiresAt: created.expiresAt || undefined,
+            error: undefined,
+            errorCode: undefined,
+          },
+        };
+      },
+      { operation: "narrative_remote_job_attach" },
+    );
   }
 
   /**
    * Polls the remote job on behalf of the browser and imports the batch the
    * moment ChatGPT submits it. The browser only ever talks to this server.
    */
-  async externalJobState(reportInstanceId: string): Promise<ExternalNarrativeJobState> {
+  async externalJobState(
+    reportInstanceId: string,
+  ): Promise<ExternalNarrativeJobState> {
+    const current = this.externalPolls.get(reportInstanceId);
+    if (current) return current;
+    const poll = this.pollExternalJobState(reportInstanceId).finally(() => {
+      if (this.externalPolls.get(reportInstanceId) === poll)
+        this.externalPolls.delete(reportInstanceId);
+    });
+    this.externalPolls.set(reportInstanceId, poll);
+    return poll;
+  }
+
+  private async pollExternalJobState(
+    reportInstanceId: string,
+  ): Promise<ExternalNarrativeJobState> {
     const instance = await this.required(reportInstanceId);
     const job = instance.externalNarrativeJob;
     if (!job) return { instance };
+    if (job.status === "creating") {
+      if (this.externalStarts.has(reportInstanceId)) return { job, instance };
+      const recovered = await this.patchExternalJob(reportInstanceId, {
+        status: "failed",
+        error:
+          "Narrative job creation was interrupted by a server restart. Retry Generate All.",
+        errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+      });
+      this.logger({
+        event: "narrative_polling_recovered",
+        reportInstanceId,
+        recovery: "interrupted_creation_failed",
+      });
+      return { job: recovered.externalNarrativeJob, instance: recovered };
+    }
     if (job.status === "complete" || job.status === "failed")
       return { job, instance };
 
@@ -517,11 +762,19 @@ export class NarrativeService {
       return { job: updated.externalNarrativeJob, instance: updated };
     }
 
-    const imported = await this.importExternalGenerationBatch(reportInstanceId, {
-      jobId: job.jobId,
-      narratives: remote.narratives,
-      remoteContextHashes: remote.contextHashes,
-    });
+    if (job.status !== "importing")
+      await this.patchExternalJob(reportInstanceId, {
+        status: "importing",
+        error: undefined,
+      });
+    const imported = await this.importExternalGenerationBatch(
+      reportInstanceId,
+      {
+        jobId: job.jobId,
+        narratives: remote.narratives,
+        remoteContextHashes: remote.contextHashes,
+      },
+    );
     return { job: imported.externalNarrativeJob, instance: imported };
   }
 
@@ -534,7 +787,8 @@ export class NarrativeService {
     const bridge = this.requireBridge();
     const instance = await this.required(reportInstanceId);
     const job = instance.externalNarrativeJob;
-    if (!job) throw new Error("This report has no external narrative job to import.");
+    if (!job)
+      throw new Error("This report has no external narrative job to import.");
     const remote = await bridge.getJob(job.jobId);
     if (remote.status === "expired")
       throw new Error(
@@ -563,10 +817,28 @@ export class NarrativeService {
     },
   ) {
     const now = new Date().toISOString();
+    const importFingerprint = createHash("sha256")
+      .update(JSON.stringify(input))
+      .digest("hex");
     return this.repository.update(reportInstanceId, (instance) => {
       const job = instance.externalNarrativeJob;
       if (!job || job.jobId !== input.jobId)
-        throw new Error("This narrative batch does not belong to the current job.");
+        throw new Error(
+          "This narrative batch does not belong to the current job.",
+        );
+      if (job.status === "complete" && job.importFingerprint) {
+        if (job.importFingerprint !== importFingerprint)
+          throw new Error(
+            "A different narrative batch was already imported for this job.",
+          );
+        this.logger({
+          event: "narrative_external_batch_import_skipped",
+          reportInstanceId,
+          jobId: input.jobId,
+          reason: "duplicate",
+        });
+        return instance;
+      }
       const plan = planExternalBatchImport({
         narratives: input.narratives,
         requestedMarketIds: job.marketIds,
@@ -606,7 +878,9 @@ export class NarrativeService {
         });
       }
 
-      const byMarket = new Map(plan.records.map((record) => [record.marketId, record]));
+      const byMarket = new Map(
+        plan.records.map((record) => [record.marketId, record]),
+      );
       let next: ReportInstance = {
         ...instance,
         narratives: instance.narratives.map(
@@ -617,6 +891,7 @@ export class NarrativeService {
           status: "complete",
           updatedAt: now,
           importedAt: now,
+          importFingerprint,
           error: undefined,
         },
       };
@@ -652,7 +927,10 @@ export class NarrativeService {
   async startGenerateAll(reportInstanceId: string) {
     const instance = await this.required(reportInstanceId);
     const marketIds = instance.narratives
-      .filter((record) => record.status === "not_generated" || record.status === "stale")
+      .filter(
+        (record) =>
+          record.status === "not_generated" || record.status === "stale",
+      )
       .map((record) => record.marketId);
     const job: NarrativeGenerationJob = {
       id: `narrative-job-${randomUUID()}`,
@@ -688,7 +966,9 @@ export class NarrativeService {
       }
     };
     await Promise.all(
-      Array.from({ length: Math.min(this.concurrency, job.total) }, () => worker()),
+      Array.from({ length: Math.min(this.concurrency, job.total) }, () =>
+        worker(),
+      ),
     );
     job.status = "complete";
   }
@@ -700,7 +980,9 @@ export class NarrativeService {
   }
 
   private find(instance: ReportInstance, marketId: string) {
-    const record = instance.narratives.find((item) => item.marketId === marketId);
+    const record = instance.narratives.find(
+      (item) => item.marketId === marketId,
+    );
     if (!record) throw new Error("Narrative market not found.");
     return record;
   }

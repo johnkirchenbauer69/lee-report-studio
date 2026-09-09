@@ -77,6 +77,7 @@ export interface CreateNarrativeMcpJobInput {
   reportDataHash?: string;
   editorialInstruction?: string;
   contexts: PublicNarrativeContext[];
+  idempotencyKey?: string;
 }
 
 /** Minimal MCP surface this client needs. Injectable so tests never dial out. */
@@ -310,6 +311,7 @@ export class NarrativeMcpBridgeClient {
       market: input.market,
       generation_scope: input.generationScope,
       market_ids: input.marketIds,
+      ...(input.idempotencyKey ? { idempotency_key: input.idempotencyKey } : {}),
       ...(input.reportDataHash ? { report_data_hash: input.reportDataHash } : {}),
       ...(input.editorialInstruction
         ? { editorial_instruction: input.editorialInstruction }

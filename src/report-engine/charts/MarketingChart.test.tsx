@@ -180,6 +180,50 @@ describe("MarketingChart vector output", () => {
     expect(construction).toContain("0 SF");
   });
 
+  it("renders missing bars as unavailable without creating zero-height data bars", () => {
+    const sales = renderToStaticMarkup(
+      <MarketingChart
+        element={element("sales_volume_cap_rates")}
+        source={history.map((row, index) =>
+          index === 1 ? { ...row, salesVolume: undefined } : row,
+        )}
+      />,
+    );
+    const construction = renderToStaticMarkup(
+      <MarketingChart
+        element={element("construction_uc_deliveries")}
+        source={history.map((row, index) =>
+          index === 1 ? { ...row, deliveredSf: undefined } : row,
+        )}
+      />,
+    );
+    expect(sales).toContain("Unavailable");
+    expect(construction).toContain("Unavailable");
+    expect(sales).not.toContain('data-bar-index="1"');
+    const availability = renderToStaticMarkup(
+      <MarketingChart
+        element={element("availability_by_size")}
+        source={[{ bucket: "20-75k SF", buildingCount: 1 }]}
+      />,
+    );
+    expect(availability).toContain("Unavailable");
+  });
+
+  it("breaks line paths at missing historical values", () => {
+    const html = renderToStaticMarkup(
+      <MarketingChart
+        element={element("net_absorption_vacancy_availability")}
+        source={history.map((row, index) =>
+          index === 2 ? { ...row, vacancyRate: undefined } : row,
+        )}
+      />,
+    );
+    expect(html).toContain("2025 Q4: Unavailable");
+    const vacancyGroup =
+      html.match(/<g data-series="vacancyRate">([\s\S]*?)<\/g>/)?.[1] ?? "";
+    expect(vacancyGroup.match(/<path/g) ?? []).toHaveLength(2);
+  });
+
   it("keeps sales volume while explicitly marking an unavailable aggregate median", () => {
     const html = renderToStaticMarkup(
       <MarketingChart

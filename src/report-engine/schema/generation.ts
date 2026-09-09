@@ -57,11 +57,18 @@ export interface ReportReadiness {
 }
 
 export type ExternalNarrativeJobStatus =
-  "creating" | "waiting_for_chatgpt" | "complete" | "failed" | "expired";
+  | "creating"
+  | "waiting_for_chatgpt"
+  | "importing"
+  | "complete"
+  | "failed"
+  | "expired";
 
 export interface ExternalNarrativeJob {
   provider: "chatgpt_mcp";
   jobId: string;
+  /** Local generation-attempt key used to make remote creation idempotent. */
+  idempotencyKey?: string;
   status: ExternalNarrativeJobStatus;
   createdAt: string;
   updatedAt: string;
@@ -73,7 +80,9 @@ export interface ExternalNarrativeJob {
   handoffPrompt?: string;
   expiresAt?: string;
   importedAt?: string;
+  importFingerprint?: string;
   error?: string;
+  errorCode?: string;
   /** Optional editorial steer sent with the job. */
   instruction?: string;
   /**

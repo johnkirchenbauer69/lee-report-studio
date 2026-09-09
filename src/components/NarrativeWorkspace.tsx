@@ -53,7 +53,9 @@ function ExternalJobPanel({
 }) {
   const shortId = job.jobId.slice(0, 8);
   const waiting =
-    job.status === "waiting_for_chatgpt" || job.status === "creating";
+    job.status === "waiting_for_chatgpt" ||
+    job.status === "creating" ||
+    job.status === "importing";
   const heading =
     job.status === "complete"
       ? "ChatGPT narratives imported"
@@ -61,6 +63,10 @@ function ExternalJobPanel({
       ? "ChatGPT batch rejected"
       : job.status === "expired"
       ? "Narrative job expired"
+      : job.status === "creating"
+      ? "Creating narrative job"
+      : job.status === "importing"
+      ? "Importing ChatGPT narratives"
       : "Waiting for ChatGPT";
   return (
     <div
@@ -124,7 +130,9 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
   const [copied, setCopied] = useState(false);
   const externalJob = instance.externalNarrativeJob;
   const waitingForChatGpt =
-    externalJob?.status === "waiting_for_chatgpt" || externalJob?.status === "creating";
+    externalJob?.status === "waiting_for_chatgpt" ||
+    externalJob?.status === "creating" ||
+    externalJob?.status === "importing";
   const chatGptMode = config?.mode === "chatgpt_mcp";
 
   useEffect(() => setDraftText(selected.text), [selected.marketId, selected.text]);
@@ -151,7 +159,8 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
     if (!waitingForChatGpt) return;
     let cancelled = false;
     const interval = config?.pollIntervalMs ?? 1_500;
-    const timer = window.setInterval(async () => {
+    let timer: number | undefined;
+    const poll = async () => {
       try {
         const state = await reportInstanceStore.externalJob(instance.id);
         if (cancelled) return;
@@ -162,28 +171,40 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
       } catch (reason) {
         if (cancelled) return;
         setError(reason instanceof Error ? reason.message : String(reason));
+      } finally {
+        if (!cancelled) timer = window.setTimeout(poll, interval);
       }
-    }, interval);
+    };
+    timer = window.setTimeout(poll, interval);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [config?.pollIntervalMs, instance.id, onChange, waitingForChatGpt]);
 
   useEffect(() => {
     if (!job || job.status === "complete") return;
-    const timer = window.setInterval(async () => {
+    let cancelled = false;
+    let timer: number | undefined;
+    const poll = async () => {
       try {
         const nextJob = await reportInstanceStore.job(instance.id, job.id);
+        if (cancelled) return;
         setJob(nextJob);
         onChange(await reportInstanceStore.get(instance.id));
         if (nextJob.status === "complete") setBusy(undefined);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
         setBusy(undefined);
+      } finally {
+        if (!cancelled) timer = window.setTimeout(poll, 500);
       }
-    }, 500);
-    return () => window.clearInterval(timer);
+    };
+    timer = window.setTimeout(poll, 500);
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [instance.id, job, onChange]);
 
   const factsByCategory = useMemo(() => {

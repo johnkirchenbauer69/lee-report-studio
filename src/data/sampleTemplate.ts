@@ -946,6 +946,9 @@ function propertySection(
         item.image,
         "cover",
       ),
+      // Property imagery is an explicitly optional publication slot. The
+      // report renders a governed unavailable state when source imagery is absent.
+      publicationRequired: false,
       binding: { path: "property.image" },
       bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
     });
