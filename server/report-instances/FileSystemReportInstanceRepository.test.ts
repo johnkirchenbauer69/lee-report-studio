@@ -61,6 +61,23 @@ describe("FileSystemReportInstanceRepository", () => {
     expect(reopened?.revision).toBe(saved.revision);
     expect(reopened?.pages[0]!.name).toBe("Durably edited page");
     expect(reopened?.manualOverrides[0]!.overrideValue).toBe(2);
+    expect(reopened?.sourceTemplateSnapshot).toEqual({
+      name: sampleTemplate.name,
+      settings: sampleTemplate.settings,
+    });
+  });
+
+  it("enumerates every valid persisted report for dependency indexing", async () => {
+    const second = {
+      ...structuredClone(instance),
+      id: `report-${crypto.randomUUID()}`,
+    };
+    await repository.create(instance);
+    await repository.create(second);
+
+    expect((await repository.list()).map((report) => report.id).sort()).toEqual(
+      [instance.id, second.id].sort(),
+    );
   });
 
   it("serializes rapid overlapping writers without ENOENT or corrupt JSON", async () => {
@@ -230,6 +247,7 @@ describe("FileSystemReportInstanceRepository", () => {
     delete legacy.revision;
     delete legacy.manualOverrides;
     delete legacy.fontReferences;
+    delete legacy.sourceTemplateSnapshot;
     const normalized = normalizeReportInstance(legacy);
     expect(normalized).toMatchObject({
       schemaVersion: 1,
@@ -237,6 +255,7 @@ describe("FileSystemReportInstanceRepository", () => {
       manualOverrides: [],
       fontReferences: [],
     });
+    expect(normalized.sourceTemplateSnapshot).toBeUndefined();
     expect(() =>
       normalizeReportInstance({ ...instance, schemaVersion: 2 }),
     ).toThrow(ReportInstanceValidationError);

@@ -67,7 +67,7 @@ test("save, save-as and publish preserve the active page while open starts at pa
     .getByRole("button", { name: "Publish", exact: true })
     .click();
   expect((await publishResponse).ok()).toBe(true);
-  await expect(versionLabel).toContainText("published");
+  await expect(versionLabel).toContainText("Published — Read Only");
   await expect.poll(() => activePageIndex(page)).toBe(targetIndex);
   await expect(
     topbar(page).getByRole("button", { name: "Save", exact: true }),

@@ -30,6 +30,10 @@ import {
 } from "./engine/editorNavigation";
 import { nextSelection } from "./engine/selection";
 import {
+  canMutateDocument,
+  type EditorDocumentMode,
+} from "./engine/documentPermissions";
+import {
   captureEditorHistory,
   type EditorHistorySnapshot,
   upsertManualOverride,
@@ -158,7 +162,6 @@ type LeftTab =
   | "pages"
   | "validate";
 type ContextMenuState = { x: number; y: number; id: string } | undefined;
-type EditorDocumentMode = "master-template" | "report-instance";
 type ReportSaveStatus =
   "clean" | "dirty" | "saving" | "saved" | "error" | "conflict";
 
@@ -359,6 +362,10 @@ export default function App() {
     selectedIds.includes(element.id),
   );
   const selected = selectedElements[0];
+  const documentMutable = canMutateDocument({
+    mode: documentMode,
+    templateStatus: activeTemplateRecord?.status,
+  });
   const unionAvailability = useMemo(
     () => evaluateShapeUnion(selectedElements),
     [selectedElements],
@@ -394,16 +401,13 @@ export default function App() {
       record = true,
       overrideUpdater?: (current: ManualOverride[]) => ManualOverride[],
     ) => {
-      if (
-        record &&
-        documentMode === "master-template" &&
-        activeTemplateRecord &&
-        activeTemplateRecord.status !== "draft"
-      ) {
-        setToast(
-          "Published templates are read-only. Create a draft version to edit.",
-        );
-        window.setTimeout(() => setToast(""), 1800);
+      if (!documentMutable) {
+        if (record) {
+          setToast(
+            "Published templates are read-only. Create a draft version to edit.",
+          );
+          window.setTimeout(() => setToast(""), 1800);
+        }
         return;
       }
       const current = latestTemplate.current;
@@ -428,7 +432,7 @@ export default function App() {
             : currentOverrides,
         );
     },
-    [activeTemplateRecord, documentMode, stageReportDocument],
+    [documentMode, documentMutable, stageReportDocument],
   );
   const notify = (message: string) => {
     setToast(message);
@@ -535,19 +539,36 @@ export default function App() {
         managedServerAssets.current = serverAssets;
         const preferred =
           records.find((record) => record.status === "draft") ?? records[0];
-        if (!preferred) return;
-        openTemplateRecord(
-          await templateStore.get(preferred.id, preferred.version),
-        );
+        if (preferred)
+          openTemplateRecord(
+            await templateStore.get(preferred.id, preferred.version),
+          );
         const reportId = reportInstanceStore.lastId();
         if (reportId) {
           try {
             const restored = await reportInstanceStore.get(reportId);
-            const source = await templateStore.get(
-              restored.templateId,
-              restored.templateVersion,
-            );
-            const browserAssets = (source.template.assets ?? []).filter(
+            let legacySource: StoredTemplateVersion | undefined;
+            if (!restored.sourceTemplateSnapshot) {
+              try {
+                legacySource = await templateStore.get(
+                  restored.templateId,
+                  restored.templateVersion,
+                );
+              } catch (error) {
+                console.warn(
+                  JSON.stringify({
+                    event: "source_template_missing_during_report_restore",
+                    operation: "report_restore",
+                    reportId: restored.id,
+                    templateId: restored.templateId,
+                    templateVersion: restored.templateVersion,
+                    errorName:
+                      error instanceof Error ? error.name : "UnknownError",
+                  }),
+                );
+              }
+            }
+            const browserAssets = (legacySource?.template.assets ?? []).filter(
               (asset) => asset.storage !== "backend",
             );
             const recovery = reportRecovery.load(restored.id);
@@ -567,7 +588,15 @@ export default function App() {
                 }
               : restored;
             const reportTemplate = hydrate({
-              ...source.template,
+              ...(legacySource?.template ?? {
+                id: restored.templateId,
+                version: restored.templateVersion,
+                name:
+                  restored.sourceTemplateSnapshot?.name ??
+                  `${restored.generationRequest.period} ${restored.generationRequest.market} Industrial Market Report`,
+                pages: effective.pages,
+                settings: restored.sourceTemplateSnapshot?.settings,
+              }),
               name: `${restored.generationRequest.period} ${restored.generationRequest.market} Industrial Market Report`,
               assets: [...browserAssets, ...managedServerAssets.current],
               pages: effective.pages,
@@ -817,6 +846,7 @@ export default function App() {
     }
   };
   const undo = useCallback(() => {
+    if (!documentMutable) return;
     const previous = past.at(-1);
     if (!previous) return;
     setFuture([
@@ -831,8 +861,9 @@ export default function App() {
     setTemplate(clone(previous.template));
     if (documentMode === "report-instance")
       stageReportDocument(previous.template, previous.manualOverrides);
-  }, [documentMode, future, past, stageReportDocument]);
+  }, [documentMode, documentMutable, future, past, stageReportDocument]);
   const redo = useCallback(() => {
+    if (!documentMutable) return;
     const next = future[0];
     if (!next) return;
     setPast([
@@ -847,7 +878,7 @@ export default function App() {
     setTemplate(clone(next.template));
     if (documentMode === "report-instance")
       stageReportDocument(next.template, next.manualOverrides);
-  }, [documentMode, future, past, stageReportDocument]);
+  }, [documentMode, documentMutable, future, past, stageReportDocument]);
 
   const select = (id: string, additive: boolean) => {
     if (croppingId && croppingId !== id) setCroppingId(undefined);
@@ -954,6 +985,12 @@ export default function App() {
     setSelectedIds([id]);
   };
   const useImageAsset = (asset: Asset) => {
+    if (!documentMutable) {
+      notify(
+        "Published templates are read-only. Create a draft version to edit.",
+      );
+      return;
+    }
     if (replacingImageId) {
       if (asset.storage !== "backend") {
         notify("Replacement images must be uploaded as managed assets.");
@@ -1081,6 +1118,12 @@ export default function App() {
     });
   const group = () => {
     if (selectedIds.length < 2) return;
+    if (!documentMutable) {
+      notify(
+        "Published templates are read-only. Create a draft version to edit.",
+      );
+      return;
+    }
     const groupId = uid("group");
     updatePage((current) => ({
       ...current,
@@ -1090,7 +1133,13 @@ export default function App() {
     }));
     notify("Elements grouped");
   };
-  const ungroup = () =>
+  const ungroup = () => {
+    if (!documentMutable) {
+      notify(
+        "Published templates are read-only. Create a draft version to edit.",
+      );
+      return;
+    }
     updatePage((current) => ({
       ...current,
       elements: current.elements.map((element) =>
@@ -1099,8 +1148,15 @@ export default function App() {
           : element,
       ),
     }));
+  };
 
   const unionSelectedShapes = () => {
+    if (!documentMutable) {
+      notify(
+        "Published templates are read-only. Create a draft version to edit.",
+      );
+      return;
+    }
     if (!unionAvailability.enabled) {
       notify(unionAvailability.reason);
       return;
@@ -1584,10 +1640,7 @@ export default function App() {
   };
   const handleFiles = async (files: FileList | null) => {
     if (!files) return;
-    if (
-      documentMode === "master-template" &&
-      activeTemplateRecord?.status !== "draft"
-    ) {
+    if (!documentMutable) {
       notify("Create a draft version before changing managed assets.");
       return;
     }
@@ -1649,22 +1702,25 @@ export default function App() {
     }
   };
   const removeAsset = async (asset: Asset) => {
-    if (
-      documentMode === "master-template" &&
-      activeTemplateRecord?.status !== "draft"
-    ) {
+    if (!documentMutable) {
       notify("Create a draft version before changing managed assets.");
       return;
     }
-    await assetStorage.remove(asset.id);
-    managedServerAssets.current = managedServerAssets.current.filter(
-      (item) => item.id !== asset.id,
-    );
-    mutate((current) => ({
-      ...current,
-      assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
-    }));
-    notify(`${asset.name} removed`);
+    try {
+      await assetStorage.remove(asset.id);
+      managedServerAssets.current = managedServerAssets.current.filter(
+        (item) => item.id !== asset.id,
+      );
+      mutate((current) => ({
+        ...current,
+        assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
+      }));
+      notify(`${asset.name} removed`);
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : "Asset could not be removed.",
+      );
+    }
   };
 
   useEffect(() => {
@@ -2350,7 +2406,7 @@ export default function App() {
             <strong>{template.name}</strong>
             <span>
               {documentMode === "master-template"
-                ? `Master Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status ?? "local recovery"}`
+                ? `Master Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status === "published" ? "Published — Read Only" : activeTemplateRecord?.status === "archived" ? "Archived — Read Only" : (activeTemplateRecord?.status ?? "local recovery")}`
                 : `Report Instance · pinned to v${reportInstance?.templateVersion ?? template.version}`}
             </span>
           </div>
@@ -2358,7 +2414,7 @@ export default function App() {
         <div className="toolbar-group">
           <button
             className="icon-button"
-            disabled={!past.length}
+            disabled={!past.length || !documentMutable}
             title="Undo · Ctrl+Z"
             onClick={undo}
           >
@@ -2366,7 +2422,7 @@ export default function App() {
           </button>
           <button
             className="icon-button"
-            disabled={!future.length}
+            disabled={!future.length || !documentMutable}
             title="Redo · Ctrl+Shift+Z"
             onClick={redo}
           >
@@ -2702,6 +2758,7 @@ export default function App() {
                   zoom={zoom}
                   onSelect={select}
                   onChange={updateElement}
+                  readOnly={!documentMutable}
                   onInteractionStart={beginInteraction}
                   onInteractionEnd={endInteraction}
                   onGuides={setGuides}
@@ -2745,6 +2802,7 @@ export default function App() {
             tableEditingId === selected?.id ? tableSelection : undefined
           }
           generated={Boolean(reportInstance)}
+          readOnly={!documentMutable}
           onToggleTableEdit={() => {
             if (tableEditingId === selected?.id) {
               setTableEditingId(undefined);

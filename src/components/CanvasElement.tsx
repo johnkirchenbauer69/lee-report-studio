@@ -48,6 +48,7 @@ interface Props {
   onInteractionStart: () => void;
   onInteractionEnd: () => void;
   onGuides: (guides: SnapGuide[]) => void;
+  readOnly?: boolean;
   onContextMenu: (event: React.MouseEvent, id: string) => void;
   cropping?: boolean;
   tableEditing?: boolean;
@@ -109,6 +110,7 @@ export function CanvasElement(props: Props) {
     e.stopPropagation();
     const additive = e.shiftKey || e.metaKey || e.ctrlKey;
     if (!selected || additive) onSelect(element.id, additive);
+    if (props.readOnly) return;
     props.onInteractionStart();
     const sx = e.clientX,
       sy = e.clientY,
@@ -195,6 +197,7 @@ export function CanvasElement(props: Props) {
   const startCornerRadius = (e: React.PointerEvent, corner: CornerKey) => {
     e.preventDefault();
     e.stopPropagation();
+    if (props.readOnly) return;
     props.onInteractionStart();
     const sx = e.clientX;
     const sy = e.clientY;
@@ -239,6 +242,7 @@ export function CanvasElement(props: Props) {
     e: React.PointerEvent,
     corner: "se" | "sw" | "ne" | "nw",
   ) => {
+    if (props.readOnly) return;
     if (element.locked) return;
     e.preventDefault();
     e.stopPropagation();
@@ -292,6 +296,7 @@ export function CanvasElement(props: Props) {
   const startRotate = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (props.readOnly) return;
     props.onInteractionStart();
     const centerX = element.x + element.width / 2,
       centerY = element.y + element.height / 2;
@@ -786,12 +791,12 @@ export function CanvasElement(props: Props) {
         {content}
       </div>
       {selected && <div className="selection-outline" />}
-      {props.cropping && (
+      {props.cropping && !props.readOnly && (
         <div className="crop-overlay">
           <span>Drag image to reposition</span>
         </div>
       )}
-      {selected && !element.locked && (
+      {selected && !element.locked && !props.readOnly && (
         <>
           {(["nw", "ne", "sw", "se"] as const).map((corner) => (
             <div
@@ -815,6 +820,7 @@ export function CanvasElement(props: Props) {
       )}
       {selected &&
         !element.locked &&
+        !props.readOnly &&
         !props.cropping &&
         (element.type === "image" ||
           (element.type === "shape" &&

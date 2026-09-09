@@ -13,6 +13,10 @@ import {
 import { createReportDataService } from "./report-data-service/createReportDataService.ts";
 import { ChromiumPdfRenderer } from "./renderers/chromiumPdfRenderer.ts";
 import { FileSystemAssetStore } from "./assets/assetStore.ts";
+import {
+  AssetReferenceIndex,
+  assetDependencyCount,
+} from "./assets/assetReferences.ts";
 import { createTemplateRouter } from "./api/templateRoutes.ts";
 import { FileSystemTemplateRepository } from "./templates/FileSystemTemplateRepository.ts";
 import { sampleTemplate } from "../src/data/sampleTemplate.ts";
@@ -28,16 +32,28 @@ import {
   NarrativeService,
   type NarrativeGenerationMode,
 } from "./narratives/NarrativeService.ts";
+import { ArtifactIntegrityCoordinator } from "./integrity/ArtifactIntegrityCoordinator.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 const assetStore = new FileSystemAssetStore(dataRoot);
-const templateRepository = new FileSystemTemplateRepository(dataRoot);
+const artifactIntegrity = new ArtifactIntegrityCoordinator();
+const templateRepository = new FileSystemTemplateRepository(
+  dataRoot,
+  undefined,
+  artifactIntegrity,
+);
 const reportDataService = createReportDataService({ assetStore, dataRoot });
 const reportInstanceRepository = new FileSystemReportInstanceRepository(
   dataRoot,
   (entry) => console.info(JSON.stringify(entry)),
+  artifactIntegrity,
+);
+const assetReferenceIndex = new AssetReferenceIndex(
+  templateRepository,
+  reportInstanceRepository,
+  (entry) => console.warn(JSON.stringify(entry)),
 );
 const narrativeModelClient =
   process.env.NARRATIVE_MODEL_PROVIDER === "mock"
@@ -133,16 +149,47 @@ app.get("/api/assets/:id/content", async (request, response) => {
   response.setHeader("cache-control", "private, max-age=31536000, immutable");
   return response.sendFile(assetStore.resolve(asset));
 });
-app.delete("/api/assets/:id", async (request, response) => {
-  const outcome = await assetStore.remove(
-    request.params.id,
-    await templateRepository.listFontAssetReferences(),
-  );
-  if (outcome === "not-found")
-    return response.status(404).json({ error: "Asset not found" });
-  return outcome === "retained"
-    ? response.status(200).json({ outcome })
-    : response.status(204).end();
+app.delete("/api/assets/:id", async (request, response, next) => {
+  const assetId = request.params.id;
+  try {
+    return await artifactIntegrity.runExclusive(async () => {
+      const references = await assetReferenceIndex.dependencies(assetId);
+      const referenceCount = assetDependencyCount(references);
+      if (referenceCount) {
+        console.warn(
+          JSON.stringify({
+            event: "asset_delete_blocked",
+            operation: "asset_delete",
+            assetId,
+            referenceCount,
+          }),
+        );
+        return response.status(409).json({
+          error: `Asset is in use by ${referenceCount} persisted artifact${referenceCount === 1 ? "" : "s"}.`,
+          code: "ASSET_IN_USE",
+          assetId,
+          referenceCount,
+          references,
+        });
+      }
+      const outcome = await assetStore.remove(assetId);
+      if (outcome === "not-found")
+        return response.status(404).json({ error: "Asset not found" });
+      console.info(
+        JSON.stringify({
+          event: "asset_delete_allowed",
+          operation: "asset_delete",
+          assetId,
+          outcome,
+        }),
+      );
+      return outcome === "retained"
+        ? response.status(200).json({ outcome })
+        : response.status(204).end();
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 interface RenderJob {

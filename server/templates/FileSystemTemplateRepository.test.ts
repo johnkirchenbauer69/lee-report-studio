@@ -252,6 +252,10 @@ describe("FileSystemTemplateRepository", () => {
       templateId: published.id,
       templateVersion: published.version,
       templateChecksum: published.checksum,
+      sourceTemplateSnapshot: {
+        name: published.template.name,
+        settings: published.template.settings,
+      },
     });
     const disposableDraft = await repository.createVersion(
       published.id,

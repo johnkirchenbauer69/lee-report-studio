@@ -277,6 +277,10 @@ button {
   scrollbar-width: thin;
   scrollbar-color: #cfd5dc transparent;
 }
+
+.inspector[inert] {
+  opacity: 0.72;
+}
 .left-panel {
   border-right: 1px solid var(--border);
   padding: 14px;
