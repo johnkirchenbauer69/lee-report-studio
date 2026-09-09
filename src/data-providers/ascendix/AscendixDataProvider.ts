@@ -5,21 +5,21 @@ import {
 import type { ReportGenerationRequest } from "../../report-engine/schema/generation";
 import type { ReportDataProvider } from "../ReportDataProvider";
 import { ReportImportError } from "../ReportDataProvider";
+import { resolveApiUrl } from "../../shared/apiBaseUrl";
 
 export class AscendixDataProvider implements ReportDataProvider {
   readonly id = "ascendix" as const;
 
   constructor(
     private readonly endpoint = "/api/report-data/industrial-market",
+    private readonly apiBaseUrl?: string,
   ) {}
 
   async loadReportData(request: ReportGenerationRequest) {
-    const endpoint = this.endpoint.startsWith("/")
-      ? new URL(
-          this.endpoint,
-          globalThis.location?.origin ?? "http://127.0.0.1:8787",
-        ).toString()
-      : this.endpoint;
+    const endpoint = resolveApiUrl(this.endpoint, {
+      explicit: this.apiBaseUrl,
+      origin: globalThis.location?.origin,
+    });
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },

@@ -310,6 +310,7 @@ export const reportElementSchema = z.discriminatedUnion("type", [
       ...baseElementShape,
       type: z.literal("image"),
       src: z.string(),
+      publicationRequired: z.boolean().optional(),
       fit: z.enum(["cover", "contain", "stretch", "original"]).optional(),
       assetId: z.string().optional(),
       crop: z
@@ -494,9 +495,11 @@ const externalJobSchema = z
   .object({
     provider: z.literal("chatgpt_mcp"),
     jobId: nonEmpty,
+    idempotencyKey: nonEmpty.optional(),
     status: z.enum([
       "creating",
       "waiting_for_chatgpt",
+      "importing",
       "complete",
       "failed",
       "expired",
@@ -509,7 +512,9 @@ const externalJobSchema = z
     handoffPrompt: z.string().optional(),
     expiresAt: timestamp.optional(),
     importedAt: timestamp.optional(),
+    importFingerprint: nonEmpty.optional(),
     error: z.string().optional(),
+    errorCode: z.string().optional(),
     instruction: z.string().optional(),
     contextHashes: z.record(z.string(), z.string()).optional(),
   })

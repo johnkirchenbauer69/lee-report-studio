@@ -13,6 +13,7 @@ import {
 } from "../../services/fontRegistry";
 import { resolveTypography } from "../../engine/typography";
 import { findNonApprovedFontUsages } from "../../services/fontGovernance";
+import { validatePublicationImages } from "./publicationImages";
 
 export interface ExportPreflightIssue {
   level: "warning" | "error";
@@ -35,6 +36,11 @@ export async function runExportPreflight(
         elementId: usage.elementId,
         message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
       }));
+  const structuralImageIssues = validatePublicationImages(template);
+  issues.push(...structuralImageIssues);
+  const structurallyInvalidImages = new Set(
+    structuralImageIssues.map((issue) => issue.elementId),
+  );
   const checkTypography = (
     pageId: string,
     elementId: string,
@@ -154,8 +160,12 @@ export async function runExportPreflight(
             element.transactionChipStyle.fontFamily ?? BRAND_FONT_FAMILY,
           fontWeight: element.transactionChipStyle.fontWeight ?? 900,
         });
-      if (element.type === "image" && (element as ImageElement).src) {
-        const src = (element as ImageElement).src;
+      if (
+        element.type === "image" &&
+        !structurallyInvalidImages.has(element.id) &&
+        (element as ImageElement).src?.trim()
+      ) {
+        const src = (element as ImageElement).src.trim();
         const contentTypeIssue = await checkImageContentType(src);
         if (contentTypeIssue) {
           issues.push({

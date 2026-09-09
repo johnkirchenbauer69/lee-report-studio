@@ -24,7 +24,13 @@ export interface AscendixReportAdapter {
     connected: boolean;
     mode: "mock" | "salesforce";
     instanceUrl?: string;
+    instanceHostname?: string;
     authMode?: "client-credentials" | "soap-login";
     apiVersion?: string;
+    status?: "configured" | "authenticated" | "degraded" | "failed";
+    lastSuccessfulRequestAt?: string;
+    lastHealthCheckAt?: string;
+    lastAuthRefreshAt?: string;
+    errorCode?: string;
   }>;
 }

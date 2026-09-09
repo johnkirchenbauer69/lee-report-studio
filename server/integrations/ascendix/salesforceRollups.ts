@@ -18,6 +18,16 @@ const numeric = (record: SalesforceRecord, field: { apiName: string }) => {
 };
 const sum = (rows: SalesforceRecord[], field: { apiName: string }) =>
   rows.reduce((total, row) => total + numeric(row, field), 0);
+const completeSum = (
+  rows: SalesforceRecord[],
+  field: { apiName: string },
+): number | undefined =>
+  rows.every((row) => {
+    const value = row[field.apiName];
+    return value !== null && value !== undefined && value !== "";
+  })
+    ? sum(rows, field)
+    : undefined;
 
 export const AVAILABILITY_SIZE_BUCKETS = [
   { bucket: "20-75k SF", minimum: 20_000, maximum: 75_000 },
@@ -162,8 +172,8 @@ export function aggregateQuarterlyMarketPeriod(
     availabilityRate:
       inventory > 0 ? sum(rows, md.totalAvailableSf) / inventory : 0,
     underConstructionSf: sum(rows, md.underConstructionSf),
-    deliveredSf: sum(rows, md.deliveredSf),
-    salesVolume: sum(rows, md.salesVolume),
+    deliveredSf: completeSum(rows, md.deliveredSf),
+    salesVolume: completeSum(rows, md.salesVolume),
     medianSalesPricePsf: verifiedMedianSalesPricePsf(rows),
     leasingActivitySf: sum(rows, md.leasingActivitySf),
     sourceIds: rows.map((row) => String(row.Id)).filter(Boolean),

@@ -61,6 +61,42 @@ describe("runExportPreflight image content-type check", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([undefined, "", "   "])(
+    "blocks a visible required image with source %p",
+    async (src) => {
+      const issues = await runExportPreflight(
+        templateWith(imageElement({ src: src as string })),
+      );
+      expect(issues).toContainEqual(
+        expect.objectContaining({
+          level: "error",
+          kind: "image",
+          message: "Contributor photo is missing a required image source.",
+        }),
+      );
+    },
+  );
+
+  it("allows only explicitly optional or hidden images to omit src", async () => {
+    await expect(
+      runExportPreflight(
+        templateWith(imageElement({ src: "", publicationRequired: false })),
+      ),
+    ).resolves.toEqual([]);
+    await expect(
+      runExportPreflight(templateWith(imageElement({ src: "", hidden: true }))),
+    ).resolves.toEqual([]);
+  });
+
+  it("blocks a missing managed image asset", async () => {
+    const issues = await runExportPreflight(
+      templateWith(
+        imageElement({ src: "/api/assets/gone/content", assetId: "gone" }),
+      ),
+    );
+    expect(issues[0]?.message).toMatch(/missing managed image asset/i);
+  });
+
   it("fails preflight with a specific message when an image src resolves to text/html", async () => {
     vi.stubGlobal(
       "fetch",

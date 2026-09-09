@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { sampleTemplate } from "../../src/data/sampleTemplate.ts";
 import { generateReportInstance } from "../../src/report-engine/generation/generateReport.ts";
 import type { NarrativeContext } from "../../src/report-engine/narratives/schema.ts";
@@ -32,6 +32,9 @@ class FakeNarrativeMcp {
   jobs = new Map<string, Record<string, unknown>>();
   createdArgs?: Record<string, unknown>;
   status: "pending" | "claimed" | "complete" | "expired" = "pending";
+  createError?: Error;
+  getCalls = 0;
+  getGate?: Promise<void>;
   private counter = 0;
 
   session(): NarrativeMcpSession {
@@ -41,6 +44,7 @@ class FakeNarrativeMcp {
       }),
       callTool: async (name, args) => {
         if (name === "create_report_studio_narrative_job") {
+          if (this.createError) throw this.createError;
           this.createdArgs = args;
           const jobId = `job-${++this.counter}`;
           this.jobs.set(jobId, {
@@ -63,6 +67,8 @@ class FakeNarrativeMcp {
           };
         }
         if (name === "get_report_studio_narrative_job") {
+          this.getCalls += 1;
+          if (this.getGate) await this.getGate;
           const job = this.jobs.get(args.job_id as string);
           if (!job)
             return {
@@ -72,7 +78,10 @@ class FakeNarrativeMcp {
               },
               isError: true,
             };
-          const contexts = job.contexts as { marketId: string; contextHash: string }[];
+          const contexts = job.contexts as {
+            marketId: string;
+            contextHash: string;
+          }[];
           return {
             structuredContent: {
               ok: true,
@@ -81,15 +90,24 @@ class FakeNarrativeMcp {
               required_market_ids: job.marketIds,
               narrative_count: (job.marketIds as string[]).length,
               context_hashes: Object.fromEntries(
-                contexts.map((context) => [context.marketId, context.contextHash]),
+                contexts.map((context) => [
+                  context.marketId,
+                  context.contextHash,
+                ]),
               ),
               ...(this.status === "complete"
-                ? { narratives: job.narratives, completed_at: new Date().toISOString() }
+                ? {
+                    narratives: job.narratives,
+                    completed_at: new Date().toISOString(),
+                  }
                 : {}),
             },
           };
         }
-        return { structuredContent: { ok: false, error: "unexpected" }, isError: true };
+        return {
+          structuredContent: { ok: false, error: "unexpected" },
+          isError: true,
+        };
       },
       close: async () => undefined,
     };
@@ -164,6 +182,93 @@ function grounded(
 }
 
 describe("ChatGPT MCP narrative generation", () => {
+  it("recovers persisted creating and in-memory generating states after restart", async () => {
+    const { repository, instance, service } = await setup();
+    const now = new Date().toISOString();
+    await repository.update(instance.id, (current) => ({
+      ...current,
+      narratives: current.narratives.map((record, index) =>
+        index === 0 ? { ...record, status: "generating" as const } : record,
+      ),
+      externalNarrativeJob: {
+        provider: "chatgpt_mcp",
+        jobId: "narrative-attempt-interrupted",
+        idempotencyKey: "narrative-attempt-interrupted",
+        status: "creating",
+        createdAt: now,
+        updatedAt: now,
+        marketIds: ["overall-market"],
+        generationScope: "selected",
+      },
+    }));
+    await service.recoverInterruptedJobs();
+    const recovered = (await repository.get(instance.id))!;
+    expect(recovered.narratives[0]).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/server restart/i),
+    });
+    expect(recovered.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+    });
+  });
+
+  it("reserves one remote job for 40 concurrent Generate All requests", async () => {
+    const { instance, service, mcp } = await setup();
+    const results = await Promise.all(
+      Array.from({ length: 40 }, () =>
+        service.startExternalGeneration(instance.id),
+      ),
+    );
+    expect(mcp.jobs.size).toBe(1);
+    expect(
+      new Set(results.map((item) => item.externalNarrativeJob?.jobId)),
+    ).toEqual(new Set(["job-1"]));
+    expect(
+      new Set(results.map((item) => item.externalNarrativeJob?.status)),
+    ).toEqual(new Set(["waiting_for_chatgpt"]));
+    expect(results[0]!.externalNarrativeJob?.idempotencyKey).toMatch(
+      /^narrative-attempt-/,
+    );
+  });
+
+  it("keeps generation reservations independent across report IDs", async () => {
+    const { repository, instance, service, mcp } = await setup();
+    const second = await generateReportInstance(sampleTemplate, {
+      templateId: sampleTemplate.id,
+      templateVersion: sampleTemplate.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarketIds: [] },
+      source: { provider: "sample" },
+    });
+    await repository.save(second);
+    const [firstResult, secondResult] = await Promise.all([
+      service.startExternalGeneration(instance.id),
+      service.startExternalGeneration(second.id),
+    ]);
+    expect(mcp.jobs.size).toBe(2);
+    expect(firstResult.externalNarrativeJob?.jobId).not.toBe(
+      secondResult.externalNarrativeJob?.jobId,
+    );
+  });
+
+  it("marks remote creation failed and permits one deliberate retry", async () => {
+    const { instance, service, mcp } = await setup();
+    mcp.createError = new Error("remote unavailable");
+    const failed = await service.startExternalGeneration(instance.id);
+    expect(failed.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+    });
+    expect(mcp.jobs.size).toBe(0);
+    mcp.createError = undefined;
+    const retried = await service.startExternalGeneration(instance.id);
+    expect(retried.externalNarrativeJob?.status).toBe("waiting_for_chatgpt");
+    expect(mcp.jobs.size).toBe(1);
+  });
+
   it("reports ready without an OpenAI API key when the bridge is healthy", async () => {
     const { service } = await setup();
     const previous = process.env.OPENAI_API_KEY;
@@ -200,7 +305,9 @@ describe("ChatGPT MCP narrative generation", () => {
     );
     const config = await service.config();
     expect(config.configured).toBe(false);
-    expect(config.message).toBe("LEE Intelligence MCP narrative bridge is unavailable.");
+    expect(config.message).toBe(
+      "LEE Intelligence MCP narrative bridge is unavailable.",
+    );
   });
 
   it("sends 19 publication-safe contexts and parks the report waiting for ChatGPT", async () => {
@@ -218,6 +325,7 @@ describe("ChatGPT MCP narrative generation", () => {
     const contexts = mcp.createdArgs!.contexts as Record<string, unknown>[];
     expect(contexts).toHaveLength(19);
     expect(mcp.createdArgs!.generation_scope).toBe("all");
+    expect(mcp.createdArgs!.idempotency_key).toBe(job.idempotencyKey);
     expect(mcp.createdArgs!.template_version).toBe(instance.templateVersion);
     // No server-only provenance and no raw Salesforce identifiers leave here.
     const serialized = JSON.stringify(contexts);
@@ -239,7 +347,9 @@ describe("ChatGPT MCP narrative generation", () => {
     const state = await service.externalJobState(instance.id);
     expect(state.job?.status).toBe("complete");
     expect(state.job?.importedAt).toBeTruthy();
-    const drafts = state.instance.narratives.filter((item) => item.status === "draft");
+    const drafts = state.instance.narratives.filter(
+      (item) => item.status === "draft",
+    );
     expect(drafts).toHaveLength(19);
     for (const record of drafts) {
       expect(record.source).toBe("ai");
@@ -250,9 +360,56 @@ describe("ChatGPT MCP narrative generation", () => {
     }
     // Narrative text is bound into the presentation snapshot for the PDF.
     expect(state.instance.dataSnapshot.overallMarket.narrative).toBe(
-      state.instance.narratives.find((item) => item.marketId === "overall-market")!.text,
+      state.instance.narratives.find(
+        (item) => item.marketId === "overall-market",
+      )!.text,
     );
-    expect((await repository.get(instance.id))!.narratives.filter((item) => item.status === "draft")).toHaveLength(19);
+    expect(
+      (await repository.get(instance.id))!.narratives.filter(
+        (item) => item.status === "draft",
+      ),
+    ).toHaveLength(19);
+  });
+
+  it("single-flights delayed polls and skips a duplicate completed import", async () => {
+    const { repository, instance, service, mcp } = await setup();
+    const started = await service.startExternalGeneration(instance.id, {
+      marketIds: ["ohare"],
+    });
+    const job = started.externalNarrativeJob!;
+    const batch = [
+      grounded(
+        buildNarrativeContext({ reportInstance: started, marketId: "ohare" }),
+      ),
+    ];
+    mcp.complete(job.jobId, batch);
+    let release!: () => void;
+    mcp.getGate = new Promise<void>((resolve) => (release = resolve));
+    const polls = Array.from({ length: 8 }, () =>
+      service.externalJobState(instance.id),
+    );
+    await vi.waitFor(() => expect(mcp.getCalls).toBe(1));
+    release();
+    const states = await Promise.all(polls);
+    expect(states.every((state) => state.job?.status === "complete")).toBe(
+      true,
+    );
+    const revision = states[0]!.instance.revision;
+    const duplicate = await service.importExternalGenerationBatch(instance.id, {
+      jobId: job.jobId,
+      narratives: batch,
+      remoteContextHashes: Object.fromEntries(
+        batch.map((item) => [
+          item.marketId,
+          buildNarrativeContext({
+            reportInstance: started,
+            marketId: item.marketId,
+          }).contextHash,
+        ]),
+      ),
+    });
+    expect(duplicate.revision).toBe(revision);
+    expect((await repository.get(instance.id))!.revision).toBe(revision);
   });
 
   it("stays waiting while ChatGPT has not submitted", async () => {
@@ -260,7 +417,11 @@ describe("ChatGPT MCP narrative generation", () => {
     await service.startExternalGeneration(instance.id);
     const state = await service.externalJobState(instance.id);
     expect(state.job?.status).toBe("waiting_for_chatgpt");
-    expect(state.instance.narratives.every((item) => item.status === "not_generated")).toBe(true);
+    expect(
+      state.instance.narratives.every(
+        (item) => item.status === "not_generated",
+      ),
+    ).toBe(true);
   });
 
   it("marks the job expired when the remote job lapses", async () => {
@@ -270,14 +431,26 @@ describe("ChatGPT MCP narrative generation", () => {
     const state = await service.externalJobState(instance.id);
     expect(state.job?.status).toBe("expired");
     expect(state.job?.error).toMatch(/expired/i);
-    expect(state.instance.narratives.every((item) => item.status === "not_generated")).toBe(true);
+    expect(
+      state.instance.narratives.every(
+        (item) => item.status === "not_generated",
+      ),
+    ).toBe(true);
   });
 
   it("holds back approved and edited narratives from Generate All", async () => {
     const { instance, service, mcp } = await setup();
-    await service.edit(instance.id, "overall-market", "An approved manual narrative.");
+    await service.edit(
+      instance.id,
+      "overall-market",
+      "An approved manual narrative.",
+    );
     await service.approve(instance.id, "overall-market");
-    await service.edit(instance.id, "central-dupage", "An unapproved manual edit.");
+    await service.edit(
+      instance.id,
+      "central-dupage",
+      "An unapproved manual edit.",
+    );
     const started = await service.startExternalGeneration(instance.id);
     const marketIds = started.externalNarrativeJob!.marketIds;
     expect(marketIds).toHaveLength(17);
@@ -295,22 +468,38 @@ describe("ChatGPT MCP narrative generation", () => {
     const job = started.externalNarrativeJob!;
     expect(job.marketIds).toEqual(["central-dupage"]);
     expect(job.generationScope).toBe("selected");
-    expect(mcp.createdArgs!.editorial_instruction).toBe("Emphasize leasing activity.");
+    expect(mcp.createdArgs!.editorial_instruction).toBe(
+      "Emphasize leasing activity.",
+    );
     expect(mcp.createdArgs!.market_ids).toEqual(["central-dupage"]);
 
     mcp.complete(job.jobId, [
-      grounded(buildNarrativeContext({ reportInstance: started, marketId: "central-dupage" })),
+      grounded(
+        buildNarrativeContext({
+          reportInstance: started,
+          marketId: "central-dupage",
+        }),
+      ),
     ]);
     const state = await service.externalJobState(instance.id);
     expect(
-      state.instance.narratives.find((item) => item.marketId === "central-dupage")!.status,
+      state.instance.narratives.find(
+        (item) => item.marketId === "central-dupage",
+      )!.status,
     ).toBe("draft");
-    expect(state.instance.narratives.filter((item) => item.status === "draft")).toHaveLength(1);
+    expect(
+      state.instance.narratives.filter((item) => item.status === "draft"),
+    ).toHaveLength(1);
   });
 
   describe("local validation stays authoritative", () => {
     const reject = async (
-      mutate: (batch: NarrativeMcpSubmittedNarrative[], started: Awaited<ReturnType<NarrativeService["startExternalGeneration"]>>) => NarrativeMcpSubmittedNarrative[],
+      mutate: (
+        batch: NarrativeMcpSubmittedNarrative[],
+        started: Awaited<
+          ReturnType<NarrativeService["startExternalGeneration"]>
+        >,
+      ) => NarrativeMcpSubmittedNarrative[],
       expected: RegExp,
     ) => {
       const { instance, service, mcp } = await setup();
@@ -329,7 +518,9 @@ describe("ChatGPT MCP narrative generation", () => {
       );
       expect(state.job?.error).toMatch(expected);
       // Atomic: nothing imported, existing narratives untouched.
-      expect(state.instance.narratives.filter((item) => item.status === "draft")).toHaveLength(0);
+      expect(
+        state.instance.narratives.filter((item) => item.status === "draft"),
+      ).toHaveLength(0);
       return state;
     };
 
@@ -340,7 +531,9 @@ describe("ChatGPT MCP narrative generation", () => {
       });
       const job = started.externalNarrativeJob!;
       mcp.complete(job.jobId, [
-        grounded(buildNarrativeContext({ reportInstance: started, marketId: "ohare" })),
+        grounded(
+          buildNarrativeContext({ reportInstance: started, marketId: "ohare" }),
+        ),
       ]);
       const state = await service.externalJobState(instance.id);
       expect(state.job?.status).toBe("complete");
@@ -351,7 +544,15 @@ describe("ChatGPT MCP narrative generation", () => {
         (batch) =>
           batch.map((item, index) =>
             index === 0
-              ? { ...item, claims: [{ ...item.claims[0]!, supportKeys: ["metric.invented.key"] }] }
+              ? {
+                  ...item,
+                  claims: [
+                    {
+                      ...item.claims[0]!,
+                      supportKeys: ["metric.invented.key"],
+                    },
+                  ],
+                }
               : item,
           ),
         /support key metric\.invented\.key is not present/i,
@@ -362,7 +563,10 @@ describe("ChatGPT MCP narrative generation", () => {
         (batch) =>
           batch.map((item, index) =>
             index === 0
-              ? { ...item, narrative: `${item.narrative} Fictitious Logistics Group expanded.` }
+              ? {
+                  ...item,
+                  narrative: `${item.narrative} Fictitious Logistics Group expanded.`,
+                }
               : item,
           ),
         /Named entity/i,
@@ -372,7 +576,9 @@ describe("ChatGPT MCP narrative generation", () => {
       reject(
         (batch) =>
           batch.map((item, index) =>
-            index === 0 ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." } : item,
+            index === 0
+              ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." }
+              : item,
           ),
         /not supported by the trusted context/i,
       ));
@@ -382,7 +588,10 @@ describe("ChatGPT MCP narrative generation", () => {
         (batch) =>
           batch.map((item, index) =>
             index === 0
-              ? { ...item, narrative: `${item.narrative} See a0B5f000001AbCdEAK.` }
+              ? {
+                  ...item,
+                  narrative: `${item.narrative} See a0B5f000001AbCdEAK.`,
+                }
               : item,
           ),
         /raw Salesforce record identifier/i,
@@ -392,7 +601,9 @@ describe("ChatGPT MCP narrative generation", () => {
       reject(
         (batch) =>
           batch.map((item, index) =>
-            index === 0 ? { ...item, narrative: `${"vacancy ".repeat(200)}held.` } : item,
+            index === 0
+              ? { ...item, narrative: `${"vacancy ".repeat(200)}held.` }
+              : item,
           ),
         /hard maximum is 160/i,
       ));
@@ -401,7 +612,12 @@ describe("ChatGPT MCP narrative generation", () => {
       reject(
         (batch, started) => [
           ...batch,
-          grounded(buildNarrativeContext({ reportInstance: started, marketId: "west-cook" })),
+          grounded(
+            buildNarrativeContext({
+              reportInstance: started,
+              marketId: "west-cook",
+            }),
+          ),
         ],
         /west-cook was not requested/i,
       ));
@@ -434,25 +650,35 @@ describe("ChatGPT MCP narrative generation", () => {
       mcp.complete(
         job.jobId,
         good.map((item, index) =>
-          index === 0 ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." } : item,
+          index === 0
+            ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." }
+            : item,
         ),
       );
       const rejected = await service.externalJobState(instance.id);
       expect(rejected.job?.status).toBe("failed");
-      expect(rejected.instance.narratives.filter((item) => item.status === "draft")).toHaveLength(0);
+      expect(
+        rejected.instance.narratives.filter((item) => item.status === "draft"),
+      ).toHaveLength(0);
       // A failed job is not retried by polling alone.
-      expect((await service.externalJobState(instance.id)).job?.status).toBe("failed");
+      expect((await service.externalJobState(instance.id)).job?.status).toBe(
+        "failed",
+      );
 
       // The corrected batch is still on the MCP, so no new ChatGPT round trip.
       mcp.complete(job.jobId, good);
       const reimported = await service.retryExternalJobImport(instance.id);
       expect(reimported.externalNarrativeJob?.status).toBe("complete");
-      expect(reimported.narratives.filter((item) => item.status === "draft")).toHaveLength(2);
+      expect(
+        reimported.narratives.filter((item) => item.status === "draft"),
+      ).toHaveLength(2);
     });
 
     it("refuses to re-import a job ChatGPT has not submitted", async () => {
       const { instance, service } = await setup();
-      await service.startExternalGeneration(instance.id, { marketIds: ["ohare"] });
+      await service.startExternalGeneration(instance.id, {
+        marketIds: ["ohare"],
+      });
       await expect(service.retryExternalJobImport(instance.id)).rejects.toThrow(
         /has not submitted/i,
       );
@@ -465,7 +691,9 @@ describe("ChatGPT MCP narrative generation", () => {
       });
       const job = started.externalNarrativeJob!;
       const batch = [
-        grounded(buildNarrativeContext({ reportInstance: started, marketId: "ohare" })),
+        grounded(
+          buildNarrativeContext({ reportInstance: started, marketId: "ohare" }),
+        ),
       ];
       // Report data moves while ChatGPT is writing.
       const moved = structuredClone(started);
@@ -478,8 +706,12 @@ describe("ChatGPT MCP narrative generation", () => {
 
       const state = await service.externalJobState(instance.id);
       expect(state.job?.status).toBe("failed");
-      expect(state.job?.error).toMatch(/source data changed while the narrative was being written/i);
-      const ohare = state.instance.narratives.find((item) => item.marketId === "ohare")!;
+      expect(state.job?.error).toMatch(
+        /source data changed while the narrative was being written/i,
+      );
+      const ohare = state.instance.narratives.find(
+        (item) => item.marketId === "ohare",
+      )!;
       expect(ohare.status).toBe("stale");
       expect(ohare.text).toBe("");
     });

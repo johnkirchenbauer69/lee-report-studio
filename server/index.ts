@@ -12,6 +12,12 @@ import {
 } from "./mcp/server.ts";
 import { createReportDataService } from "./report-data-service/createReportDataService.ts";
 import { ChromiumPdfRenderer } from "./renderers/chromiumPdfRenderer.ts";
+import { runServerPublicationImagePreflight } from "./renderers/publicationPreflight.ts";
+import type { ReportTemplate } from "../src/types/report.ts";
+import {
+  sanitizeSalesforceClientPayload,
+  sanitizeSalesforceDisplayValue,
+} from "../src/shared/salesforceIds.ts";
 import { FileSystemAssetStore } from "./assets/assetStore.ts";
 import {
   AssetReferenceIndex,
@@ -80,6 +86,7 @@ const narrativeService = new NarrativeService(
 );
 await assetStore.initialize();
 await reportInstanceRepository.initialize();
+await narrativeService.recoverInterruptedJobs();
 await templateRepository.initialize(
   normalizeReportTemplateFonts(
     sampleTemplate,
@@ -114,6 +121,14 @@ app.all(
   createReportMcpHandler(reportDataService),
 );
 app.use(express.json({ limit: "10mb" }));
+// Every browser-facing JSON response crosses the same display-safety boundary.
+// Internal repositories and MCP provenance retain original source identifiers.
+app.use("/api", (_request, response, next) => {
+  const json = response.json.bind(response);
+  response.json = ((body: unknown) =>
+    json(sanitizeSalesforceClientPayload(body))) as typeof response.json;
+  next();
+});
 app.get("/api/health", (_request, response) =>
   response.json({
     ok: true,
@@ -196,6 +211,7 @@ interface RenderJob {
   template: unknown;
   data: unknown;
   title: string;
+  renderMode?: "final" | "draft";
 }
 const renderJobs = new Map<string, RenderJob>();
 const pdfRenderer = new ChromiumPdfRenderer();
@@ -211,6 +227,27 @@ app.post("/api/render/pdf", async (request, response) => {
     return response.status(400).json({
       error: "Template and normalized presentation data are required.",
     });
+  const appUrl = process.env.LEE_RENDER_APP_URL ?? "http://127.0.0.1:3000";
+  if (body.renderMode !== "draft") {
+    const imageIssues = await runServerPublicationImagePreflight(
+      body.template as ReportTemplate,
+      { baseUrl: appUrl },
+    );
+    if (imageIssues.length) {
+      console.warn(
+        JSON.stringify({
+          event: "publication_image_preflight_failed",
+          issueCount: imageIssues.length,
+          codes: [...new Set(imageIssues.map((issue) => issue.code))],
+        }),
+      );
+      return response.status(422).json({
+        error: "Final PDF publication is blocked by required image preflight.",
+        code: imageIssues[0]!.code,
+        issues: imageIssues,
+      });
+    }
+  }
   const id = randomUUID();
   renderJobs.set(id, {
     template: body.template,
@@ -218,7 +255,6 @@ app.post("/api/render/pdf", async (request, response) => {
     title: body.title ?? "LEE Market Report",
   });
   try {
-    const appUrl = process.env.LEE_RENDER_APP_URL ?? "http://127.0.0.1:3000";
     const pdf = await pdfRenderer.render({
       url: `${appUrl}/?printJob=${encodeURIComponent(id)}`,
       title: body.title ?? "LEE Market Report",
@@ -249,11 +285,16 @@ app.use(
     _next: express.NextFunction,
   ) => {
     console.error(error);
-    response.status(400).json({
+    const code =
+      typeof (error as { code?: unknown })?.code === "string"
+        ? (error as { code: string }).code
+        : undefined;
+    response.status(code?.startsWith("SALESFORCE_") ? 503 : 400).json({
       error:
         error instanceof Error
-          ? error.message
+          ? sanitizeSalesforceDisplayValue(error.message, "Salesforce record")
           : "The request could not be completed.",
+      ...(code ? { code } : {}),
     });
   },
 );

@@ -17,6 +17,7 @@ import {
   prepareSnapshot,
   type ReportSnapshotStore,
 } from "./reportSnapshots.ts";
+import { sanitizeSalesforceClientPayload } from "../../src/shared/salesforceIds.ts";
 
 const metricKeys: (keyof MarketMetrics)[] = [
   "inventorySf",
@@ -242,12 +243,12 @@ export class ReportDataService {
         result: "success",
         snapshotId: snapshot.id,
       });
-      return {
+      return sanitizeSalesforceClientPayload({
         report: validated,
         sourceMetadata,
         completeness: inferred,
         snapshot: { id: snapshot.id, hash: snapshot.hash },
-      };
+      });
     } catch (error) {
       this.dependencies.logger?.({
         event: "report_data_retrieved",
@@ -272,7 +273,7 @@ export class ReportDataService {
   async getStatus() {
     return {
       ...(await this.dependencies.ascendixAdapter.health()),
-      lastSuccessfulRequestAt: this.lastSuccessfulRequestAt,
+      lastSuccessfulReportRequestAt: this.lastSuccessfulRequestAt,
       reportDefinitionVersion: INDUSTRIAL_MARKET_REPORT_DEFINITION_VERSION,
     };
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { q2SampleReport } from "../../data-providers/sample/q2SampleReport";
 import { buildPresentationModel } from "./presentationModel";
+import { containsSalesforceIdToken } from "../../shared/salesforceIds";
 
 describe("buildPresentationModel", () => {
   it("uses approved presentation overrides without mutating normalized calculations", () => {
@@ -111,5 +112,63 @@ describe("buildPresentationModel", () => {
       false,
       false,
     ]);
+  });
+
+  it("recursively removes Salesforce IDs from the complete client presentation", () => {
+    const report = structuredClone(q2SampleReport);
+    report.provenance.push({
+      fieldPath: "reconciliation.submarkets.O'Hare.inventorySf",
+      selectedValue: 1,
+      sources: [
+        {
+          sourceId: "a0B5f000001AbCdEAK",
+          sourceType: "salesforce",
+          value: "Diagnostic 001al00000dS4qYAAS record",
+        },
+      ],
+      authority: "Market_Data__c",
+      status: "reconciled",
+      reconciliation: {
+        classification: "warning",
+        authoritativeValue: 1,
+        comparisonValue: 2,
+        varianceAbsolute: 1,
+        variancePercentage: 1,
+        reason: "Review 001al00000dS4qYAAS",
+        details: {
+          determination: "candidate-match",
+          explanation: "Candidate",
+          sourceCriteria: ["Id = a0B5f000001AbCdEAK"],
+          includedRecordCount: 1,
+          candidateTotalSf: 1,
+          diagnosticOnly: true,
+          records: [
+            {
+              propertyDataId: "a0B5f000001AbCdEAK",
+              propertyId: "001al00000dS4qYAAS",
+              property: "100 Main Street",
+              address: "100 Main Street",
+              buildingSf: 1,
+              canonicalSubmarket: "O'Hare",
+              includedInPropertyDataAggregation: true,
+              expectedOfficialScope: null,
+              classification: "candidate",
+              reason: "Candidate",
+            },
+          ],
+        },
+      },
+    });
+    const model = buildPresentationModel(report);
+    const strings: string[] = [];
+    const collect = (value: unknown): void => {
+      if (typeof value === "string") strings.push(value);
+      else if (Array.isArray(value)) value.forEach(collect);
+      else if (value && typeof value === "object")
+        Object.values(value).forEach(collect);
+    };
+    collect(model);
+    expect(strings.some(containsSalesforceIdToken)).toBe(false);
+    expect(JSON.stringify(model)).toContain("100 Main Street");
   });
 });

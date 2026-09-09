@@ -15,8 +15,9 @@ import {
   OpenAINarrativeModelClient,
 } from "../server/narratives/modelClient.ts";
 import { buildNarrativeContext, publicNarrativeContext } from "../server/narratives/contextBuilder.ts";
+import { resolveApiBaseUrl } from "../src/shared/apiBaseUrl.ts";
 
-const api = process.env.LEE_API_URL ?? "http://127.0.0.1:8787";
+const api = resolveApiBaseUrl({ environment: process.env });
 const responseJson = async <T>(response: Response) => {
   const body = (await response.json()) as T & { error?: string };
   if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);

@@ -303,6 +303,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
         throw new Error(
           "A ReportInstance update cannot change its identifier.",
         );
+      if (updated === current) return structuredClone(current);
       const next = await this.write(this.nextRevision(updated, current));
       this.logger({
         event: "report_save_success",

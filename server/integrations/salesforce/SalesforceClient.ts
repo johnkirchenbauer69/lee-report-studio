@@ -1,3 +1,8 @@
+import {
+  nodeSalesforceBinaryTransport,
+  type SalesforceBinaryTransport,
+} from "./SalesforceBinaryTransport.ts";
+
 export interface SalesforceRecord {
   Id: string;
   [field: string]: unknown;
@@ -5,9 +10,15 @@ export interface SalesforceRecord {
 export interface SalesforceHealth {
   configured: boolean;
   connected: boolean;
+  status?: "configured" | "authenticated" | "degraded" | "failed";
   instanceUrl?: string;
+  instanceHostname?: string;
   authMode?: SalesforceAuthMode;
   apiVersion?: string;
+  lastSuccessfulRequestAt?: string;
+  lastHealthCheckAt?: string;
+  lastAuthRefreshAt?: string;
+  errorCode?: string;
 }
 export interface SalesforceBinaryResponse {
   buffer: Buffer;
@@ -134,64 +145,231 @@ export class SoapLoginAuthStrategy implements SalesforceAuthStrategy {
 export interface SalesforceRestConfig {
   authStrategy: SalesforceAuthStrategy;
   apiVersion: string;
+  fetch?: typeof fetch;
+  binaryTransport?: SalesforceBinaryTransport;
+  now?: () => Date;
+  logger?: (entry: Record<string, unknown>) => void;
 }
+
+export class SalesforceRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code:
+      | "SALESFORCE_AUTH_EXPIRED"
+      | "SALESFORCE_REAUTH_FAILED"
+      | "SALESFORCE_REQUEST_FAILED",
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = "SalesforceRequestError";
+  }
+}
+
 export class SalesforceRestClient implements SalesforceClient {
   private session?: SalesforceAuthSession;
+  private authInFlight?: Promise<SalesforceAuthSession>;
   private apiCallCount = 0;
+  private lastSuccessfulRequestAt?: string;
+  private lastHealthCheckAt?: string;
+  private lastAuthRefreshAt?: string;
+  private state: SalesforceHealth["status"] = "configured";
   constructor(private readonly config: SalesforceRestConfig) {}
-  private async authenticate() {
-    if (!this.session) {
-      this.apiCallCount += 1;
-      this.session = await this.config.authStrategy.authenticate();
-    }
-    return this.session;
+
+  private timestamp() {
+    return (this.config.now?.() ?? new Date()).toISOString();
   }
-  async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
-    const session = await this.authenticate();
-    const records: T[] = [];
-    let url = `${session.instanceUrl}/services/data/v${this.config.apiVersion}/query?q=${encodeURIComponent(soql)}`;
-    do {
+
+  private log(event: string, extra: Record<string, unknown> = {}) {
+    (this.config.logger ?? ((entry) => console.info(JSON.stringify(entry))))({
+      event,
+      authMode: this.config.authStrategy.mode,
+      ...extra,
+    });
+  }
+
+  private async authenticate(refresh = false) {
+    if (this.session) return this.session;
+    if (!this.authInFlight) {
+      if (refresh) {
+        this.state = "degraded";
+        this.log("salesforce_reauth_started");
+      }
       this.apiCallCount += 1;
-      const response = await fetch(url, {
-        headers: { authorization: `Bearer ${session.accessToken}` },
-      });
+      this.authInFlight = this.config.authStrategy
+        .authenticate()
+        .then((session) => {
+          this.session = session;
+          this.lastAuthRefreshAt = this.timestamp();
+          this.state = "authenticated";
+          if (refresh) this.log("salesforce_reauth_succeeded");
+          return session;
+        })
+        .catch((error) => {
+          this.state = "failed";
+          if (refresh)
+            this.log("salesforce_reauth_failed", {
+              errorName: error instanceof Error ? error.name : "UnknownError",
+            });
+          throw refresh
+            ? new SalesforceRequestError(
+                "Salesforce reauthentication failed.",
+                "SALESFORCE_REAUTH_FAILED",
+              )
+            : error;
+        })
+        .finally(() => {
+          this.authInFlight = undefined;
+        });
+    }
+    return this.authInFlight;
+  }
+
+  private invalidate(session: SalesforceAuthSession) {
+    if (this.session === session) this.session = undefined;
+  }
+
+  private async authenticatedRequest<T extends { status: number }>(
+    operation: string,
+    request: (session: SalesforceAuthSession) => Promise<T>,
+    dispose?: (response: T) => Promise<void>,
+  ): Promise<T> {
+    const issue = async (session: SalesforceAuthSession) => {
+      this.apiCallCount += 1;
+      return request(session);
+    };
+    const recordSuccess = (response: T) => {
+      if (response.status >= 200 && response.status < 300) {
+        this.lastSuccessfulRequestAt = this.timestamp();
+        this.state = "authenticated";
+      }
+    };
+
+    const session = await this.authenticate();
+    let response = await issue(session);
+    if (response.status !== 401) {
+      recordSuccess(response);
+      return response;
+    }
+
+    // A response that is retried must be explicitly consumed. Node does not
+    // guarantee prompt GC disposal, and an unread Undici body can pin a pooled
+    // socket or leave its HTTP/1 parser paused when the peer closes it.
+    await dispose?.(response);
+    this.state = "degraded";
+    this.log("salesforce_auth_expired_detected", { operation });
+    this.invalidate(session);
+    const refreshed = await this.authenticate(true);
+    this.log("salesforce_query_retry", { operation, retry: 1 });
+    response = await issue(refreshed);
+    recordSuccess(response);
+    if (response.status === 401) this.state = "failed";
+    return response;
+  }
+
+  private async authenticatedFetch(
+    path: string,
+    init: RequestInit = {},
+    operation = "request",
+  ): Promise<Response> {
+    return this.authenticatedRequest(
+      operation,
+      (session) =>
+        (this.config.fetch ?? fetch)(`${session.instanceUrl}${path}`, {
+          ...init,
+          headers: {
+            ...init.headers,
+            authorization: `Bearer ${session.accessToken}`,
+          },
+        }),
+      async (response) => {
+        if (!response.bodyUsed) await response.arrayBuffer();
+      },
+    );
+  }
+
+  async query<T extends SalesforceRecord>(soql: string): Promise<T[]> {
+    const records: T[] = [];
+    let path = `/services/data/v${this.config.apiVersion}/query?q=${encodeURIComponent(soql)}`;
+    while (path) {
+      const response = await this.authenticatedFetch(path, {}, "query");
       if (!response.ok)
-        throw new Error(`Salesforce query failed (${response.status}).`);
+        throw new SalesforceRequestError(
+          `Salesforce query failed (${response.status}).`,
+          response.status === 401
+            ? "SALESFORCE_AUTH_EXPIRED"
+            : "SALESFORCE_REQUEST_FAILED",
+          response.status,
+        );
       const page = (await response.json()) as SalesforceQueryResponse<T>;
       records.push(...page.records);
-      url = page.nextRecordsUrl
-        ? `${session.instanceUrl}${page.nextRecordsUrl}`
-        : "";
-    } while (url);
+      path = page.nextRecordsUrl ?? "";
+    }
     return records;
   }
   async getBinary(sobjectPath: string): Promise<SalesforceBinaryResponse> {
-    const session = await this.authenticate();
-    this.apiCallCount += 1;
-    const response = await fetch(
-      `${session.instanceUrl}/services/data/v${this.config.apiVersion}/${sobjectPath}`,
-      { headers: { authorization: `Bearer ${session.accessToken}` } },
+    return this.authenticatedRequest("binary", (session) =>
+      (this.config.binaryTransport ?? nodeSalesforceBinaryTransport)({
+        url: `${session.instanceUrl}/services/data/v${this.config.apiVersion}/${sobjectPath}`,
+        accessToken: session.accessToken,
+      }),
     );
-    const contentType = response.headers.get("content-type") ?? "";
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return { buffer, contentType, status: response.status };
   }
   async health(): Promise<SalesforceHealth> {
-    try {
-      const session = await this.authenticate();
-      return {
-        configured: true,
-        connected: true,
-        instanceUrl: session.instanceUrl,
-        authMode: this.config.authStrategy.mode,
-        apiVersion: this.config.apiVersion,
-      };
-    } catch {
+    this.lastHealthCheckAt = this.timestamp();
+    if (this.state === "degraded" && this.authInFlight)
       return {
         configured: true,
         connected: false,
+        status: "degraded",
         authMode: this.config.authStrategy.mode,
         apiVersion: this.config.apiVersion,
+        lastSuccessfulRequestAt: this.lastSuccessfulRequestAt,
+        lastHealthCheckAt: this.lastHealthCheckAt,
+        lastAuthRefreshAt: this.lastAuthRefreshAt,
+      };
+    try {
+      const response = await this.authenticatedFetch(
+        `/services/data/v${this.config.apiVersion}/limits/`,
+        {},
+        "health_probe",
+      );
+      if (!response.ok)
+        throw new SalesforceRequestError(
+          `Salesforce health probe failed (${response.status}).`,
+          response.status === 401
+            ? "SALESFORCE_AUTH_EXPIRED"
+            : "SALESFORCE_REQUEST_FAILED",
+          response.status,
+        );
+      await response.arrayBuffer();
+      const session = this.session!;
+      return {
+        configured: true,
+        connected: true,
+        status: "authenticated",
+        instanceUrl: session.instanceUrl,
+        instanceHostname: new URL(session.instanceUrl).hostname,
+        authMode: this.config.authStrategy.mode,
+        apiVersion: this.config.apiVersion,
+        lastSuccessfulRequestAt: this.lastSuccessfulRequestAt,
+        lastHealthCheckAt: this.lastHealthCheckAt,
+        lastAuthRefreshAt: this.lastAuthRefreshAt,
+      };
+    } catch (error) {
+      this.state = "failed";
+      return {
+        configured: true,
+        connected: false,
+        status: "failed",
+        authMode: this.config.authStrategy.mode,
+        apiVersion: this.config.apiVersion,
+        lastSuccessfulRequestAt: this.lastSuccessfulRequestAt,
+        lastHealthCheckAt: this.lastHealthCheckAt,
+        lastAuthRefreshAt: this.lastAuthRefreshAt,
+        errorCode:
+          error instanceof SalesforceRequestError
+            ? error.code
+            : "SALESFORCE_REQUEST_FAILED",
       };
     }
   }

@@ -194,30 +194,29 @@ describe("report data providers", () => {
     payload.presentationOverrides = [];
     payload.dataCompleteness = [];
     (payload.overallMarket as Record<string, unknown>).narrative = "";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            report: payload,
-            sourceMetadata: {
-              generatedAt: "2026-08-20T12:00:00.000Z",
-              reportDefinitionVersion: "industrial-market-report-data-v1",
-            },
-            completeness: [],
-            snapshot: { id: "snapshot-test", hash: "abc123" },
-          }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" },
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          report: payload,
+          sourceMetadata: {
+            generatedAt: "2026-08-20T12:00:00.000Z",
+            reportDefinitionVersion: "industrial-market-report-data-v1",
           },
-        ),
+          completeness: [],
+          snapshot: { id: "snapshot-test", hash: "abc123" },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
       ),
     );
+    vi.stubGlobal("fetch", fetcher);
 
-    const result = await new AscendixDataProvider("/secure").loadReportData(
-      request("ascendix", undefined, "2026 Q3"),
-    );
+    const result = await new AscendixDataProvider(
+      "/secure",
+      "https://api.example.test:9443/studio/",
+    ).loadReportData(request("ascendix", undefined, "2026 Q3"));
     expect(result.report.report.period).toBe("2026 Q3");
     expect(result.report.leasing).toEqual([]);
     expect(result.snapshot).toMatchObject({
@@ -225,5 +224,10 @@ describe("report data providers", () => {
       hash: "abc123",
     });
     expect(JSON.stringify(result.report)).not.toContain("Hyundai Translead");
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example.test:9443/studio/secure",
+      expect.any(Object),
+    );
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("8787");
   });
 });

@@ -8,7 +8,10 @@ import type {
   IndustrialMarketReport,
   MarketMetrics,
 } from "../schema/industrialMarketReport";
-import { looksLikeSalesforceId } from "../../shared/salesforceIds";
+import {
+  containsSalesforceIdToken,
+  sanitizeSalesforceClientPayload,
+} from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
 
@@ -16,7 +19,7 @@ export function assertNoClientFacingSalesforceIds(
   value: unknown,
   path = "presentation",
 ): void {
-  if (typeof value === "string" && looksLikeSalesforceId(value))
+  if (typeof value === "string" && containsSalesforceIdToken(value))
     throw new Error(`Unsafe Salesforce record id in client-facing ${path}.`);
   if (Array.isArray(value))
     value.forEach((item, index) =>
@@ -329,7 +332,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     submarketDetails,
   };
   assertNoClientFacingSalesforceIds(clientFacing);
-  return {
+  const presentation = {
     ...report,
     reportDisplay,
     overallMarketMapAssetUrl: resolveMarketMapAsset("overall-market"),
@@ -347,4 +350,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     topConstruction: presentProperties(report.construction, "construction"),
     submarketDetails,
   };
+  const safePresentation = sanitizeSalesforceClientPayload(presentation);
+  assertNoClientFacingSalesforceIds(safePresentation);
+  return safePresentation;
 }

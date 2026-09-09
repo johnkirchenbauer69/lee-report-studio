@@ -103,6 +103,16 @@ describe("live-verified Salesforce rollups", () => {
       ]).medianSalesPricePsf,
     ).toBe(146.52);
   });
+  it("distinguishes explicit historical zero from missing delivered and sales values", () => {
+    const zero = aggregateQuarterlyMarketPeriod("2026 Q2", [
+      { Id: "a", Delivered_SF__c: 0, Sales_Volume_USD__c: 0 },
+    ]);
+    const missing = aggregateQuarterlyMarketPeriod("2026 Q2", [{ Id: "b" }]);
+    expect(zero.deliveredSf).toBe(0);
+    expect(zero.salesVolume).toBe(0);
+    expect(missing.deliveredSf).toBeUndefined();
+    expect(missing.salesVolume).toBeUndefined();
+  });
   it("uses ratio-of-sums for overall vacancy and availability", () => {
     const result = rollupPropertyData(
       [
