@@ -8,6 +8,7 @@ import type {
   ReportGenerationRequest,
   ReportInstance,
 } from "../schema/generation";
+import { REPORT_INSTANCE_SCHEMA_VERSION } from "../schema/generation";
 import {
   evaluateReportReadiness,
   validateRequestConsistency,
@@ -182,11 +183,7 @@ export async function generateReportInstance(
     ...dataReadiness,
     canApprove: false,
     canPublish: false,
-    blockers: [
-      ...dataReadiness.blockers,
-      ...fontIssues,
-      ...narrativeIssues,
-    ],
+    blockers: [...dataReadiness.blockers, ...fontIssues, ...narrativeIssues],
     issues: [...dataReadiness.issues, ...fontIssues, ...narrativeIssues],
   };
   const structuralErrors = readiness.issues.filter(
@@ -232,6 +229,8 @@ export async function generateReportInstance(
 
   progress(onProgress, "creating", "Creating versioned report instance");
   const instance: ReportInstance = {
+    schemaVersion: REPORT_INSTANCE_SCHEMA_VERSION,
+    revision: 0,
     id: `report-${crypto.randomUUID()}`,
     templateId: template.id,
     templateVersion: template.version,

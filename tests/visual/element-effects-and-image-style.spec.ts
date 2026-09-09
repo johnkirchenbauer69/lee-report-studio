@@ -242,7 +242,13 @@ test("text and shape shadows plus image stroke and clipping persist through save
     expect(
       storedPage.elements.find((element) => element.id === image.id)?.style,
     ).toMatchObject({
-      borderRadius: 18,
+      cornerRadii: {
+        topLeft: 18,
+        topRight: 18,
+        bottomRight: 18,
+        bottomLeft: 18,
+        linked: true,
+      },
       stroke: { enabled: true, color: "#c4123f", width: 4 },
     });
 

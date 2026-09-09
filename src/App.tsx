@@ -29,6 +29,11 @@ import {
   savedTemplateEditorState,
 } from "./engine/editorNavigation";
 import { nextSelection } from "./engine/selection";
+import {
+  captureEditorHistory,
+  type EditorHistorySnapshot,
+  upsertManualOverride,
+} from "./engine/reportDocumentHistory";
 import { CanvasElement } from "./components/CanvasElement";
 import { Inspector } from "./components/Inspector";
 import { DataBrowser } from "./components/DataBrowser";
@@ -56,6 +61,7 @@ import {
 import { buildPresentationModel } from "./report-engine/bindings/presentationModel";
 import { q2SampleReport } from "./data-providers/sample/q2SampleReport";
 import type {
+  ManualOverride,
   ReportGenerationRequest,
   ReportInstance,
 } from "./report-engine/schema/generation";
@@ -83,7 +89,11 @@ import {
   inferFontGovernanceStatus,
 } from "./services/fontGovernance";
 import { templateStore } from "./services/templateStore";
-import { reportInstanceStore } from "./services/reportInstanceStore";
+import {
+  ReportSaveConflictError,
+  reportInstanceStore,
+} from "./services/reportInstanceStore";
+import { reportRecovery } from "./services/reportRecovery";
 import type {
   StoredTemplateVersion,
   TemplateVersionSummary,
@@ -149,6 +159,8 @@ type LeftTab =
   | "validate";
 type ContextMenuState = { x: number; y: number; id: string } | undefined;
 type EditorDocumentMode = "master-template" | "report-instance";
+type ReportSaveStatus =
+  "clean" | "dirty" | "saving" | "saved" | "error" | "conflict";
 
 export default function App() {
   const [template, setTemplate] = useState<ReportTemplate>(() => {
@@ -164,8 +176,8 @@ export default function App() {
   const [zoom, setZoom] = useState(0.72);
   const [leftTab, setLeftTab] = useState<LeftTab>("elements");
   const [guides, setGuides] = useState<SnapGuide[]>([]);
-  const [past, setPast] = useState<ReportTemplate[]>([]);
-  const [future, setFuture] = useState<ReportTemplate[]>([]);
+  const [past, setPast] = useState<EditorHistorySnapshot[]>([]);
+  const [future, setFuture] = useState<EditorHistorySnapshot[]>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>();
   const [toast, setToast] = useState("");
   const [croppingId, setCroppingId] = useState<string>();
@@ -179,6 +191,12 @@ export default function App() {
   const [normalizedReport, setNormalizedReport] =
     useState<IndustrialMarketReport>(() => q2SampleReport);
   const [reportInstance, setReportInstance] = useState<ReportInstance>();
+  const latestReportInstance = useRef<ReportInstance | undefined>(undefined);
+  const [reportSaveStatus, setReportSaveStatus] =
+    useState<ReportSaveStatus>("clean");
+  const reportSaveStatusRef = useRef<ReportSaveStatus>("clean");
+  const [reportSaveError, setReportSaveError] = useState<string>();
+  const [reportLastSavedAt, setReportLastSavedAt] = useState<string>();
   const [documentMode, setDocumentMode] =
     useState<EditorDocumentMode>("master-template");
   const [templateLibrary, setTemplateLibrary] = useState<
@@ -203,10 +221,137 @@ export default function App() {
   const [preflightIssues, setPreflightIssues] = useState<
     ExportPreflightIssue[]
   >([]);
-  const interactionStart = useRef<ReportTemplate | undefined>(undefined);
+  const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
   const managedServerAssets = useRef<Asset[]>([]);
+  const reportSaveTimer = useRef<number | undefined>(undefined);
+  const reportSaveInFlight = useRef(false);
+  const reportChangeSequence = useRef(0);
+  const reportRetryCount = useRef(0);
+  const runReportSaveRef = useRef<() => void>(() => undefined);
+
+  const setReportSaveState = useCallback(
+    (status: ReportSaveStatus, error?: string) => {
+      reportSaveStatusRef.current = status;
+      setReportSaveStatus(status);
+      setReportSaveError(error);
+    },
+    [],
+  );
+
+  const scheduleReportSave = useCallback((delayMs = 650) => {
+    if (reportSaveTimer.current !== undefined)
+      window.clearTimeout(reportSaveTimer.current);
+    reportSaveTimer.current = window.setTimeout(
+      () => runReportSaveRef.current(),
+      delayMs,
+    );
+  }, []);
+
+  const stageReportDocument = useCallback(
+    (nextTemplate: ReportTemplate, manualOverrides?: ManualOverride[]) => {
+      const current = latestReportInstance.current;
+      if (!current) return;
+      const next: ReportInstance = {
+        ...current,
+        pages: clone(nextTemplate.pages),
+        manualOverrides: clone(manualOverrides ?? current.manualOverrides),
+      };
+      latestReportInstance.current = next;
+      setReportInstance(next);
+      reportChangeSequence.current += 1;
+      reportRetryCount.current = 0;
+      reportRecovery.save({
+        reportId: next.id,
+        baseRevision: next.revision,
+        pages: next.pages,
+        manualOverrides: next.manualOverrides,
+        savedAt: new Date().toISOString(),
+      });
+      setReportSaveState("dirty");
+      scheduleReportSave();
+    },
+    [scheduleReportSave, setReportSaveState],
+  );
+
+  runReportSaveRef.current = () => {
+    if (reportSaveInFlight.current) {
+      scheduleReportSave(250);
+      return;
+    }
+    const snapshot = latestReportInstance.current;
+    if (!snapshot || reportSaveStatusRef.current === "conflict") return;
+    const sequence = reportChangeSequence.current;
+    reportSaveInFlight.current = true;
+    setReportSaveState("saving");
+    void reportInstanceStore
+      .saveDocument(snapshot.id, {
+        baseRevision: snapshot.revision,
+        pages: snapshot.pages,
+        manualOverrides: snapshot.manualOverrides,
+      })
+      .then((saved) => {
+        const current = latestReportInstance.current;
+        if (!current || current.id !== saved.id) return;
+        if (reportChangeSequence.current === sequence) {
+          latestReportInstance.current = saved;
+          setReportInstance(saved);
+          reportRecovery.clear(saved.id);
+          reportRetryCount.current = 0;
+          setReportLastSavedAt(new Date().toISOString());
+          setReportSaveState("saved");
+          return;
+        }
+        const merged = {
+          ...saved,
+          pages: current.pages,
+          manualOverrides: current.manualOverrides,
+        };
+        latestReportInstance.current = merged;
+        setReportInstance(merged);
+        reportRecovery.save({
+          reportId: merged.id,
+          baseRevision: merged.revision,
+          pages: merged.pages,
+          manualOverrides: merged.manualOverrides,
+          savedAt: new Date().toISOString(),
+        });
+        setReportSaveState("dirty");
+      })
+      .catch((error: unknown) => {
+        const current = latestReportInstance.current;
+        if (!current || current.id !== snapshot.id) return;
+        if (error instanceof ReportSaveConflictError) {
+          reportRecovery.save({
+            reportId: current.id,
+            baseRevision: current.revision,
+            pages: current.pages,
+            manualOverrides: current.manualOverrides,
+            savedAt: new Date().toISOString(),
+          });
+          setReportSaveState(
+            "conflict",
+            `Server revision ${error.currentRevision} replaced local base ${error.baseRevision}. Local edits are preserved for recovery.`,
+          );
+          return;
+        }
+        reportRetryCount.current += 1;
+        setReportSaveState(
+          "error",
+          error instanceof Error ? error.message : "Report autosave failed.",
+        );
+        if (reportRetryCount.current <= 2) scheduleReportSave(2_000);
+      })
+      .finally(() => {
+        reportSaveInFlight.current = false;
+        if (
+          reportChangeSequence.current !== sequence &&
+          reportSaveStatusRef.current === "dirty"
+        )
+          scheduleReportSave(250);
+      });
+  };
 
   const page =
     template.pages.find((item) => item.id === pageId) ?? template.pages[0];
@@ -244,7 +389,11 @@ export default function App() {
   );
 
   const mutate = useCallback(
-    (updater: (current: ReportTemplate) => ReportTemplate, record = true) => {
+    (
+      updater: (current: ReportTemplate) => ReportTemplate,
+      record = true,
+      overrideUpdater?: (current: ManualOverride[]) => ManualOverride[],
+    ) => {
       if (
         record &&
         documentMode === "master-template" &&
@@ -257,18 +406,29 @@ export default function App() {
         window.setTimeout(() => setToast(""), 1800);
         return;
       }
-      setTemplate((current) => {
-        if (record) {
-          setPast((items) => [...items.slice(-49), clone(current)]);
-          setFuture([]);
-          setLibrarySaveState("local");
-        }
-        const next = updater(current);
-        latestTemplate.current = next;
-        return next;
-      });
+      const current = latestTemplate.current;
+      const currentOverrides =
+        latestReportInstance.current?.manualOverrides ?? [];
+      if (record) {
+        setPast((items) => [
+          ...items.slice(-49),
+          captureEditorHistory(current, currentOverrides),
+        ]);
+        setFuture([]);
+        setLibrarySaveState("local");
+      }
+      const next = updater(current);
+      latestTemplate.current = next;
+      setTemplate(next);
+      if (documentMode === "report-instance" && latestReportInstance.current)
+        stageReportDocument(
+          next,
+          overrideUpdater
+            ? overrideUpdater(currentOverrides)
+            : currentOverrides,
+        );
     },
-    [activeTemplateRecord, documentMode],
+    [activeTemplateRecord, documentMode, stageReportDocument],
   );
   const notify = (message: string) => {
     setToast(message);
@@ -281,28 +441,33 @@ export default function App() {
     setPublishedTemplate(published);
     return templates;
   }, []);
-  const openTemplateRecord = useCallback((record: StoredTemplateVersion) => {
-    const browserAssets = (record.template.assets ?? []).filter(
-      (asset) => asset.storage !== "backend",
-    );
-    const assets = [...browserAssets, ...managedServerAssets.current];
-    const next = hydrate(
-      normalizeReportTemplateFonts({ ...record.template, assets }, assets),
-    );
-    setActiveTemplateRecord(record);
-    setTemplate(next);
-    latestTemplate.current = next;
-    setDocumentMode("master-template");
-    setReportInstance(undefined);
-    setReportData(sampleData);
-    setNormalizedReport(q2SampleReport);
-    const editorState = openedTemplateEditorState(next);
-    setPageId(editorState.pageId);
-    setSelectedIds(editorState.selectedIds);
-    setPast([]);
-    setFuture([]);
-    setLibrarySaveState("saved");
-  }, []);
+  const openTemplateRecord = useCallback(
+    (record: StoredTemplateVersion) => {
+      const browserAssets = (record.template.assets ?? []).filter(
+        (asset) => asset.storage !== "backend",
+      );
+      const assets = [...browserAssets, ...managedServerAssets.current];
+      const next = hydrate(
+        normalizeReportTemplateFonts({ ...record.template, assets }, assets),
+      );
+      setActiveTemplateRecord(record);
+      setTemplate(next);
+      latestTemplate.current = next;
+      setDocumentMode("master-template");
+      latestReportInstance.current = undefined;
+      setReportInstance(undefined);
+      setReportSaveState("clean");
+      setReportData(sampleData);
+      setNormalizedReport(q2SampleReport);
+      const editorState = openedTemplateEditorState(next);
+      setPageId(editorState.pageId);
+      setSelectedIds(editorState.selectedIds);
+      setPast([]);
+      setFuture([]);
+      setLibrarySaveState("saved");
+    },
+    [setReportSaveState],
+  );
   const applySavedTemplateRecord = (record: StoredTemplateVersion) => {
     const browserAssets = (record.template.assets ?? []).filter(
       (asset) => asset.storage !== "backend",
@@ -321,6 +486,9 @@ export default function App() {
     setTemplate(next);
     latestTemplate.current = next;
     setDocumentMode("master-template");
+    latestReportInstance.current = undefined;
+    setReportInstance(undefined);
+    setReportSaveState("clean");
     setPageId(editorState.pageId);
     setSelectedIds(editorState.selectedIds);
     setPast([]);
@@ -332,6 +500,24 @@ export default function App() {
     const timer = window.setTimeout(() => localPersistence.save(template), 250);
     return () => window.clearTimeout(timer);
   }, [template]);
+  useEffect(
+    () => () => {
+      if (reportSaveTimer.current !== undefined)
+        window.clearTimeout(reportSaveTimer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    const shouldWarn = ["dirty", "saving", "error", "conflict"].includes(
+      reportSaveStatus,
+    );
+    if (!shouldWarn) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [reportSaveStatus]);
   useEffect(() => {
     installManagedFonts(template.assets ?? [])
       .then(setFontDiagnostics)
@@ -364,20 +550,49 @@ export default function App() {
             const browserAssets = (source.template.assets ?? []).filter(
               (asset) => asset.storage !== "backend",
             );
+            const recovery = reportRecovery.load(restored.id);
+            const recoveryMatches =
+              recovery?.baseRevision === restored.revision;
+            const recoveryDiffers =
+              recoveryMatches &&
+              (JSON.stringify(recovery.pages) !==
+                JSON.stringify(restored.pages) ||
+                JSON.stringify(recovery.manualOverrides) !==
+                  JSON.stringify(restored.manualOverrides));
+            const effective = recoveryDiffers
+              ? {
+                  ...restored,
+                  pages: recovery.pages,
+                  manualOverrides: recovery.manualOverrides,
+                }
+              : restored;
             const reportTemplate = hydrate({
               ...source.template,
               name: `${restored.generationRequest.period} ${restored.generationRequest.market} Industrial Market Report`,
               assets: [...browserAssets, ...managedServerAssets.current],
-              pages: restored.pages,
+              pages: effective.pages,
             });
             setTemplate(reportTemplate);
             latestTemplate.current = reportTemplate;
-            setReportData(buildPresentationModel(restored.dataSnapshot));
-            setNormalizedReport(restored.dataSnapshot);
-            setReportInstance(restored);
+            setReportData(buildPresentationModel(effective.dataSnapshot));
+            setNormalizedReport(effective.dataSnapshot);
+            latestReportInstance.current = effective;
+            setReportInstance(effective);
             setDocumentMode("report-instance");
             setPageId(reportTemplate.pages[0].id);
             setMode("data");
+            if (recoveryDiffers) {
+              stageReportDocument(reportTemplate, effective.manualOverrides);
+            } else if (recovery && !recoveryMatches) {
+              setReportSaveState(
+                "conflict",
+                `Recovery is based on revision ${recovery.baseRevision}, but the server is at revision ${restored.revision}. Recovery was retained without overwriting the server.`,
+              );
+            } else {
+              if (recovery) reportRecovery.clear(restored.id);
+              setReportSaveState("saved");
+              setReportLastSavedAt(new Date().toISOString());
+            }
           } catch (error) {
             reportInstanceStore.forget();
             console.warn("Saved report instance could not be restored.", error);
@@ -391,10 +606,19 @@ export default function App() {
           error,
         );
       });
-  }, [openTemplateRecord, refreshTemplateLibrary]);
+  }, [
+    openTemplateRecord,
+    refreshTemplateLibrary,
+    setReportSaveState,
+    stageReportDocument,
+  ]);
 
   const updatePage = useCallback(
-    (updater: (current: ReportPage) => ReportPage, record = true) =>
+    (
+      updater: (current: ReportPage) => ReportPage,
+      record = true,
+      overrideUpdater?: (current: ManualOverride[]) => ManualOverride[],
+    ) =>
       mutate(
         (current) => ({
           ...current,
@@ -403,6 +627,7 @@ export default function App() {
           ),
         }),
         record,
+        overrideUpdater,
       ),
     [mutate, page.id],
   );
@@ -473,48 +698,46 @@ export default function App() {
     [selectedIds, updatePage],
   );
   const updateSelected = (patch: Partial<ReportElement>) => {
-    if (
+    const recordsManualOverride =
       Object.prototype.hasOwnProperty.call(patch, "text") &&
       selected?.binding &&
-      reportInstance
-    ) {
+      reportInstance;
+    let overrideUpdater:
+      ((current: ManualOverride[]) => ManualOverride[]) | undefined;
+    if (recordsManualOverride && selected?.binding) {
       const generatedValue = getByContextPath(
         reportData,
         selected.binding.path,
         selected.bindingContext,
       );
-      setReportInstance((instance) =>
-        instance
-          ? {
-              ...instance,
-              manualOverrides: [
-                ...instance.manualOverrides,
-                {
-                  elementId: selected.id,
-                  bindingPath: selected.binding?.path,
-                  generatedValue,
-                  overrideValue: (patch as { text?: string }).text,
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-            }
-          : instance,
-      );
+      const bindingPath = selected.binding.path;
+      const overrideValue = (patch as { text?: string }).text;
+      overrideUpdater = (current) =>
+        upsertManualOverride(current, {
+          elementId: selected.id,
+          bindingPath,
+          generatedValue,
+          overrideValue,
+        });
     }
-    updatePage((current) => ({
-      ...current,
-      elements: current.elements.map((element) =>
-        selectedIds.includes(element.id)
-          ? normalizeElementCorners({
-              ...element,
-              ...patch,
-              style: patch.style
-                ? { ...element.style, ...patch.style }
-                : element.style,
-            } as ReportElement)
-          : element,
-      ),
-    }));
+    updatePage(
+      (current) => ({
+        ...current,
+        elements: current.elements.map((element) =>
+          selectedIds.includes(element.id)
+            ? normalizeElementCorners({
+                ...element,
+                ...patch,
+                style: patch.style
+                  ? { ...element.style, ...patch.style }
+                  : element.style,
+              } as ReportElement)
+            : element,
+        ),
+      }),
+      true,
+      overrideUpdater,
+    );
   };
   const setSettings = (patch: Partial<EditorSettings>) =>
     mutate((current) => ({
@@ -577,14 +800,17 @@ export default function App() {
 
   const beginInteraction = () => {
     if (!interactionStart.current)
-      interactionStart.current = clone(latestTemplate.current);
+      interactionStart.current = captureEditorHistory(
+        latestTemplate.current,
+        latestReportInstance.current?.manualOverrides ?? [],
+      );
   };
   const endInteraction = () => {
     const start = interactionStart.current;
     interactionStart.current = undefined;
     if (
       start &&
-      JSON.stringify(start) !== JSON.stringify(latestTemplate.current)
+      JSON.stringify(start.template) !== JSON.stringify(latestTemplate.current)
     ) {
       setPast((items) => [...items.slice(-49), start]);
       setFuture([]);
@@ -593,19 +819,35 @@ export default function App() {
   const undo = useCallback(() => {
     const previous = past.at(-1);
     if (!previous) return;
-    setFuture([clone(latestTemplate.current), ...future.slice(0, 49)]);
+    setFuture([
+      captureEditorHistory(
+        latestTemplate.current,
+        latestReportInstance.current?.manualOverrides ?? [],
+      ),
+      ...future.slice(0, 49),
+    ]);
     setPast(past.slice(0, -1));
-    latestTemplate.current = clone(previous);
-    setTemplate(clone(previous));
-  }, [future, past]);
+    latestTemplate.current = clone(previous.template);
+    setTemplate(clone(previous.template));
+    if (documentMode === "report-instance")
+      stageReportDocument(previous.template, previous.manualOverrides);
+  }, [documentMode, future, past, stageReportDocument]);
   const redo = useCallback(() => {
     const next = future[0];
     if (!next) return;
-    setPast([...past.slice(-49), clone(latestTemplate.current)]);
+    setPast([
+      ...past.slice(-49),
+      captureEditorHistory(
+        latestTemplate.current,
+        latestReportInstance.current?.manualOverrides ?? [],
+      ),
+    ]);
     setFuture(future.slice(1));
-    latestTemplate.current = clone(next);
-    setTemplate(clone(next));
-  }, [future, past]);
+    latestTemplate.current = clone(next.template);
+    setTemplate(clone(next.template));
+    if (documentMode === "report-instance")
+      stageReportDocument(next.template, next.manualOverrides);
+  }, [documentMode, future, past, stageReportDocument]);
 
   const select = (id: string, additive: boolean) => {
     if (croppingId && croppingId !== id) setCroppingId(undefined);
@@ -1257,7 +1499,28 @@ export default function App() {
     reportInstanceStore.remember(instance.id);
     setReportData(buildPresentationModel(instance.dataSnapshot));
     setNormalizedReport(instance.dataSnapshot);
+    const local = latestReportInstance.current;
+    if (
+      local?.id === instance.id &&
+      ["dirty", "saving", "error"].includes(reportSaveStatusRef.current)
+    ) {
+      const merged = {
+        ...instance,
+        pages: local.pages,
+        manualOverrides: local.manualOverrides,
+      };
+      latestReportInstance.current = merged;
+      setReportInstance(merged);
+      stageReportDocument(latestTemplate.current, merged.manualOverrides);
+      return;
+    }
+    if (local?.id === instance.id && reportSaveStatusRef.current === "conflict")
+      return;
+    latestReportInstance.current = instance;
     setReportInstance(instance);
+    reportRecovery.clear(instance.id);
+    setReportSaveState("saved");
+    setReportLastSavedAt(new Date().toISOString());
   };
   const handleGenerate = async (
     request: ReportGenerationRequest,
@@ -1279,6 +1542,7 @@ export default function App() {
     });
     setTemplate(next);
     latestTemplate.current = next;
+    latestReportInstance.current = persisted;
     handleReportInstanceChange(persisted);
     setDocumentMode("report-instance");
     setPageId(next.pages[0].id);
@@ -1299,12 +1563,18 @@ export default function App() {
       normalizeReportTemplateFonts({ ...source, assets }, assets),
     );
     localPersistence.clear();
+    if (latestReportInstance.current)
+      reportRecovery.clear(latestReportInstance.current.id);
     reportInstanceStore.forget();
+    if (reportSaveTimer.current !== undefined)
+      window.clearTimeout(reportSaveTimer.current);
     setTemplate(next);
     latestTemplate.current = next;
     setReportData(sampleData);
     setNormalizedReport(q2SampleReport);
     setReportInstance(undefined);
+    latestReportInstance.current = undefined;
+    setReportSaveState("clean");
     setDocumentMode("master-template");
     setPageId(next.pages[0].id);
     setSelectedIds([]);
@@ -1400,8 +1670,13 @@ export default function App() {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
       const mod = event.ctrlKey || event.metaKey;
+      const isFormControl = ["INPUT", "TEXTAREA", "SELECT"].includes(
+        target.tagName,
+      );
+      // Bound-text edits and their audit override share the editor history.
+      // Route undo/redo through that history even while the textarea is focused.
+      if (isFormControl && !(mod && event.key.toLowerCase() === "z")) return;
       if (event.key === "Escape" && tableEditingId) {
         event.preventDefault();
         setTableEditingId(undefined);
@@ -2410,6 +2685,7 @@ export default function App() {
                   pageSize={page}
                   settings={settings}
                   data={reportData}
+                  manualOverrides={reportInstance?.manualOverrides}
                   mode={mode}
                   selected={selectedIds.includes(element.id)}
                   selectedIds={selectedIds}
@@ -2511,14 +2787,25 @@ export default function App() {
           {generationProgress?.message
             ? `${generationProgress.message} · `
             : ""}
-          {reportInstance
-            ? `${reportInstance.manualOverrides.length} manual overrides · `
-            : ""}
-          {librarySaveState === "saved" && documentMode === "master-template"
+          {reportInstance ? (
+            <>
+              {reportInstance.manualOverrides.length} manual overrides · Report{" "}
+              {reportSaveStatus}
+              {reportLastSavedAt && reportSaveStatus === "saved"
+                ? ` at ${new Date(reportLastSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
+                : ""}
+              {reportSaveError ? ` · ${reportSaveError}` : ""}
+            </>
+          ) : null}
+          {!reportInstance &&
+          librarySaveState === "saved" &&
+          documentMode === "master-template"
             ? "Saved to template library"
-            : librarySaveState === "error"
+            : !reportInstance && librarySaveState === "error"
               ? "Template library save failed"
-              : "Saved locally for recovery"}
+              : !reportInstance
+                ? "Saved locally for recovery"
+                : ""}
         </span>
       </footer>
       {contextMenu && (

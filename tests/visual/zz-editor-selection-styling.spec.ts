@@ -186,6 +186,7 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
 }) => {
   await page.goto("/", { waitUntil: "load" });
   await ensureDraft(page);
+  await page.getByRole("button", { name: "px", exact: true }).click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page.locator(".shape-grid > button").first().click();
   const first = page.locator(".canvas-element.is-selected");
