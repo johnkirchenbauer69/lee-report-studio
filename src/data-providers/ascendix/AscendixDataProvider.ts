@@ -51,6 +51,7 @@ export class AscendixDataProvider implements ReportDataProvider {
       sourceMetadata?: {
         generatedAt?: string;
         reportDefinitionVersion?: string;
+        diagnostics?: string[];
       };
       completeness?: typeof parsed.data.dataCompleteness;
       snapshot?: { id?: string; hash?: string };
@@ -74,6 +75,7 @@ export class AscendixDataProvider implements ReportDataProvider {
         importedAt,
         sourceName: "ascendix-report-data-service",
         sourceVersion: definition,
+        diagnostics: envelope.sourceMetadata?.diagnostics,
       },
       completeness: envelope.completeness ?? parsed.data.dataCompleteness,
       snapshot: {

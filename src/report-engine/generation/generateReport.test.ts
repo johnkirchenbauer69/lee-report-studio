@@ -80,6 +80,30 @@ describe("generateReportInstance", () => {
     expect(report.pages[0]!.name).toBe("Edited Q2 report page");
   });
 
+  it("freezes resolved property image references into the generated edition", async () => {
+    const report = await generateReportInstance(sampleTemplate, {
+      templateId: sampleTemplate.id,
+      templateVersion: sampleTemplate.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarketIds: ["central-dupage"] },
+      source: { provider: "sample" },
+    });
+    const image = report.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === "availability-image-0");
+    expect(image).toMatchObject({
+      type: "image",
+      src: expect.stringMatching(/^\/report-assets\//),
+    });
+    const frozenSource = image?.type === "image" ? image.src : "";
+
+    report.dataSnapshot.availabilities[0]!.image =
+      "/later-salesforce-image-change.jpg";
+    expect(image).toMatchObject({ type: "image", src: frozenSource });
+  });
+
   it("preserves rotation and checksum-pins managed font faces", async () => {
     const template = structuredClone(sampleTemplate);
     template.assets = [

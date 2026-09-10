@@ -87,13 +87,21 @@ function preparePage(
   outputMode: ReportOutputMode,
 ): ReportPage {
   const elements = page.elements.flatMap((element) => {
+    // Page-repeat bindings (for example market.mapAssetUrl and
+    // market.topAvailabilities[0].image) have no concrete market context
+    // until expandTemplatePages runs. Resolving them here would turn a valid
+    // period-independent map or property image into an unavailable placeholder.
+    const deferredPageBinding = Boolean(
+      page.repeat &&
+      element.binding?.path.startsWith(`${page.repeat.contextName}.`),
+    );
     if (
       element.type === "text" &&
       outputMode === "published" &&
       element.publishedText
     )
       element = { ...element, text: element.publishedText };
-    if (element.binding) {
+    if (element.binding && !deferredPageBinding) {
       const value = getByContextPath(
         presentationData,
         element.binding.path,
@@ -134,10 +142,7 @@ function preparePage(
     const unavailableBoundImage =
       element.type === "image" &&
       element.binding != null &&
-      !(
-        page.repeat &&
-        element.binding.path.startsWith(`${page.repeat.contextName}.`)
-      ) &&
+      !deferredPageBinding &&
       !element.src.trim();
     if (unavailableBoundImage) {
       return unavailablePlaceholder(element, outputMode);

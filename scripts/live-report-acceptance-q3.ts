@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
+import { MARKET_MAP_ASSET_REGISTRY } from "../src/report-engine/assets/marketMapAssets.ts";
 import { buildPresentationModel } from "../src/report-engine/bindings/presentationModel.ts";
 import { generateReportInstance } from "../src/report-engine/generation/generateReport.ts";
 import { prepareTemplateForReport } from "../src/report-engine/generation/prepareTemplate.ts";
@@ -127,6 +128,101 @@ if (publishedPages.length !== 44)
   throw new Error(
     `Expected 44 publication-prepared pages; received ${publishedPages.length}.`,
   );
+
+const renderedMaps = publishedPages
+  .flatMap((page) => page.elements)
+  .filter(
+    (element) => element.type === "image" && element.id.includes("market-map"),
+  );
+const expectedMaps = Object.values(MARKET_MAP_ASSET_REGISTRY);
+if (
+  renderedMaps.length !== expectedMaps.length ||
+  new Set(renderedMaps.map((element) => element.src)).size !==
+    expectedMaps.length ||
+  expectedMaps.some(
+    (src) =>
+      !renderedMaps.some(
+        (element) => element.type === "image" && element.src === src,
+      ),
+  )
+)
+  throw new Error(
+    `Expected all ${expectedMaps.length} canonical market maps; received ${renderedMaps.length}.`,
+  );
+for (const [name, expectedSrc] of [
+  ["Central DuPage", MARKET_MAP_ASSET_REGISTRY["central-dupage"]],
+  ["Chicago South", MARKET_MAP_ASSET_REGISTRY["chicago-south"]],
+  ["O'Hare", MARKET_MAP_ASSET_REGISTRY.ohare],
+] as const) {
+  const page = publishedPages.find(
+    (candidate) => candidate.name === `${name} Overview`,
+  );
+  const map = page?.elements.find((element) =>
+    element.id.includes("market-map"),
+  );
+  if (map?.type !== "image" || map.src !== expectedSrc)
+    throw new Error(`${name} did not render its canonical governed map.`);
+}
+
+const reportScopes = [
+  { name: "Overall Market", report: instance.dataSnapshot },
+  ...instance.dataSnapshot.submarketDetails.map((report) => ({
+    name: report.name,
+    report,
+  })),
+];
+const contributorCards = reportScopes.flatMap(({ name, report }) =>
+  (
+    [
+      ["availability", report.availabilities],
+      ["delivery", report.deliveries],
+      ["construction", report.construction],
+    ] as const
+  ).flatMap(([section, cards]) =>
+    cards.map((card, index) => ({ name, section, index, card })),
+  ),
+);
+const resolvedContributorImages = contributorCards.filter(({ card }) =>
+  card.image.startsWith("/api/assets/"),
+);
+const unresolvedPopulatedCards = contributorCards.filter(
+  ({ card }) => !card.image,
+);
+if (
+  contributorCards.some(
+    ({ card }) => card.image && !card.image.startsWith("/api/assets/"),
+  )
+)
+  throw new Error(
+    "A populated Q3 contributor image is not frozen in the immutable Studio asset store.",
+  );
+
+const assertRenderedImages = (
+  market: string,
+  section: "availability" | "deliveries" | "construction",
+  expected: number,
+) => {
+  const page = publishedPages.find(
+    (candidate) => candidate.name === `${market} Highlights`,
+  );
+  const actual = page?.elements.filter(
+    (element) =>
+      element.type === "image" &&
+      element.id.startsWith(`detail-${section}-image-`) &&
+      element.src.startsWith("/api/assets/"),
+  ).length;
+  if (actual !== expected)
+    throw new Error(
+      `${market} ${section} rendered ${actual ?? 0} property images; expected ${expected}.`,
+    );
+};
+assertRenderedImages("Central DuPage", "availability", 3);
+assertRenderedImages("I-55 Corridor", "availability", 3);
+assertRenderedImages("I-55 Corridor", "construction", 3);
+assertRenderedImages("O'Hare", "availability", 3);
+assertRenderedImages("O'Hare", "deliveries", 1);
+assertRenderedImages("O'Hare", "construction", 3);
+
 const title = `${period} Chicago Industrial Market Report`;
 const pdfResponse = await fetch(`${api}/api/render/pdf`, {
   method: "POST",
@@ -163,6 +259,21 @@ console.log(
       pages: instance.pages.length,
       pdfPages: pdf.getPageCount(),
       pdfMode: "publication-prepared",
+      marketMaps: {
+        resolved: renderedMaps.length,
+        expected: expectedMaps.length,
+      },
+      contributorImages: {
+        totalSlots: reportScopes.length * 9,
+        populatedCards: contributorCards.length,
+        resolved: resolvedContributorImages.length,
+        unavailable: reportScopes.length * 9 - resolvedContributorImages.length,
+        noRankedContributor: reportScopes.length * 9 - contributorCards.length,
+        unresolvedPopulatedCard: unresolvedPopulatedCards.length,
+      },
+      imageDiagnostics: (instance.sourceMetadata.diagnostics ?? []).filter(
+        (diagnostic) => /image|attachment/i.test(diagnostic),
+      ),
       templateVersion: selectedTemplate.version,
       output,
     },

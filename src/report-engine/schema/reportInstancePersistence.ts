@@ -560,6 +560,7 @@ export const reportInstanceSchema = z
         importedAt: timestamp,
         sourceName: z.string().optional(),
         sourceVersion: z.string().optional(),
+        diagnostics: z.array(z.string()).optional(),
       })
       .strict(),
     sourceSnapshotId: z.string().optional(),

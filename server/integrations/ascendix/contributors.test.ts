@@ -186,6 +186,22 @@ describe("historical contributors", () => {
     );
     expect(mapped.imageWarnings).toHaveLength(0);
   });
+  it("retains the governed unavailable state when the linked property has no primary image", async () => {
+    const mapped = await mapHistoricalContributors([
+      row({
+        Id: "q3-no-image",
+        Contributor_Category__c: "Largest Under Construction",
+        Under_Construction_SF__c: 190_000,
+        Address__c: "840 25th Ave, Bellwood, IL 60104",
+        Property__r: { ascendix__PrimaryImage__c: "" },
+      }),
+    ]);
+    expect(mapped.construction[0]).toMatchObject({
+      address: "840 25th Ave, Bellwood, IL 60104",
+      image: "",
+    });
+    expect(mapped.imageWarnings).toEqual([]);
+  });
   it("scopes standard submarkets, excludes non-report rows, and flags parent conflicts", () => {
     const rows = [
       row({

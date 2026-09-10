@@ -7,6 +7,7 @@ import {
   prepareTemplateForPublication,
   prepareTemplateForReport,
 } from "./prepareTemplate";
+import { expandTemplatePages } from "./repeaters";
 
 const managedNunito600: Asset = {
   id: "nunito-sans-semibold",
@@ -168,6 +169,131 @@ describe("production template preparation", () => {
       y: source.y,
       width: source.width,
       height: source.height,
+    });
+  });
+
+  it("defers Q3 submarket maps and property photos until their repeating market context exists", () => {
+    const report = structuredClone(q2SampleReport);
+    report.report.period = "2026 Q3";
+    const central = report.submarketDetails.find(
+      (detail) => detail.name === "Central DuPage",
+    )!;
+    const ohare = report.submarketDetails.find(
+      (detail) => detail.name === "O'Hare",
+    )!;
+    central.availabilities = [
+      {
+        ...structuredClone(report.availabilities[0]!),
+        image: "/api/assets/q3-central-availability/content",
+      },
+    ];
+    ohare.availabilities = [
+      {
+        ...structuredClone(report.availabilities[0]!),
+        image: "/api/assets/q3-ohare-availability/content",
+      },
+    ];
+    ohare.construction = [
+      {
+        ...structuredClone(report.construction[0]!),
+        image: "",
+      },
+    ];
+
+    const presentation = buildPresentationModel(report);
+    const prepared = prepareTemplateForReport(
+      sampleTemplate,
+      report,
+      presentation,
+      "ascendix",
+      "published",
+    );
+    const pages = expandTemplatePages(prepared, presentation, {
+      submarketIds: ["central-dupage", "ohare"],
+    });
+    const centralOverview = pages.find(
+      (page) => page.name === "Central DuPage Overview",
+    )!;
+    const centralHighlights = pages.find(
+      (page) => page.name === "Central DuPage Highlights",
+    )!;
+    const ohareOverview = pages.find(
+      (page) => page.name === "O'Hare Overview",
+    )!;
+    const ohareHighlights = pages.find(
+      (page) => page.name === "O'Hare Highlights",
+    )!;
+
+    expect(
+      centralOverview.elements.find((element) =>
+        element.id.includes("market-map"),
+      ),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/Central_DuPage_Map.jpg",
+    });
+    expect(
+      ohareOverview.elements.find((element) =>
+        element.id.includes("market-map"),
+      ),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/O'Hare_Map.jpg",
+    });
+    expect(
+      centralHighlights.elements.find(
+        (element) => element.id === "detail-availability-image-0",
+      ),
+    ).toMatchObject({
+      type: "image",
+      src: "/api/assets/q3-central-availability/content",
+    });
+    expect(
+      ohareHighlights.elements.find(
+        (element) => element.id === "detail-availability-image-0",
+      ),
+    ).toMatchObject({
+      type: "image",
+      src: "/api/assets/q3-ohare-availability/content",
+    });
+    expect(
+      ohareHighlights.elements.find(
+        (element) => element.id === "detail-construction-image-0",
+      ),
+    ).toMatchObject({
+      type: "image",
+      src: "",
+      publicationRequired: false,
+    });
+  });
+
+  it("keeps Q2 repeated visual bindings unchanged", () => {
+    const presentation = buildPresentationModel(q2SampleReport);
+    const pages = expandTemplatePages(
+      prepareTemplateForReport(
+        sampleTemplate,
+        q2SampleReport,
+        presentation,
+        "ascendix",
+      ),
+      presentation,
+      { submarketIds: ["central-dupage", "ohare"] },
+    );
+    expect(
+      pages
+        .find((page) => page.name === "Central DuPage Overview")
+        ?.elements.find((element) => element.id.includes("market-map")),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/Central_DuPage_Map.jpg",
+    });
+    expect(
+      pages
+        .find((page) => page.name === "O'Hare Overview")
+        ?.elements.find((element) => element.id.includes("market-map")),
+    ).toMatchObject({
+      type: "image",
+      src: "/report-assets/maps/O'Hare_Map.jpg",
     });
   });
 

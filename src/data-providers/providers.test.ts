@@ -201,6 +201,7 @@ describe("report data providers", () => {
           sourceMetadata: {
             generatedAt: "2026-08-20T12:00:00.000Z",
             reportDefinitionVersion: "industrial-market-report-data-v1",
+            diagnostics: ["One image exceeded the publication size limit."],
           },
           completeness: [],
           snapshot: { id: "snapshot-test", hash: "abc123" },
@@ -223,6 +224,9 @@ describe("report data providers", () => {
       id: "snapshot-test",
       hash: "abc123",
     });
+    expect(result.sourceMetadata.diagnostics).toEqual([
+      "One image exceeded the publication size limit.",
+    ]);
     expect(JSON.stringify(result.report)).not.toContain("Hyundai Translead");
     expect(fetcher).toHaveBeenCalledWith(
       "https://api.example.test:9443/studio/secure",

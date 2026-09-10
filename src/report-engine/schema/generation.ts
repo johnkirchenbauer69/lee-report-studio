@@ -36,6 +36,8 @@ export interface ProviderSourceMetadata {
   importedAt: string;
   sourceName?: string;
   sourceVersion?: string;
+  /** Sanitized source/asset diagnostics frozen with the generated edition. */
+  diagnostics?: string[];
 }
 
 /**
