@@ -135,9 +135,6 @@ const pdfResponse = await fetch(`${api}/api/render/pdf`, {
     template: { ...template, name: title, pages: publishedPages },
     data: presentation,
     title,
-    // A newly created ReportInstance has 19 unapproved narratives, so this is
-    // intentionally the same draft artifact available before publication.
-    renderMode: "draft",
   }),
 });
 if (!pdfResponse.ok)
@@ -165,7 +162,7 @@ console.log(
       persistedReportInstanceId: instance.id,
       pages: instance.pages.length,
       pdfPages: pdf.getPageCount(),
-      pdfMode: "draft",
+      pdfMode: "publication-prepared",
       templateVersion: selectedTemplate.version,
       output,
     },

@@ -145,6 +145,32 @@ describe("production template preparation", () => {
     });
   });
 
+  it("replaces an empty optional bound image slot without changing its geometry", () => {
+    const presentation = buildPresentationModel(q2SampleReport);
+    presentation.topDeliveries[2]!.image = "";
+    const source = sampleTemplate.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === "deliveries-image-2")!;
+    const prepared = prepareTemplateForReport(
+      sampleTemplate,
+      q2SampleReport,
+      presentation,
+      "ascendix",
+      "published",
+    );
+    const placeholder = prepared.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === "deliveries-image-2-data-unavailable");
+    expect(placeholder).toMatchObject({
+      type: "text",
+      text: "Content not available for this edition",
+      x: source.x,
+      y: source.y,
+      width: source.width,
+      height: source.height,
+    });
+  });
+
   it("binds the period only on pages 41-43 and leaves page 44 static", () => {
     const report = structuredClone(q2SampleReport);
     report.report.period = "2027 Q1";

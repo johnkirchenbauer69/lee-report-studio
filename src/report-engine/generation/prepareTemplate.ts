@@ -38,7 +38,7 @@ const unavailablePlaceholder = (
       ? (element.publishedUnavailableMessage ??
         "Content not available for this edition")
       : (element.unavailableMessage ??
-        `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`),
+        `Data unavailable: ${element.requiredDataSection ? sectionLabel(element.requiredDataSection) : "image"}`),
   publishedText:
     element.publishedUnavailableMessage ??
     "Content not available for this edition",
@@ -131,6 +131,17 @@ function preparePage(
       };
     }
 
+    const unavailableBoundImage =
+      element.type === "image" &&
+      element.binding != null &&
+      !(
+        page.repeat &&
+        element.binding.path.startsWith(`${page.repeat.contextName}.`)
+      ) &&
+      !element.src.trim();
+    if (unavailableBoundImage) {
+      return unavailablePlaceholder(element, outputMode);
+    }
     if (!element.requiredDataSection) return element;
     const contextAvailable = element.bindingContext
       ? getByPath(presentationData, element.bindingContext.path) != null
