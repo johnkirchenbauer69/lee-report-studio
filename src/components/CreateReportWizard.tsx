@@ -1,11 +1,16 @@
-import { useMemo, useRef, useState } from "react";
-import { q2Submarkets } from "../data-providers/sample/q2SampleReport";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  q2SampleReport,
+  q2Submarkets,
+} from "../data-providers/sample/q2SampleReport";
 import type {
   ReportGenerationRequest,
   ReportInstance,
   ReportProviderId,
 } from "../report-engine/schema/generation";
 import { chicagoSubmarketId } from "../report-engine/submarkets";
+import type { ReportPeriodOption } from "../report-engine/schema/reportPeriods";
+import { loadReportPeriods } from "../services/reportPeriodStore";
 import type { StoredTemplateVersion } from "../types/templateLibrary";
 import { NarrativeWorkspace } from "./NarrativeWorkspace";
 
@@ -34,9 +39,12 @@ export function CreateReportWizard({
   generationTemplate,
 }: Props) {
   const [step, setStep] = useState(0),
-    [period, setPeriod] = useState("2026 Q2"),
-    [market, setMarket] = useState("Chicago"),
+    [period, setPeriod] = useState(""),
     [provider, setProvider] = useState<ReportProviderId>("sample");
+  const market = "Chicago";
+  const [periods, setPeriods] = useState<ReportPeriodOption[]>([]),
+    [periodsLoading, setPeriodsLoading] = useState(true),
+    [periodsError, setPeriodsError] = useState<string>();
   const [calculationMode, setCalculationMode] = useState<
       "all-submarkets" | "selected-submarkets"
     >("all-submarkets"),
@@ -49,6 +57,43 @@ export function CreateReportWizard({
     [error, setError] = useState<string>(),
     [prepared, setPrepared] = useState<ReportInstance>();
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let active = true;
+    loadReportPeriods()
+      .then((result) => {
+        if (!active) return;
+        setPeriods(result.periods);
+        const preferredPeriod =
+          result.mode === "mock"
+            ? q2SampleReport.report.period
+            : result.periods[0]?.label;
+        setPeriod((current) =>
+          result.periods.some((item) => item.label === current)
+            ? current
+            : (result.periods.find((item) => item.label === preferredPeriod)
+                ?.label ??
+              result.periods[0]?.label ??
+              ""),
+        );
+        setPeriodsError(undefined);
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setPeriods([]);
+        setPeriod("");
+        setPeriodsError(
+          reason instanceof Error
+            ? reason.message
+            : "Available report periods could not be loaded.",
+        );
+      })
+      .finally(() => {
+        if (active) setPeriodsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const canContinue =
     provider === "sample" || provider === "ascendix" || !!file;
   const selectedLabel = useMemo(
@@ -152,7 +197,10 @@ export function CreateReportWizard({
                   sections.
                 </p>
                 <small>
-                  {generationTemplate.status === "draft" ? "Draft" : "Published"} version {generationTemplate.version} · Letter portrait
+                  {generationTemplate.status === "draft"
+                    ? "Draft"
+                    : "Published"}{" "}
+                  version {generationTemplate.version} · Letter portrait
                 </small>
               </div>
               <span className="choice-check">✓</span>
@@ -163,20 +211,46 @@ export function CreateReportWizard({
               <label>
                 Report period
                 <select
+                  aria-label="Report period"
                   value={period}
+                  disabled={
+                    periodsLoading || Boolean(periodsError) || !periods.length
+                  }
                   onChange={(event) => setPeriod(event.target.value)}
                 >
-                  <option>2026 Q2</option>
-                  <option>2026 Q1</option>
-                  <option>2025 Q4</option>
+                  {periodsLoading && <option value="">Loading periods…</option>}
+                  {!periodsLoading && periodsError && (
+                    <option value="">Periods unavailable</option>
+                  )}
+                  {!periodsLoading && !periodsError && !periods.length && (
+                    <option value="">No reportable periods found</option>
+                  )}
+                  {periods.map((item) => (
+                    <option
+                      key={`${item.periodEnd}-${item.label}`}
+                      value={item.label}
+                    >
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
+                {periodsLoading && (
+                  <small role="status">
+                    Loading available Market_Data periods…
+                  </small>
+                )}
+                {!periodsLoading && periodsError && (
+                  <small role="alert">{periodsError}</small>
+                )}
+                {!periodsLoading && !periodsError && !periods.length && (
+                  <small role="status">
+                    No reportable Market_Data periods were found.
+                  </small>
+                )}
               </label>
               <label>
                 Market
-                <input
-                  value={market}
-                  onChange={(event) => setMarket(event.target.value)}
-                />
+                <input value={market} readOnly aria-readonly="true" />
               </label>
               <div className="wizard-note">
                 <strong>Snapshot behavior</strong>
@@ -416,7 +490,9 @@ export function CreateReportWizard({
                 <div className="wizard-note">
                   <strong>Data snapshot ready</strong>
                   <span>
-                    {prepared.dataSnapshot.submarkets.length} canonical submarkets validated · {prepared.narratives.length} narrative records initialized.
+                    {prepared.dataSnapshot.submarkets.length} canonical
+                    submarkets validated · {prepared.narratives.length}{" "}
+                    narrative records initialized.
                   </span>
                 </div>
               )}
@@ -435,12 +511,19 @@ export function CreateReportWizard({
             <div className="review-card narrative-review-summary">
               <div>
                 <span>Report</span>
-                <strong>{period} {market} Industrial Market Report</strong>
+                <strong>
+                  {period} {market} Industrial Market Report
+                </strong>
               </div>
               <div>
                 <span>Narratives</span>
                 <strong>
-                  {prepared.narratives.filter((item) => item.status === "approved").length} approved / 19 required
+                  {
+                    prepared.narratives.filter(
+                      (item) => item.status === "approved",
+                    ).length
+                  }{" "}
+                  approved / 19 required
                 </strong>
               </div>
               <div>
@@ -454,7 +537,8 @@ export function CreateReportWizard({
               <div className="wizard-note">
                 <strong>Draft editing remains available</strong>
                 <span>
-                  Published PDF export remains blocked until all narratives are approved, current, and fit their text boxes.
+                  Published PDF export remains blocked until all narratives are
+                  approved, current, and fit their text boxes.
                 </span>
               </div>
             </div>
@@ -475,6 +559,8 @@ export function CreateReportWizard({
               <button
                 className="primary"
                 disabled={
+                  (step === 1 &&
+                    (periodsLoading || Boolean(periodsError) || !period)) ||
                   (step === 2 && !canContinue) ||
                   (step === 3 &&
                     calculationMode === "selected-submarkets" &&

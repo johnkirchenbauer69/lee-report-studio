@@ -3,6 +3,16 @@ import type { ReportDataService } from "../report-data-service/ReportDataService
 
 export function createReportDataRouter(service: ReportDataService) {
   const router = Router();
+  router.get(
+    "/report-data/industrial-market/periods",
+    async (_request, response, next) => {
+      try {
+        response.json(await service.getAvailableReportPeriods());
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.post(
     "/report-data/industrial-market",
     async (request, response, next) => {

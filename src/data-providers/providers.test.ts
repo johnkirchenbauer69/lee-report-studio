@@ -226,7 +226,16 @@ describe("report data providers", () => {
     expect(JSON.stringify(result.report)).not.toContain("Hyundai Translead");
     expect(fetcher).toHaveBeenCalledWith(
       "https://api.example.test:9443/studio/secure",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          reportType: "industrial-market-report",
+          market: "Chicago",
+          period: "2026 Q3",
+          calculationScope: { type: "all-submarkets" },
+          timeContext: { type: "historical-period", period: "2026 Q3" },
+        }),
+      }),
     );
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("8787");
   });

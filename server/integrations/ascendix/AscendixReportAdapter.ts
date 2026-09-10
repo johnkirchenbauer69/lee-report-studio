@@ -1,4 +1,5 @@
 import type { IndustrialMarketReport } from "../../../src/report-engine/schema/industrialMarketReport.ts";
+import type { ReportPeriodOption } from "../../../src/report-engine/schema/reportPeriods.ts";
 import type { ReportDataRequest } from "../../report-data-service/contracts.ts";
 
 export interface AscendixAdapterResult {
@@ -18,6 +19,7 @@ export interface AscendixAdapterResult {
 }
 
 export interface AscendixReportAdapter {
+  discoverReportPeriods(): Promise<ReportPeriodOption[]>;
   loadReportSource(request: ReportDataRequest): Promise<AscendixAdapterResult>;
   health(): Promise<{
     configured: boolean;

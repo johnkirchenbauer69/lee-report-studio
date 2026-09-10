@@ -18,6 +18,7 @@
     "salesforce:check": "tsx scripts/salesforce-check.ts",
     "salesforce:benchmark:q2": "tsx scripts/salesforce-benchmark-q2.ts",
     "salesforce:acceptance:q2": "tsx scripts/live-report-acceptance-q2.ts",
+    "salesforce:acceptance:q3": "tsx scripts/live-report-acceptance-q3.ts",
     "salesforce:repro:undici": "node scripts/undici-paused-body-repro.mjs",
     "salesforce:probe:binary": "tsx scripts/salesforce-binary-transport-probe.ts",
     "narrative:acceptance:q2": "tsx scripts/narrative-acceptance-q2.ts",

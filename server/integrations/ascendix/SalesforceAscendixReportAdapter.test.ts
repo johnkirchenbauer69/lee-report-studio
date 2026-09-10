@@ -112,6 +112,7 @@ class FakeSalesforceClient implements SalesforceClient {
     private options: {
       invalidRate?: boolean;
       missingInventory?: boolean;
+      missingRent?: boolean;
       missingSubmarket?: boolean;
       failedLeaseEnrichment?: boolean;
       leaseContributor?: SalesforceRecord;
@@ -146,6 +147,7 @@ class FakeSalesforceClient implements SalesforceClient {
         Total_Vacant_Percent__c: this.options.invalidRate ? 140 : 4.5318549447,
       });
       if (this.options.missingInventory) delete rows[0].Inventory_SF__c;
+      if (this.options.missingRent) rows[0].Overall_Net_Rent_SF__c = null;
       if (this.options.missingSubmarket) rows.pop();
       return rows as T[];
     }
@@ -348,6 +350,20 @@ describe("Salesforce Ascendix live-verified contract", () => {
     expect(currentQuery).toContain("Submarket__c IN");
     expect(currentQuery).not.toContain("Market__c =");
     expect(client.queries.length).toBeLessThan(10);
+  });
+  it("retains a null asking rent as the existing unavailable-value warning", async () => {
+    const result = await new SalesforceAscendixReportAdapter(
+      new FakeSalesforceClient({ missingRent: true }),
+    ).loadReportSource(request);
+    expect(result.report.submarkets[0]?.askingNetRentPsf).toBe(0);
+    expect(
+      evaluateReportReadiness(result.report, sampleTemplate, "ascendix").issues,
+    ).toContainEqual(
+      expect.objectContaining({
+        path: "submarkets[0].askingNetRentPsf",
+        level: "warning",
+      }),
+    );
   });
   it("keeps approved submarket quarterly and trailing-12-month values distinct", async () => {
     const adapter = new SalesforceAscendixReportAdapter(
