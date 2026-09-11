@@ -87,6 +87,14 @@ function preparePage(
   outputMode: ReportOutputMode,
 ): ReportPage {
   const elements = page.elements.flatMap((element) => {
+    const contributorImageBinding = Boolean(
+      element.type === "image" &&
+      element.binding?.path.endsWith(".image") &&
+      (element.bindingContext?.name === "property" ||
+        /^market\.top(?:Availabilities|Deliveries|Construction)\[/.test(
+          element.binding.path,
+        )),
+    );
     // Page-repeat bindings (for example market.mapAssetUrl and
     // market.topAvailabilities[0].image) have no concrete market context
     // until expandTemplatePages runs. Resolving them here would turn a valid
@@ -95,6 +103,13 @@ function preparePage(
       page.repeat &&
       element.binding?.path.startsWith(`${page.repeat.contextName}.`),
     );
+    if (
+      element.type === "image" &&
+      element.binding?.path === "market.mapAssetUrl"
+    )
+      element = { ...element, edgeInset: element.edgeInset ?? 3 };
+    if (element.type === "image" && contributorImageBinding)
+      element = { ...element, publicationRequired: false };
     if (
       element.type === "text" &&
       outputMode === "published" &&
@@ -143,6 +158,7 @@ function preparePage(
       element.type === "image" &&
       element.binding != null &&
       !deferredPageBinding &&
+      !contributorImageBinding &&
       !element.src.trim();
     if (unavailableBoundImage) {
       return unavailablePlaceholder(element, outputMode);

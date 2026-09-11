@@ -14,6 +14,11 @@ import {
 } from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
+import {
+  buildMetricSemanticFields,
+  METRIC_SEMANTICS,
+  type IndicatorMetricKey,
+} from "../indicators/metricSemantics";
 
 export function assertNoClientFacingSalesforceIds(
   value: unknown,
@@ -69,6 +74,7 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
   ) as Record<keyof MarketMetrics, ReturnType<typeof calculateMetricExtremes>>;
   const detailRows = report.submarkets.map((item) => ({
     kind: "detail",
+    geographyId: resolveChicagoSubmarket(item.name)?.id,
     name: item.name,
     inventory: integer(item.inventorySf),
     delivered: integer(item.deliveredSf),
@@ -150,69 +156,32 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     const value = periods[index]?.[key];
     return typeof value === "number" ? formatter(value) : "—";
   };
+  const indicatorFormatter = (metricKey: IndicatorMetricKey, value: number) =>
+    metricKey === "vacancyRate" || metricKey === "availabilityRate"
+      ? percent(value, 2)
+      : integer(value);
   const buildIndicatorRows = (
     periods: IndustrialMarketReport["historicalPeriods"],
   ) =>
     periods.length
-      ? [
-          {
-            metric: "▼  12 Month Net Absorption (SF)",
-            q2: period(periods, 0, "trailing12MonthNetAbsorptionSf", integer),
-            q1: period(periods, 1, "trailing12MonthNetAbsorptionSf", integer),
-            q4: period(periods, 2, "trailing12MonthNetAbsorptionSf", integer),
-            q3: period(periods, 3, "trailing12MonthNetAbsorptionSf", integer),
-            prior: period(
-              periods,
-              4,
-              "trailing12MonthNetAbsorptionSf",
-              integer,
-            ),
-          },
-          {
-            metric: "▼  Vacancy Rate",
-            q2: period(periods, 0, "vacancyRate", (value) => percent(value, 2)),
-            q1: period(periods, 1, "vacancyRate", (value) => percent(value, 2)),
-            q4: period(periods, 2, "vacancyRate", (value) => percent(value, 2)),
-            q3: period(periods, 3, "vacancyRate", (value) => percent(value, 2)),
-            prior: period(periods, 4, "vacancyRate", (value) =>
-              percent(value, 2),
-            ),
-          },
-          {
-            metric: "▼  Availability Rate",
-            q2: period(periods, 0, "availabilityRate", (value) =>
-              percent(value, 2),
-            ),
-            q1: period(periods, 1, "availabilityRate", (value) =>
-              percent(value, 2),
-            ),
-            q4: period(periods, 2, "availabilityRate", (value) =>
-              percent(value, 2),
-            ),
-            q3: period(periods, 3, "availabilityRate", (value) =>
-              percent(value, 2),
-            ),
-            prior: period(periods, 4, "availabilityRate", (value) =>
-              percent(value, 2),
-            ),
-          },
-          {
-            metric: "▲  Under Construction (SF)",
-            q2: period(periods, 0, "underConstructionSf", integer),
-            q1: period(periods, 1, "underConstructionSf", integer),
-            q4: period(periods, 2, "underConstructionSf", integer),
-            q3: period(periods, 3, "underConstructionSf", integer),
-            prior: period(periods, 4, "underConstructionSf", integer),
-          },
-          {
-            metric: "▼  Total Leasing Activity (SF)",
-            q2: period(periods, 0, "leasingActivitySf", integer),
-            q1: period(periods, 1, "leasingActivitySf", integer),
-            q4: period(periods, 2, "leasingActivitySf", integer),
-            q3: period(periods, 3, "leasingActivitySf", integer),
-            prior: period(periods, 4, "leasingActivitySf", integer),
-          },
-        ]
+      ? METRIC_SEMANTICS.map((definition) => ({
+          ...buildMetricSemanticFields(periods, definition),
+          q2: period(periods, 0, definition.metricKey, (value) =>
+            indicatorFormatter(definition.metricKey, value),
+          ),
+          q1: period(periods, 1, definition.metricKey, (value) =>
+            indicatorFormatter(definition.metricKey, value),
+          ),
+          q4: period(periods, 2, definition.metricKey, (value) =>
+            indicatorFormatter(definition.metricKey, value),
+          ),
+          q3: period(periods, 3, definition.metricKey, (value) =>
+            indicatorFormatter(definition.metricKey, value),
+          ),
+          prior: period(periods, 4, definition.metricKey, (value) =>
+            indicatorFormatter(definition.metricKey, value),
+          ),
+        }))
       : [];
   const indicatorRows = buildIndicatorRows(report.historicalPeriods);
   type HighlightSection = "availability" | "delivery" | "construction";

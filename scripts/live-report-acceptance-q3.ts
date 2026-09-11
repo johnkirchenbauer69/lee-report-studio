@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { PDFDocument } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName } from "pdf-lib";
 import { MARKET_MAP_ASSET_REGISTRY } from "../src/report-engine/assets/marketMapAssets.ts";
 import { buildPresentationModel } from "../src/report-engine/bindings/presentationModel.ts";
 import { generateReportInstance } from "../src/report-engine/generation/generateReport.ts";
@@ -114,6 +114,58 @@ if (!persistedResponse.ok)
   );
 
 const presentation = buildPresentationModel(instance.dataSnapshot);
+const presentedPropertySlots = [
+  ...presentation.topAvailabilities,
+  ...presentation.topDeliveries,
+  ...presentation.topConstruction,
+  ...presentation.submarketDetails.flatMap((detail) => [
+    ...detail.topAvailabilities,
+    ...detail.topDeliveries,
+    ...detail.topConstruction,
+  ]),
+];
+const propertyCardStates = {
+  populatedPropertyCards: presentedPropertySlots.filter(
+    (slot) => slot.state !== "none",
+  ).length,
+  resolvedPropertyImages: presentedPropertySlots.filter(
+    (slot) => slot.state === "record",
+  ).length,
+  actualImageFailures: presentedPropertySlots.filter(
+    (slot) => slot.state === "image-unavailable",
+  ).length,
+  emptyRankSlots: presentedPropertySlots.filter((slot) => slot.state === "none")
+    .length,
+};
+if (
+  JSON.stringify(propertyCardStates) !==
+  JSON.stringify({
+    populatedPropertyCards: 100,
+    resolvedPropertyImages: 99,
+    actualImageFailures: 1,
+    emptyRankSlots: 71,
+  })
+)
+  throw new Error(
+    `Unexpected Q3 property-card states: ${JSON.stringify(propertyCardStates)}.`,
+  );
+if (presentation.topDeliveries[2]?.state !== "none")
+  throw new Error(
+    "The empty Overall Market delivery rank must be None to Report.",
+  );
+const westCook = presentation.submarketDetails.find(
+  (detail) => detail.displayName === "West Cook",
+);
+const oversizedWestCook = westCook?.topConstruction.find((slot) =>
+  slot.address.startsWith("840 25th Ave"),
+);
+if (
+  oversizedWestCook?.state !== "image-unavailable" ||
+  !oversizedWestCook.detail
+)
+  throw new Error(
+    "The populated West Cook oversized-image card did not retain its text with Image unavailable state.",
+  );
 const publishedTemplate = prepareTemplateForReport(
   template,
   instance.dataSnapshot,
@@ -149,6 +201,30 @@ if (
   throw new Error(
     `Expected all ${expectedMaps.length} canonical market maps; received ${renderedMaps.length}.`,
   );
+const submarketMaps = renderedMaps.filter((element) =>
+  element.id.startsWith("detail-market-map"),
+);
+if (
+  submarketMaps.length !== 18 ||
+  submarketMaps.some(
+    (element) => element.type !== "image" || element.edgeInset !== 3,
+  )
+)
+  throw new Error(
+    "All 18 submarket maps must retain the map-only source-frame inset.",
+  );
+if (
+  publishedPages
+    .flatMap((page) => page.elements)
+    .some(
+      (element) =>
+        element.type === "image" &&
+        element.id.includes("-image-") &&
+        !element.id.includes("market-map") &&
+        element.edgeInset,
+    )
+)
+  throw new Error("Map edge normalization leaked into a property image.");
 for (const [name, expectedSrc] of [
   ["Central DuPage", MARKET_MAP_ASSET_REGISTRY["central-dupage"]],
   ["Chicago South", MARKET_MAP_ASSET_REGISTRY["chicago-south"]],
@@ -163,6 +239,46 @@ for (const [name, expectedSrc] of [
   if (map?.type !== "image" || map.src !== expectedSrc)
     throw new Error(`${name} did not render its canonical governed map.`);
 }
+
+const detailNavigationRows = presentation.submarketTableRows.filter(
+  (row) => row.kind === "detail",
+);
+if (
+  detailNavigationRows.length !== 18 ||
+  detailNavigationRows.some((row) => {
+    const matches = publishedPages.filter(
+      (page) =>
+        page.geographyId === row.geographyId && page.pageKind === "overview",
+    );
+    return matches.length !== 1 || !matches[0]?.anchor;
+  })
+)
+  throw new Error(
+    "Every Q3 submarket table row must resolve to one stable Overview-page anchor.",
+  );
+const indicatorRows = [
+  ...presentation.indicatorRows,
+  ...presentation.submarketDetails.flatMap((detail) => detail.indicatorRows),
+];
+if (
+  indicatorRows.some(
+    (row) =>
+      !["up", "down", "equal"].includes(row.direction) ||
+      !["favorable", "unfavorable", "informational", "neutral"].includes(
+        row.semanticStatus,
+      ) ||
+      !row.indicatorColor,
+  )
+)
+  throw new Error(
+    "A Q3 market indicator is missing semantic direction styling.",
+  );
+if (
+  indicatorRows
+    .filter((row) => row.metricKey === "underConstructionSf")
+    .some((row) => !["informational", "neutral"].includes(row.semanticStatus))
+)
+  throw new Error("Under Construction must remain semantically neutral.");
 
 const reportScopes = [
   { name: "Overall Market", report: instance.dataSnapshot },
@@ -241,6 +357,28 @@ const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 const pdf = await PDFDocument.load(pdfBytes);
 if (pdf.getPageCount() !== 44)
   throw new Error(`Expected a 44-page Q3 PDF; received ${pdf.getPageCount()}.`);
+const pdfAnnotations = pdf
+  .getPage(1)
+  .node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+if (pdfAnnotations?.size() !== 18)
+  throw new Error(
+    `Expected 18 internal links on PDF page 2; received ${pdfAnnotations?.size() ?? 0}.`,
+  );
+const pdfDestinations = Array.from(
+  { length: pdfAnnotations.size() },
+  (_, index) => {
+    const annotation = pdf.context.lookup(pdfAnnotations.get(index), PDFDict);
+    const direct = annotation.get(PDFName.of("Dest"));
+    const action = annotation.lookupMaybe(PDFName.of("A"), PDFDict);
+    const destination = direct ?? action?.get(PDFName.of("D"));
+    return destination instanceof PDFArray
+      ? destination.get(0).toString()
+      : destination?.toString();
+  },
+);
+for (const anchor of ["ohare-overview", "west-cook-overview"])
+  if (!pdfDestinations.includes(`/${anchor}`))
+    throw new Error(`PDF internal destination ${anchor} is unavailable.`);
 await fs.mkdir("output/pdf", { recursive: true });
 await fs.writeFile(output, pdfBytes);
 
@@ -262,14 +400,23 @@ console.log(
       marketMaps: {
         resolved: renderedMaps.length,
         expected: expectedMaps.length,
+        overall: renderedMaps.length - submarketMaps.length,
+        submarkets: submarketMaps.length,
+        sourceFrameInsetPx: 3,
       },
       contributorImages: {
         totalSlots: reportScopes.length * 9,
-        populatedCards: contributorCards.length,
-        resolved: resolvedContributorImages.length,
-        unavailable: reportScopes.length * 9 - resolvedContributorImages.length,
-        noRankedContributor: reportScopes.length * 9 - contributorCards.length,
-        unresolvedPopulatedCard: unresolvedPopulatedCards.length,
+        ...propertyCardStates,
+      },
+      marketIndicators: {
+        semanticRows: indicatorRows.length,
+        currentVersusImmediatelyPrior: true,
+        underConstructionNeutral: true,
+      },
+      navigation: {
+        browserTargets: detailNavigationRows.length,
+        pdfLinkAnnotations: pdfAnnotations.size(),
+        stableNamedDestinations: true,
       },
       imageDiagnostics: (instance.sourceMetadata.diagnostics ?? []).filter(
         (diagnostic) => /image|attachment/i.test(diagnostic),

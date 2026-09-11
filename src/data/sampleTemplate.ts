@@ -542,6 +542,9 @@ const transactionChipStyle = {
 const overviewPage: ReportPage = {
   id: "market-overview",
   name: "Market Overview",
+  anchor: "overall-market-overview",
+  geographyId: "overall-market",
+  pageKind: "overview",
   width: 816,
   height: 1056,
   background: "#ffffff",
@@ -1006,6 +1009,9 @@ function propertySection(
 const highlightsPage: ReportPage = {
   id: "market-highlights",
   name: "Market Highlights",
+  anchor: "overall-market-highlights",
+  geographyId: "overall-market",
+  pageKind: "highlights",
   width: 816,
   height: 1056,
   background: "#ffffff",
@@ -1148,8 +1154,11 @@ function detailElement(element: ReportElement): ReportElement {
   if (next.id === "detail-overview-narrative") {
     next.binding = { path: "market.narrative", fallback: "" };
   }
-  if (next.id === "detail-market-map") {
+  if (next.id === "detail-market-map" && next.type === "image") {
     next.binding = { path: "market.mapAssetUrl" };
+    // Governed submarket JPEGs retain their source-frame rule. A map-only
+    // render inset hides that frame without modifying the approved raster.
+    next.edgeInset = 3;
   }
   if (next.type === "table") next.sourcePath = `market.${next.sourcePath}`;
   if (next.type === "chart")

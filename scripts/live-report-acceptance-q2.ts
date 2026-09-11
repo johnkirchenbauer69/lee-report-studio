@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { PDFDocument } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName } from "pdf-lib";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { getByContextPath } from "../src/engine/bindings.ts";
@@ -435,7 +435,70 @@ presentation.submarketDetails.forEach((detail, index) => {
     throw new Error(
       `${detail.displayName} Overview did not resolve its canonical managed map.`,
     );
+  if (map.edgeInset !== 3)
+    throw new Error(
+      `${detail.displayName} map lost its governed source-frame inset.`,
+    );
 });
+const q2PropertySlots = [
+  ...presentation.topAvailabilities,
+  ...presentation.topDeliveries,
+  ...presentation.topConstruction,
+  ...presentation.submarketDetails.flatMap((detail) => [
+    ...detail.topAvailabilities,
+    ...detail.topDeliveries,
+    ...detail.topConstruction,
+  ]),
+];
+const q2PropertyCardStates = {
+  populatedPropertyCards: q2PropertySlots.filter(
+    (slot) => slot.state !== "none",
+  ).length,
+  resolvedPropertyImages: q2PropertySlots.filter(
+    (slot) => slot.state === "record",
+  ).length,
+  actualImageFailures: q2PropertySlots.filter(
+    (slot) => slot.state === "image-unavailable",
+  ).length,
+  emptyRankSlots: q2PropertySlots.filter((slot) => slot.state === "none")
+    .length,
+};
+if (
+  JSON.stringify(q2PropertyCardStates) !==
+  JSON.stringify({
+    populatedPropertyCards: 114,
+    resolvedPropertyImages: 113,
+    actualImageFailures: 1,
+    emptyRankSlots: 57,
+  })
+)
+  throw new Error(
+    `Unexpected Q2 property-card states: ${JSON.stringify(q2PropertyCardStates)}.`,
+  );
+const q2DetailRows = presentation.submarketTableRows.filter(
+  (row) => row.kind === "detail",
+);
+if (
+  q2DetailRows.length !== 18 ||
+  q2DetailRows.some(
+    (row) =>
+      pages.filter(
+        (page) =>
+          page.geographyId === row.geographyId && page.pageKind === "overview",
+      ).length !== 1,
+  )
+)
+  throw new Error("Q2 submarket navigation targets are incomplete.");
+const q2IndicatorRows = [
+  ...presentation.indicatorRows,
+  ...presentation.submarketDetails.flatMap((detail) => detail.indicatorRows),
+];
+if (
+  q2IndicatorRows
+    .filter((row) => row.metricKey === "underConstructionSf")
+    .some((row) => !["informational", "neutral"].includes(row.semanticStatus))
+)
+  throw new Error("Q2 Under Construction semantics changed unexpectedly.");
 for (const detail of presentation.submarketDetails) {
   if (detail.topLeaseRows.length !== 3 || detail.topSaleRows.length !== 3)
     throw new Error(
@@ -641,6 +704,28 @@ const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 const pdf = await PDFDocument.load(pdfBytes);
 if (pdf.getPageCount() !== 44)
   throw new Error(`Expected a 44-page PDF; received ${pdf.getPageCount()}.`);
+const q2PdfAnnotations = pdf
+  .getPage(1)
+  .node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+if (q2PdfAnnotations?.size() !== 18)
+  throw new Error(
+    `Expected 18 Q2 PDF submarket links; received ${q2PdfAnnotations?.size() ?? 0}.`,
+  );
+const q2PdfDestinations = Array.from(
+  { length: q2PdfAnnotations.size() },
+  (_, index) => {
+    const annotation = pdf.context.lookup(q2PdfAnnotations.get(index), PDFDict);
+    const direct = annotation.get(PDFName.of("Dest"));
+    const action = annotation.lookupMaybe(PDFName.of("A"), PDFDict);
+    const destination = direct ?? action?.get(PDFName.of("D"));
+    return destination instanceof PDFArray
+      ? destination.get(0).toString()
+      : destination?.toString();
+  },
+);
+for (const anchor of ["ohare-overview", "west-cook-overview"])
+  if (!q2PdfDestinations.includes(`/${anchor}`))
+    throw new Error(`Q2 PDF internal destination ${anchor} is unavailable.`);
 const output =
   process.env.LEE_ACCEPT_PDF_OUTPUT ??
   "output/pdf/chicago-industrial-market-report-q2-2026.pdf";
@@ -707,6 +792,11 @@ console.log(
       templateStatus: acceptanceTemplate.status,
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
+      propertyCardStates: q2PropertyCardStates,
+      mapSourceFrameInsets: presentation.submarketDetails.length,
+      submarketNavigationTargets: q2DetailRows.length,
+      pdfInternalLinkAnnotations: q2PdfAnnotations.size(),
+      semanticIndicatorRows: q2IndicatorRows.length,
       marketingChartElements: managedCharts.length,
       managedUnavailablePlaceholders: generatedUnavailable.length,
       firstPages: pages.slice(0, 6).map((page) => page.name),

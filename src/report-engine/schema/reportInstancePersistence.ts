@@ -313,6 +313,7 @@ export const reportElementSchema = z.discriminatedUnion("type", [
       publicationRequired: z.boolean().optional(),
       fit: z.enum(["cover", "contain", "stretch", "original"]).optional(),
       assetId: z.string().optional(),
+      edgeInset: nonNegative.optional(),
       crop: z
         .object({ x: finite, y: finite, zoom: finite.positive() })
         .strict()
@@ -389,6 +390,9 @@ export const reportPageSchema = z
     background: nonEmpty,
     hidden: z.boolean().optional(),
     pageNumber: z.number().int().positive().optional(),
+    anchor: z.string().optional(),
+    geographyId: z.string().optional(),
+    pageKind: z.enum(["overview", "highlights"]).optional(),
     bindingContext: bindingContextSchema.optional(),
     repeat: z
       .object({

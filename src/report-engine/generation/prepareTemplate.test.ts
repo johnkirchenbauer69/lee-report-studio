@@ -146,7 +146,7 @@ describe("production template preparation", () => {
     });
   });
 
-  it("replaces an empty optional bound image slot without changing its geometry", () => {
+  it("preserves an empty contributor slot for canonical card-state rendering", () => {
     const presentation = buildPresentationModel(q2SampleReport);
     presentation.topDeliveries[2]!.image = "";
     const source = sampleTemplate.pages
@@ -159,17 +159,25 @@ describe("production template preparation", () => {
       "ascendix",
       "published",
     );
-    const placeholder = prepared.pages
+    const slot = prepared.pages
       .flatMap((page) => page.elements)
-      .find((element) => element.id === "deliveries-image-2-data-unavailable");
-    expect(placeholder).toMatchObject({
-      type: "text",
-      text: "Content not available for this edition",
+      .find((element) => element.id === "deliveries-image-2");
+    expect(slot).toMatchObject({
+      type: "image",
+      src: "",
+      publicationRequired: false,
       x: source.x,
       y: source.y,
       width: source.width,
       height: source.height,
     });
+    expect(
+      prepared.pages
+        .flatMap((page) => page.elements)
+        .some(
+          (element) => element.id === "deliveries-image-2-data-unavailable",
+        ),
+    ).toBe(false);
   });
 
   it("defers Q3 submarket maps and property photos until their repeating market context exists", () => {
@@ -231,6 +239,7 @@ describe("production template preparation", () => {
     ).toMatchObject({
       type: "image",
       src: "/report-assets/maps/Central_DuPage_Map.jpg",
+      edgeInset: 3,
     });
     expect(
       ohareOverview.elements.find((element) =>
@@ -239,6 +248,7 @@ describe("production template preparation", () => {
     ).toMatchObject({
       type: "image",
       src: "/report-assets/maps/O'Hare_Map.jpg",
+      edgeInset: 3,
     });
     expect(
       centralHighlights.elements.find(

@@ -6,6 +6,10 @@ import type {
   RepeatRule,
 } from "../../types/report";
 import { chicagoSubmarketId, resolveChicagoSubmarket } from "../submarkets";
+import {
+  applyPageNavigationIdentity,
+  assertUniquePageAnchors,
+} from "../navigation/pageNavigation";
 
 const resolveBoundImage = (
   element: ReportElement,
@@ -169,6 +173,7 @@ export function expandTemplatePages(
             ...structuredClone(groupPage),
             id: `${groupPage.id}-repeat-${index}`,
             name: groupPage.name.replace(/\{item\}/g, label),
+            geographyId: identity?.id,
             repeat: undefined,
             bindingContext: context,
             elements: expandRepeatingElements(groupPage.elements, data).map(
@@ -216,13 +221,17 @@ export function expandTemplatePages(
         `Selected canonical submarkets were not generated: ${missing.join(", ")}.`,
       );
   }
-  return result.map((page, index) => ({
-    ...page,
-    pageNumber: index + 1,
-    elements: page.elements.map((element) =>
-      element.type === "text" && element.name === "Page Number"
-        ? { ...element, text: String(index + 1) }
-        : element,
-    ),
-  }));
+  const finalized = result.map((page, index) =>
+    applyPageNavigationIdentity({
+      ...page,
+      pageNumber: index + 1,
+      elements: page.elements.map((element) =>
+        element.type === "text" && element.name === "Page Number"
+          ? { ...element, text: String(index + 1) }
+          : element,
+      ),
+    }),
+  );
+  assertUniquePageAnchors(finalized);
+  return finalized;
 }

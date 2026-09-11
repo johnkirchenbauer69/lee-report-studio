@@ -312,3 +312,151 @@ describe("CanvasElement effects", () => {
     expect(markup).toContain("M0 0 L100 0 L100 50 L0 50 Z");
   });
 });
+
+describe("CanvasElement report semantics", () => {
+  const renderDataElement = (
+    element: ReportElement,
+    data: unknown,
+    pages?: import("../types/report").ReportPage[],
+  ) =>
+    renderToStaticMarkup(
+      <CanvasElement
+        element={element}
+        elements={[element]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={data}
+        pages={pages}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+
+  const propertyImage = (index: number): ReportElement => ({
+    id: `delivery-image-${index}`,
+    type: "image",
+    name: "Property Image",
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 100,
+    src: "",
+    publicationRequired: false,
+    binding: { path: "property.image" },
+    bindingContext: {
+      name: "property",
+      path: `topDeliveries[${index}]`,
+    },
+    style: {},
+  });
+
+  it("distinguishes empty ranks from genuine image failures", () => {
+    const data = {
+      topDeliveries: [
+        { image: "", state: "image-unavailable" },
+        { image: "", state: "none" },
+      ],
+    };
+    expect(renderDataElement(propertyImage(0), data)).toContain(
+      "Image unavailable",
+    );
+    expect(renderDataElement(propertyImage(0), data)).not.toContain(
+      "None to Report",
+    );
+    expect(renderDataElement(propertyImage(1), data)).toContain(
+      "None to Report",
+    );
+    expect(renderDataElement(propertyImage(1), data)).not.toContain(
+      "Content not available for this edition",
+    );
+  });
+
+  it("renders semantic indicator color only on the direction glyph", () => {
+    const indicator: TableElement = {
+      ...table,
+      id: "indicator-table",
+      variant: "indicators",
+      sourcePath: "indicatorRows",
+      columns: [{ key: "metric", label: "MARKET INDICATORS", path: "metric" }],
+    };
+    const markup = renderDataElement(indicator, {
+      indicatorRows: [
+        {
+          metric: "Vacancy Rate",
+          direction: "down",
+          semanticStatus: "favorable",
+          indicatorGlyph: "▼",
+          indicatorColor: "#237A57",
+        },
+      ],
+    });
+    expect(markup).toContain('data-direction="down"');
+    expect(markup).toContain('data-semantic-status="favorable"');
+    expect(markup).toContain("color:#237A57");
+    expect(markup).toContain(">Vacancy Rate</span>");
+  });
+
+  it("renders an accessible internal link from the actual page model", () => {
+    const matrix: TableElement = {
+      ...table,
+      id: "submarket-matrix",
+      variant: "market-matrix",
+      sourcePath: "submarketTableRows",
+      columns: [{ key: "name", label: "SUBMARKET", path: "name" }],
+    };
+    const pages = [
+      {
+        id: "ohare-overview-page",
+        name: "O'Hare Overview",
+        width: 816,
+        height: 1056,
+        background: "#fff",
+        anchor: "ohare-overview",
+        geographyId: "ohare",
+        pageKind: "overview" as const,
+        elements: [],
+      },
+    ];
+    const markup = renderDataElement(
+      matrix,
+      {
+        submarketTableRows: [
+          { kind: "detail", geographyId: "ohare", name: "O'Hare" },
+        ],
+      },
+      pages,
+    );
+    expect(markup).toContain('href="#ohare-overview"');
+    expect(markup).toContain('data-page-target="ohare-overview-page"');
+    expect(markup).toContain('aria-label="Go to O&#x27;Hare Market Overview"');
+    expect(markup).not.toContain("text-decoration:underline");
+  });
+
+  it("clips only explicitly normalized map rasters", () => {
+    const markup = renderDataElement(
+      {
+        id: "detail-market-map",
+        type: "image",
+        name: "Market map",
+        x: 0,
+        y: 0,
+        width: 352,
+        height: 240,
+        src: "/report-assets/maps/O'Hare_Map.jpg",
+        fit: "contain",
+        edgeInset: 3,
+        style: {},
+      },
+      {},
+    );
+    expect(markup).toContain("clip-path:inset(3px)");
+    expect(renderElement(propertyImage(0))).not.toContain("clip-path:inset");
+  });
+});

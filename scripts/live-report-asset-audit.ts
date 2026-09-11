@@ -140,10 +140,11 @@ for (const period of periods) {
       {
         period,
         totalContributorImageSlots: scopes.length * 9,
-        populatedContributorCards: reportCards.length,
-        resolvedStudioAssets: resolved,
-        unavailable: {
-          noRankedContributor: scopes.length * 9 - reportCards.length,
+        populatedPropertyCards: reportCards.length,
+        resolvedPropertyImages: resolved,
+        actualImageFailures: resolutionFailed,
+        emptyRankSlots: scopes.length * 9 - reportCards.length,
+        imageFailureReasons: {
           noSafePropertyRoute,
           noPrimaryImage,
           resolutionFailed,

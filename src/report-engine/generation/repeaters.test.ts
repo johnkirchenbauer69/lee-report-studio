@@ -173,6 +173,17 @@ describe("industrial detail page selection", () => {
       Array.from({ length: 44 }, (_, index) => index + 1),
     );
     expect(
+      pages
+        .filter((page) => page.pageKind === "overview")
+        .map((page) => page.anchor),
+    ).toEqual([
+      "overall-market-overview",
+      ...selected.map((id) => `${id}-overview`),
+    ]);
+    expect(new Set(pages.map((page) => page.anchor).filter(Boolean)).size).toBe(
+      38,
+    );
+    expect(
       pages[4].elements.find((item) => item.name === "Page Number"),
     ).toMatchObject({
       type: "text",

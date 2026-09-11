@@ -2254,6 +2254,7 @@ export default function App() {
           <div className="page-list">
             {template.pages.map((item, index) => (
               <button
+                type="button"
                 draggable
                 key={item.id}
                 className={`${item.id === page.id ? "active" : ""} ${draggedPageId === item.id ? "dragging" : ""}`}
@@ -2774,6 +2775,13 @@ export default function App() {
                     setTableSelection(undefined);
                   }}
                   onTableSelect={setTableSelection}
+                  pages={template.pages}
+                  onNavigatePage={(targetPageId) => {
+                    setPageId(targetPageId);
+                    setSelectedIds([]);
+                    setTableEditingId(undefined);
+                    setTableSelection(undefined);
+                  }}
                   zoom={zoom}
                   onSelect={select}
                   onChange={updateElement}
