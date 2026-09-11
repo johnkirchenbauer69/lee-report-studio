@@ -65,6 +65,7 @@ const record = (
     updatedAt: "2026-09-09T10:00:00.000Z",
     checksum: `checksum-${version}`,
     pageDefinitionCount: pages.length,
+    revision: 1,
     template: { ...structuredClone(sampleTemplate), version, pages },
     assetReferences: [],
     managedFontReferences: [],

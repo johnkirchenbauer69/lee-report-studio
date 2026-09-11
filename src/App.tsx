@@ -92,12 +92,16 @@ import {
   approvedManagedFontAssets,
   inferFontGovernanceStatus,
 } from "./services/fontGovernance";
-import { templateStore } from "./services/templateStore";
+import {
+  TemplateSaveConflictError,
+  templateStore,
+} from "./services/templateStore";
 import {
   ReportSaveConflictError,
   reportInstanceStore,
 } from "./services/reportInstanceStore";
 import { reportRecovery } from "./services/reportRecovery";
+import { templateRecovery } from "./services/templateRecovery";
 import type {
   StoredTemplateVersion,
   TemplateVersionSummary,
@@ -210,8 +214,10 @@ export default function App() {
   const [publishedTemplate, setPublishedTemplate] =
     useState<StoredTemplateVersion>();
   const [librarySaveState, setLibrarySaveState] = useState<
-    "loading" | "saved" | "local" | "error"
+    "loading" | "saved" | "local" | "error" | "conflict"
   >("loading");
+  const [librarySaveError, setLibrarySaveError] = useState<string>();
+  const [renamingVersionKey, setRenamingVersionKey] = useState<string>();
   const [fontDiagnostics, setFontDiagnostics] = useState<
     ManagedFontFaceDiagnostic[]
   >([]);
@@ -228,6 +234,7 @@ export default function App() {
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
   const managedServerAssets = useRef<Asset[]>([]);
+  const initialLoadStarted = useRef(false);
   const reportSaveTimer = useRef<number | undefined>(undefined);
   const reportSaveInFlight = useRef(false);
   const reportChangeSequence = useRef(0);
@@ -466,9 +473,29 @@ export default function App() {
         (asset) => asset.storage !== "backend",
       );
       const assets = [...browserAssets, ...managedServerAssets.current];
-      const next = hydrate(
+      let next = hydrate(
         normalizeReportTemplateFonts({ ...record.template, assets }, assets),
       );
+      setLibrarySaveError(undefined);
+      const recovery = templateRecovery.load(record.id, record.version);
+      if (recovery) {
+        if (recovery.baseRevision === record.revision) {
+          // Nobody else has changed this draft since the rejected save —
+          // safe to restore the local edit rather than lose it.
+          next = hydrate(
+            normalizeReportTemplateFonts(
+              { ...recovery.template, assets },
+              assets,
+            ),
+          );
+          templateRecovery.clear(record.id, record.version);
+          notify(`Recovered unsaved edits to v${record.version}`);
+        } else {
+          setLibrarySaveError(
+            `Recovery is based on revision ${recovery.baseRevision}, but this draft is at revision ${record.revision}. Recovery was retained without overwriting the server.`,
+          );
+        }
+      }
       setActiveTemplateRecord(record);
       setTemplate(next);
       latestTemplate.current = next;
@@ -546,6 +573,13 @@ export default function App() {
       });
   }, [template.assets]);
   useEffect(() => {
+    // Guards against StrictMode's intentional double-invocation of mount
+    // effects in development: without it, two concurrent openTemplateRecord
+    // calls race, and the second (which finds no recovery, since the first
+    // already consumed and cleared it) silently overwrites the first's
+    // just-recovered edit with the plain server copy.
+    if (initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
     Promise.all([
       refreshTemplateLibrary(),
       assetStorage.list().catch(() => [] as Asset[]),
@@ -1366,22 +1400,69 @@ export default function App() {
       notify("Published templates require Save As New Version.");
       return;
     }
+    const base = activeTemplateRecord;
+    const normalized = normalizeReportTemplateFonts(
+      latestTemplate.current,
+      latestTemplate.current.assets ?? [],
+    );
     try {
-      const normalized = normalizeReportTemplateFonts(
-        latestTemplate.current,
-        latestTemplate.current.assets ?? [],
-      );
-      const saved = await templateStore.saveDraft(
-        activeTemplateRecord,
-        normalized,
-      );
+      const saved = await templateStore.saveDraft(base, normalized);
       applySavedTemplateRecord(saved);
+      templateRecovery.clear(base.id, base.version);
       await refreshTemplateLibrary();
       setLibrarySaveState("saved");
+      setLibrarySaveError(undefined);
       notify(`Template v${saved.version} saved to library`);
     } catch (error) {
+      if (error instanceof TemplateSaveConflictError) {
+        // Never silently overwrite, and never silently discard: the base
+        // this edit started from is stale, so the edit is preserved for
+        // recovery instead of being sent over the newer server content.
+        // baseRevision is the revision the *conflict* reported as current,
+        // not the stale one this edit started from — reopening later can
+        // then tell whether the draft is still exactly there (safe to
+        // silently restore this edit) or has moved again since (must not
+        // silently restore over content the user hasn't seen).
+        templateRecovery.save({
+          id: base.id,
+          version: base.version,
+          baseRevision: error.currentRevision,
+          template: normalized,
+          savedAt: new Date().toISOString(),
+        });
+        setLibrarySaveState("conflict");
+        setLibrarySaveError(
+          `v${base.version} changed elsewhere (revision ${error.currentRevision}) since you opened it. Your edits were not saved — they're preserved locally. Use "Save as version" to keep them as a new draft, or reopen v${base.version} to see the latest.`,
+        );
+        notify(
+          `v${base.version} was changed elsewhere — your edit was not saved, but is preserved`,
+        );
+        return;
+      }
       setLibrarySaveState("error");
+      setLibrarySaveError(undefined);
       notify(error instanceof Error ? error.message : "Template save failed");
+    }
+  };
+  const renameTemplateVersion = async (
+    record: StoredTemplateVersion | TemplateVersionSummary,
+    label: string,
+  ) => {
+    try {
+      const renamed = await templateStore.rename(record, label);
+      await refreshTemplateLibrary();
+      if (
+        activeTemplateRecord?.id === renamed.id &&
+        activeTemplateRecord.version === renamed.version
+      )
+        setActiveTemplateRecord((current) =>
+          current ? { ...current, label: renamed.label } : current,
+        );
+      notify(`v${renamed.version} renamed`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Rename failed");
+    } finally {
+      setRenamingVersionKey(undefined);
     }
   };
   const saveAsNewTemplateVersion = async (
@@ -2115,7 +2196,7 @@ export default function App() {
                 </strong>
                 <span>
                   {activeTemplateRecord
-                    ? `${activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}`
+                    ? `${activeTemplateRecord.label || activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}`
                     : "Loading template library…"}
                 </span>
                 <small>
@@ -2136,7 +2217,39 @@ export default function App() {
                     }
                   >
                     <div>
-                      <strong>{record.name}</strong>
+                      {renamingVersionKey === `${record.id}-${record.version}` ? (
+                        <form
+                          className="rename-version-form"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            const input = event.currentTarget.elements.namedItem(
+                              "label",
+                            ) as HTMLInputElement;
+                            void renameTemplateVersion(record, input.value);
+                          }}
+                        >
+                          <input
+                            name="label"
+                            aria-label={`Label for v${record.version}`}
+                            defaultValue={record.label ?? ""}
+                            placeholder={record.name}
+                            autoFocus
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape")
+                                setRenamingVersionKey(undefined);
+                            }}
+                          />
+                          <button type="submit">Save</button>
+                          <button
+                            type="button"
+                            onClick={() => setRenamingVersionKey(undefined)}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <strong>{record.label || record.name}</strong>
+                      )}
                       <span>
                         v{record.version} · {record.status}
                       </span>
@@ -2191,6 +2304,17 @@ export default function App() {
                               onClick={() => createDraftFromVersion(record)}
                             >
                               Duplicate as new draft
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                setRenamingVersionKey(
+                                  `${record.id}-${record.version}`,
+                                );
+                                setVersionMenuKey(undefined);
+                              }}
+                            >
+                              Rename
                             </button>
                             <button
                               role="menuitem"
@@ -2886,11 +3010,16 @@ export default function App() {
           librarySaveState === "saved" &&
           documentMode === "master-template"
             ? "Saved to template library"
-            : !reportInstance && librarySaveState === "error"
-              ? "Template library save failed"
-              : !reportInstance
-                ? "Saved locally for recovery"
-                : ""}
+            : !reportInstance && librarySaveState === "conflict"
+              ? `Template save conflict${librarySaveError ? ` · ${librarySaveError}` : ""}`
+              : !reportInstance && librarySaveState === "error"
+                ? "Template library save failed"
+                : !reportInstance
+                  ? "Saved locally for recovery"
+                  : ""}
+          {!reportInstance && librarySaveState !== "conflict" && librarySaveError
+            ? ` · ${librarySaveError}`
+            : ""}
         </span>
       </footer>
       {contextMenu && (

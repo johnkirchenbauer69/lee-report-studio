@@ -16,7 +16,9 @@ export interface TemplateRepository {
     id: string,
     version: string,
     template: ReportTemplate,
+    options?: { expectedRevision?: number },
   ): Promise<StoredTemplateVersion>;
+  rename(id: string, version: string, label: string): Promise<StoredTemplateVersion>;
   createVersion(
     id: string,
     sourceVersion: string,
