@@ -6,6 +6,7 @@ import type { SalesforceBinaryResponse } from "./SalesforceClient.ts";
 export interface SalesforceBinaryRequest {
   url: string;
   accessToken: string;
+  maxBytes?: number;
 }
 
 export type SalesforceBinaryTransport = (
@@ -13,6 +14,7 @@ export type SalesforceBinaryTransport = (
 ) => Promise<SalesforceBinaryResponse>;
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_BYTES = 15 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 
 const firstHeader = (value: string | string[] | undefined) =>
@@ -55,6 +57,8 @@ export const createNodeSalesforceBinaryTransport = (
         },
         (response) => {
           const chunks: Buffer[] = [];
+          const maxBytes = input.maxBytes ?? DEFAULT_MAX_BYTES;
+          let receivedBytes = 0;
           let settled = false;
           const fail = (error: Error) => {
             if (settled) return;
@@ -63,8 +67,30 @@ export const createNodeSalesforceBinaryTransport = (
             reject(error);
           };
 
+          const contentLength = Number(
+            firstHeader(response.headers["content-length"]),
+          );
+          if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+            fail(
+              new Error(
+                `Salesforce binary response exceeds the ${maxBytes}-byte request limit.`,
+              ),
+            );
+            return;
+          }
+
           response.on("data", (chunk: Buffer | string) => {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            receivedBytes += buffer.length;
+            if (receivedBytes > maxBytes) {
+              fail(
+                new Error(
+                  `Salesforce binary response exceeds the ${maxBytes}-byte request limit.`,
+                ),
+              );
+              return;
+            }
+            chunks.push(buffer);
           });
           response.once("aborted", () =>
             fail(new Error("Salesforce binary response was aborted.")),

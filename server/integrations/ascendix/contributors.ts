@@ -158,13 +158,13 @@ const address = (
  */
 export type ImageResolver = (
   value: string | undefined,
-) => Promise<{ url?: string; warning?: string }>;
+) => Promise<{ url?: string; warning?: string; diagnostic?: string }>;
 
 const image = async (
   record: SalesforceRecord,
   source: "Lease" | "Sale" | "Availability" | "Property",
   resolveImage?: ImageResolver,
-): Promise<{ value: string; warning?: string }> => {
+): Promise<{ value: string; warning?: string; diagnostic?: string }> => {
   const raw = text(
     record,
     `${source}__r.ascendix__Property__r.ascendix__PrimaryImage__c`,
@@ -173,7 +173,11 @@ const image = async (
   if (!raw) return { value: raw };
   if (resolveImage) {
     const resolved = await resolveImage(raw);
-    return { value: resolved.url ?? "", warning: resolved.warning };
+    return {
+      value: resolved.url ?? "",
+      warning: resolved.warning,
+      diagnostic: resolved.diagnostic,
+    };
   }
   if (looksLikeSalesforceId(raw))
     return {
@@ -279,7 +283,11 @@ const highlight = async (
   record: SalesforceRecord,
   section: "availabilities" | "deliveries" | "construction",
   resolveImage?: ImageResolver,
-): Promise<{ highlight: PropertyHighlight; warning?: string }> => {
+): Promise<{
+  highlight: PropertyHighlight;
+  warning?: string;
+  diagnostic?: string;
+}> => {
   const source = section === "availabilities" ? "Availability" : "Property";
   const sizePaths =
     section === "availabilities"
@@ -373,6 +381,7 @@ const highlight = async (
       image: resolvedImage.value,
     },
     warning: resolvedImage.warning,
+    diagnostic: resolvedImage.diagnostic,
   };
 };
 
@@ -385,8 +394,16 @@ export async function mapHistoricalContributors(
   const availabilityRows = rankContributors(rows, "availabilities");
   const deliveryRows = rankContributors(rows, "deliveries");
   const constructionRows = rankContributors(rows, "construction");
-  const positiveAbsorptionRows = rankContributors(rows, "positiveAbsorption", 5);
-  const negativeAbsorptionRows = rankContributors(rows, "negativeAbsorption", 5);
+  const positiveAbsorptionRows = rankContributors(
+    rows,
+    "positiveAbsorption",
+    5,
+  );
+  const negativeAbsorptionRows = rankContributors(
+    rows,
+    "negativeAbsorption",
+    5,
+  );
   const leasing: LeaseRecord[] = leaseRows.map((record) => {
     const isDealConfidential = booleanValue(
       record,
@@ -526,11 +543,23 @@ export async function mapHistoricalContributors(
     }),
   );
   const absorptionContributors: AbsorptionContributor[] = [
-    ...positiveAbsorptionRows.map((record) => ({ record, direction: "positive" as const })),
-    ...negativeAbsorptionRows.map((record) => ({ record, direction: "negative" as const })),
+    ...positiveAbsorptionRows.map((record) => ({
+      record,
+      direction: "positive" as const,
+    })),
+    ...negativeAbsorptionRows.map((record) => ({
+      record,
+      direction: "negative" as const,
+    })),
   ].map(({ record, direction }) => {
-    const raw = numeric(record, "Metric_Value__c", "Sort_Value__c", "Display_Value__c");
-    const contributionSf = direction === "negative" ? -Math.abs(raw) : Math.abs(raw);
+    const raw = numeric(
+      record,
+      "Metric_Value__c",
+      "Sort_Value__c",
+      "Display_Value__c",
+    );
+    const contributionSf =
+      direction === "negative" ? -Math.abs(raw) : Math.abs(raw);
     return {
       propertyName:
         displayText(
@@ -591,8 +620,8 @@ export async function mapHistoricalContributors(
     ...deliveryHighlights,
     ...constructionHighlights,
   ]
-    .map((entry) => entry.warning)
-    .filter((warning): warning is string => Boolean(warning));
+    .flatMap((entry) => [entry.warning, entry.diagnostic])
+    .filter((diagnostic): diagnostic is string => Boolean(diagnostic));
   return {
     leasing,
     sales,

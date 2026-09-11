@@ -18,6 +18,8 @@ import {
   type ReportSnapshotStore,
 } from "./reportSnapshots.ts";
 import { sanitizeSalesforceClientPayload } from "../../src/shared/salesforceIds.ts";
+import type { ReportPeriodsResponse } from "../../src/report-engine/schema/reportPeriods.ts";
+import { CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS } from "../../src/report-engine/submarkets.ts";
 
 const metricKeys: (keyof MarketMetrics)[] = [
   "inventorySf",
@@ -38,11 +40,14 @@ const tolerance = (key: keyof MarketMetrics, value: number) =>
 
 export class ReportDataService {
   private lastSuccessfulRequestAt?: string;
+  private periodCache?: { expiresAt: number; value: ReportPeriodsResponse };
+  private periodDiscoveryInFlight?: Promise<ReportPeriodsResponse>;
   private readonly dependencies: {
     ascendixAdapter: AscendixReportAdapter;
     snapshotStore: ReportSnapshotStore;
     mode: "mock" | "salesforce";
     now?: () => Date;
+    periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
   };
 
@@ -51,9 +56,39 @@ export class ReportDataService {
     snapshotStore: ReportSnapshotStore;
     mode: "mock" | "salesforce";
     now?: () => Date;
+    periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
   }) {
     this.dependencies = dependencies;
+  }
+
+  async getAvailableReportPeriods(): Promise<ReportPeriodsResponse> {
+    const now = this.dependencies.now?.() ?? new Date();
+    if (this.periodCache && this.periodCache.expiresAt > now.getTime())
+      return this.periodCache.value;
+    if (this.periodDiscoveryInFlight) return this.periodDiscoveryInFlight;
+
+    this.periodDiscoveryInFlight = this.dependencies.ascendixAdapter
+      .discoverReportPeriods()
+      .then((periods) => {
+        const value: ReportPeriodsResponse = {
+          periods,
+          mode: this.dependencies.mode,
+          requiredSubmarketCount: CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.length,
+          generatedAt: (this.dependencies.now?.() ?? new Date()).toISOString(),
+        };
+        this.periodCache = {
+          expiresAt:
+            (this.dependencies.now?.() ?? new Date()).getTime() +
+            (this.dependencies.periodCacheTtlMs ?? 60_000),
+          value,
+        };
+        return value;
+      })
+      .finally(() => {
+        this.periodDiscoveryInFlight = undefined;
+      });
+    return this.periodDiscoveryInFlight;
   }
 
   async getIndustrialMarketReport(input: unknown): Promise<ReportDataResult> {

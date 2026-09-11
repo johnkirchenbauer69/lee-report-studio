@@ -109,6 +109,33 @@ describe("FileSystemAssetStore.importBuffer", () => {
     expect(second.checksum).toBe(first.checksum);
   });
 
+  it("persists sanitized immutable derivative provenance", async () => {
+    const derivative = {
+      kind: "normalized-salesforce-report-image" as const,
+      sourceType: "salesforce" as const,
+      sourceMimeType: "image/jpeg",
+      sourceSize: 21_135_360,
+      sourceChecksum: "source-checksum",
+      originalWidth: 6_144,
+      originalHeight: 4_096,
+      outputFormat: "jpeg" as const,
+      outputWidth: 1_600,
+      outputHeight: 1_067,
+      outputSize: 280_000,
+      quality: 84,
+    };
+    const asset = await store.importBuffer({
+      buffer: PNG_BYTES,
+      mimeType: "image/png",
+      name: "normalized.jpg",
+      derivative,
+    });
+    expect(asset.derivative).toEqual(derivative);
+    expect(
+      (await store.list()).find((item) => item.id === asset.id)?.derivative,
+    ).toEqual(derivative);
+  });
+
   it("does not lose entries when multiple imports run concurrently (Promise.all)", async () => {
     // Regression test: mapHistoricalContributors resolves several
     // Salesforce images in parallel via Promise.all. Without a write

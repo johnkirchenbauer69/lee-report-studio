@@ -2,9 +2,14 @@ import type { SalesforceClient } from "./SalesforceClient.ts";
 import type { FileSystemAssetStore } from "../../assets/assetStore.ts";
 import type { SalesforceImageIndex } from "../../assets/salesforceImageIndex.ts";
 import { isSalesforceAttachmentOrFileId } from "./salesforceIds.ts";
+import {
+  MAX_REPORT_IMAGE_SOURCE_BYTES,
+  normalizeOversizedReportImage,
+  ReportImageNormalizationError,
+} from "../../assets/reportImageNormalizer.ts";
 
 const ATTACHMENT_PREFIX = "00P";
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+export const MAX_DIRECT_REPORT_IMAGE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPE = /^image\/(png|jpe?g|webp|gif)/i;
 
 export { isSalesforceAttachmentOrFileId } from "./salesforceIds.ts";
@@ -19,6 +24,8 @@ export interface ResolvedSalesforceImage {
   url?: string;
   /** Set when resolution failed; the caller should surface this as a report warning, never a raw id/URL. */
   warning?: string;
+  /** Sanitized provenance note retained with the generated report. */
+  diagnostic?: string;
 }
 
 /**
@@ -52,7 +59,9 @@ export async function resolveSalesforceImage(
 
   let response;
   try {
-    response = await deps.client.getBinary(sobjectPathFor(id));
+    response = await deps.client.getBinary(sobjectPathFor(id), {
+      maxBytes: MAX_REPORT_IMAGE_SOURCE_BYTES,
+    });
   } catch (error) {
     return {
       warning: `Salesforce attachment ${id} could not be resolved (${error instanceof Error ? error.message : "request failed"}).`,
@@ -64,10 +73,33 @@ export async function resolveSalesforceImage(
     return {
       warning: `Salesforce attachment ${id} could not be resolved (received ${contentType || `HTTP ${status}`} instead of an image).`,
     };
-  if (buffer.length > MAX_IMAGE_BYTES)
-    return {
-      warning: `Salesforce attachment ${id} could not be resolved (image exceeds the ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB size limit).`,
-    };
+  if (buffer.length > MAX_DIRECT_REPORT_IMAGE_BYTES) {
+    try {
+      const normalized = await normalizeOversizedReportImage({
+        buffer,
+        mimeType: contentType,
+      });
+      const asset = await deps.assetStore.importBuffer({
+        buffer: normalized.buffer,
+        mimeType: normalized.mimeType,
+        name: `salesforce-${id}-normalized.jpg`,
+        derivative: normalized.derivative,
+      });
+      await deps.index.set(id, asset.id);
+      return {
+        url: asset.source,
+        diagnostic: `Oversized Salesforce property image was normalized into an immutable Studio JPEG derivative (${normalized.derivative.originalWidth}x${normalized.derivative.originalHeight}, ${Math.round((normalized.derivative.sourceSize / (1024 * 1024)) * 10) / 10} MB source; ${normalized.derivative.outputWidth}x${normalized.derivative.outputHeight}, ${Math.round(normalized.derivative.outputSize / 1024)} KB output).`,
+      };
+    } catch (error) {
+      const category =
+        error instanceof ReportImageNormalizationError
+          ? error.code.toLowerCase().replaceAll("_", " ")
+          : "normalization failed";
+      return {
+        warning: `Salesforce attachment ${id} could not be normalized for report use (${category}).`,
+      };
+    }
+  }
 
   const asset = await deps.assetStore.importBuffer({
     buffer,

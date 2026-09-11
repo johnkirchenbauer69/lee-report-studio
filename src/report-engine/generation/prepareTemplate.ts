@@ -38,7 +38,7 @@ const unavailablePlaceholder = (
       ? (element.publishedUnavailableMessage ??
         "Content not available for this edition")
       : (element.unavailableMessage ??
-        `Data unavailable: ${sectionLabel(element.requiredDataSection!)}`),
+        `Data unavailable: ${element.requiredDataSection ? sectionLabel(element.requiredDataSection) : "image"}`),
   publishedText:
     element.publishedUnavailableMessage ??
     "Content not available for this edition",
@@ -87,13 +87,31 @@ function preparePage(
   outputMode: ReportOutputMode,
 ): ReportPage {
   const elements = page.elements.flatMap((element) => {
+    const contributorImageBinding = Boolean(
+      element.type === "image" &&
+      element.binding?.path.endsWith(".image") &&
+      (element.bindingContext?.name === "property" ||
+        /^market\.top(?:Availabilities|Deliveries|Construction)\[/.test(
+          element.binding.path,
+        )),
+    );
+    // Page-repeat bindings (for example market.mapAssetUrl and
+    // market.topAvailabilities[0].image) have no concrete market context
+    // until expandTemplatePages runs. Resolving them here would turn a valid
+    // period-independent map or property image into an unavailable placeholder.
+    const deferredPageBinding = Boolean(
+      page.repeat &&
+      element.binding?.path.startsWith(`${page.repeat.contextName}.`),
+    );
+    if (element.type === "image" && contributorImageBinding)
+      element = { ...element, publicationRequired: false };
     if (
       element.type === "text" &&
       outputMode === "published" &&
       element.publishedText
     )
       element = { ...element, text: element.publishedText };
-    if (element.binding) {
+    if (element.binding && !deferredPageBinding) {
       const value = getByContextPath(
         presentationData,
         element.binding.path,
@@ -131,6 +149,15 @@ function preparePage(
       };
     }
 
+    const unavailableBoundImage =
+      element.type === "image" &&
+      element.binding != null &&
+      !deferredPageBinding &&
+      !contributorImageBinding &&
+      !element.src.trim();
+    if (unavailableBoundImage) {
+      return unavailablePlaceholder(element, outputMode);
+    }
     if (!element.requiredDataSection) return element;
     const contextAvailable = element.bindingContext
       ? getByPath(presentationData, element.bindingContext.path) != null

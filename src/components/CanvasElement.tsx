@@ -3,6 +3,7 @@ import type {
   EditorSettings,
   PreviewMode,
   ReportElement,
+  ReportPage,
   TableCellStyle,
   TableSelection,
   ShapeElement,
@@ -31,6 +32,7 @@ import {
 } from "../engine/corners";
 import { shapePathToSvg } from "../engine/shapeUnion";
 import type { ManualOverride } from "../report-engine/schema/generation";
+import { resolveOverviewPageTarget } from "../report-engine/navigation/pageNavigation";
 
 interface Props {
   element: ReportElement;
@@ -55,6 +57,8 @@ interface Props {
   tableSelection?: TableSelection;
   onEnterTableEdit?: (id: string) => void;
   onTableSelect?: (selection: TableSelection) => void;
+  pages?: readonly ReportPage[];
+  onNavigatePage?: (pageId: string) => void;
 }
 
 const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
@@ -563,6 +567,9 @@ export function CanvasElement(props: Props) {
                   top: (-region.y * element.height) / region.height,
                   maxWidth: "none",
                   pointerEvents: "none",
+                  clipPath: element.edgeInset
+                    ? `inset(${element.edgeInset}px)`
+                    : undefined,
                 }
               : {
                   width: `${crop.zoom * 100}%`,
@@ -572,6 +579,9 @@ export function CanvasElement(props: Props) {
                   transform: `translate(${((1 - crop.zoom) * crop.x) / crop.zoom}%,${((1 - crop.zoom) * crop.y) / crop.zoom}%)`,
                   pointerEvents: "none",
                   maxWidth: "none",
+                  clipPath: element.edgeInset
+                    ? `inset(${element.edgeInset}px)`
+                    : undefined,
                 }
           }
         />
@@ -589,6 +599,80 @@ export function CanvasElement(props: Props) {
       arr = Array.isArray(rows)
         ? rows.slice(0, element.maxRows ?? rows.length)
         : [];
+    const tableCellContent = (
+      row: unknown,
+      column: (typeof element.columns)[number],
+    ) => {
+      const formatted = formatValue(getByPath(row, column.path), {
+        path: column.path,
+        format: column.format,
+        decimals: column.decimals ?? 1,
+      });
+      if (element.variant === "indicators" && column.path === "metric") {
+        const direction = String(getByPath(row, "direction") ?? "equal");
+        const semanticStatus = String(
+          getByPath(row, "semanticStatus") ?? "neutral",
+        );
+        const indicatorKind = String(
+          getByPath(row, "indicatorKind") ??
+            (direction === "equal" ? "bar" : "arrow"),
+        );
+        return (
+          <span
+            className="metric-direction-label"
+            aria-label={`${formatted}: ${indicatorKind === "bar" ? "neutral" : direction}, ${semanticStatus}`}
+          >
+            <span
+              aria-hidden="true"
+              className={`metric-direction-indicator kind-${indicatorKind} status-${semanticStatus}`}
+              data-direction={direction}
+              data-indicator-kind={indicatorKind}
+              data-semantic-status={semanticStatus}
+              style={{
+                color: String(getByPath(row, "indicatorColor") ?? "#4E131E"),
+              }}
+            >
+              {indicatorKind === "bar" ? (
+                <span className="metric-neutral-bar" />
+              ) : (
+                String(getByPath(row, "indicatorGlyph") ?? "")
+              )}
+            </span>
+            <span>{formatted}</span>
+          </span>
+        );
+      }
+      if (element.variant === "market-matrix" && column.path === "name") {
+        const geographyId = String(getByPath(row, "geographyId") ?? "").trim();
+        const target =
+          geographyId && props.pages
+            ? resolveOverviewPageTarget(props.pages, geographyId)
+            : undefined;
+        if (target?.anchor)
+          return (
+            <a
+              href={`#${target.anchor}`}
+              className="report-internal-link"
+              aria-label={`Go to ${formatted} Market Overview`}
+              data-page-target={target.id}
+              data-page-anchor={target.anchor}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={
+                props.onNavigatePage
+                  ? (event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      props.onNavigatePage?.(target.id);
+                    }
+                  : undefined
+              }
+            >
+              {formatted}
+            </a>
+          );
+      }
+      return formatted;
+    };
     content = (
       <table className={`report-table table-${element.variant ?? "default"}`}>
         <colgroup>
@@ -729,11 +813,7 @@ export function CanvasElement(props: Props) {
                         )}
                       </div>
                     ) : (
-                      formatValue(getByPath(row, c.path), {
-                        path: c.path,
-                        format: c.format,
-                        decimals: c.decimals ?? 1,
-                      })
+                      tableCellContent(row, c)
                     )}
                   </td>
                 ))}

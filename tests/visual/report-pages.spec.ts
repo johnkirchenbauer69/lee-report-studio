@@ -274,3 +274,100 @@ test("Highlight cards distinguish missing images from missing records", async ({
   }
   expect(ratio).toBeLessThanOrEqual(0.12);
 });
+
+test("Market Indicator tokens are identical in browser and PDF print DOM", async ({
+  page,
+}) => {
+  for (const url of ["/?benchmark=1&page=2", "/?printBenchmark=1"]) {
+    await page.goto(url, { waitUntil: "load" });
+    await page.evaluate(async () => document.fonts.ready);
+    const indicators = page.locator(".metric-direction-indicator");
+    await expect(indicators.first()).toBeVisible();
+    const styles = await indicators.evaluateAll((items) =>
+      items.map((item) => {
+        const bar = item.querySelector<HTMLElement>(".metric-neutral-bar");
+        return {
+          status: item.getAttribute("data-semantic-status"),
+          kind: item.getAttribute("data-indicator-kind"),
+          color: getComputedStyle(item).color,
+          text: item.textContent,
+          barWidth: bar ? getComputedStyle(bar).width : null,
+          barHeight: bar ? getComputedStyle(bar).height : null,
+        };
+      }),
+    );
+    const expectedColors = {
+      favorable: "rgb(138, 148, 30)",
+      unfavorable: "rgb(205, 20, 66)",
+      neutral: "rgb(78, 19, 30)",
+    } as const;
+    expect(new Set(styles.map((item) => item.status))).toEqual(
+      new Set(["favorable", "unfavorable", "neutral"]),
+    );
+    for (const style of styles) {
+      expect(style.color).toBe(
+        expectedColors[style.status as keyof typeof expectedColors],
+      );
+      if (style.status === "neutral") {
+        expect(style).toMatchObject({
+          kind: "bar",
+          text: "",
+          barWidth: "10px",
+          barHeight: "3px",
+        });
+      } else {
+        expect(style.kind).toBe("arrow");
+        expect(["▲", "▼"]).toContain(style.text);
+      }
+    }
+    const constructionIndicators = page
+      .locator(".table-indicators tbody tr")
+      .filter({ hasText: "Under Construction" })
+      .locator(".metric-direction-indicator");
+    expect(await constructionIndicators.count()).toBeGreaterThan(0);
+    await expect(constructionIndicators.first()).toHaveAttribute(
+      "data-indicator-kind",
+      "bar",
+    );
+  }
+});
+
+test("normalized submarket maps render without a vertical edge rule", async ({
+  page,
+}) => {
+  await page.goto("/?benchmark=1&page=4", { waitUntil: "load" });
+  const map = page.getByTestId("detail-market-map").locator("img");
+  await expect(map).toBeVisible();
+  await expect(map).toHaveAttribute("src", /\/maps\/normalized\//);
+  expect(await map.evaluate((image) => getComputedStyle(image).clipPath)).toBe(
+    "none",
+  );
+  const rendered = PNG.sync.read(
+    await page.getByTestId("detail-market-map").screenshot({
+      animations: "disabled",
+    }),
+  );
+  const darkRatio = (x: number) => {
+    let dark = 0;
+    for (let y = 0; y < rendered.height; y += 1) {
+      const offset = (y * rendered.width + x) * 4;
+      const luminance =
+        0.2126 * rendered.data[offset] +
+        0.7152 * rendered.data[offset + 1] +
+        0.0722 * rendered.data[offset + 2];
+      if (luminance < 110) dark += 1;
+    }
+    return dark / rendered.height;
+  };
+  const edges = [
+    0,
+    1,
+    2,
+    3,
+    rendered.width - 4,
+    rendered.width - 3,
+    rendered.width - 2,
+    rendered.width - 1,
+  ];
+  expect(Math.max(...edges.map(darkRatio))).toBeLessThan(0.9);
+});

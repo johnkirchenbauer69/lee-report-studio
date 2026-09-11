@@ -930,6 +930,44 @@ button {
   border-bottom: 1px solid #e4e7ec;
   padding: 8px;
 }
+.metric-direction-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.metric-direction-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10px;
+  height: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.metric-neutral-bar {
+  display: block;
+  width: 10px;
+  height: 3px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.report-internal-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.report-internal-link:hover {
+  color: #0b6176;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.report-internal-link:focus-visible {
+  outline: 2px solid #c4123f;
+  outline-offset: 2px;
+  text-decoration: underline;
+}
 .transaction-type-cell {
   display: flex;
   align-items: center;

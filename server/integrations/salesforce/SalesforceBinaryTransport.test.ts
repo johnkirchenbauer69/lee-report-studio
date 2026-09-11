@@ -100,4 +100,24 @@ describe("Node Salesforce binary transport", () => {
     ).rejects.toThrow("aborted");
     await vi.waitFor(() => expect(sockets.size).toBe(0));
   });
+
+  it("enforces a caller-specific byte cap before buffering an oversized body", async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, {
+        "content-type": "image/jpeg",
+        "content-length": 10_000,
+      });
+      response.end(Buffer.alloc(10_000));
+    });
+    const origin = await listen(server);
+    const transport = createNodeSalesforceBinaryTransport(2_000);
+
+    await expect(
+      transport({
+        url: `${origin}/oversized`,
+        accessToken: "secret",
+        maxBytes: 2_048,
+      }),
+    ).rejects.toThrow("2048-byte request limit");
+  });
 });

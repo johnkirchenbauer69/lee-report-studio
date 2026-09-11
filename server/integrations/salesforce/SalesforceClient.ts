@@ -36,7 +36,10 @@ export interface SalesforceClient {
    * `sobjects/Attachment/{id}/Body`. Never exposes the access token to the
    * caller — authentication happens entirely inside this method.
    */
-  getBinary?(sobjectPath: string): Promise<SalesforceBinaryResponse>;
+  getBinary?(
+    sobjectPath: string,
+    options?: { maxBytes?: number },
+  ): Promise<SalesforceBinaryResponse>;
 }
 interface SalesforceQueryResponse<T> {
   records: T[];
@@ -306,11 +309,15 @@ export class SalesforceRestClient implements SalesforceClient {
     }
     return records;
   }
-  async getBinary(sobjectPath: string): Promise<SalesforceBinaryResponse> {
+  async getBinary(
+    sobjectPath: string,
+    options: { maxBytes?: number } = {},
+  ): Promise<SalesforceBinaryResponse> {
     return this.authenticatedRequest("binary", (session) =>
       (this.config.binaryTransport ?? nodeSalesforceBinaryTransport)({
         url: `${session.instanceUrl}/services/data/v${this.config.apiVersion}/${sobjectPath}`,
         accessToken: session.accessToken,
+        maxBytes: options.maxBytes,
       }),
     );
   }

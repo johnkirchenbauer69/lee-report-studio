@@ -175,6 +175,12 @@ export interface ImageElement extends BaseElement {
   fit?: "cover" | "contain" | "stretch" | "original";
   assetId?: string;
   crop?: ImageCrop;
+  /**
+   * Non-destructive display-pixel inset used to clip a governed raster frame.
+   * This is intentionally separate from crop/position controls and is only
+   * applied to assets whose source provenance includes an unwanted edge.
+   */
+  edgeInset?: number;
   sourceCrop?: {
     sourceWidth: number;
     sourceHeight: number;
@@ -321,6 +327,12 @@ export interface ReportPage {
   hidden?: boolean;
   /** Assigned only after repeat expansion and final ordering. */
   pageNumber?: number;
+  /** Stable document destination, independent of the page's ordinal position. */
+  anchor?: string;
+  /** Canonical geography represented by this generated page. */
+  geographyId?: string;
+  /** Semantic page role used to resolve internal report navigation. */
+  pageKind?: "overview" | "highlights";
   bindingContext?: BindingContext;
   repeat?: RepeatingPageRule;
   elements: ReportElement[];
@@ -356,6 +368,21 @@ export interface Asset {
   version?: number;
   storage?: "backend" | "browser";
   size?: number;
+  /** Sanitized immutable provenance for a publication-safe derivative. */
+  derivative?: {
+    kind: "normalized-salesforce-report-image";
+    sourceType: "salesforce";
+    sourceMimeType: string;
+    sourceSize: number;
+    sourceChecksum: string;
+    originalWidth: number;
+    originalHeight: number;
+    outputFormat: "jpeg";
+    outputWidth: number;
+    outputHeight: number;
+    outputSize: number;
+    quality: number;
+  };
 }
 
 export type FontGovernanceStatus =

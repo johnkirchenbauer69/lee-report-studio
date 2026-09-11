@@ -42,6 +42,10 @@ import {
   rollupPropertyData,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
+import {
+  reportablePeriodsFromMarketData,
+  reportPeriodDiscoveryQuery,
+} from "./periodDiscovery.ts";
 
 const api = (entry: { apiName: string } | string) =>
   typeof entry === "string" ? entry : entry.apiName;
@@ -74,6 +78,15 @@ const rate = (
   if (found < 0 || found > 1)
     throw new Error(`Salesforce returned an invalid ${label}.`);
   return found;
+};
+const unavailableAsZero = (
+  record: SalesforceRecord,
+  entry: { apiName: string },
+  label: string,
+) => {
+  const source = value(record, entry);
+  if (source === null || source === undefined || source === "") return 0;
+  return number(record, entry, label);
 };
 const md = mapping.marketData;
 const pd = mapping.propertyData;
@@ -120,7 +133,11 @@ function metrics(record: SalesforceRecord): MarketMetrics {
     ),
     vacancyRate: rate(record, md.vacancyRate, "vacancy rate"),
     availabilityRate: rate(record, md.availabilityRate, "availability rate"),
-    askingNetRentPsf: number(record, md.askingNetRentPsf, "asking rent"),
+    askingNetRentPsf: unavailableAsZero(
+      record,
+      md.askingNetRentPsf,
+      "asking rent",
+    ),
     salesVolume: number(record, md.salesVolume, "sales volume"),
   };
 }
@@ -302,6 +319,12 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     private readonly now: () => Date = () => new Date(),
     private readonly resolveImage?: ImageResolver,
   ) {}
+
+  async discoverReportPeriods() {
+    return reportablePeriodsFromMarketData(
+      await this.client.query(reportPeriodDiscoveryQuery()),
+    );
+  }
 
   async loadReportSource(request: ReportDataRequest) {
     if (request.timeContext.type === "current")

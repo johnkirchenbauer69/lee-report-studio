@@ -87,7 +87,9 @@ function PrintPages({
         .map((page) => (
           <section
             key={page.id}
+            id={page.anchor}
             className="print-page page-canvas"
+            data-page-anchor={page.anchor}
             style={{
               width: page.width,
               height: page.height,
@@ -104,6 +106,7 @@ function PrintPages({
                 data={data}
                 mode="data"
                 selected={false}
+                pages={template.pages}
                 zoom={1}
                 onSelect={noop}
                 onChange={noop}
