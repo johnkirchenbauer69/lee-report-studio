@@ -4,6 +4,9 @@ server/data/assets.json
 server/data/salesforceImages.json
 server/data/templates/
 server/data/report-instances/
+server/data/*.tmp
+server/data/assets.json.*.tmp
+server/data/.cleanup-backups/
 !server/data/assets/.gitkeep
 dist
 /tmp/

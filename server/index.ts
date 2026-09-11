@@ -39,10 +39,16 @@ import {
   type NarrativeGenerationMode,
 } from "./narratives/NarrativeService.ts";
 import { ArtifactIntegrityCoordinator } from "./integrity/ArtifactIntegrityCoordinator.ts";
+import { assertSafeDataRoot } from "./config/testStorageGuard.ts";
 
 const app = express();
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
+// Fail fast rather than relying on cleanup after the fact: a test-mode
+// process must never share storage with normal development/production data.
+// See server/config/testStorageGuard.ts for the pollution this prevents.
+assertSafeDataRoot({ nodeEnv: process.env.NODE_ENV, dataRoot });
+const isTestEnvironment = process.env.NODE_ENV === "test";
 const assetStore = new FileSystemAssetStore(dataRoot);
 const artifactIntegrity = new ArtifactIntegrityCoordinator();
 const templateRepository = new FileSystemTemplateRepository(
@@ -134,6 +140,11 @@ app.get("/api/health", (_request, response) =>
     ok: true,
     storage: "disk",
     assetDirectory: assetStore.assetsRoot,
+    // Lets test tooling (see tests/support/assertIsolatedTestServer.ts)
+    // verify it is talking to an isolated instance before running mutating
+    // specs, instead of silently reusing an already-running dev server.
+    dataRoot,
+    testMode: isTestEnvironment,
   }),
 );
 app.use("/api", createReportDataRouter(reportDataService));

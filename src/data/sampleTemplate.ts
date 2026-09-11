@@ -1312,7 +1312,9 @@ function staticReferencePage(
           110,
           "#cf123f",
         ),
-        locked: true,
+        // Selectable/editable like the equivalent background element on
+        // other pages (e.g. Cover's "cover-wash" shape) — only the footer
+        // background stays governed/locked on these static pages.
         style: {
           fill: {
             type: "linear-gradient",

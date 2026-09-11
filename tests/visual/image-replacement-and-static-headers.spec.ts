@@ -27,6 +27,36 @@ async function selectLayer(page: Page, name: RegExp) {
   await page.locator(".layer-list").getByRole("button", { name }).click();
 }
 
+interface StaticHeaderSource {
+  template: {
+    pages: Array<{
+      id: string;
+      elements: Array<{
+        id: string;
+        type: string;
+        y: number;
+      }>;
+    }>;
+  };
+}
+
+// The native header logo's element id is whatever the editor assigned it
+// (e.g. a Replace Image-generated "image-<hex>"), not a fixed
+// "${pageId}-logo" — it must be looked up from the source template rather
+// than assumed.
+function logoId(source: StaticHeaderSource, pageId: string) {
+  const id = source.template.pages
+    .find((candidate) => candidate.id === pageId)
+    ?.elements.find(
+      (element) =>
+        element.type === "image" &&
+        element.y < 110 &&
+        !element.id.endsWith("-artwork"),
+    )?.id;
+  if (!id) throw new Error(`Native header logo is missing from ${pageId}.`);
+  return id;
+}
+
 test("static headers are editable and Replace Image preserves the selected image identity", async ({
   page,
 }) => {
@@ -35,33 +65,10 @@ test("static headers are editable and Replace Image preserves the selected image
     `/api/templates/${templateId}/versions/1.8.0`,
   );
   test.skip(!sourceResponse.ok(), "The governed v1.8.0 draft is unavailable.");
-  const source = (await sourceResponse.json()) as {
-    template: {
-      pages: Array<{
-        id: string;
-        elements: Array<{
-          id: string;
-          type: string;
-          y: number;
-        }>;
-      }>;
-    };
-  };
-  const logoId = (pageId: string) => {
-    const id = source.template.pages
-      .find((candidate) => candidate.id === pageId)
-      ?.elements.find(
-        (element) =>
-          element.type === "image" &&
-          element.y < 110 &&
-          !element.id.endsWith("-artwork"),
-      )?.id;
-    if (!id) throw new Error(`Native header logo is missing from ${pageId}.`);
-    return id;
-  };
-  const methodologyLogoId = logoId("data-methodology");
-  const definitionsLogoId = logoId("definitions");
-  const contactsLogoId = logoId("contacts");
+  const source = (await sourceResponse.json()) as StaticHeaderSource;
+  const methodologyLogoId = logoId(source, "data-methodology");
+  const definitionsLogoId = logoId(source, "definitions");
+  const contactsLogoId = logoId(source, "contacts");
   const createResponse = await page.request.post(
     `/api/templates/${templateId}/versions/1.8.0/new`,
     { data: { template: source.template } },
@@ -71,7 +78,7 @@ test("static headers are editable and Replace Image preserves the selected image
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/", { waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Data Methodology");
 
     await selectLayer(page, /DATA METHODOLOGY.*text/i);
@@ -213,7 +220,7 @@ test("static headers are editable and Replace Image preserves the selected image
       (await PDFDocument.load(await pdfResponse.body())).getPageCount(),
     ).toBe(10);
 
-    await page.reload({ waitUntil: "load" });
+    await page.reload({ waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Data Methodology");
     await expect(
       page.getByText("MARKET DATA METHODOLOGY", { exact: true }),
@@ -255,6 +262,131 @@ test("static headers are editable and Replace Image preserves the selected image
   }
 });
 
+test("static page header backgrounds are directly selectable, editable, and persist", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const sourceResponse = await page.request.get(
+    `/api/templates/${templateId}/versions/1.8.0`,
+  );
+  test.skip(!sourceResponse.ok(), "The governed v1.8.0 draft is unavailable.");
+  const source = (await sourceResponse.json()) as StaticHeaderSource;
+  const createResponse = await page.request.post(
+    `/api/templates/${templateId}/versions/1.8.0/new`,
+    { data: { template: source.template } },
+  );
+  expect(createResponse.ok()).toBe(true);
+  const created = (await createResponse.json()) as { version: string };
+  const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
+  const staticPages = [
+    ["data-methodology", "Data Methodology"],
+    ["definitions", "Definitions"],
+    ["contacts", "Contacts"],
+  ] as const;
+
+  try {
+    await page.goto("/", { waitUntil: "networkidle" });
+    // Open the draft once; re-invoking "Open Draft" per page (as
+    // openTemplatePage does) would re-fetch it from the server on every
+    // iteration and discard the previous iteration's unsaved in-memory edit.
+    await openTemplatePage(page, created.version, staticPages[0][1]);
+
+    for (const [id, name] of staticPages) {
+      if (name !== staticPages[0][1]) {
+        await page
+          .locator(".page-list")
+          .getByRole("button", { name: new RegExp(`${name}$`) })
+          .click();
+        await expect(page.locator(".stage-topline span").first()).toHaveText(
+          name,
+        );
+      }
+      const headerMask = page.getByTestId(`${id}-header-mask`);
+      await headerMask.click();
+      await expect(
+        page.locator(".canvas-element.is-selected"),
+      ).toHaveAttribute("data-testid", `${id}-header-mask`);
+
+      const inspector = page.locator("aside.inspector");
+      await expect(inspector).toContainText("Native Header Background");
+      await expect(
+        inspector.locator(".inspector-section").filter({ hasText: "Fill" }),
+      ).toBeVisible();
+
+      await expect(headerMask).toHaveCSS("height", "110px");
+      // The Inspector displays width/height in the document's configured
+      // unit (px or in), not always raw pixels — convert rather than assume.
+      const positionSection = inspector
+        .locator(".inspector-section")
+        .filter({ hasText: "Position & Size" });
+      const heightField = positionSection.locator("input[type=number]").nth(3);
+      const isInches = (await heightField.getAttribute("step")) === "0.01";
+      const targetHeightPx = 120;
+      await heightField.fill(
+        isInches ? (targetHeightPx / 96).toFixed(3) : String(targetHeightPx),
+      );
+      await heightField.blur();
+      await expect(headerMask).toHaveCSS("height", `${targetHeightPx}px`);
+
+      // Clicking the title/period/logo still resolves to those elements,
+      // not the now-selectable background sitting behind them.
+      const logo = logoId(source, id);
+      await page.getByTestId(logo).click();
+      await expect(
+        page.locator(".canvas-element.is-selected"),
+      ).toHaveAttribute("data-testid", logo);
+    }
+
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes(createdUrl),
+    );
+    await page
+      .locator(".topbar")
+      .getByRole("button", { name: "Save", exact: true })
+      .click();
+    expect((await saveResponse).ok()).toBe(true);
+
+    const stored = (await (await page.request.get(createdUrl)).json()) as {
+      template: {
+        pages: Array<{
+          id: string;
+          elements: Array<{ id: string; height?: number; locked?: boolean }>;
+        }>;
+      };
+    };
+    for (const [id] of staticPages) {
+      const headerMask = stored.template.pages
+        .find((candidate) => candidate.id === id)!
+        .elements.find((element) => element.id === `${id}-header-mask`);
+      expect(headerMask?.height).toBe(120);
+      expect(headerMask?.locked).toBeFalsy();
+    }
+
+    const pdfResponse = await page.request.post("/api/render/pdf", {
+      data: {
+        template: stored.template,
+        data: { reportDisplay: { period: "Q2 2026" } },
+        title: "Header background persistence",
+      },
+      timeout: 90_000,
+    });
+    expect(pdfResponse.ok(), await pdfResponse.text()).toBe(true);
+    expect(
+      (await PDFDocument.load(await pdfResponse.body())).getPageCount(),
+    ).toBe(10);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await openTemplatePage(page, created.version, staticPages[0][1]);
+    await expect(
+      page.getByTestId(`${staticPages[0][0]}-header-mask`),
+    ).toHaveCSS("height", "120px");
+  } finally {
+    await page.request.delete(createdUrl).catch(() => undefined);
+  }
+});
+
 test("static page footers are directly selectable, editable, and persist", async ({
   page,
 }) => {
@@ -279,7 +411,7 @@ test("static page footers are directly selectable, editable, and persist", async
   ] as const;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/", { waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Market Overview");
     const chips = page.getByTestId("lee-deal-chip");
     await expect(chips).toHaveCount(2);
@@ -337,7 +469,7 @@ test("static page footers are directly selectable, editable, and persist", async
       .click();
     expect((await saveResponse).ok()).toBe(true);
 
-    await page.reload({ waitUntil: "load" });
+    await page.reload({ waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, staticPages[0][1]);
     for (const [id, name] of staticPages) {
       await goToStaticPage(name);
