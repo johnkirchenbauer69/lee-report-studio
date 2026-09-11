@@ -48,7 +48,7 @@ The generation stages (`loading`, `normalizing`, `calculating`, `reconciling`, `
 
 ## CI architecture
 
-Vitest owns `src/**/*.test.ts(x)` through `vitest.config.ts`; Playwright owns `tests/visual/**/*.spec.ts(x)` through `playwright.config.ts`. `scripts/check-test-ownership.mjs` enforces the naming/location contract without shell globs so Windows and Linux discover the same tests. GitHub's `Quality / validate` job runs install, Chromium setup, typecheck, Vitest, build, visual regression, and failure-artifact upload.
+Vitest owns `src/**/*.test.ts(x)` through `vitest.config.ts`; Playwright owns `tests/visual/**/*.spec.ts(x)` through `playwright.config.ts`. `scripts/check-test-ownership.mjs` enforces the naming/location contract without shell globs so Windows and Linux discover the same tests. GitHub's `Quality / validate` job runs install, Chromium setup, typecheck, Vitest, build, visual regression, and failure-artifact upload. Playwright's API server always runs against an isolated, disposable data root (never `server/data`), enforced by a boot-time guard plus a global-setup preflight check — see `docs/test-storage-isolation.md`.
 
 ## Security boundary
 

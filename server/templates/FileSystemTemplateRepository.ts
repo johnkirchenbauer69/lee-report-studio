@@ -256,6 +256,21 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     });
   }
 
+  /**
+   * Administrative bulk rewrite for one-time offline data-repair tooling
+   * (see scripts/clean-test-fixture-pollution.ts). Bypasses the normal
+   * draft/published/archived transition checks entirely — the caller is
+   * responsible for the replacement set being correct. Intentionally not
+   * part of `TemplateRepository`; never call this from an HTTP route or the
+   * editor, both of which must keep going through the governed methods
+   * above.
+   */
+  async adminReplaceAll(records: StoredTemplateVersion[]) {
+    return this.enqueue(async () => {
+      await this.write(clone(records));
+    });
+  }
+
   async deleteDraft(id: string, version: string) {
     return this.enqueue(async () => {
       const records = await this.read();

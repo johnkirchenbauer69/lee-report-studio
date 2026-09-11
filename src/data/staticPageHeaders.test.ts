@@ -27,9 +27,13 @@ describe("native static-page headers", () => {
           binding: { path: "reportDisplay.period" },
         }),
       ]);
-      expect(
-        elements.filter((element) => element.id === `${id}-header-mask`),
-      ).toHaveLength(1);
+      const headerMask = elements.filter(
+        (element) => element.id === `${id}-header-mask`,
+      );
+      expect(headerMask).toHaveLength(1);
+      // Selectable/editable like other pages' background shapes (e.g.
+      // Cover's "cover-wash") — only the footer background stays locked.
+      expect(headerMask[0]?.locked).toBeFalsy();
     },
   );
 
@@ -50,6 +54,17 @@ describe("native static-page headers", () => {
       false,
     );
   });
+
+  it.each(["data-methodology", "definitions", "contacts", "who-we-are"])(
+    "leaves %s's header background selectable like other pages' background shapes",
+    (id) => {
+      const headerMask = page(id).elements.find(
+        (element) => element.id === `${id}-header-mask`,
+      );
+      expect(headerMask).toMatchObject({ type: "shape" });
+      expect(headerMask?.locked).toBeFalsy();
+    },
+  );
 
   it.each([
     ["data-methodology", 41],
