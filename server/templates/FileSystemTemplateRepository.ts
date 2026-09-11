@@ -40,6 +40,28 @@ const summary = (record: StoredTemplateVersion): TemplateVersionSummary => {
   return clone(rest);
 };
 
+/**
+ * Mirrors ReportInstanceConflictError: a saveDraft call whose
+ * `expectedRevision` no longer matches the stored version's current
+ * revision means something else (another tab, a teammate, a script) saved
+ * over the base the caller was editing from. The caller's edits are never
+ * silently discarded — the request is rejected instead.
+ */
+export class TemplateVersionConflictError extends Error {
+  readonly code = "TEMPLATE_VERSION_CONFLICT";
+  constructor(
+    readonly id: string,
+    readonly version: string,
+    readonly baseRevision: number,
+    readonly currentRevision: number,
+  ) {
+    super(
+      `Template ${id} v${version} changed from revision ${baseRevision} to ${currentRevision}. Local edits were not overwritten.`,
+    );
+    this.name = "TemplateVersionConflictError";
+  }
+}
+
 export class FileSystemTemplateRepository implements TemplateRepository {
   readonly templatesRoot: string;
   private readonly manifestPath: string;
@@ -89,6 +111,8 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       createdAt?: string;
       publishedAt?: string;
       parentVersion?: string;
+      label?: string;
+      revision?: number;
     },
   ): StoredTemplateVersion {
     const now = this.now().toISOString();
@@ -96,6 +120,7 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     return {
       id: frozen.id,
       name: frozen.name,
+      label: input.label,
       templateType: "industrial-market-report",
       version: frozen.version,
       status: input.status,
@@ -105,6 +130,7 @@ export class FileSystemTemplateRepository implements TemplateRepository {
       parentVersion: input.parentVersion,
       checksum: checksum(frozen),
       pageDefinitionCount: frozen.pages.length,
+      revision: input.revision ?? 1,
       template: frozen,
       assetReferences: (frozen.assets ?? []).map((asset) => asset.id),
       managedFontReferences: collectManagedFontReferences(frozen),
@@ -161,26 +187,65 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     );
   }
 
-  async saveDraft(id: string, version: string, template: ReportTemplate) {
+  async saveDraft(
+    id: string,
+    version: string,
+    template: ReportTemplate,
+    options: { expectedRevision?: number } = {},
+  ) {
     return this.enqueue(async () => {
       const records = await this.read();
       const index = records.findIndex(
         (record) => record.id === id && record.version === version,
       );
       if (index < 0) throw new Error("Template version not found.");
-      if (records[index]!.status !== "draft")
+      const current = records[index]!;
+      if (current.status !== "draft")
         throw new Error(
           "Published or archived templates cannot be edited in place.",
+        );
+      if (
+        options.expectedRevision !== undefined &&
+        options.expectedRevision !== current.revision
+      )
+        throw new TemplateVersionConflictError(
+          id,
+          version,
+          options.expectedRevision,
+          current.revision,
         );
       const normalized = { ...clone(template), id, version };
       const saved = this.record(normalized, {
         status: "draft",
-        createdAt: records[index]!.createdAt,
-        parentVersion: records[index]!.parentVersion,
+        createdAt: current.createdAt,
+        parentVersion: current.parentVersion,
+        label: current.label,
+        revision: current.revision + 1,
       });
       records[index] = saved;
       await this.write(records);
       return clone(saved);
+    });
+  }
+
+  /**
+   * Pure metadata update — never touches `template`, `checksum`, or
+   * `revision`, so it works uniformly on draft, published, and archived
+   * versions alike and never conflicts with a concurrent content save.
+   */
+  async rename(id: string, version: string, label: string) {
+    return this.enqueue(async () => {
+      const records = await this.read();
+      const index = records.findIndex(
+        (record) => record.id === id && record.version === version,
+      );
+      if (index < 0) throw new Error("Template version not found.");
+      records[index] = {
+        ...records[index]!,
+        label: label.trim() || undefined,
+      };
+      await this.write(records);
+      return clone(records[index]!);
     });
   }
 
@@ -206,7 +271,7 @@ export class FileSystemTemplateRepository implements TemplateRepository {
           id,
           version,
         },
-        { status: "draft", parentVersion: sourceVersion },
+        { status: "draft", parentVersion: sourceVersion, label: source.label },
       );
       records.push(next);
       await this.write(records);

@@ -4,7 +4,10 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { sampleTemplate } from "../../src/data/sampleTemplate";
 import { generateReportInstance } from "../../src/report-engine/generation/generateReport";
-import { FileSystemTemplateRepository } from "./FileSystemTemplateRepository";
+import {
+  FileSystemTemplateRepository,
+  TemplateVersionConflictError,
+} from "./FileSystemTemplateRepository";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -268,5 +271,96 @@ describe("FileSystemTemplateRepository", () => {
       (await repository.get(published.id, published.version))?.template.pages[0]
         ?.name,
     ).toBe(sampleTemplate.pages[0]!.name);
+  });
+
+  it("rejects a save whose base revision no longer matches, without discarding either side", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const initial = (await repository.list())[0]!;
+    expect(initial.revision).toBe(1);
+
+    // Tab A loads the draft, then tab B saves first.
+    const tabBSave = await repository.saveDraft(initial.id, initial.version, {
+      ...sampleTemplate,
+      name: "Tab B's edit",
+    });
+    expect(tabBSave.revision).toBe(2);
+
+    // Tab A, still based on revision 1, tries to save its own edit.
+    await expect(
+      repository.saveDraft(
+        initial.id,
+        initial.version,
+        { ...sampleTemplate, name: "Tab A's edit" },
+        { expectedRevision: initial.revision },
+      ),
+    ).rejects.toThrow(TemplateVersionConflictError);
+
+    // Tab B's save is untouched; tab A's edit was never written.
+    const current = await repository.get(initial.id, initial.version);
+    expect(current?.template.name).toBe("Tab B's edit");
+    expect(current?.revision).toBe(2);
+
+    // Retrying from the current revision succeeds.
+    const retried = await repository.saveDraft(
+      initial.id,
+      initial.version,
+      { ...sampleTemplate, name: "Tab A's edit, retried" },
+      { expectedRevision: current!.revision },
+    );
+    expect(retried.revision).toBe(3);
+    expect(retried.template.name).toBe("Tab A's edit, retried");
+  });
+
+  it("saves without a base revision for backward compatibility, still incrementing it", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const initial = (await repository.list())[0]!;
+    const saved = await repository.saveDraft(
+      initial.id,
+      initial.version,
+      sampleTemplate,
+    );
+    expect(saved.revision).toBe(2);
+  });
+
+  it("renames a version's library label without touching content, checksum, or revision — even when published", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const initial = (await repository.list())[0]!;
+    const published = await repository.publish(initial.id, initial.version);
+
+    const renamed = await repository.rename(
+      published.id,
+      published.version,
+      "Q3 2026 working draft",
+    );
+    expect(renamed).toMatchObject({
+      label: "Q3 2026 working draft",
+      checksum: published.checksum,
+      revision: published.revision,
+      status: "published",
+    });
+    expect(renamed.template).toEqual(published.template);
+
+    const cleared = await repository.rename(published.id, published.version, "  ");
+    expect(cleared.label).toBeUndefined();
+  });
+
+  it("carries a label forward when a new draft version is created", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const initial = (await repository.list())[0]!;
+    await repository.rename(initial.id, initial.version, "Q3 2026 working draft");
+    const next = await repository.createVersion(initial.id, initial.version);
+    expect(next.label).toBe("Q3 2026 working draft");
   });
 });

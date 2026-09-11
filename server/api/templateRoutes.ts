@@ -1,9 +1,22 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import type { ReportTemplate } from "../../src/types/report.ts";
 import type { TemplateRepository } from "../templates/TemplateRepository.ts";
+import { TemplateVersionConflictError } from "../templates/FileSystemTemplateRepository.ts";
 
 export function createTemplateRouter(repository: TemplateRepository) {
   const router = Router();
+  const conflict = (error: unknown, response: Response) => {
+    if (!(error instanceof TemplateVersionConflictError)) return false;
+    response.status(409).json({
+      error: error.message,
+      code: error.code,
+      id: error.id,
+      version: error.version,
+      baseRevision: error.baseRevision,
+      currentRevision: error.currentRevision,
+    });
+    return true;
+  };
 
   router.get("/templates", async (_request, response, next) => {
     try {
@@ -51,11 +64,37 @@ export function createTemplateRouter(repository: TemplateRepository) {
     "/templates/:id/versions/:version",
     async (request, response, next) => {
       try {
+        const expectedRevision = request.body?.expectedRevision;
         response.json(
           await repository.saveDraft(
             request.params.id,
             request.params.version,
             request.body.template as ReportTemplate,
+            {
+              expectedRevision:
+                typeof expectedRevision === "number"
+                  ? expectedRevision
+                  : undefined,
+            },
+          ),
+        );
+      } catch (error) {
+        if (!conflict(error, response)) next(error);
+      }
+    },
+  );
+  router.patch(
+    "/templates/:id/versions/:version/label",
+    async (request, response, next) => {
+      try {
+        const label = (request.body as { label?: unknown })?.label;
+        if (typeof label !== "string")
+          throw new Error("A label string is required.");
+        response.json(
+          await repository.rename(
+            request.params.id,
+            request.params.version,
+            label,
           ),
         );
       } catch (error) {
