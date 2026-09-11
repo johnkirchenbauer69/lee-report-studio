@@ -613,21 +613,30 @@ export function CanvasElement(props: Props) {
         const semanticStatus = String(
           getByPath(row, "semanticStatus") ?? "neutral",
         );
+        const indicatorKind = String(
+          getByPath(row, "indicatorKind") ??
+            (direction === "equal" ? "bar" : "arrow"),
+        );
         return (
           <span
             className="metric-direction-label"
-            aria-label={`${formatted}: ${direction}, ${semanticStatus}`}
+            aria-label={`${formatted}: ${indicatorKind === "bar" ? "neutral" : direction}, ${semanticStatus}`}
           >
             <span
               aria-hidden="true"
-              className={`metric-direction-indicator status-${semanticStatus}`}
+              className={`metric-direction-indicator kind-${indicatorKind} status-${semanticStatus}`}
               data-direction={direction}
+              data-indicator-kind={indicatorKind}
               data-semantic-status={semanticStatus}
               style={{
-                color: String(getByPath(row, "indicatorColor") ?? "#66717A"),
+                color: String(getByPath(row, "indicatorColor") ?? "#4E131E"),
               }}
             >
-              {String(getByPath(row, "indicatorGlyph") ?? "→")}
+              {indicatorKind === "bar" ? (
+                <span className="metric-neutral-bar" />
+              ) : (
+                String(getByPath(row, "indicatorGlyph") ?? "")
+              )}
             </span>
             <span>{formatted}</span>
           </span>

@@ -936,11 +936,21 @@ button {
   gap: 7px;
 }
 .metric-direction-indicator {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 10px;
+  height: 10px;
   font-weight: 800;
   line-height: 1;
   text-align: center;
+}
+.metric-neutral-bar {
+  display: block;
+  width: 10px;
+  height: 3px;
+  border-radius: 1px;
+  background: currentColor;
 }
 .report-internal-link {
   color: inherit;

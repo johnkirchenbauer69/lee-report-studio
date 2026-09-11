@@ -1,0 +1,383 @@
+{
+  "version": 1,
+  "derivatives": [
+    {
+      "file": "Central_DuPage_Map.jpg",
+      "source": {
+        "checksum": "08117c1458c9ab44e301e26305c625b2f6d1d4d42083e68c6f53544108b9b68c",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1632010
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "af15eed06c8aa94b78cd8448e47dacbda81587d3a60dc98a6c4243e54d1d98f7",
+        "bytes": 821252
+      }
+    },
+    {
+      "file": "Chicago_South_Map.jpg",
+      "source": {
+        "checksum": "a85dcb9b7c3d29503c5d6ceb00339bb12729c7c27a6af4f0ac81f08aae1cc2cf",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1481860
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "341e213ee05e0a129b75e835c8509d8fdcfbac9b02e6a932486eb6cc32746203",
+        "bytes": 745348
+      }
+    },
+    {
+      "file": "Fox_Valley_Map.jpg",
+      "source": {
+        "checksum": "f35f88cfc341103f4bb882dd10ebb0d8b3605ca58633d281c319876008ad656a",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1482417
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "db60a9fdc4676e47a89fb6eb9eef0ba6bb3ffe70548caa30467e1ea59dab02c9",
+        "bytes": 704368
+      }
+    },
+    {
+      "file": "I-55_Corridor_Map.jpg",
+      "source": {
+        "checksum": "bfc5012aedb7c22985a897bf0ee06afcd89c635f5addc66bcc2788e2dde2abbd",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1593153
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "2d80a2d4e9d0b27aa6a65b3e541a979fb2318ed2cd4d4b8d23d77f197d6ab442",
+        "bytes": 793964
+      }
+    },
+    {
+      "file": "I-57_Corridor_Map.jpg",
+      "source": {
+        "checksum": "57b1eac13856339678f83f8f0956f6376e11a97fac055ae25742d07aab6023fb",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1141095
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "29828f095cb898dafc326bcaf481fadc691d628511eb5d13611a653f0d74b107",
+        "bytes": 580960
+      }
+    },
+    {
+      "file": "I-80_Corridor_Map.jpg",
+      "source": {
+        "checksum": "c7ad1441bd76228960aba2c356760471d91db3d86d68e8aad533c416a077c0c2",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1334468
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "b6ff721b3cf4a2f10f6ed9f875e413cccd0eb5ec95fb050d9e6c4eb2bd8c3392",
+        "bytes": 675348
+      }
+    },
+    {
+      "file": "I-88_Corridor_Map.jpg",
+      "source": {
+        "checksum": "56e6032de853f01694c840d9b600d2eb6029f90f979d176e26156912d8a878c7",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1450455
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "5c38c16af0742f255b34c08662932a6b8fff0aa55e5040ff04af49843d03f173",
+        "bytes": 710297
+      }
+    },
+    {
+      "file": "Lake_County_Map.jpg",
+      "source": {
+        "checksum": "be2ec1184acbe90ddaf8b29398a6cd8dbd69fcd42334f2db0271daee07293ada",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1265363
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "97685d3eb358d4cfae51a4f67d29b4ac3c5ea3450e5d0e28662e4a70ed8c8c7a",
+        "bytes": 648052
+      }
+    },
+    {
+      "file": "North_Cook_Map.jpg",
+      "source": {
+        "checksum": "5da23b1b2b3c19a28aab7d5e404ed377975b193ea64b000bbd6e6a1dd4b7dc6c",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1300988
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "d14066a62f8314ecf532fd08943d37a7f6c679766274457f6374092fa03bd27f",
+        "bytes": 673580
+      }
+    },
+    {
+      "file": "North_DuPage_Map.jpg",
+      "source": {
+        "checksum": "d63dc4fd6910240d77836d155e2b4ae1fc85e5063b3cff5157c78c65f52ff135",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1591366
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "2d0d2a96eaa2a946da37fc2fbbb39db5107e204dd0fbe86ea4f3bb55838188b9",
+        "bytes": 799901
+      }
+    },
+    {
+      "file": "North_Kane_Map.jpg",
+      "source": {
+        "checksum": "a762ec97d96668287cbe936379c4d733aaa6e1eb3ff61934689b7e914827f0dd",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1213225
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "9f6d9830e7efb261b1d31a31351d10404c0b322916c93b37e525eb0364f8d0d5",
+        "bytes": 592298
+      }
+    },
+    {
+      "file": "Northwest_Cook_Map.jpg",
+      "source": {
+        "checksum": "36d0812ca0e73b1d3b0d5a3fb102770ba86d7af157e6fdebba828382ae5b8461",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1760964
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "e477d713a50cc9545a94a6cc7feca38b19d5943caa3a3f9b3a62006d77efb255",
+        "bytes": 894829
+      }
+    },
+    {
+      "file": "Northwest_Indiana_Map.jpg",
+      "source": {
+        "checksum": "249544186683ac55b0a7aeea9a3ac4a87ad6cde87b2fa461b1ce21cabc9c39d1",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1133921
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "e26f3bf46e1fe9d55fb164bf5d82f7b95c375a82ca04e1f94a2fb3026e008f26",
+        "bytes": 575075
+      }
+    },
+    {
+      "file": "O'Hare_Map.jpg",
+      "source": {
+        "checksum": "98257ebfe4f763a37c104030b287b6e28f217e65ff533d008e0e490ab0a02bba",
+        "width": 2702,
+        "height": 2105,
+        "bytes": 1703172
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1402,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "32ab4ec06fa935608ceb1c2b5b1b25477a4115f9364934de81e0082cd254a78a",
+        "bytes": 890085
+      }
+    },
+    {
+      "file": "South_Cook_Map.jpg",
+      "source": {
+        "checksum": "7d9dd1d2f0464afdb15a9af98cbafd5abe10758beebd994d5b1a93b33a46d1b2",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1612379
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "289a3ede6428b61e19788a992d54aebc7e0a5282b73e2e5737d5caab06651fa7",
+        "bytes": 823534
+      }
+    },
+    {
+      "file": "Southeast_Wisconsin_Map.jpg",
+      "source": {
+        "checksum": "a215a35f344ac8f97707f34de0c2c33eba7af02edfa4c0b5607e7dbaf6eae398",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1236687
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "bdc5369892283191ef51bf97d91a944c7647345daebee63647e11cb44b1e3870",
+        "bytes": 626417
+      }
+    },
+    {
+      "file": "Southwest_Cook_Map.jpg",
+      "source": {
+        "checksum": "d209935faa769404d14e558e095545b9f6937093b431ebe1dfff992e2dfbac64",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1931048
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "b36bea3a693df0acb7fcc3fbc2a65bd2d17c7bbd742c532b6b4103472e230aa3",
+        "bytes": 866009
+      }
+    },
+    {
+      "file": "West_Cook_Map.jpg",
+      "source": {
+        "checksum": "86831b729685f125b2bf026bb945c55cedd238aa3232ae562e154dde884fd05c",
+        "width": 2743,
+        "height": 2142,
+        "bytes": 1614153
+      },
+      "normalization": {
+        "leftCropPx": 32,
+        "rightCropPx": 32,
+        "outputWidth": 1800,
+        "outputHeight": 1406,
+        "format": "jpeg",
+        "quality": 90
+      },
+      "derivative": {
+        "checksum": "243230ca9b00412c4cd66390eabda64d95997f76d727142fd382fb18a5b37213",
+        "bytes": 861718
+      }
+    }
+  ]
+}

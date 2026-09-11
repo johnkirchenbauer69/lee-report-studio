@@ -435,9 +435,9 @@ presentation.submarketDetails.forEach((detail, index) => {
     throw new Error(
       `${detail.displayName} Overview did not resolve its canonical managed map.`,
     );
-  if (map.edgeInset !== 3)
+  if (map.src.includes("/normalized/") !== true || map.edgeInset)
     throw new Error(
-      `${detail.displayName} map lost its governed source-frame inset.`,
+      `${detail.displayName} map did not use the normalized derivative without a render inset.`,
     );
 });
 const q2PropertySlots = [
@@ -467,8 +467,8 @@ if (
   JSON.stringify(q2PropertyCardStates) !==
   JSON.stringify({
     populatedPropertyCards: 114,
-    resolvedPropertyImages: 113,
-    actualImageFailures: 1,
+    resolvedPropertyImages: 114,
+    actualImageFailures: 0,
     emptyRankSlots: 57,
   })
 )
@@ -493,10 +493,32 @@ const q2IndicatorRows = [
   ...presentation.indicatorRows,
   ...presentation.submarketDetails.flatMap((detail) => detail.indicatorRows),
 ];
+const q2GovernedIndicatorColors = {
+  favorable: "#8A941E",
+  unfavorable: "#CD1442",
+  neutral: "#4E131E",
+} as const;
+if (
+  q2IndicatorRows.some(
+    (row) =>
+      row.indicatorColor !== q2GovernedIndicatorColors[row.semanticStatus] ||
+      (row.semanticStatus === "neutral"
+        ? row.indicatorKind !== "bar" || row.indicatorGlyph !== ""
+        : row.indicatorKind !== "arrow"),
+  )
+)
+  throw new Error(
+    "Q2 market indicators do not use the governed visual tokens.",
+  );
 if (
   q2IndicatorRows
     .filter((row) => row.metricKey === "underConstructionSf")
-    .some((row) => !["informational", "neutral"].includes(row.semanticStatus))
+    .some(
+      (row) =>
+        row.semanticStatus !== "neutral" ||
+        row.indicatorKind !== "bar" ||
+        row.indicatorColor !== "#4E131E",
+    )
 )
   throw new Error("Q2 Under Construction semantics changed unexpectedly.");
 for (const detail of presentation.submarketDetails) {
@@ -793,7 +815,7 @@ console.log(
       pages: pages.length,
       pdfPages: pdf.getPageCount(),
       propertyCardStates: q2PropertyCardStates,
-      mapSourceFrameInsets: presentation.submarketDetails.length,
+      normalizedMapDerivatives: presentation.submarketDetails.length,
       submarketNavigationTargets: q2DetailRows.length,
       pdfInternalLinkAnnotations: q2PdfAnnotations.size(),
       semanticIndicatorRows: q2IndicatorRows.length,

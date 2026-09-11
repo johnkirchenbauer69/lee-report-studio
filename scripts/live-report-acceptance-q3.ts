@@ -141,8 +141,8 @@ if (
   JSON.stringify(propertyCardStates) !==
   JSON.stringify({
     populatedPropertyCards: 100,
-    resolvedPropertyImages: 99,
-    actualImageFailures: 1,
+    resolvedPropertyImages: 100,
+    actualImageFailures: 0,
     emptyRankSlots: 71,
   })
 )
@@ -160,11 +160,31 @@ const oversizedWestCook = westCook?.topConstruction.find((slot) =>
   slot.address.startsWith("840 25th Ave"),
 );
 if (
-  oversizedWestCook?.state !== "image-unavailable" ||
+  oversizedWestCook?.state !== "record" ||
+  !oversizedWestCook.image.startsWith("/api/assets/") ||
   !oversizedWestCook.detail
 )
   throw new Error(
-    "The populated West Cook oversized-image card did not retain its text with Image unavailable state.",
+    "The populated West Cook oversized-image card did not resolve from an immutable normalized derivative.",
+  );
+const normalizedAssetId = oversizedWestCook.image.split("/")[3];
+const refreshedAssetsResponse = await fetch(`${api}/api/assets`);
+if (!refreshedAssetsResponse.ok)
+  throw new Error("Normalized image asset metadata could not be loaded.");
+const refreshedAssets = (
+  (await refreshedAssetsResponse.json()) as { assets: Asset[] }
+).assets;
+const normalizedWestCookAsset = refreshedAssets.find(
+  (asset) => asset.id === normalizedAssetId,
+);
+if (
+  normalizedWestCookAsset?.derivative?.kind !==
+    "normalized-salesforce-report-image" ||
+  normalizedWestCookAsset.derivative.sourceSize <= 15 * 1024 * 1024 ||
+  normalizedWestCookAsset.derivative.outputSize > 3 * 1024 * 1024
+)
+  throw new Error(
+    "The West Cook image asset did not retain bounded derivative provenance.",
   );
 const publishedTemplate = prepareTemplateForReport(
   template,
@@ -207,11 +227,14 @@ const submarketMaps = renderedMaps.filter((element) =>
 if (
   submarketMaps.length !== 18 ||
   submarketMaps.some(
-    (element) => element.type !== "image" || element.edgeInset !== 3,
+    (element) =>
+      element.type !== "image" ||
+      !element.src.includes("/normalized/") ||
+      Boolean(element.edgeInset),
   )
 )
   throw new Error(
-    "All 18 submarket maps must retain the map-only source-frame inset.",
+    "All 18 submarket maps must use normalized derivatives without render insets.",
   );
 if (
   publishedPages
@@ -260,14 +283,20 @@ const indicatorRows = [
   ...presentation.indicatorRows,
   ...presentation.submarketDetails.flatMap((detail) => detail.indicatorRows),
 ];
+const governedIndicatorColors = {
+  favorable: "#8A941E",
+  unfavorable: "#CD1442",
+  neutral: "#4E131E",
+} as const;
 if (
   indicatorRows.some(
     (row) =>
       !["up", "down", "equal"].includes(row.direction) ||
-      !["favorable", "unfavorable", "informational", "neutral"].includes(
-        row.semanticStatus,
-      ) ||
-      !row.indicatorColor,
+      !["favorable", "unfavorable", "neutral"].includes(row.semanticStatus) ||
+      row.indicatorColor !== governedIndicatorColors[row.semanticStatus] ||
+      (row.semanticStatus === "neutral"
+        ? row.indicatorKind !== "bar" || row.indicatorGlyph !== ""
+        : row.indicatorKind !== "arrow"),
   )
 )
   throw new Error(
@@ -276,7 +305,12 @@ if (
 if (
   indicatorRows
     .filter((row) => row.metricKey === "underConstructionSf")
-    .some((row) => !["informational", "neutral"].includes(row.semanticStatus))
+    .some(
+      (row) =>
+        row.semanticStatus !== "neutral" ||
+        row.indicatorKind !== "bar" ||
+        row.indicatorColor !== "#4E131E",
+    )
 )
   throw new Error("Under Construction must remain semantically neutral.");
 
@@ -402,16 +436,19 @@ console.log(
         expected: expectedMaps.length,
         overall: renderedMaps.length - submarketMaps.length,
         submarkets: submarketMaps.length,
-        sourceFrameInsetPx: 3,
+        normalizedDerivative: true,
       },
       contributorImages: {
         totalSlots: reportScopes.length * 9,
         ...propertyCardStates,
+        westCookNormalizedDerivative: normalizedWestCookAsset.derivative,
       },
       marketIndicators: {
         semanticRows: indicatorRows.length,
         currentVersusImmediatelyPrior: true,
         underConstructionNeutral: true,
+        colors: governedIndicatorColors,
+        neutralIndicator: "bar",
       },
       navigation: {
         browserTargets: detailNavigationRows.length,

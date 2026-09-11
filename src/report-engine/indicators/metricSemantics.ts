@@ -10,8 +10,8 @@ export type IndicatorMetricKey =
 export type DirectionPreference =
   "higher_is_better" | "lower_is_better" | "neutral";
 export type MetricDirection = "up" | "down" | "equal";
-export type MetricSemanticStatus =
-  "favorable" | "unfavorable" | "informational" | "neutral";
+export type MetricSemanticStatus = "favorable" | "unfavorable" | "neutral";
+export type MetricIndicatorKind = "arrow" | "bar";
 
 export interface MetricSemanticDefinition {
   metricKey: IndicatorMetricKey;
@@ -60,10 +60,9 @@ export const METRIC_SEMANTICS: readonly MetricSemanticDefinition[] = [
 ] as const;
 
 export const METRIC_SEMANTIC_COLORS: Record<MetricSemanticStatus, string> = {
-  favorable: "#237A57",
-  unfavorable: "#B42318",
-  informational: "#16738A",
-  neutral: "#66717A",
+  favorable: "#8A941E",
+  unfavorable: "#CD1442",
+  neutral: "#4E131E",
 };
 
 const displayedInteger = (
@@ -93,8 +92,7 @@ export function deriveMetricSemanticStatus(
   direction: MetricDirection,
   preference: DirectionPreference,
 ): MetricSemanticStatus {
-  if (direction === "equal") return "neutral";
-  if (preference === "neutral") return "informational";
+  if (direction === "equal" || preference === "neutral") return "neutral";
   const favorable =
     (preference === "higher_is_better" && direction === "up") ||
     (preference === "lower_is_better" && direction === "down");
@@ -102,13 +100,14 @@ export function deriveMetricSemanticStatus(
 }
 
 export const metricDirectionGlyph = (direction: MetricDirection) =>
-  direction === "up" ? "▲" : direction === "down" ? "▼" : "→";
+  direction === "up" ? "▲" : direction === "down" ? "▼" : "";
 
 export interface MarketIndicatorRow {
   metricKey: IndicatorMetricKey;
   metric: string;
   direction: MetricDirection;
   semanticStatus: MetricSemanticStatus;
+  indicatorKind: MetricIndicatorKind;
   indicatorGlyph: string;
   indicatorColor: string;
   q2: string;
@@ -135,12 +134,18 @@ export function buildMetricSemanticFields(
     direction,
     definition.directionPreference,
   );
+  const indicatorKind: MetricIndicatorKind =
+    definition.directionPreference === "neutral" || direction === "equal"
+      ? "bar"
+      : "arrow";
   return {
     metricKey: definition.metricKey,
     metric: definition.label,
     direction,
     semanticStatus,
-    indicatorGlyph: metricDirectionGlyph(direction),
+    indicatorKind,
+    indicatorGlyph:
+      indicatorKind === "arrow" ? metricDirectionGlyph(direction) : "",
     indicatorColor: METRIC_SEMANTIC_COLORS[semanticStatus],
   };
 }

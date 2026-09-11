@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import sharp from "sharp";
 import {
   isSalesforceAttachmentOrFileId,
   resolveSalesforceImage,
@@ -45,9 +46,7 @@ describe("isSalesforceAttachmentOrFileId", () => {
     );
   });
   it("rejects a relative asset URL", () => {
-    expect(isSalesforceAttachmentOrFileId("/api/assets/x/content")).toBe(
-      false,
-    );
+    expect(isSalesforceAttachmentOrFileId("/api/assets/x/content")).toBe(false);
   });
 });
 
@@ -78,6 +77,7 @@ describe("resolveSalesforceImage", () => {
     expect(result.warning).toBeUndefined();
     expect(client.getBinary).toHaveBeenCalledWith(
       `sobjects/Attachment/${ATTACHMENT_ID}/Body`,
+      { maxBytes: 32 * 1024 * 1024 },
     );
     expect(assetStore.importBuffer).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: "image/jpeg" }),
@@ -108,7 +108,9 @@ describe("resolveSalesforceImage", () => {
     });
 
     expect(result.url).toBeUndefined();
-    expect(result.warning).toMatch(/text\/html instead of an image|received text\/html/);
+    expect(result.warning).toMatch(
+      /text\/html instead of an image|received text\/html/,
+    );
     expect(assetStore.importBuffer).not.toHaveBeenCalled();
   });
 
@@ -180,4 +182,63 @@ describe("resolveSalesforceImage", () => {
     });
     expect(result.url).toBe("https://example.com/a.jpg");
   });
+
+  it("normalizes and freezes an oversized governed image instead of discarding it", async () => {
+    const jpeg = await sharp({
+      create: {
+        width: 2_400,
+        height: 1_600,
+        channels: 3,
+        background: "#6688aa",
+      },
+    })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const oversized = Buffer.concat([
+      jpeg,
+      Buffer.alloc(16 * 1024 * 1024 - jpeg.length + 1),
+    ]);
+    const client: SalesforceClient = {
+      query: vi.fn(),
+      health: vi.fn(),
+      getBinary: vi.fn(async () => ({
+        buffer: oversized,
+        contentType: "image/jpeg",
+        status: 200,
+      })),
+    };
+    const assetStore = fakeAssetStore();
+    const index = fakeIndex();
+
+    const result = await resolveSalesforceImage(ATTACHMENT_ID, {
+      client,
+      assetStore: assetStore as unknown as Pick<
+        FileSystemAssetStore,
+        "importBuffer"
+      >,
+      index,
+    });
+
+    expect(result.url).toBe("/api/assets/asset-1/content");
+    expect(result.warning).toBeUndefined();
+    expect(result.diagnostic).toMatch(/normalized.*immutable Studio JPEG/i);
+    expect(client.getBinary).toHaveBeenCalledWith(
+      `sobjects/Attachment/${ATTACHMENT_ID}/Body`,
+      { maxBytes: 32 * 1024 * 1024 },
+    );
+    expect(assetStore.importBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mimeType: "image/jpeg",
+        name: `salesforce-${ATTACHMENT_ID}-normalized.jpg`,
+        derivative: expect.objectContaining({
+          kind: "normalized-salesforce-report-image",
+          sourceSize: oversized.length,
+          outputSize: expect.any(Number),
+        }),
+      }),
+    );
+    expect(
+      assetStore.importBuffer.mock.calls[0]?.[0].buffer.length,
+    ).toBeLessThan(3 * 1024 * 1024);
+  }, 20_000);
 });

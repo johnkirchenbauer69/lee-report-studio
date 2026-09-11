@@ -103,11 +103,6 @@ function preparePage(
       page.repeat &&
       element.binding?.path.startsWith(`${page.repeat.contextName}.`),
     );
-    if (
-      element.type === "image" &&
-      element.binding?.path === "market.mapAssetUrl"
-    )
-      element = { ...element, edgeInset: element.edgeInset ?? 3 };
     if (element.type === "image" && contributorImageBinding)
       element = { ...element, publicationRequired: false };
     if (

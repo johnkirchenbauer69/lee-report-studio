@@ -238,8 +238,7 @@ describe("production template preparation", () => {
       ),
     ).toMatchObject({
       type: "image",
-      src: "/report-assets/maps/Central_DuPage_Map.jpg",
-      edgeInset: 3,
+      src: "/report-assets/maps/normalized/Central_DuPage_Map.jpg",
     });
     expect(
       ohareOverview.elements.find((element) =>
@@ -247,8 +246,7 @@ describe("production template preparation", () => {
       ),
     ).toMatchObject({
       type: "image",
-      src: "/report-assets/maps/O'Hare_Map.jpg",
-      edgeInset: 3,
+      src: "/report-assets/maps/normalized/O'Hare_Map.jpg",
     });
     expect(
       centralHighlights.elements.find(
@@ -295,7 +293,7 @@ describe("production template preparation", () => {
         ?.elements.find((element) => element.id.includes("market-map")),
     ).toMatchObject({
       type: "image",
-      src: "/report-assets/maps/Central_DuPage_Map.jpg",
+      src: "/report-assets/maps/normalized/Central_DuPage_Map.jpg",
     });
     expect(
       pages
@@ -303,7 +301,7 @@ describe("production template preparation", () => {
         ?.elements.find((element) => element.id.includes("market-map")),
     ).toMatchObject({
       type: "image",
-      src: "/report-assets/maps/O'Hare_Map.jpg",
+      src: "/report-assets/maps/normalized/O'Hare_Map.jpg",
     });
   });
 

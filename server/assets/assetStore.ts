@@ -341,6 +341,7 @@ export class FileSystemAssetStore {
     buffer: Buffer;
     mimeType: string;
     name: string;
+    derivative?: Asset["derivative"];
   }): Promise<StoredAsset> {
     return this.enqueue(async () => {
       const asset = await this.importImageBuffer({
@@ -348,6 +349,7 @@ export class FileSystemAssetStore {
         mimeType: input.mimeType,
         originalName: input.name,
       });
+      if (input.derivative) asset.derivative = input.derivative;
       const existing = await this.list();
       await this.save([...existing, asset]);
       return asset;

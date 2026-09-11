@@ -1156,9 +1156,6 @@ function detailElement(element: ReportElement): ReportElement {
   }
   if (next.id === "detail-market-map" && next.type === "image") {
     next.binding = { path: "market.mapAssetUrl" };
-    // Governed submarket JPEGs retain their source-frame rule. A map-only
-    // render inset hides that frame without modifying the approved raster.
-    next.edgeInset = 3;
   }
   if (next.type === "table") next.sourcePath = `market.${next.sourcePath}`;
   if (next.type === "chart")

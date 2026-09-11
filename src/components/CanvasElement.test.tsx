@@ -392,15 +392,45 @@ describe("CanvasElement report semantics", () => {
           metric: "Vacancy Rate",
           direction: "down",
           semanticStatus: "favorable",
+          indicatorKind: "arrow",
           indicatorGlyph: "▼",
-          indicatorColor: "#237A57",
+          indicatorColor: "#8A941E",
         },
       ],
     });
     expect(markup).toContain('data-direction="down"');
     expect(markup).toContain('data-semantic-status="favorable"');
-    expect(markup).toContain("color:#237A57");
+    expect(markup).toContain('data-indicator-kind="arrow"');
+    expect(markup).toContain("color:#8A941E");
     expect(markup).toContain(">Vacancy Rate</span>");
+  });
+
+  it("renders the neutral indicator as a thick bar with no arrow glyph", () => {
+    const indicator: TableElement = {
+      ...table,
+      id: "neutral-indicator-table",
+      variant: "indicators",
+      sourcePath: "indicatorRows",
+      columns: [{ key: "metric", label: "MARKET INDICATORS", path: "metric" }],
+    };
+    const markup = renderDataElement(indicator, {
+      indicatorRows: [
+        {
+          metric: "Under Construction (SF)",
+          direction: "up",
+          semanticStatus: "neutral",
+          indicatorKind: "bar",
+          indicatorGlyph: "",
+          indicatorColor: "#4E131E",
+        },
+      ],
+    });
+    expect(markup).toContain('data-indicator-kind="bar"');
+    expect(markup).toContain('class="metric-neutral-bar"');
+    expect(markup).toContain("color:#4E131E");
+    expect(markup).not.toContain("▲");
+    expect(markup).not.toContain("▼");
+    expect(markup).not.toContain("→");
   });
 
   it("renders an accessible internal link from the actual page model", () => {
