@@ -25,14 +25,72 @@ panel is created. Leases are included only when confidentiality is explicitly
 The context builder applies deterministic caps before inference:
 
 - absorption contributors: up to 5 positive and 5 negative;
-- leases, sales, availabilities, construction, and deliveries: up to 5 each;
+- leases, sales, availabilities, construction, and deliveries: up to 5 each
+  for display, though `count` facts report the full quarter's governed
+  record counts, uncapped;
 - Overall Market leaderboards: top 3 and bottom 3 per ranked metric;
-- history: the current period plus up to 4 preceding quarters.
+- history: the current period plus up to 4 preceding quarters for the
+  recited period trend list, though QoQ/YoY/YTD/historical facts use all
+  history the report snapshot carries.
 
 Records are sorted by the relevant governed size, price, contribution, or
 metric before the caps are applied. Stable ordinal support keys such as
 `lease.1` and `driver.absorption.positive.1` identify the resulting facts
 without exposing source IDs.
+
+## Editorial context categories
+
+Beyond the current-quarter `metric` facts, the context builder derives,
+entirely deterministically, whatever the governed history and quarter
+records support — nothing here is calculated by the model:
+
+- **QoQ / YoY / YTD** (`trend` category, `metric.*.qoq_*` /
+  `metric.*.yoy_*` / `ytd.*` keys): quarter-over-quarter and year-over-year
+  changes (bps for rates, SF/percent for volumes), and year-to-date sums.
+  YoY facts only appear when the same quarter one year prior is present in
+  history; YTD facts only appear when every intervening quarter of the
+  current year is present. Asking rent has no historical series in the
+  governed schema, so no YoY figure is produced for it — this is a known
+  gap, not a bug (see Limitations below).
+- **Historical context** (`historical` category): highest/lowest value
+  since the oldest period in the available lookback, consecutive
+  positive/negative absorption streaks, consecutive vacancy/availability
+  rising or falling streaks, trailing 4- and 8-quarter absorption averages,
+  and current-quarter-vs-recent-average. Each gates on having enough
+  history (3+ periods for extremes, 4/8 for averages) rather than
+  fabricating a shorter comparison.
+- **Counts** (`count` category): lease/sale/construction/delivery/
+  availability counts for the quarter, from the full governed record set.
+- **Construction composition** (`composition` category): speculative vs.
+  built-to-suit SF, share, and project counts from the quarter's tracked
+  construction records.
+- **Leasing concentration** (`concentration` category): count and SF of
+  500k-SF+ leases, and their share of the quarter's governed leasing
+  activity SF (non-confidential leases only).
+- **Rankings** (`ranking` category, Overall Market only): leader/laggard
+  submarket leaderboards for absorption, vacancy, availability, under
+  construction, and sales volume; a leasing-activity leaderboard is added
+  only when every canonical submarket has a current-quarter leasing figure,
+  so an incomplete population is never silently ranked.
+- **Market drivers** (`market_driver` category): curated, deterministic
+  explanation facts synthesized from governed records already present
+  elsewhere in context — e.g. a vacancy increase paired with named
+  negative-absorption contributors, or a construction pipeline dominated by
+  built-to-suit SF. These exist so the model can attribute a result to a
+  named cause without inferring causation from two merely-simultaneous
+  facts; the prompt still requires an explicit driver fact before it may
+  use strong causal language.
+
+## Publication-safe entity sanitization
+
+`src/shared/publicationEntitySafety.ts` runs (in addition to Salesforce-ID
+stripping) on every tenant, buyer, developer, sponsor, and property label
+before it reaches narrative context. It blanks bare internal placeholders
+("TBD", "N/A", "Pending"), blanks values containing internal workflow notes
+("waiting for comp," "internal note," "do not publish," …), and strips a
+trailing CRM scratch suffix from an otherwise legitimate name ("Acme
+Logistics - waiting for comp" → "Acme Logistics"). When a value cannot be
+made safe with confidence, it is omitted rather than guessed at.
 
 ## Generation mode
 
@@ -71,16 +129,41 @@ history, model, and token usage when available. A changed context hash marks the
 record `stale` without deleting its text.
 
 The post-generation validator rejects unknown support keys, unsupported named
-entities, Salesforce IDs, hard-limit overflow, and unrelated numeric claims. It
-runs identically on prose written in-process and on a batch imported from
-ChatGPT: Report Studio re-derives each market's current context and re-validates
+entities, Salesforce IDs, internal workflow language (Salesforce, Ascendix,
+"waiting for comp," "finalist," support keys, provenance, …), markdown
+bullets/headings, hard-limit overflow, and unrelated numeric claims. It runs
+identically on prose written in-process and on a batch imported from ChatGPT:
+Report Studio re-derives each market's current context and re-validates
 before anything becomes a Draft record.
 Plausible but ambiguous rounding is retained as an explicit review warning.
 Chromium performs the final text-fit measurement in the actual template boxes
 before publication PDF output.
 
-Prompt profiles are versioned as `overall-market-v1` and `submarket-v1`.
+The validator also runs pragmatic, non-blocking editorial QA heuristics and
+records them as quality flags rather than rejecting stylistically varied
+prose: `template_opening` (a formulaic "[Market] ended/closed/finished..." or
+bare-metric opening), `batch_repeated_opening` (3+ markets in the same
+generation batch share the same opening words — checked once per Generate
+All / imported batch, in addition to the per-narrative check),
+`metric_dump` and `repetitive_sentence_structure` (too many sentences read as
+bare metric recitations), `boilerplate_phrasing` (overused connective
+phrases), and `missing_comparative_context` (sufficient trend history existed
+but the narrative made no comparative statement).
+
+Prompt profiles are versioned as `overall-market-v2` and `submarket-v2`.
 Changing a future prompt profile does not alter or reapprove existing prose.
+Word/paragraph targets: Overall Market 225–325 words (375 hard max) across
+3–5 short paragraphs; submarket 160–230 words (275 hard max) across 2–4 short
+paragraphs. The prompt asks the model to identify the quarter's dominant
+story, lead with it, select roughly 4–7 explanatory facts rather than a fixed
+metric sequence, and vary its openings and sentence structure across markets.
+
+## Known limitation
+
+Asking net rent has no historical series in the governed `HistoricalMarketPeriod`
+schema (only a current-quarter value), so a YoY asking-rent fact cannot be
+derived without a Report Data Service schema change. It is omitted rather
+than fabricated.
 
 ## Acceptance commands
 

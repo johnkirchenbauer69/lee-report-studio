@@ -240,6 +240,23 @@ describe("NarrativeMcpBridgeClient", () => {
     expect(prompt).toContain("submit the finished batch back to the job");
   });
 
+  it("carries the editorial contract, since the remote tool description lives outside this repo", () => {
+    const prompt = narrativeHandoffPrompt("job-123");
+    expect(prompt).toMatch(/market thesis/i);
+    expect(prompt).toMatch(/narrative hierarchy/i);
+    expect(prompt).toMatch(/no repetitive template/i);
+    expect(prompt).toMatch(/no internal system, salesforce, ascendix/i);
+    expect(prompt).toMatch(/no unsupported causal claims/i);
+  });
+
+  it("bans em dashes and formulaic rhetorical phrasing in the handoff contract", () => {
+    const prompt = narrativeHandoffPrompt("job-123");
+    expect(prompt).toMatch(/do not use em dashes/i);
+    expect(prompt).toMatch(/year-over-year/i);
+    expect(prompt).toMatch(/build-to-suit/i);
+    expect(prompt).toMatch(/avoid repetitive rhetorical phrasing/i);
+  });
+
   it("does not dial the network when a session factory is injected", async () => {
     const spy = vi.spyOn(globalThis, "fetch");
     const { client } = fakeBridge();
