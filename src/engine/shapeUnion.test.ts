@@ -38,6 +38,13 @@ describe("shape union", () => {
     expect(result.pathGeometry?.rings[0].length).toBeGreaterThan(4);
   });
 
+  it("carries allowOverflow forward when any constituent shape had it", () => {
+    const bottom = rectangle("bottom", 10);
+    const top = { ...rectangle("top", 40), allowOverflow: true };
+    expect(createUnionShape([bottom, top], "union").allowOverflow).toBe(true);
+    expect(createUnionShape([bottom], "solo").allowOverflow).toBe(false);
+  });
+
   it("disables union for non-intersecting shapes", () => {
     const availability = evaluateShapeUnion([
       rectangle("one", 0),

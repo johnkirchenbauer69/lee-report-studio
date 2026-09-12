@@ -396,3 +396,35 @@ describe("runExportPreflight image content-type check", () => {
     );
   });
 });
+
+describe("runExportPreflight overflow check", () => {
+  const bleedingShape = (overrides: Partial<ReportElement> = {}) =>
+    ({
+      id: "bleed-1",
+      type: "shape" as const,
+      shape: "rectangle" as const,
+      name: "Decorative bleed",
+      x: -20,
+      y: 0,
+      width: 100,
+      height: 100,
+      style: {},
+      ...overrides,
+    }) as ReportElement;
+
+  it("flags an element extending past the page as a warning, not a blocking error", async () => {
+    const template = templateWith(bleedingShape());
+    expect(await runExportPreflight(template)).toEqual([
+      expect.objectContaining({
+        level: "warning",
+        kind: "overflow",
+        message: "Decorative bleed extends outside Page 1.",
+      }),
+    ]);
+  });
+
+  it("never flags an element explicitly allowed to overflow", async () => {
+    const template = templateWith(bleedingShape({ allowOverflow: true }));
+    expect(await runExportPreflight(template)).toEqual([]);
+  });
+});

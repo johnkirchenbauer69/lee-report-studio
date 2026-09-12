@@ -126,8 +126,12 @@ export async function runExportPreflight(
           bounds.x + bounds.width > page.width ||
           bounds.y + bounds.height > page.height)
       )
+        // Bleed off the page edge is a deliberate, common design choice
+        // (decorative shapes, unions of them, full-bleed art) — advisory
+        // only, matching the editor's own validatePage warning. It must
+        // never block publication the way a real content defect does.
         issues.push({
-          level: "error",
+          level: "warning",
           kind: "overflow",
           pageId: page.id,
           elementId: element.id,

@@ -194,6 +194,10 @@ export function createUnionShape(
     width,
     height,
     rotation: 0,
+    // If any constituent shape was explicitly allowed to bleed off the
+    // page, the merged union should be too — unioning shouldn't turn an
+    // intentional, already-approved bleed into a fresh export warning.
+    allowOverflow: elements.some((element) => element.allowOverflow),
     style: {
       ...structuredClone(topmost.style),
       borderRadius: 0,
