@@ -31,7 +31,7 @@ import {
   externalBatchFailureMessage,
   planExternalBatchImport,
 } from "./externalBatchImport.ts";
-import { validateNarrativeResult } from "./validation.ts";
+import { detectRepeatedBatchOpenings, validateNarrativeResult } from "./validation.ts";
 
 /**
  * How the user-facing Generate buttons produce narratives.
@@ -878,8 +878,20 @@ export class NarrativeService {
         });
       }
 
+      const repeatedOpenings = detectRepeatedBatchOpenings(
+        plan.records.map((record) => ({ marketId: record.marketId, text: record.text })),
+      );
       const byMarket = new Map(
-        plan.records.map((record) => [record.marketId, record]),
+        plan.records.map((record) => [
+          record.marketId,
+          repeatedOpenings.has(record.marketId) &&
+          !record.qualityFlags.includes("batch_repeated_opening")
+            ? {
+                ...record,
+                qualityFlags: [...record.qualityFlags, "batch_repeated_opening" as const],
+              }
+            : record,
+        ]),
       );
       let next: ReportInstance = {
         ...instance,
@@ -970,7 +982,41 @@ export class NarrativeService {
         worker(),
       ),
     );
+    await this.flagRepeatedBatchOpenings(job.reportInstanceId, job.marketIds);
     job.status = "complete";
+  }
+
+  /**
+   * Cross-market editorial QA (section H.1): flags every market in this
+   * batch whose opening words recur across enough markets to read as a
+   * template, even when no single narrative matches a banned pattern on its
+   * own. Non-blocking — it only ever adds a quality flag.
+   */
+  private async flagRepeatedBatchOpenings(
+    reportInstanceId: string,
+    marketIds: string[],
+  ) {
+    await this.repository.update(reportInstanceId, (instance) => {
+      const scoped = instance.narratives.filter(
+        (record) => marketIds.includes(record.marketId) && record.text,
+      );
+      const flagged = detectRepeatedBatchOpenings(
+        scoped.map((record) => ({ marketId: record.marketId, text: record.text })),
+      );
+      if (!flagged.size) return instance;
+      return {
+        ...instance,
+        narratives: instance.narratives.map((record) =>
+          flagged.has(record.marketId) &&
+          !record.qualityFlags.includes("batch_repeated_opening")
+            ? {
+                ...record,
+                qualityFlags: [...record.qualityFlags, "batch_repeated_opening" as const],
+              }
+            : record,
+        ),
+      };
+    });
   }
 
   private async required(id: string) {

@@ -371,6 +371,42 @@ describe("ChatGPT MCP narrative generation", () => {
     ).toHaveLength(19);
   });
 
+  it("flags markets that share a templated opening across an imported batch", async () => {
+    const { instance, service, mcp } = await setup();
+    const started = await service.startExternalGeneration(instance.id, {
+      marketIds: ["central-dupage", "ohare", "west-cook"],
+    });
+    const job = started.externalNarrativeJob!;
+    mcp.complete(
+      job.jobId,
+      job.marketIds.map((marketId) =>
+        grounded(buildNarrativeContext({ reportInstance: started, marketId }), {
+          narrative: "Vacancy remained broadly stable this quarter across the market.",
+          claims: [
+            {
+              claim: "Vacancy remained broadly stable.",
+              supportKeys: [
+                buildNarrativeContext({ reportInstance: started, marketId }).facts.find(
+                  (item) => item.contextKey === "metric.vacancy.current",
+                )!.contextKey,
+              ],
+              evidenceClass: "direct",
+            },
+          ],
+        }),
+      ),
+    );
+    const state = await service.externalJobState(instance.id);
+    expect(state.job?.status).toBe("complete");
+    const flagged = state.instance.narratives.filter((item) =>
+      job.marketIds.includes(item.marketId),
+    );
+    expect(flagged).toHaveLength(3);
+    expect(
+      flagged.every((item) => item.qualityFlags.includes("batch_repeated_opening")),
+    ).toBe(true);
+  });
+
   it("single-flights delayed polls and skips a duplicate completed import", async () => {
     const { repository, instance, service, mcp } = await setup();
     const started = await service.startExternalGeneration(instance.id, {
@@ -602,10 +638,10 @@ describe("ChatGPT MCP narrative generation", () => {
         (batch) =>
           batch.map((item, index) =>
             index === 0
-              ? { ...item, narrative: `${"vacancy ".repeat(200)}held.` }
+              ? { ...item, narrative: `${"vacancy ".repeat(300)}held.` }
               : item,
           ),
-        /hard maximum is 160/i,
+        /hard maximum is 275/i,
       ));
 
     it("rejects a market that was not requested", () =>

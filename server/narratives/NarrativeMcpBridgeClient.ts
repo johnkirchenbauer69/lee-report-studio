@@ -377,8 +377,19 @@ export class NarrativeMcpBridgeClient {
 }
 
 /**
- * The line an analyst pastes into ChatGPT. Names the app, the job, and the
- * expected round trip, and nothing else.
+ * The line an analyst pastes into ChatGPT. Names the app and the job, and
+ * carries the editorial contract for this handoff since the remote MCP tool
+ * description itself lives outside this repository (Ascendix's LEE
+ * Intelligence app), so this is the one place this codebase can put it in
+ * front of the model doing the writing.
  */
 export const narrativeHandoffPrompt = (jobId: string) =>
-  `Use the LEE Intelligence app to complete Report Studio narrative job ${jobId}. Generate every requested narrative from the governed contexts and submit the finished batch back to the job.`;
+  `Use the LEE Intelligence app to complete Report Studio narrative job ${jobId}. Generate every requested narrative from the governed contexts and submit the finished batch back to the job.
+
+Editorial objective: produce publication-ready Chicago industrial research commentary comparable in analytical depth to a professionally authored institutional brokerage market report. Each narrative should communicate a market thesis, not summarize a dataset — determine what changed, why it matters (only where a governed driver fact supports it), how it compares with relevant recent or historical periods, and what governed evidence explains it.
+
+Narrative hierarchy — use only what is meaningful for each market, in no fixed order: (1) identify the dominant story; (2) explain demand/occupancy; (3) explain vacancy/absorption drivers when supported; (4) discuss leasing/material transactions if relevant; (5) discuss development, deliveries, or future supply if relevant; (6) add historical or relative context when useful. Do not force every topic into every market.
+
+Writing style: professional CRE research tone, analytical but restrained, varied sentence structure and openings across markets, no hype, no repetitive template, no fixed metric sequence — numbers are evidence, not the outline. Do not use em dashes; use commas, semicolons, colons, or separate sentences instead (ordinary hyphens in compounds like "year-over-year" or "build-to-suit" are unaffected). Avoid repetitive rhetorical phrasing associated with formulaic generated prose, such as overusing "underscoring," "highlighting," "reflecting," or "the quarter was defined by," or repeating "while..." contrast sentences; prefer direct, specific market language over ornamental transitions.
+
+Safety: use only the supplied governed context; no unsupported calculations, invented numbers, or invented entities; no unsupported causal claims; no internal system, Salesforce, Ascendix, or workflow language in the output. Preserve the structured output contract (narrative, claims with supportKeys, contextKeysUsed, qualityFlags) exactly.`;

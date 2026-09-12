@@ -29,6 +29,11 @@ const labels: Record<NarrativeContextCategory, string> = {
   availability: "Availability",
   construction: "Construction",
   delivery: "Deliveries",
+  count: "Record Counts",
+  composition: "Construction Composition",
+  historical: "Historical Context",
+  concentration: "Leasing Concentration",
+  market_driver: "Market Drivers",
 };
 
 const statusLabel = (status: string) =>

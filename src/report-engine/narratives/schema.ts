@@ -19,6 +19,18 @@ export const narrativeQualityFlagSchema = z.enum([
   "interpretive_statement",
   "numeric_validation_warning",
   "entity_validation_warning",
+  /** Narrative opens with a banned boilerplate pattern ("[Market] ended…"). */
+  "template_opening",
+  /** Several narratives in the same generation batch share the same opening. */
+  "batch_repeated_opening",
+  /** Prose reads as a sentence-by-sentence metric recitation with little interpretation. */
+  "metric_dump",
+  /** Too many consecutive sentences share the same metric-name lead-in. */
+  "repetitive_sentence_structure",
+  /** Overused boilerplate connective phrasing. */
+  "boilerplate_phrasing",
+  /** Sufficient trend history existed but the narrative made no comparative statement. */
+  "missing_comparative_context",
 ]);
 export type NarrativeQualityFlag = z.infer<
   typeof narrativeQualityFlagSchema
@@ -99,7 +111,21 @@ export type NarrativeContextCategory =
   | "sale"
   | "availability"
   | "construction"
-  | "delivery";
+  | "delivery"
+  /** Deterministic counts of governed quarter records (leases, sales, deliveries, …). */
+  | "count"
+  /** Speculative/BTS construction and delivery composition. */
+  | "composition"
+  /** Highs/lows, streaks, and multi-quarter averages derived from governed history. */
+  | "historical"
+  /** Leasing size-band / concentration facts. */
+  | "concentration"
+  /**
+   * Curated, deterministic explanation context that goes beyond a raw metric
+   * (e.g. "vacancy increase driven by named negative-absorption move-outs").
+   * Still governed data — never a model inference.
+   */
+  | "market_driver";
 
 export interface NarrativeContextFact {
   contextKey: string;
@@ -137,16 +163,20 @@ export interface PublicNarrativeContext
 
 export const NARRATIVE_PROMPT_PROFILES = {
   overall: {
-    version: "overall-market-v1",
-    targetMinWords: 150,
-    targetMaxWords: 190,
-    hardMaxWords: 210,
+    version: "overall-market-v2",
+    targetMinWords: 225,
+    targetMaxWords: 325,
+    hardMaxWords: 375,
+    targetParagraphsMin: 3,
+    targetParagraphsMax: 5,
   },
   submarket: {
-    version: "submarket-v1",
-    targetMinWords: 105,
-    targetMaxWords: 140,
-    hardMaxWords: 160,
+    version: "submarket-v2",
+    targetMinWords: 160,
+    targetMaxWords: 230,
+    hardMaxWords: 275,
+    targetParagraphsMin: 2,
+    targetParagraphsMax: 4,
   },
 } as const;
 

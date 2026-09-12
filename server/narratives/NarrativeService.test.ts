@@ -71,6 +71,32 @@ async function setup(fail = new Set<string>()) {
   };
 }
 
+class RepeatedOpeningClient implements NarrativeModelClient {
+  readonly configured = true;
+  readonly model = "repeated-opening-test-model";
+  async generate(context: NarrativeContext) {
+    const vacancy = context.facts.find(
+      (item) => item.contextKey === "metric.vacancy.current",
+    )!;
+    return {
+      model: this.model,
+      result: {
+        narrative: `Vacancy remained broadly stable at ${vacancy.displayValue} this quarter.`,
+        claims: [
+          {
+            claim: `Vacancy remained broadly stable at ${vacancy.displayValue}.`,
+            supportKeys: [vacancy.contextKey],
+            evidenceClass: "direct" as const,
+          },
+        ],
+        contextKeysUsed: [vacancy.contextKey],
+        qualityFlags: [],
+      },
+      usage: { inputTokens: 20, outputTokens: 8 },
+    };
+  }
+}
+
 describe("NarrativeService", () => {
   it("persists generation, editing, approval, revision history, and usage metadata", async () => {
     const { repository, instance, service } = await setup();
@@ -174,6 +200,43 @@ describe("NarrativeService", () => {
     });
     expect(refreshed.readiness.canPublish).toBe(false);
   });
+
+  it("flags markets that share a templated opening across a Generate All batch", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-narratives-"));
+    roots.push(root);
+    const repository = new FileSystemReportInstanceRepository(root);
+    const instance = await generateReportInstance(sampleTemplate, {
+      templateId: sampleTemplate.id,
+      templateVersion: sampleTemplate.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarketIds: [] },
+      source: { provider: "sample" },
+    });
+    await repository.save(instance);
+    const service = new NarrativeService(
+      repository,
+      new RepeatedOpeningClient(),
+      3,
+      () => undefined,
+    );
+    let job = await service.startGenerateAll(instance.id);
+    for (
+      let attempt = 0;
+      attempt < 1_000 && job.status !== "complete";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      job = service.job(job.id);
+    }
+    const saved = (await repository.get(instance.id))!;
+    const drafts = saved.narratives.filter((item) => item.status === "draft");
+    expect(drafts.length).toBe(19);
+    expect(
+      drafts.every((item) => item.qualityFlags.includes("batch_repeated_opening")),
+    ).toBe(true);
+  }, 15_000);
 
   it("isolates narrative edits between report instances", async () => {
     const { repository, instance, service } = await setup();
