@@ -527,6 +527,7 @@ const externalJobSchema = z
     importFingerprint: nonEmpty.optional(),
     error: z.string().optional(),
     errorCode: z.string().optional(),
+    errorMarketId: z.string().optional(),
     instruction: z.string().optional(),
     contextHashes: z.record(z.string(), z.string()).optional(),
   })

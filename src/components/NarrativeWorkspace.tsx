@@ -4,6 +4,7 @@ import type {
   PublicNarrativeContext,
 } from "../report-engine/narratives/schema";
 import { NARRATIVE_PROMPT_PROFILES } from "../report-engine/narratives/schema";
+import { CHICAGO_SUBMARKETS } from "../report-engine/submarkets";
 import type {
   ExternalNarrativeJob,
   ReportInstance,
@@ -39,7 +40,14 @@ const labels: Record<NarrativeContextCategory, string> = {
 const statusLabel = (status: string) =>
   status.replace(/_/g, " ").replace(/^./, (value) => value.toUpperCase());
 
-function ExternalJobPanel({
+/** Resolves a canonical market id to its display name for error banners. */
+const marketDisplayName = (marketId: string) =>
+  marketId === "overall-market"
+    ? "Overall Market"
+    : CHICAGO_SUBMARKETS.find((submarket) => submarket.id === marketId)
+        ?.displayName ?? marketId;
+
+export function ExternalJobPanel({
   job,
   appUrl,
   copied,
@@ -47,6 +55,7 @@ function ExternalJobPanel({
   onOpenApp,
   onCopy,
   onRetryImport,
+  onRetryCreate,
 }: {
   job: ExternalNarrativeJob;
   appUrl?: string;
@@ -55,15 +64,23 @@ function ExternalJobPanel({
   onOpenApp: () => void;
   onCopy: () => void;
   onRetryImport: () => void;
+  onRetryCreate: () => void;
 }) {
   const shortId = job.jobId.slice(0, 8);
   const waiting =
     job.status === "waiting_for_chatgpt" ||
     job.status === "creating" ||
     job.status === "importing";
+  // A create failure never reached the remote (no real job exists to
+  // re-import), so it always carries a stable errorCode; an import/submit
+  // rejection does not. That's the reliable signal for which retry path
+  // and banner heading apply.
+  const isCreateFailure = job.status === "failed" && Boolean(job.errorCode);
   const heading =
     job.status === "complete"
       ? "ChatGPT narratives imported"
+      : isCreateFailure
+      ? "Narrative job creation failed"
       : job.status === "failed"
       ? "ChatGPT batch rejected"
       : job.status === "expired"
@@ -108,15 +125,55 @@ function ExternalJobPanel({
       )}
       {job.status === "failed" && (
         <div className="narrative-external-job-actions">
-          <button type="button" disabled={busy} onClick={onRetryImport}>
-            {busy ? "Retrying Import..." : "Retry Import"}
-          </button>
+          {isCreateFailure ? (
+            <button type="button" disabled={busy} onClick={onRetryCreate}>
+              {busy ? "Retrying..." : "Retry Generate All"}
+            </button>
+          ) : (
+            <button type="button" disabled={busy} onClick={onRetryImport}>
+              {busy ? "Retrying Import..." : "Retry Import"}
+            </button>
+          )}
         </div>
       )}
-      {job.error && <p className="narrative-error">{job.error}</p>}
+      {job.error && (
+        <p className="narrative-error" data-testid="narrative-error">
+          {isCreateFailure ? (
+            <>
+              Narrative job creation failed
+              {job.errorCode ? (
+                <>
+                  {" "}
+                  &middot; Code: <code>{job.errorCode}</code>
+                </>
+              ) : null}
+              {job.errorMarketId ? (
+                <>
+                  {" "}
+                  &middot; Market: {marketDisplayName(job.errorMarketId)}
+                </>
+              ) : null}
+              {" "}&middot; {displayErrorDetail(job.error, job.errorCode)}
+            </>
+          ) : (
+            job.error
+          )}
+        </p>
+      )}
     </div>
   );
 }
+
+/**
+ * The stored error may already start with "CODE: " (the bridge client
+ * prefixes the stable code onto the message so it survives as a single
+ * string end to end). The code renders on its own above, so strip the
+ * duplicate prefix here rather than showing it twice.
+ */
+const displayErrorDetail = (error: string, errorCode?: string) =>
+  errorCode && error.startsWith(`${errorCode}: `)
+    ? error.slice(errorCode.length + 2)
+    : error;
 
 export function NarrativeWorkspace({ instance, onChange }: Props) {
   const [selectedMarketId, setSelectedMarketId] = useState(
@@ -330,10 +387,11 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
         job={externalJob}
         appUrl={config?.chatGptAppUrl}
         copied={copied}
-        busy={busy === "reimport"}
+        busy={busy === "reimport" || busy === "all"}
         onOpenApp={openChatGptApp}
         onCopy={() => copyHandoff(externalJob.handoffPrompt)}
         onRetryImport={retryImport}
+        onRetryCreate={generateAll}
       />}
       {job && (
         <div className="narrative-progress" role="status">

@@ -85,6 +85,8 @@ export interface ExternalNarrativeJob {
   importFingerprint?: string;
   error?: string;
   errorCode?: string;
+  /** Market the remote error was about, when it named one (e.g. PROMPT_PROFILE_MISMATCH). */
+  errorMarketId?: string;
   /** Optional editorial steer sent with the job. */
   instruction?: string;
   /**
