@@ -33,6 +33,8 @@ class FakeNarrativeMcp {
   createdArgs?: Record<string, unknown>;
   status: "pending" | "claimed" | "complete" | "expired" = "pending";
   createError?: Error;
+  /** Simulates a structured `{ok:false, code, error, market_id}` tool rejection. */
+  createFailurePayload?: Record<string, unknown>;
   getCalls = 0;
   getGate?: Promise<void>;
   private counter = 0;
@@ -45,6 +47,11 @@ class FakeNarrativeMcp {
       callTool: async (name, args) => {
         if (name === "create_report_studio_narrative_job") {
           if (this.createError) throw this.createError;
+          if (this.createFailurePayload)
+            return {
+              structuredContent: { ok: false, ...this.createFailurePayload },
+              isError: true,
+            };
           this.createdArgs = args;
           const jobId = `job-${++this.counter}`;
           this.jobs.set(jobId, {
@@ -256,19 +263,97 @@ describe("ChatGPT MCP narrative generation", () => {
     );
   });
 
-  it("marks remote creation failed and permits one deliberate retry", async () => {
+  it("marks a transport failure on remote creation failed, with a transport error code, and permits one deliberate retry", async () => {
     const { instance, service, mcp } = await setup();
     mcp.createError = new Error("remote unavailable");
     const failed = await service.startExternalGeneration(instance.id);
     expect(failed.externalNarrativeJob).toMatchObject({
       status: "failed",
-      errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+      errorCode: "NARRATIVE_MCP_TRANSPORT_ERROR",
     });
     expect(mcp.jobs.size).toBe(0);
     mcp.createError = undefined;
     const retried = await service.startExternalGeneration(instance.id);
     expect(retried.externalNarrativeJob?.status).toBe("waiting_for_chatgpt");
     expect(mcp.jobs.size).toBe(1);
+  });
+
+  it("surfaces a missing remote tool as a transport failure rather than crashing the request", async () => {
+    const { instance, service, mcp } = await setup();
+    mcp.createError = new Error(
+      "Unknown tool: create_report_studio_narrative_job",
+    );
+    const failed = await service.startExternalGeneration(instance.id);
+    expect(failed.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "NARRATIVE_MCP_TRANSPORT_ERROR",
+    });
+    expect(mcp.jobs.size).toBe(0);
+  });
+
+  it("preserves a structured remote create-job rejection (code + market) instead of the generic banner", async () => {
+    const { instance, service, mcp } = await setup();
+    mcp.createFailurePayload = {
+      code: "PROMPT_PROFILE_MISMATCH",
+      error: "Submitted promptProfile does not match the governed narrative-v2 profile.",
+      market_id: "ohare",
+    };
+    const failed = await service.startExternalGeneration(instance.id);
+    expect(failed.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "PROMPT_PROFILE_MISMATCH",
+      errorMarketId: "ohare",
+      error: expect.stringContaining(
+        "Submitted promptProfile does not match the governed narrative-v2 profile.",
+      ),
+    });
+    expect(mcp.jobs.size).toBe(0);
+  });
+
+  it("rejects an outgoing job whose remote-echoed contract version is not narrative-v2, with a stable code", async () => {
+    const { instance, service, mcp } = await setup();
+    const originalSession = mcp.session.bind(mcp);
+    mcp.session = () => {
+      const session = originalSession();
+      return {
+        ...session,
+        callTool: async (name, args) => {
+          if (name === "create_report_studio_narrative_job")
+            return {
+              structuredContent: {
+                ok: true,
+                job_id: "job-stale-contract",
+                status: "pending",
+                report_instance_id: args.report_instance_id,
+                narrative_count: (args.market_ids as string[]).length,
+                market_ids: args.market_ids,
+                created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 7_200_000).toISOString(),
+                output_contract_version: "narrative-v1",
+              },
+            };
+          return session.callTool(name, args);
+        },
+      };
+    };
+    const failed = await service.startExternalGeneration(instance.id);
+    expect(failed.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "UNSUPPORTED_NARRATIVE_CONTRACT_VERSION",
+      error: expect.stringContaining("UNSUPPORTED_NARRATIVE_CONTRACT_VERSION"),
+    });
+  });
+
+  it("falls back to the generic create-failure code only when the remote gave no structured detail", async () => {
+    const { instance, service, mcp } = await setup();
+    mcp.createFailurePayload = { error: "totally unexpected failure" };
+    const failed = await service.startExternalGeneration(instance.id);
+    expect(failed.externalNarrativeJob).toMatchObject({
+      status: "failed",
+      errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+      error: "totally unexpected failure",
+    });
+    expect(failed.externalNarrativeJob?.errorMarketId).toBeUndefined();
   });
 
   it("reports ready without an OpenAI API key when the bridge is healthy", async () => {
@@ -329,6 +414,41 @@ describe("ChatGPT MCP narrative generation", () => {
     expect(mcp.createdArgs!.generation_scope).toBe("all");
     expect(mcp.createdArgs!.idempotency_key).toBe(job.idempotencyKey);
     expect(mcp.createdArgs!.template_version).toBe(instance.templateVersion);
+    // The narrative-v2 contract: the outgoing envelope and every context
+    // must carry the negotiated contract version, and each context must
+    // carry the governed prompt profile the remote validates against.
+    expect(mcp.createdArgs!.output_contract_version).toBe("narrative-v2");
+    for (const context of contexts) {
+      expect(context.outputContractVersion).toBe("narrative-v2");
+      expect(typeof context.promptVersion).toBe("string");
+      expect(context.promptVersion).toBeTruthy();
+      expect(["overall", "submarket"]).toContain(context.marketKind);
+      expect(context.period).toBe(instance.dataSnapshot.report.period);
+      expect(Array.isArray(context.facts)).toBe(true);
+      expect((context.facts as unknown[]).length).toBeGreaterThan(0);
+      expect(typeof context.contextHash).toBe("string");
+      expect(context.contextHash).toBeTruthy();
+      const profile = context.promptProfile as Record<string, unknown>;
+      expect(profile).toBeTruthy();
+      if (context.marketKind === "overall")
+        expect(profile).toMatchObject({
+          version: "overall-market-v2",
+          targetMinWords: 225,
+          targetMaxWords: 325,
+          hardMaxWords: 375,
+          targetParagraphsMin: 3,
+          targetParagraphsMax: 5,
+        });
+      else
+        expect(profile).toMatchObject({
+          version: "submarket-v2",
+          targetMinWords: 160,
+          targetMaxWords: 230,
+          hardMaxWords: 275,
+          targetParagraphsMin: 2,
+          targetParagraphsMax: 4,
+        });
+    }
     // No server-only provenance and no raw Salesforce identifiers leave here.
     const serialized = JSON.stringify(contexts);
     expect(serialized).not.toContain("internalSourceIds");

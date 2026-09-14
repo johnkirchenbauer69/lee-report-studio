@@ -111,6 +111,24 @@ const DEFAULT_HEALTH_CACHE_MS = 15_000;
 
 const UNAVAILABLE = "LEE Intelligence MCP narrative bridge is unavailable.";
 
+/**
+ * Thrown when the remote MCP tool itself rejects a call (structured
+ * `{ok:false, code, error}` payload, or a bare `isError` result). Carries
+ * the stable machine code and offending market, when the remote supplied
+ * them, so the API and UI can show the real reason instead of a generic
+ * "could not be created" banner.
+ */
+export class NarrativeMcpToolError extends Error {
+  readonly code?: string;
+  readonly marketId?: string;
+  constructor(message: string, options: { code?: string; marketId?: string } = {}) {
+    super(message);
+    this.name = "NarrativeMcpToolError";
+    this.code = options.code;
+    this.marketId = options.marketId;
+  }
+}
+
 /** Collapses transport noise into one message the UI can show verbatim. */
 export const friendlyBridgeError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
@@ -238,20 +256,39 @@ export class NarrativeMcpBridgeClient {
         result = await invoke();
       } catch (retryError) {
         await this.disconnect();
-        throw new Error(friendlyBridgeError(retryError));
+        throw new NarrativeMcpToolError(friendlyBridgeError(retryError), {
+          code: "NARRATIVE_MCP_TRANSPORT_ERROR",
+        });
       }
     }
     const payload = asRecord(result.structuredContent);
-    if (result.isError || payload.ok === false)
-      throw new Error(
-        friendlyBridgeError(
-          new Error(
-            payload.code
-              ? `${string(payload.code)}: ${string(payload.error, `The ${name} request failed.`)}`
-              : string(payload.error, `The ${name} request failed.`),
-          ),
-        ),
+    if (result.isError || payload.ok === false) {
+      const code = string(payload.code) || undefined;
+      const marketId = string(payload.market_id) || undefined;
+      // Application-level tool failures carry payload.error. A bare
+      // transport/schema-validation rejection (no structuredContent) has
+      // none, so fall back to any MCP text content block before the
+      // fully generic message.
+      const contentText = Array.isArray((result as { content?: unknown }).content)
+        ? ((result as { content?: unknown[] }).content ?? [])
+            .filter(
+              (block): block is { type: string; text: string } =>
+                Boolean(block) &&
+                typeof block === "object" &&
+                (block as { type?: unknown }).type === "text" &&
+                typeof (block as { text?: unknown }).text === "string",
+            )
+            .map((block) => block.text)
+            .join(" ")
+            .trim()
+        : undefined;
+      const detail =
+        string(payload.error) || contentText || `The ${name} request failed.`;
+      throw new NarrativeMcpToolError(
+        friendlyBridgeError(new Error(code ? `${code}: ${detail}` : detail)),
+        { code, marketId },
       );
+    }
     return payload as T & Record<string, unknown>;
   }
 
@@ -331,8 +368,9 @@ export class NarrativeMcpBridgeClient {
     if (!jobId) throw new Error("The narrative MCP did not return a job identifier.");
     const outputContractVersion = string(payload.output_contract_version);
     if (outputContractVersion !== NARRATIVE_OUTPUT_CONTRACT_VERSION)
-      throw new Error(
+      throw new NarrativeMcpToolError(
         `UNSUPPORTED_NARRATIVE_CONTRACT_VERSION: expected ${NARRATIVE_OUTPUT_CONTRACT_VERSION}; received ${outputContractVersion || "(missing)"}.`,
+        { code: "UNSUPPORTED_NARRATIVE_CONTRACT_VERSION" },
       );
     return {
       jobId,

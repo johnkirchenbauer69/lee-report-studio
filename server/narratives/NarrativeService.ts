@@ -22,10 +22,12 @@ import {
 import type { NarrativeModelClient } from "./modelClient.ts";
 import {
   narrativeHandoffPrompt,
+  NarrativeMcpToolError,
   REQUIRED_NARRATIVE_MCP_TOOLS,
   type NarrativeMcpBridgeClient,
   type NarrativeMcpSubmittedNarrative,
 } from "./NarrativeMcpBridgeClient.ts";
+import { sanitizeSalesforceDisplayValue } from "../../src/shared/salesforceIds.ts";
 import {
   EXTERNAL_NARRATIVE_MODEL,
   externalBatchFailureMessage,
@@ -631,11 +633,19 @@ export class NarrativeService {
         idempotencyKey,
       });
     } catch (error) {
+      // Preserve the remote MCP's stable structured error (code, and the
+      // market it named, when present) instead of collapsing every create
+      // failure into one generic banner. Falls back to a generic message
+      // only when the remote gave us nothing structured to show.
+      const structured = error instanceof NarrativeMcpToolError ? error : undefined;
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const safeMessage = sanitizeSalesforceDisplayValue(rawMessage, "[redacted]") || undefined;
       this.logger({
         event: "narrative_external_job_create_failed",
         reportInstanceId,
         idempotencyKey,
         errorName: error instanceof Error ? error.name : "UnknownError",
+        errorCode: structured?.code,
       });
       return this.repository.update(
         reportInstanceId,
@@ -648,8 +658,12 @@ export class NarrativeService {
                   status: "failed",
                   updatedAt: new Date().toISOString(),
                   error:
+                    safeMessage ??
                     "The remote narrative job could not be created. Retry Generate All.",
-                  errorCode: "NARRATIVE_JOB_CREATE_FAILED",
+                  errorCode: structured?.code ?? "NARRATIVE_JOB_CREATE_FAILED",
+                  ...(structured?.marketId
+                    ? { errorMarketId: structured.marketId }
+                    : {}),
                 },
               }
             : current,
