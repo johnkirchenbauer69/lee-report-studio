@@ -10,6 +10,24 @@ export type ShapeKind =
   | "triangle"
   | "diamond"
   | "path";
+/**
+ * A uniform-scale pan/zoom crop within a FIXED-size frame (the ImageElement's
+ * own width/height never changes). `zoom` scales the source image uniformly
+ * (no independent horizontal/vertical scale), and `x`/`y` are object-position
+ * percentages that pan the zoomed image under the frame window.
+ *
+ * This single representation is sufficient to describe any axis-aligned crop
+ * rectangle whose aspect ratio matches the frame's aspect ratio (the only
+ * kind of crop rectangle a fixed-size, uniformly-scaled frame can express
+ * without distorting the image) -- which is exactly what the interactive
+ * crop editor offers (see CanvasElement's crop-mode handles, which resize a
+ * frame-aspect-locked rectangle). A crop UI that allowed independently
+ * different left/right/top/bottom insets would select a source sub-rect
+ * whose aspect ratio can differ from the frame's, which would require
+ * anisotropic (non-uniform) scaling to fit back into the unchanged frame --
+ * something this uniform-zoom model cannot represent. No such tool is
+ * offered, so no additional persisted fields were introduced.
+ */
 export interface ImageCrop {
   x: number;
   y: number;
@@ -222,8 +240,14 @@ export interface TableCellStyle {
 }
 
 export interface TableSelection {
-  section: "column" | "header" | "body";
-  column: number;
+  section: "column" | "header" | "body" | "row";
+  /** Not meaningful for "row" selections -- a whole row spans every column. */
+  column?: number;
+  /**
+   * Body row index for "body"/"row" selections. For a "row" selection,
+   * `undefined` means the header row is selected (there is only ever one
+   * header row, so it needs no index); a number selects that body row.
+   */
   row?: number;
 }
 
@@ -243,6 +267,30 @@ export interface TableElement extends BaseElement {
   /** Managed typography for the row-integrated LEE DEAL transaction badge. */
   transactionChipStyle?: TableCellStyle;
   cellStyles?: Record<string, TableCellStyle>;
+  /**
+   * Box-shadow (not text-shadow) for the header row, rendered as one
+   * continuous band across the header cells -- see
+   * engine/effects.ts#directionalDropShadowToCss.
+   */
+  headerRowShadow?: DropShadow;
+  /**
+   * Box-shadow keyed by the semantic row kind resolved via `rowKindPath`
+   * (e.g. "total", "minimum", "maximum" -- whatever values the bound data
+   * actually produces). Takes precedence over `bodyRowShadows` for a row
+   * whose kind matches a key here, consistent with how `totalStyle` already
+   * takes precedence for text styling.
+   */
+  rowKindShadows?: Record<string, DropShadow>;
+  /**
+   * Box-shadow keyed by literal body row INDEX (not a stable per-record id --
+   * none exists in the current data-binding model, matching the precedent
+   * set by `cellStyles`' `"body:{row}:{column}"` keys). LIMITATION: a shadow
+   * keyed this way follows the row's on-screen POSITION, not the underlying
+   * data record -- if the bound rows are reordered or regenerated, the
+   * shadow stays on the same row index rather than following the record it
+   * was originally set on.
+   */
+  bodyRowShadows?: Record<string, DropShadow>;
   /** Raised/inset surface treatment for the header row. Reuses BevelStyle as-is. */
   headerBevel?: BevelStyle;
   /** Rounds only the header's true outer corners; never per-cell, never internal. */

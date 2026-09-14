@@ -2748,6 +2748,10 @@ export default function App() {
               return;
             if (event.shiftKey) return;
             setSelectedIds([]);
+            // Clicking outside the cropped image is a commit trigger for
+            // crop mode (see CanvasElement's crop-mode effect: any exit that
+            // isn't Escape commits the in-progress temporary crop).
+            setCroppingId(undefined);
             setTableEditingId(undefined);
             setTableSelection(undefined);
           }}
@@ -2899,6 +2903,7 @@ export default function App() {
                     setTableSelection(undefined);
                   }}
                   onTableSelect={setTableSelection}
+                  onCommitCrop={() => setCroppingId(undefined)}
                   pages={template.pages}
                   onNavigatePage={(targetPageId) => {
                     setPageId(targetPageId);

@@ -165,21 +165,70 @@
 .canvas-element.is-cropping .rotation-stem {
   display: none;
 }
-.crop-overlay {
+/* Crop mode temporarily lets the image overflow its frame (so the user can
+   see, dimmed, the source content that is currently cropped away) -- ONLY
+   while actively cropping; every other state keeps the normal clip. */
+.canvas-element.is-cropping .element-content-clip[data-image-clip="true"] {
+  overflow: visible;
+}
+/* The retained-region "window": exactly the frame's own box. Its huge
+   box-shadow spread paints a dark mask everywhere outside this box (see the
+   inline style for the actual spread value), leaving the window's own
+   transparent center -- the frame -- at normal brightness. */
+.crop-window {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: end center;
   pointer-events: none;
-  background: linear-gradient(transparent 70%, rgba(15, 45, 79, 0.6));
+  border: 1.5px solid #f59e0b;
+  z-index: 998;
 }
-.crop-overlay span {
-  margin-bottom: 8px;
-  background: rgba(15, 45, 79, 0.88);
-  color: #fff;
-  border-radius: 4px;
-  padding: 4px 7px;
-  font-size: 8px;
+.crop-third {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+.crop-third-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.crop-third-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+/* Crop zoom handles: deliberately distinct from the normal blue resize
+   handles (amber diamond vs. white square) so it's unambiguous that
+   dragging one changes the crop's zoom, not the element's own size. */
+.crop-zoom-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 2px solid #fff;
+  background: #f59e0b;
+  box-shadow: 0 0 0 1px #d88708;
+  transform: rotate(45deg);
+  cursor: nwse-resize;
+  z-index: 1004;
+}
+.crop-zoom-handle.handle-nw {
+  left: -6px;
+  top: -6px;
+}
+.crop-zoom-handle.handle-ne {
+  right: -6px;
+  top: -6px;
+  cursor: nesw-resize;
+}
+.crop-zoom-handle.handle-sw {
+  left: -6px;
+  bottom: -6px;
+  cursor: nesw-resize;
+}
+.crop-zoom-handle.handle-se {
+  right: -6px;
+  bottom: -6px;
 }
 .crop-button,
 .crop-reset {
@@ -211,9 +260,14 @@
   .ruler,
   .ruler-corner,
   .custom-guide,
-  .crop-overlay {
+  .crop-window,
+  .crop-zoom-handle {
     display: none !important;
   }
+}
+.report-table .table-row-selected {
+  outline: 2px solid #e23d83;
+  outline-offset: -2px;
 }
 
 .text-alignment-groups {

@@ -4,6 +4,7 @@ import {
   findLinkedTable,
   headerCellBoxShadow,
   headerCellCornerRadius,
+  headerWrapperCornerRadii,
   resolveHeaderGroup,
   ribbonGroupStyle,
 } from "./tableHeaderGroup";
@@ -126,6 +127,31 @@ describe("headerCellCornerRadius", () => {
     const group = { ribbon, side: "right" as const };
     expect(headerCellCornerRadius(6, { isFirst: true, isLast: false }, group)).toBe("6px 0px 0 0");
     expect(headerCellCornerRadius(6, { isFirst: false, isLast: true }, group)).toBeUndefined();
+  });
+});
+
+describe("headerWrapperCornerRadii", () => {
+  it("is undefined when radius is 0 or unset, so the unrounded path renders no wrapper", () => {
+    expect(headerWrapperCornerRadii(undefined)).toBeUndefined();
+    expect(headerWrapperCornerRadii(0)).toBeUndefined();
+  });
+
+  it("rounds both top corners for a standalone header", () => {
+    expect(headerWrapperCornerRadii(6)).toEqual({ topLeft: 6, topRight: 6 });
+  });
+
+  it("suppresses the corner touching a linked left-side ribbon", () => {
+    expect(headerWrapperCornerRadii(6, { ribbon, side: "left" })).toEqual({
+      topLeft: 0,
+      topRight: 6,
+    });
+  });
+
+  it("suppresses the corner touching a linked right-side ribbon", () => {
+    expect(headerWrapperCornerRadii(6, { ribbon, side: "right" })).toEqual({
+      topLeft: 6,
+      topRight: 0,
+    });
   });
 });
 

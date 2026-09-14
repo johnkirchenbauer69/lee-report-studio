@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 import { CanvasElement } from "./CanvasElement";
 import type {
@@ -532,6 +533,258 @@ describe("CanvasElement Top Leases / Top Sales continuous header group", () => {
     // An unlinked shape keeps its own independent bevel untouched.
     expect(own).toContain("inset 2px 2px 2px rgba(255, 255, 255, 0.5)");
   });
+});
+
+describe("CanvasElement crop mode chrome", () => {
+  const image: ReportElement = {
+    id: "crop-image",
+    type: "image",
+    name: "Crop image",
+    src: "/image.png",
+    fit: "cover",
+    crop: { x: 40, y: 60, zoom: 1.5 },
+    x: 10,
+    y: 20,
+    width: 120,
+    height: 60,
+    style: {},
+  };
+
+  const renderCropping = (props: Partial<ComponentProps<typeof CanvasElement>> = {}) =>
+    renderToStaticMarkup(
+      <CanvasElement
+        element={image}
+        elements={[image]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{}}
+        mode="design"
+        selected={true}
+        zoom={1}
+        cropping
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+        {...props}
+      />,
+    );
+
+  it("renders the crop window, thirds grid, and four distinct zoom handles while cropping", () => {
+    const markup = renderCropping();
+    expect(markup).toContain('data-testid="crop-window"');
+    expect(markup.match(/class="crop-third /g)?.length).toBe(4);
+    expect(markup.match(/crop-zoom-handle/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(markup).toContain("is-cropping");
+  });
+
+  it("never renders crop chrome when not cropping (default, pixel-identical path)", () => {
+    const markup = renderCropping({ cropping: false });
+    expect(markup).not.toContain("crop-window");
+    expect(markup).not.toContain("crop-zoom-handle");
+    expect(markup).not.toContain("is-cropping");
+  });
+
+  it("gates crop chrome off in read-only render paths (preview/PDF)", () => {
+    const markup = renderCropping({ readOnly: true });
+    expect(markup).not.toContain("crop-window");
+    expect(markup).not.toContain("crop-zoom-handle");
+  });
+
+  it("does not offer interactive crop chrome for a governed sourceCrop image", () => {
+    const markup = renderCropping({
+      element: {
+        ...image,
+        sourceCrop: { sourceWidth: 100, sourceHeight: 100, x: 0, y: 0, width: 100, height: 100 },
+      },
+    });
+    expect(markup).not.toContain("crop-window");
+  });
+});
+
+describe("CanvasElement row shadows", () => {
+  const shadow = {
+    enabled: true,
+    color: "#000000",
+    offsetX: 0,
+    offsetY: 2,
+    blur: 4,
+    opacity: 0.3,
+  } as const;
+
+  const renderTable = (element: TableElement, rows: unknown[]) =>
+    renderToStaticMarkup(
+      <CanvasElement
+        element={element}
+        elements={[element]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+
+  it("applies the header row shadow as one band across every header cell, never the body", () => {
+    const styled: TableElement = { ...table, headerRowShadow: shadow };
+    const markup = renderTable(styled, [{ party: "Tenant", type: "New" }]);
+    const [headMarkup, bodyMarkup] = markup.split("</thead>");
+    expect(headMarkup.match(/inset 0 -4px 4px -4px rgba\(0, 0, 0, 0.3\)/g)?.length).toBe(2);
+    expect(bodyMarkup).not.toContain("inset 0 -4px 4px -4px rgba(0, 0, 0, 0.3)");
+  });
+
+  it("applies a body-row shadow (keyed by row index) only to that row", () => {
+    const styled: TableElement = { ...table, bodyRowShadows: { "1": shadow } };
+    const markup = renderTable(styled, [
+      { party: "Row 0", type: "A" },
+      { party: "Row 1", type: "B" },
+    ]);
+    expect(markup.match(/inset 0 -4px 4px -4px rgba\(0, 0, 0, 0.3\)/g)?.length).toBe(2); // 2 cells in row 1
+    // Row 0's cells must not carry the shadow.
+    const rowSections = markup.split("<tr");
+    const row0 = rowSections.find((section) => section.includes("Row 0"));
+    expect(row0).not.toContain("inset");
+  });
+
+  it("prefers the semantic rowKind shadow over a plain body-row-index shadow for the same row", () => {
+    const styled: TableElement = {
+      ...table,
+      variant: "market-matrix",
+      rowKindPath: "kind",
+      rowKindShadows: { total: shadow },
+      bodyRowShadows: { "1": { ...shadow, offsetY: 99 } }, // would render very differently
+      columns: [{ key: "party", label: "SUBMARKET", path: "party" }],
+    };
+    const markup = renderTable(styled, [
+      { party: "North Cook", kind: "detail" },
+      { party: "Total", kind: "total" },
+    ]);
+    expect(markup).toContain("inset 0 -4px 4px -4px rgba(0, 0, 0, 0.3)");
+    // The overridden bodyRowShadows entry for the same row must never win.
+    expect(markup).not.toContain("inset 0 -101px");
+  });
+
+  it("does not change row height when a row shadow is applied", () => {
+    const plain = renderTable({ ...table, rowHeight: 30 }, [{ party: "A", type: "B" }]);
+    const shadowed = renderTable(
+      { ...table, rowHeight: 30, bodyRowShadows: { "0": shadow } },
+      [{ party: "A", type: "B" }],
+    );
+    expect(plain.match(/height:30px/g)?.length).toBe(shadowed.match(/height:30px/g)?.length);
+  });
+});
+
+describe("CanvasElement table row selection", () => {
+  it("marks the header row selected when tableSelection is a row with no row index", () => {
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={table}
+        elements={[table]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "A", type: "B" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        tableEditing
+        tableSelection={{ section: "row" }}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    const [headMarkup, bodyMarkup] = markup.split("</thead>");
+    expect(headMarkup).toContain("table-row-selected");
+    expect(bodyMarkup).not.toContain("table-row-selected");
+  });
+
+  it("marks only the targeted body row selected", () => {
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={table}
+        elements={[table]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{
+          rows: [
+            { party: "Row 0", type: "A" },
+            { party: "Row 1", type: "B" },
+          ],
+        }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        tableEditing
+        tableSelection={{ section: "row", row: 1 }}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    const rows = markup.split("<tr").filter((s) => s.includes("data-table-row"));
+    expect(rows.some((r) => r.includes("Row 0") && r.includes("table-row-selected"))).toBe(false);
+    expect(rows.some((r) => r.includes("Row 1") && r.includes("table-row-selected"))).toBe(true);
+  });
+});
+
+describe("CanvasElement rounded-header transparency", () => {
+  it("wraps the table and makes it transparent only when headerCornerRadius is set", () => {
+    const rounded: TableElement = { ...table, headerCornerRadius: 8 };
+    const markup = renderTableStyled(rounded);
+    expect(markup).toContain("table-header-clip");
+    expect(markup).toContain("background:transparent");
+    expect(markup).toContain("background:#fff");
+  });
+
+  it("renders no wrapper and no transparency override when radius is unset (default, unchanged)", () => {
+    const markup = renderTableStyled(table);
+    expect(markup).not.toContain("table-header-clip");
+    // The unrounded default path renders `<table>` with no inline style at
+    // all (unchanged from before this feature existed) -- only the wrapper
+    // path ever puts `style="background:transparent"` on the table itself.
+    expect(markup).not.toMatch(/<table class="report-table[^"]*" style=/);
+  });
+
+  it("renders no wrapper when radius is explicitly 0", () => {
+    const markup = renderTableStyled({ ...table, headerCornerRadius: 0 });
+    expect(markup).not.toContain("table-header-clip");
+  });
+
+  function renderTableStyled(element: TableElement) {
+    return renderToStaticMarkup(
+      <CanvasElement
+        element={element}
+        elements={[element]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+  }
 });
 
 describe("CanvasElement report semantics", () => {

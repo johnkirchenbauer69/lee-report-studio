@@ -83,4 +83,60 @@ describe("table appearance persistence", () => {
     expect(restoredTable.totalStyle?.shadow?.color).toBe("#123456");
     expect(restoredTable.style.shadow?.spread).toBe(1);
   });
+
+  it("keeps an existing table without any row-shadow fields valid (backward compatible)", async () => {
+    const instance = await fixture();
+    const normalized = normalizeReportInstance(instance);
+    const table = findTable(normalized.pages, "top-leases-table");
+    expect(table.headerRowShadow).toBeUndefined();
+    expect(table.rowKindShadows).toBeUndefined();
+    expect(table.bodyRowShadows).toBeUndefined();
+  });
+
+  it("serializes and deserializes headerRowShadow, rowKindShadows, and bodyRowShadows", async () => {
+    const instance = await fixture();
+    const styled = structuredClone(instance);
+    const page = styled.pages.find((candidate) =>
+      candidate.elements.some((element) => element.id === "top-leases-table"),
+    )!;
+    const table = page.elements.find(
+      (element) => element.id === "top-leases-table",
+    ) as unknown as TableElement;
+    const shadow = {
+      enabled: true,
+      color: "#123456",
+      offsetX: 0,
+      offsetY: 2,
+      blur: 4,
+      opacity: 0.3,
+    };
+    Object.assign(table, {
+      headerRowShadow: shadow,
+      rowKindShadows: { total: { ...shadow, color: "#abcdef" } },
+      bodyRowShadows: { "3": { ...shadow, color: "#fedcba" } },
+    } satisfies Partial<TableElement>);
+
+    const serialized = serializeReportInstance(styled);
+    const restored = normalizeReportInstance(JSON.parse(serialized));
+    const restoredTable = findTable(restored.pages, "top-leases-table");
+    expect(restoredTable.headerRowShadow).toEqual(shadow);
+    expect(restoredTable.rowKindShadows).toEqual({
+      total: { ...shadow, color: "#abcdef" },
+    });
+    expect(restoredTable.bodyRowShadows).toEqual({
+      "3": { ...shadow, color: "#fedcba" },
+    });
+  });
+
+  it("rejects an unknown field on a row-shadow record (strict schema)", async () => {
+    const instance = await fixture();
+    const tampered = structuredClone(instance) as unknown as {
+      pages: { elements: Record<string, unknown>[] }[];
+    };
+    const table = tampered.pages
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === "top-leases-table")!;
+    table.rowKindShadows = { total: { enabled: true, notARealField: 1 } };
+    expect(() => normalizeReportInstance(tampered)).toThrow();
+  });
 });

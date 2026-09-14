@@ -583,27 +583,31 @@ export function Inspector({
     onChange({
       totalStyle: { ...table?.totalStyle, shadow: { ...totalsTextShadow, ...patch } },
     } as Partial<ReportElement>);
-  const selectedColumn = tableSelection
-    ? table?.columns[tableSelection.column]
-    : undefined;
+  const selectedColumn =
+    tableSelection && tableSelection.column != null
+      ? table?.columns[tableSelection.column]
+      : undefined;
   const updateColumn = (patch: Record<string, unknown>) => {
-    if (!table || !tableSelection) return;
+    if (!table || !tableSelection || tableSelection.column == null) return;
+    const columnIndex = tableSelection.column;
     onChange({
       columns: table.columns.map((column, index) =>
-        index === tableSelection.column ? { ...column, ...patch } : column,
+        index === columnIndex ? { ...column, ...patch } : column,
       ),
     } as Partial<ReportElement>);
   };
   const selectedCellStyle: TableCellStyle | undefined =
-    !table || !tableSelection
+    !table || !tableSelection || tableSelection.column == null
       ? undefined
       : tableSelection.section === "column"
         ? table.columns[tableSelection.column]?.bodyStyle
         : tableSelection.section === "header"
           ? table.columns[tableSelection.column]?.headerStyle
-          : table.cellStyles?.[
-              `body:${tableSelection.row}:${tableSelection.column}`
-            ];
+          : tableSelection.section === "body"
+            ? table.cellStyles?.[
+                `body:${tableSelection.row}:${tableSelection.column}`
+              ]
+            : undefined;
   const selectedCellFamily = normalizeSemanticFontFamily(
     selectedCellStyle?.fontFamily ?? table?.style.fontFamily,
   );
@@ -634,11 +638,12 @@ export function Inspector({
     ),
   ];
   const updateTableCellStyle = (patch: Partial<TableCellStyle>) => {
-    if (!table || !tableSelection) return;
+    if (!table || !tableSelection || tableSelection.column == null) return;
     if (tableSelection.section === "column")
       return updateColumn({ bodyStyle: { ...selectedCellStyle, ...patch } });
     if (tableSelection.section === "header")
       return updateColumn({ headerStyle: { ...selectedCellStyle, ...patch } });
+    if (tableSelection.section !== "body") return;
     const key = `body:${tableSelection.row}:${tableSelection.column}`;
     onChange({
       cellStyles: {
@@ -646,6 +651,64 @@ export function Inspector({
         [key]: { ...selectedCellStyle, ...patch },
       },
     } as Partial<ReportElement>);
+  };
+  // Row-level shadow (box-shadow, not the per-cell text shadow above): the
+  // header row uses `headerRowShadow`; a semantic body row (rowKindPath
+  // resolves to e.g. "total"/"minimum"/"maximum") uses `rowKindShadows`
+  // keyed by that resolved kind, taking precedence over a plain row-index
+  // shadow for the same row, mirroring how `totalStyle` already wins over
+  // plain body styling; any other body row falls back to `bodyRowShadows`
+  // keyed by literal row index (see the field's doc comment in report.ts for
+  // the reorder/regeneration limitation that keying implies).
+  const selectedRowKind =
+    table?.rowKindPath && tableSelection?.row != null
+      ? String(
+          getByContextPath(
+            (
+              getByContextPath(
+                data,
+                table.sourcePath,
+                table.bindingContext,
+              ) as unknown[]
+            )?.[tableSelection.row],
+            table.rowKindPath,
+          ) ?? "",
+        )
+      : undefined;
+  const rowShadowKey: "header" | "kind" | "index" | undefined =
+    !table || tableSelection?.section !== "row"
+      ? undefined
+      : tableSelection.row == null
+        ? "header"
+        : selectedRowKind
+          ? "kind"
+          : "index";
+  const selectedRowShadow = resolveDropShadow(
+    !table || !rowShadowKey
+      ? undefined
+      : rowShadowKey === "header"
+        ? table.headerRowShadow
+        : rowShadowKey === "kind"
+          ? table.rowKindShadows?.[selectedRowKind ?? ""]
+          : table.bodyRowShadows?.[String(tableSelection?.row)],
+  );
+  const setSelectedRowShadow = (patch: Partial<DropShadow>) => {
+    if (!table || !rowShadowKey) return;
+    const next = { ...selectedRowShadow, ...patch };
+    if (rowShadowKey === "header") {
+      onChange({ headerRowShadow: next } as Partial<ReportElement>);
+    } else if (rowShadowKey === "kind" && selectedRowKind) {
+      onChange({
+        rowKindShadows: { ...table.rowKindShadows, [selectedRowKind]: next },
+      } as Partial<ReportElement>);
+    } else if (tableSelection?.row != null) {
+      onChange({
+        bodyRowShadows: {
+          ...table.bodyRowShadows,
+          [String(tableSelection.row)]: next,
+        },
+      } as Partial<ReportElement>);
+    }
   };
   const selectedRow =
     tableSelection?.row == null || !table
@@ -920,6 +983,22 @@ export function Inspector({
               }
             >
               Select column
+            </button>
+          )}
+          {(tableSelection.section === "header" ||
+            tableSelection.section === "body") && (
+            <button
+              onClick={() =>
+                onTableSelectionChange?.({
+                  section: "row",
+                  row:
+                    tableSelection.section === "body"
+                      ? tableSelection.row
+                      : undefined,
+                })
+              }
+            >
+              Select row
             </button>
           )}
           <label>
@@ -1262,6 +1341,42 @@ export function Inspector({
               </small>
             </>
           )}
+        </Section>
+      )}
+      {table && tableEditing && tableSelection?.section === "row" && (
+        <Section
+          title={
+            tableSelection.row == null
+              ? "Header Row Shadow"
+              : selectedRowKind
+                ? `${selectedRowKind[0]?.toUpperCase()}${selectedRowKind.slice(1)} Row Shadow`
+                : "Row Shadow"
+          }
+        >
+          <button
+            onClick={() =>
+              onTableSelectionChange?.({
+                section: tableSelection.row == null ? "header" : "body",
+                column: 0,
+                row: tableSelection.row,
+              })
+            }
+          >
+            Select cell instead
+          </button>
+          {tableSelection.row != null && selectedRowKind && (
+            <small>
+              This row's kind ("{selectedRowKind}") resolves to a semantic
+              shadow shared by every row of that kind, taking precedence over
+              a plain row-index shadow.
+            </small>
+          )}
+          <ShadowFields
+            toggleLabel="Row Shadow"
+            fieldPrefix="Row Shadow"
+            shadow={selectedRowShadow}
+            onChange={setSelectedRowShadow}
+          />
         </Section>
       )}
       {(element.type === "shape" || element.type === "text") && (

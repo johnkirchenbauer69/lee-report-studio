@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type {
   EditorSettings,
+  ImageCrop,
   PreviewMode,
   ReportElement,
   ReportPage,
@@ -20,6 +21,7 @@ import {
 } from "../engine/typography";
 import { fontFamilyToCss } from "../services/fontRegistry";
 import {
+  directionalDropShadowToCss,
   dropShadowToCss,
   elementBoxShadowToCss,
   resolveBevel,
@@ -35,6 +37,7 @@ import {
   findLinkedTable,
   headerCellBoxShadow,
   headerCellCornerRadius,
+  headerWrapperCornerRadii,
   resolveHeaderGroup,
   ribbonGroupStyle,
 } from "../engine/tableHeaderGroup";
@@ -66,7 +69,18 @@ interface Props {
   onTableSelect?: (selection: TableSelection) => void;
   pages?: readonly ReportPage[];
   onNavigatePage?: (pageId: string) => void;
+  /**
+   * Fired when interactive crop mode should COMMIT the in-progress crop and
+   * exit (Enter key, double-click). The parent is expected to respond by
+   * clearing whatever state makes `cropping` false; the temporary crop data
+   * itself is written back via `onChange` from inside this component, keyed
+   * off that same `cropping` prop transition -- see the crop-mode effect
+   * below for the commit/cancel rule.
+   */
+  onCommitCrop?: (id: string) => void;
 }
+
+const DEFAULT_IMAGE_CROP: ImageCrop = { x: 50, y: 50, zoom: 1 };
 
 /**
  * tableStyle() below always sets every output CSS key, some to `undefined`.
@@ -128,6 +142,133 @@ export function CanvasElement(props: Props) {
     onGuides,
   } = props;
   const [rotationAngle, setRotationAngle] = useState<number | null>(null);
+
+  // --- Crop mode: temporary, non-persisted state ---------------------
+  //
+  // While `props.cropping` is true, all interactive crop editing (pan drag,
+  // zoom handles) mutates ONLY this component-local `tempCrop` -- never
+  // `onChange` -- so Escape can discard it without ever having touched the
+  // real element. `tempCropRef` mirrors the state synchronously so the
+  // commit effect below (and pointer-move handlers, which close over stale
+  // state otherwise) always sees the latest value. `cropCancelledRef` is set
+  // by the Escape handler; every OTHER way crop mode ends (Enter,
+  // double-click, clicking away, selecting another element, navigating
+  // pages, saving, etc. -- anything that flips `props.cropping` back to
+  // false without Escape) is treated as a commit. This single rule is what
+  // "commit on Enter/double-click/click-outside/exit, cancel on Escape"
+  // reduces to once cropping is owned locally: the parent doesn't need to
+  // know WHY it's exiting crop mode, only WHETHER Escape did it.
+  const [tempCrop, setTempCropState] = useState<ImageCrop | undefined>(
+    undefined,
+  );
+  const tempCropRef = useRef<ImageCrop | undefined>(undefined);
+  const cropOriginalRef = useRef<ImageCrop | undefined>(undefined);
+  const cropCancelledRef = useRef(false);
+  const setTempCrop = (next: ImageCrop) => {
+    tempCropRef.current = next;
+    setTempCropState(next);
+  };
+  const wasCropping = useRef(false);
+  useEffect(() => {
+    if (props.cropping && element.type === "image") {
+      if (!wasCropping.current) {
+        const original = element.crop ?? DEFAULT_IMAGE_CROP;
+        cropOriginalRef.current = original;
+        cropCancelledRef.current = false;
+        setTempCrop(original);
+      }
+      wasCropping.current = true;
+      return;
+    }
+    if (wasCropping.current) {
+      wasCropping.current = false;
+      const original = cropOriginalRef.current;
+      const edited = tempCropRef.current;
+      if (
+        !cropCancelledRef.current &&
+        original &&
+        edited &&
+        (edited.x !== original.x ||
+          edited.y !== original.y ||
+          edited.zoom !== original.zoom)
+      ) {
+        onChange(element.id, { crop: edited } as Partial<ReportElement>);
+      }
+      tempCropRef.current = undefined;
+      setTempCropState(undefined);
+      cropOriginalRef.current = undefined;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.cropping]);
+
+  useEffect(() => {
+    if (!props.cropping || props.readOnly || element.type !== "image") return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        cropCancelledRef.current = true;
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        props.onCommitCrop?.(element.id);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.cropping, props.readOnly, element.type, element.id]);
+
+  /** Snaps a crop pan percentage (0-100) to the frame edges, center, and
+   * thirds -- the same "snap to notable positions" idea as position/rotation
+   * snapping elsewhere, just against the crop's own fixed target set instead
+   * of sibling geometry (a crop rectangle has no siblings to align to; its
+   * only meaningful reference points are the source image's own edges/
+   * center/thirds). Alt bypasses snapping, mirroring the rotation-snap
+   * precedent (`snapRotation`'s `bypass: ev.altKey`) for a consistent
+   * modifier-key story across every snapping interaction in the editor. */
+  const snapCropPan = (value: number, bypass: boolean) => {
+    if (bypass) return value;
+    const targets = [0, 100 / 3, 50, (200 / 3), 100];
+    const tolerance = 1.5;
+    for (const target of targets)
+      if (Math.abs(value - target) <= tolerance) return target;
+    return value;
+  };
+
+  const startCropZoom = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (props.readOnly || element.type !== "image") return;
+    props.onInteractionStart();
+    const centerX = element.x + element.width / 2,
+      centerY = element.y + element.height / 2;
+    const canvas = (
+      e.currentTarget.closest(".page-canvas") as HTMLElement
+    ).getBoundingClientRect();
+    const halfDiagonal = Math.max(
+      1,
+      Math.sqrt((element.width / 2) ** 2 + (element.height / 2) ** 2),
+    );
+    const move = (ev: PointerEvent) => {
+      const px = (ev.clientX - canvas.left) / zoom,
+        py = (ev.clientY - canvas.top) / zoom;
+      const dist = Math.max(1, Math.hypot(px - centerX, py - centerY));
+      let next = Math.max(1, Math.min(6, halfDiagonal / dist));
+      if (!ev.altKey) {
+        const targets = [1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6];
+        const near = targets.find((t) => Math.abs(t - next) < 0.06);
+        if (near != null) next = near;
+      }
+      const base = tempCropRef.current ?? element.crop ?? DEFAULT_IMAGE_CROP;
+      setTempCrop({ ...base, zoom: Math.round(next * 1000) / 1000 });
+    };
+    const up = () => {
+      props.onInteractionEnd();
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const startDrag = (e: React.PointerEvent) => {
     if (props.tableEditing && element.type === "table") return;
     if (element.locked) return;
@@ -159,27 +300,27 @@ export function CanvasElement(props: Props) {
     );
     const crop =
       element.type === "image"
-        ? (element.crop ?? { x: 50, y: 50, zoom: 1 })
+        ? (tempCropRef.current ?? element.crop ?? DEFAULT_IMAGE_CROP)
         : undefined;
     const move = (ev: PointerEvent) => {
       if (props.cropping && element.type === "image" && crop) {
-        const x = Math.max(
+        let x = Math.max(
           0,
           Math.min(
             100,
             crop.x + ((ev.clientX - sx) / zoom / element.width) * 100,
           ),
         );
-        const y = Math.max(
+        let y = Math.max(
           0,
           Math.min(
             100,
             crop.y + ((ev.clientY - sy) / zoom / element.height) * 100,
           ),
         );
-        onChange(element.id, {
-          crop: { ...crop, x, y },
-        } as Partial<ReportElement>);
+        x = snapCropPan(x, ev.altKey);
+        y = snapCropPan(y, ev.altKey);
+        setTempCrop({ ...crop, x, y });
         return;
       }
       const result = snapPosition({
@@ -578,7 +719,10 @@ export function CanvasElement(props: Props) {
           : element.fit === "original"
             ? "none"
             : (element.fit ?? "cover");
-    const crop = element.crop ?? { x: 50, y: 50, zoom: 1 };
+    const crop =
+      props.cropping && !props.readOnly && tempCrop
+        ? tempCrop
+        : (element.crop ?? DEFAULT_IMAGE_CROP);
     const region = element.sourceCrop;
     content =
       recordState === "none" ? (
@@ -707,9 +851,44 @@ export function CanvasElement(props: Props) {
       return formatted;
     };
     const headerGroup = resolveHeaderGroup(element, elements);
-    const headerBoxShadow = headerCellBoxShadow(element.headerBevel);
-    content = (
-      <table className={`report-table table-${element.variant ?? "default"}`}>
+    const headerBevelShadow = headerCellBoxShadow(element.headerBevel);
+    const headerRowShadow = directionalDropShadowToCss(element.headerRowShadow);
+    const headerBoxShadow =
+      [headerBevelShadow, headerRowShadow].filter(Boolean).join(", ") ||
+      undefined;
+    const rowShadowFor = (rowKind: string | undefined, rowIndex: number) => {
+      const shadow =
+        (rowKind ? element.rowKindShadows?.[rowKind] : undefined) ??
+        element.bodyRowShadows?.[String(rowIndex)];
+      return directionalDropShadowToCss(shadow);
+    };
+    const isHeaderRowSelected =
+      props.tableSelection?.section === "row" &&
+      props.tableSelection.row == null;
+    const isBodyRowSelected = (rowIndex: number) =>
+      props.tableSelection?.section === "row" &&
+      props.tableSelection.row === rowIndex;
+    // See docs/table-appearance-controls: `.report-table` (and every th/td)
+    // paints an opaque background, so when `headerCornerRadius` rounds a
+    // header <th>'s corners, the RECTANGULAR area outside that curve but
+    // still inside the cell's bounding box shows the table's own white
+    // background through the "cut" corner instead of nothing. Wrapping the
+    // table in a container clipped to the SAME top-corner radii, and making
+    // the table's own background transparent (the wrapper supplies the
+    // white background instead), removes that leftover rectangle without
+    // touching `.report-table`'s background for tables that don't round
+    // their header at all -- this wrapper is only rendered when
+    // `headerCornerRadius` is actually set, so the unrounded default path
+    // (background on `<table>` itself, no wrapper) is completely unchanged.
+    const headerWrapperRadii = headerWrapperCornerRadii(
+      element.headerCornerRadius,
+      headerGroup,
+    );
+    const table = (
+      <table
+        className={`report-table table-${element.variant ?? "default"}`}
+        style={headerWrapperRadii ? { background: "transparent" } : undefined}
+      >
         <colgroup>
           {element.columns.map((c) => (
             <col
@@ -719,7 +898,7 @@ export function CanvasElement(props: Props) {
           ))}
         </colgroup>
         <thead>
-          <tr>
+          <tr className={isHeaderRowSelected ? "table-row-selected" : undefined}>
             {element.columns.map((c, column) => (
               <th
                 key={c.key}
@@ -776,10 +955,16 @@ export function CanvasElement(props: Props) {
               const rowKind = element.rowKindPath
                 ? String(getByPath(row, element.rowKindPath))
                 : undefined;
+              const rowShadow = rowShadowFor(rowKind, i);
               return (
               <tr
                 key={i}
-                className={rowKind ? `row-${rowKind}` : undefined}
+                className={[
+                  rowKind ? `row-${rowKind}` : undefined,
+                  isBodyRowSelected(i) ? "table-row-selected" : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined}
               >
                 {element.columns.map((c, column) => (
                   <td
@@ -808,6 +993,7 @@ export function CanvasElement(props: Props) {
                       ),
                       textAlign: c.align,
                       height: element.rowHeight,
+                      boxShadow: rowShadow,
                     }}
                     onPointerDown={
                       props.tableEditing
@@ -867,6 +1053,22 @@ export function CanvasElement(props: Props) {
         </tbody>
       </table>
     );
+    content = headerWrapperRadii ? (
+      <div
+        className="table-header-clip"
+        style={{
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
+          background: "#fff",
+          borderRadius: `${headerWrapperRadii.topLeft}px ${headerWrapperRadii.topRight}px 0 0`,
+        }}
+      >
+        {table}
+      </div>
+    ) : (
+      table
+    );
   } else if (element.type === "chart") {
     content = <NativeChart element={element} data={data} />;
   }
@@ -904,6 +1106,13 @@ export function CanvasElement(props: Props) {
         if (element.type === "table" && selected) {
           event.stopPropagation();
           props.onEnterTableEdit?.(element.id);
+        } else if (
+          element.type === "image" &&
+          props.cropping &&
+          !props.readOnly
+        ) {
+          event.stopPropagation();
+          props.onCommitCrop?.(element.id);
         }
       }}
       onContextMenu={(e) => props.onContextMenu(e, element.id)}
@@ -915,11 +1124,39 @@ export function CanvasElement(props: Props) {
         {content}
       </div>
       {selected && <div className="selection-outline" />}
-      {props.cropping && !props.readOnly && (
-        <div className="crop-overlay">
-          <span>Drag image to reposition</span>
-        </div>
-      )}
+      {props.cropping &&
+        !props.readOnly &&
+        element.type === "image" &&
+        !element.sourceCrop && (
+          <>
+            {/* Removed-area darkening + crop boundary: a "window" the size of
+                the frame, with a huge box-shadow spread standing in for an
+                infinite dark mask everywhere OUTSIDE it. The retained region
+                (the window's own transparent center, exactly the frame) stays
+                at normal brightness since nothing paints over it. */}
+            <div
+              className="crop-window"
+              data-testid="crop-window"
+              style={{
+                boxShadow: `0 0 0 ${Math.max(600, element.width, element.height) * 2}px rgba(15, 45, 79, 0.55)`,
+              }}
+            >
+              <span className="crop-third crop-third-v" style={{ left: "33.333%" }} />
+              <span className="crop-third crop-third-v" style={{ left: "66.667%" }} />
+              <span className="crop-third crop-third-h" style={{ top: "33.333%" }} />
+              <span className="crop-third crop-third-h" style={{ top: "66.667%" }} />
+            </div>
+            {(["nw", "ne", "sw", "se"] as const).map((corner) => (
+              <button
+                key={corner}
+                className={`crop-zoom-handle handle-${corner}`}
+                aria-label={`Crop zoom ${corner}`}
+                title="Drag to zoom the crop; drag the image to pan. Alt disables snapping."
+                onPointerDown={startCropZoom}
+              />
+            ))}
+          </>
+        )}
       {selected && !element.locked && !props.readOnly && (
         <>
           {(["nw", "ne", "sw", "se"] as const).map((corner) => (

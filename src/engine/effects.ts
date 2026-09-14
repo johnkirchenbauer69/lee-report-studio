@@ -149,3 +149,54 @@ export const directionalBevelToCss = (
     if (edges[edge] ?? true) layers.push(`${insetFor(edge)} ${shadowColor}`);
   return layers.length ? layers.join(", ") : undefined;
 };
+
+// --- Row shadow "continuous band" ---------------------------------------
+//
+// A plain per-cell box-shadow (even with offsetX 0) paints on all four sides
+// of every <td>/<th>, so adjacent cells in a row each cast a shadow along
+// their shared left/right border -- a visible seam down every column
+// boundary, doubled where two cells' shadows overlap. directionalDropShadowToCss
+// mirrors directionalBevelToCss's edge-suppression technique (inset shadow
+// layers, restricted to the edges the caller allows) so that when every cell
+// in a row suppresses its left/right edges, only the row's true top and/or
+// bottom perimeter paints -- one continuous band, not per-cell fragments.
+//
+// Direction is derived from the shadow's offsetY: a non-negative offsetY
+// paints the band at the row's bottom edge (shadow cast "below"), a
+// non-positive offsetY paints it at the top edge; offsetY === 0 paints both,
+// which reads as a soft symmetric glow. offsetX does not affect a row band
+// (a row shadow is inherently a horizontal strip), so left/right are simply
+// never painted regardless of the caller's `edges` unless explicitly allowed.
+export const directionalDropShadowToCss = (
+  shadow?: Partial<DropShadow>,
+  edges: BevelEdges = { top: true, bottom: true, left: false, right: false },
+): string | undefined => {
+  const resolved = resolveDropShadow(shadow);
+  if (!resolved.enabled) return undefined;
+  const size = Math.max(0, resolved.blur) + Math.max(0, resolved.spread ?? 0);
+  if (size <= 0) return undefined;
+  const color = shadowColorToCss(resolved.color, resolved.opacity);
+  const layers: string[] = [];
+  const insetFor = (edge: "top" | "right" | "bottom" | "left") => {
+    switch (edge) {
+      case "top":
+        return `inset 0 ${size}px ${size}px -${size}px`;
+      case "bottom":
+        return `inset 0 -${size}px ${size}px -${size}px`;
+      case "left":
+        return `inset ${size}px 0 ${size}px -${size}px`;
+      case "right":
+        return `inset -${size}px 0 ${size}px -${size}px`;
+    }
+  };
+  const wantEdge = (edge: keyof BevelEdges) => edges[edge] ?? false;
+  if (resolved.offsetY >= 0 && wantEdge("bottom"))
+    layers.push(`${insetFor("bottom")} ${color}`);
+  if (resolved.offsetY <= 0 && wantEdge("top"))
+    layers.push(`${insetFor("top")} ${color}`);
+  if (resolved.offsetX >= 0 && wantEdge("right"))
+    layers.push(`${insetFor("right")} ${color}`);
+  if (resolved.offsetX <= 0 && wantEdge("left"))
+    layers.push(`${insetFor("left")} ${color}`);
+  return layers.length ? layers.join(", ") : undefined;
+};
