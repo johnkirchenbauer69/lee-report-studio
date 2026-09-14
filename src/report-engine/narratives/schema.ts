@@ -13,7 +13,7 @@ export const NARRATIVE_STATUSES = [
 export const narrativeStatusSchema = z.enum(NARRATIVE_STATUSES);
 export type NarrativeStatus = z.infer<typeof narrativeStatusSchema>;
 
-export const narrativeQualityFlagSchema = z.enum([
+export const NARRATIVE_QUALITY_FLAGS = [
   "limited_driver_context",
   "limited_transaction_context",
   "interpretive_statement",
@@ -31,16 +31,19 @@ export const narrativeQualityFlagSchema = z.enum([
   "boilerplate_phrasing",
   /** Sufficient trend history existed but the narrative made no comparative statement. */
   "missing_comparative_context",
-]);
+] as const;
+export const narrativeQualityFlagSchema = z.enum(NARRATIVE_QUALITY_FLAGS);
 export type NarrativeQualityFlag = z.infer<
   typeof narrativeQualityFlagSchema
 >;
+
+export const NARRATIVE_EVIDENCE_CLASSES = ["direct", "derived", "interpretive"] as const;
 
 export const narrativeClaimSchema = z
   .object({
     claim: z.string().min(1).max(1_000),
     supportKeys: z.array(z.string().min(1).max(160)).min(1).max(12),
-    evidenceClass: z.enum(["direct", "derived", "interpretive"]),
+    evidenceClass: z.enum(NARRATIVE_EVIDENCE_CLASSES),
   })
   .strict();
 export type NarrativeClaim = z.infer<typeof narrativeClaimSchema>;
@@ -102,30 +105,40 @@ export interface NarrativeRecord {
   usage?: NarrativeUsage;
 }
 
-export type NarrativeContextCategory =
-  | "metric"
-  | "trend"
-  | "ranking"
-  | "driver"
-  | "lease"
-  | "sale"
-  | "availability"
-  | "construction"
-  | "delivery"
+export const NARRATIVE_CONTEXT_CATEGORIES = [
+  "metric",
+  "trend",
+  "ranking",
+  "driver",
+  "lease",
+  "sale",
+  "availability",
+  "construction",
+  "delivery",
   /** Deterministic counts of governed quarter records (leases, sales, deliveries, …). */
-  | "count"
+  "count",
   /** Speculative/BTS construction and delivery composition. */
-  | "composition"
+  "composition",
   /** Highs/lows, streaks, and multi-quarter averages derived from governed history. */
-  | "historical"
+  "historical",
   /** Leasing size-band / concentration facts. */
-  | "concentration"
+  "concentration",
   /**
    * Curated, deterministic explanation context that goes beyond a raw metric
    * (e.g. "vacancy increase driven by named negative-absorption move-outs").
    * Still governed data — never a model inference.
    */
-  | "market_driver";
+  "market_driver",
+] as const;
+export type NarrativeContextCategory =
+  (typeof NARRATIVE_CONTEXT_CATEGORIES)[number];
+
+export const NARRATIVE_CONTEXT_SOURCE_TYPES = [
+  "Market_Data__c",
+  "Property_Data__c",
+  "Market_Data_Contributor__c",
+  "Report_Data_Service",
+] as const;
 
 export interface NarrativeContextFact {
   contextKey: string;
@@ -133,11 +146,7 @@ export interface NarrativeContextFact {
   label: string;
   value: string | number | null;
   displayValue: string;
-  sourceType:
-    | "Market_Data__c"
-    | "Property_Data__c"
-    | "Market_Data_Contributor__c"
-    | "Report_Data_Service";
+  sourceType: (typeof NARRATIVE_CONTEXT_SOURCE_TYPES)[number];
   authority: string;
   calculation?: string;
   publicationSafe: true;
@@ -158,8 +167,12 @@ export interface NarrativeContext {
 
 export interface PublicNarrativeContext
   extends Omit<NarrativeContext, "facts"> {
+  outputContractVersion: typeof NARRATIVE_OUTPUT_CONTRACT_VERSION;
+  promptProfile: NarrativePromptProfile;
   facts: Omit<NarrativeContextFact, "internalSourceIds">[];
 }
+
+export const NARRATIVE_OUTPUT_CONTRACT_VERSION = "narrative-v2" as const;
 
 export const NARRATIVE_PROMPT_PROFILES = {
   overall: {
@@ -179,6 +192,9 @@ export const NARRATIVE_PROMPT_PROFILES = {
     targetParagraphsMax: 4,
   },
 } as const;
+
+export type NarrativePromptProfile =
+  (typeof NARRATIVE_PROMPT_PROFILES)[keyof typeof NARRATIVE_PROMPT_PROFILES];
 
 export const countNarrativeWords = (text: string) =>
   text.trim() ? text.trim().split(/\s+/).length : 0;

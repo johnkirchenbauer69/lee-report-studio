@@ -104,6 +104,7 @@ export function createMockNarrativeMcp(options: MockNarrativeMcpOptions = {}) {
       {
         description: "Creates a Report Studio narrative job.",
         inputSchema: {
+          output_contract_version: z.string(),
           report_instance_id: z.string(),
           template_version: z.string(),
           period: z.string(),
@@ -148,6 +149,7 @@ export function createMockNarrativeMcp(options: MockNarrativeMcpOptions = {}) {
           market_ids: job.marketIds,
           created_at: job.createdAt,
           expires_at: job.expiresAt,
+          output_contract_version: input.output_contract_version,
         });
       },
     );
@@ -201,8 +203,16 @@ export function createMockNarrativeMcp(options: MockNarrativeMcpOptions = {}) {
           contexts: job.contexts,
           created_at: job.createdAt,
           expires_at: job.expiresAt,
+          output_contract_version: job.contexts[0]?.outputContractVersion,
           ...(job.status === "complete"
-            ? { narratives: job.narratives, completed_at: new Date().toISOString() }
+            ? {
+                narratives: job.narratives,
+                completed_at: new Date().toISOString(),
+                expected_narratives: job.marketIds.length,
+                accepted_narratives: job.narratives?.length ?? 0,
+                missing_market_ids: [],
+                rejected_market_ids: [],
+              }
             : {}),
         });
       },
@@ -229,7 +239,10 @@ export function createMockNarrativeMcp(options: MockNarrativeMcpOptions = {}) {
           ok: true,
           job_id: job.jobId,
           status: "complete",
-          narratives_received: (narratives as unknown[]).length,
+          expected_narratives: job.marketIds.length,
+          accepted_narratives: (narratives as unknown[]).length,
+          missing_market_ids: [],
+          rejected_market_ids: [],
         });
       },
     );
