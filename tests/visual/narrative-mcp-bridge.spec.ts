@@ -105,7 +105,7 @@ test("Generate All hands off to ChatGPT and imports the batch without an OpenAI 
   }
 });
 
-test("a batch that fails grounding validation is rejected whole and leaves narratives intact", async ({
+test("a batch with only a soft grounding warning imports as Draft narratives with the warning preserved for review", async ({
   page,
   request,
 }) => {
@@ -119,13 +119,68 @@ test("a batch that fails grounding validation is rejected whole and leaves narra
   const mcpJobs = await (await request.get(`${mockMcp}/control/jobs`)).json();
   const mcpJob = mcpJobs.jobs.find((item: { jobId: string }) => item.jobId === jobId);
 
-  // One ungrounded number is enough to reject the whole batch.
+  // An ungrounded number is a soft grounding warning, not a hard integrity
+  // failure: the batch imports whole, with the warning surfaced on the one
+  // affected market's Draft record for a human reviewer to resolve. See
+  // planExternalBatchImport in server/narratives/externalBatchImport.ts.
   const narratives = mcpJob.contexts.map(
     (context: { marketId: string; promptVersion: string }, index: number) => ({
       marketId: context.marketId,
       narrative:
         index === 0
           ? "Vacancy finished the quarter at 87.3%."
+          : "Conditions were measured rather than decisive during the quarter.",
+      claims: [],
+      contextKeysUsed: [],
+      qualityFlags: [],
+      promptVersion: context.promptVersion,
+    }),
+  );
+  const submitted = await request.post(`${mockMcp}/control/jobs/${jobId}/submit-raw`, {
+    data: { narratives },
+  });
+  expect(submitted.ok()).toBeTruthy();
+
+  await expect(page.getByTestId("narrative-external-job")).toContainText(
+    "ChatGPT narratives imported",
+    { timeout: 30_000 },
+  );
+  await expect(page.locator(".narrative-list .status-draft")).toHaveCount(19);
+  await expect(page.locator(".narrative-review-warnings-summary")).toContainText(
+    "1 market still has unresolved review warnings",
+  );
+
+  const after = (await (await request.get(`/api/report-instances/${instance.id}`)).json()) as ReportInstance;
+  const drafts = after.narratives.filter((item) => item.status === "draft");
+  expect(drafts).toHaveLength(19);
+  const flagged = after.narratives.find((item) => item.marketId === mcpJob.contexts[0].marketId)!;
+  expect(flagged.status).toBe("draft");
+  expect(flagged.text).not.toBe("");
+  expect(flagged.qualityFlags).toContain("numeric_validation_warning");
+});
+
+test("a batch with a hard integrity failure is rejected whole and leaves narratives intact", async ({
+  page,
+  request,
+}) => {
+  const instance = await createFixture(request);
+  await page.goto(`/?narrativeReview=${encodeURIComponent(instance.id)}`);
+  await page.getByRole("button", { name: "Generate All Narratives" }).click();
+  await expect(page.getByTestId("narrative-external-job")).toContainText("Waiting for ChatGPT");
+
+  const stored = (await (await request.get(`/api/report-instances/${instance.id}`)).json()) as ReportInstance;
+  const jobId = stored.externalNarrativeJob!.jobId;
+  const mcpJobs = await (await request.get(`${mockMcp}/control/jobs`)).json();
+  const mcpJob = mcpJobs.jobs.find((item: { jobId: string }) => item.jobId === jobId);
+
+  // A raw Salesforce record identifier is a hard integrity failure (never a
+  // soft grounding warning) and still rejects the whole batch.
+  const narratives = mcpJob.contexts.map(
+    (context: { marketId: string; promptVersion: string }, index: number) => ({
+      marketId: context.marketId,
+      narrative:
+        index === 0
+          ? "Conditions were measured rather than decisive during the quarter. See a0B5f000001AbCdEAK."
           : "Conditions were measured rather than decisive during the quarter.",
       claims: [],
       contextKeysUsed: [],

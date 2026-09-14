@@ -24,18 +24,43 @@ export function ValidationPanel({
 }: {
   items: ValidationItem[];
   completeness?: DatasetSectionStatus[];
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, pageId?: string) => void;
   onViewReconciliation?: (path: string) => void;
 }) {
-  const blockers = items.filter((item) => item.level === "blocking").length;
-  const warnings = items.filter((item) => item.level === "warning").length;
+  const blockingItems = items.filter(
+    (item) => item.level === "blocking" || item.level === "error",
+  );
+  const warningItems = items.filter((item) => item.level === "warning");
+  const informationalItems = items.filter(
+    (item) => item.level === "ok" || item.level === "info",
+  );
+  const renderItems = (group: ValidationItem[]) =>
+    group.map((item, index) => (
+      <div
+        className={`validation-row ${item.level}`}
+        key={`${item.message}-${index}`}
+      >
+        <span>{severityIcon(item.level)}</span>
+        <em>{item.message}</em>
+        {item.elementId && (
+          <button onClick={() => onSelect?.(item.elementId!, item.pageId)}>
+            Select
+          </button>
+        )}
+        {item.path?.startsWith("reconciliation.submarkets.") && (
+          <button onClick={() => onViewReconciliation?.(item.path!)}>
+            View reconciliation
+          </button>
+        )}
+      </div>
+    ));
   return (
     <div className="validation-panel">
       <div className="panel-heading">
         <div>
           <strong>Report QA</strong>
           <span>
-            {blockers} blocking · {warnings} warnings
+            {blockingItems.length} blocking · {warningItems.length} warnings
           </span>
         </div>
       </div>
@@ -57,23 +82,23 @@ export function ValidationPanel({
           ))}
         </section>
       )}
-      {items.map((item, index) => (
-        <div
-          className={`validation-row ${item.level}`}
-          key={`${item.message}-${index}`}
-        >
-          <span>{severityIcon(item.level)}</span>
-          <em>{item.message}</em>
-          {item.elementId && (
-            <button onClick={() => onSelect?.(item.elementId!)}>Select</button>
-          )}
-          {item.path?.startsWith("reconciliation.submarkets.") && (
-            <button onClick={() => onViewReconciliation?.(item.path!)}>
-              View reconciliation
-            </button>
-          )}
-        </div>
-      ))}
+      {blockingItems.length > 0 && (
+        <section className="validation-group blocking-group">
+          <strong>Blocking issues</strong>
+          {renderItems(blockingItems)}
+        </section>
+      )}
+      {warningItems.length > 0 && (
+        <section className="validation-group warning-group">
+          <strong>Warnings</strong>
+          {renderItems(warningItems)}
+        </section>
+      )}
+      {informationalItems.length > 0 && (
+        <section className="validation-group informational-group">
+          {renderItems(informationalItems)}
+        </section>
+      )}
     </div>
   );
 }

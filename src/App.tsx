@@ -57,6 +57,10 @@ import {
   runExportPreflight,
   type ExportPreflightIssue,
 } from "./report-engine/validation/exportPreflight";
+import {
+  assessExportQa,
+  asExportAdvisory,
+} from "./report-engine/validation/exportQa";
 import { prepareTemplateForPublication } from "./report-engine/generation/prepareTemplate";
 import {
   generateReportInstance,
@@ -230,9 +234,14 @@ export default function App() {
   const [preflightIssues, setPreflightIssues] = useState<
     ExportPreflightIssue[]
   >([]);
+  const [pendingPdfExport, setPendingPdfExport] = useState<{
+    template: ReportTemplate;
+    warningCount: number;
+  }>();
   const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const pageListRef = useRef<HTMLDivElement>(null);
   const managedServerAssets = useRef<Asset[]>([]);
   const initialLoadStarted = useRef(false);
   const reportSaveTimer = useRef<number | undefined>(undefined);
@@ -396,26 +405,33 @@ export default function App() {
     (record) => record.fieldPath === reconciliationPath,
   );
   const settings = { ...defaultSettings, ...template.settings };
-  const validations = useMemo(
-    () => [
-      ...(reportInstance?.readiness.issues.map((issue) => ({
-        level: issue.level,
+  const validations = useMemo(() => {
+    const readinessAdvisories =
+      reportInstance?.readiness.issues.map((issue) => ({
+        level: "warning" as const,
         category: "data" as const,
         message: issue.message,
         path: issue.path,
-      })) ?? []),
-      ...validatePage(page, reportData),
-      ...preflightIssues
-        .filter((issue) => issue.pageId === page.id)
-        .map((issue) => ({
-          level: issue.level,
-          category: "export" as const,
-          message: issue.message,
-          elementId: issue.elementId,
-        })),
-    ],
-    [page, reportData, preflightIssues, reportInstance],
-  );
+      })) ?? [];
+    const pageAdvisories = template.pages.flatMap((reportPage) =>
+      validatePage(reportPage, reportData).map((issue) => ({
+        ...asExportAdvisory(issue),
+        pageId: reportPage.id,
+      })),
+    );
+    const assessment = assessExportQa(preflightIssues, [
+      ...readinessAdvisories,
+      ...pageAdvisories,
+    ]);
+    return [...assessment.blockers, ...assessment.warnings];
+  }, [reportData, preflightIssues, reportInstance, template.pages]);
+
+  useEffect(() => {
+    if (leftTab !== "pages") return;
+    pageListRef.current
+      ?.querySelector<HTMLElement>("button.active")
+      ?.scrollIntoView({ block: "nearest" });
+  }, [leftTab, pageId]);
 
   const mutate = useCallback(
     (
@@ -1565,58 +1581,17 @@ export default function App() {
     }
     setShowWizard(true);
   };
-  const downloadPdf = async () => {
-    if (reportInstance && !reportInstance.readiness.canPublish) {
-      setLeftTab("validate");
-      notify("Published export is blocked by report readiness issues.");
-      return;
-    }
+  const performPdfExport = async (
+    publicationTemplate: ReportTemplate,
+    warningCount: number,
+  ) => {
     setExportingPdf(true);
     try {
-      const publicationTemplate = prepareTemplateForPublication(template);
-      const issues = await runExportPreflight(publicationTemplate);
-      setPreflightIssues(issues);
-      const errors = issues.filter((issue) => issue.level === "error");
-      if (errors.length) {
-        const failure = classifyExportError(
-          "preflight",
-          new Error(errors.map((issue) => issue.message).join(" ")),
-        );
-        console.error("PDF export blocked by preflight errors.", failure);
-        notify(describeExportFailure(failure));
-        return;
-      }
       const fileName = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
       let chromiumFailure: ReturnType<typeof classifyExportError> | undefined;
       try {
         await exportChromiumPdf(publicationTemplate, reportData, fileName);
       } catch (chromiumError) {
-        if (
-          chromiumError instanceof Error &&
-          chromiumError.message.includes(
-            "Narrative overflow blocks publication",
-          )
-        ) {
-          setLeftTab("validate");
-          if (reportInstance) {
-            const marketIds = chromiumError.message
-              .replace(/^.*Narrative overflow blocks publication:\s*/, "")
-              .replace(/\.$/, "")
-              .split(",")
-              .map((value) => value.trim())
-              .filter(Boolean);
-            let updated = reportInstance;
-            for (const marketId of marketIds)
-              updated = await reportInstanceStore.overflow(
-                updated.id,
-                marketId,
-                true,
-              );
-            handleReportInstanceChange(updated);
-          }
-          notify(chromiumError.message);
-          return;
-        }
         chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
           "Chromium renderer unavailable; using deterministic fallback.",
@@ -1638,11 +1613,66 @@ export default function App() {
         }
       }
       notify(
-        `${template.pages.filter((item) => !item.hidden).length}-page PDF exported${issues.length ? ` · ${issues.length} preflight warning${issues.length === 1 ? "" : "s"}` : ""}`,
+        `${template.pages.filter((item) => !item.hidden).length}-page PDF exported${warningCount ? ` · ${warningCount} QA warning${warningCount === 1 ? "" : "s"} acknowledged` : ""}`,
       );
     } catch (error) {
       console.error("PDF export failed unexpectedly.", error);
       notify("The PDF could not be generated.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+  const downloadPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const publicationTemplate = prepareTemplateForPublication(template);
+      const issues = await runExportPreflight(publicationTemplate);
+      setPreflightIssues(issues);
+      const readinessAdvisories =
+        reportInstance?.readiness.issues.map((issue) => ({
+          level: issue.level,
+          category: "data" as const,
+          message: issue.message,
+          path: issue.path,
+        })) ?? [];
+      const pageAdvisories = template.pages.flatMap((reportPage) =>
+        validatePage(reportPage, reportData).map((issue) => ({
+          ...issue,
+          pageId: reportPage.id,
+        })),
+      );
+      const assessment = assessExportQa(issues, [
+        ...readinessAdvisories,
+        ...pageAdvisories,
+      ]);
+      if (assessment.blockers.length) {
+        setLeftTab("validate");
+        const failure = classifyExportError(
+          "preflight",
+          new Error(
+            assessment.blockers.map((issue) => issue.message).join(" "),
+          ),
+        );
+        console.error(
+          "PDF export blocked by technical preflight errors.",
+          failure,
+        );
+        notify(
+          `${assessment.blockers.length} blocking QA issue${assessment.blockers.length === 1 ? "" : "s"} must be fixed before export. ${describeExportFailure(failure)}`,
+        );
+        return;
+      }
+      if (assessment.warnings.length) {
+        setPendingPdfExport({
+          template: publicationTemplate,
+          warningCount: assessment.warnings.length,
+        });
+        return;
+      }
+      await performPdfExport(publicationTemplate, 0);
+    } catch (error) {
+      console.error("PDF preflight failed unexpectedly.", error);
+      notify("The PDF preflight could not be completed.");
     } finally {
       setExportingPdf(false);
     }
@@ -2179,7 +2209,7 @@ export default function App() {
       );
     if (leftTab === "data")
       return <DataBrowser onBind={bind} reportInstance={reportInstance} />;
-    if (leftTab === "pages" || leftTab === "templates")
+    if (leftTab === "templates")
       return (
         <>
           {leftTab === "templates" && (
@@ -2217,14 +2247,16 @@ export default function App() {
                     }
                   >
                     <div>
-                      {renamingVersionKey === `${record.id}-${record.version}` ? (
+                      {renamingVersionKey ===
+                      `${record.id}-${record.version}` ? (
                         <form
                           className="rename-version-form"
                           onSubmit={(event) => {
                             event.preventDefault();
-                            const input = event.currentTarget.elements.namedItem(
-                              "label",
-                            ) as HTMLInputElement;
+                            const input =
+                              event.currentTarget.elements.namedItem(
+                                "label",
+                              ) as HTMLInputElement;
                             void renameTemplateVersion(record, input.value);
                           }}
                         >
@@ -2368,14 +2400,19 @@ export default function App() {
               </div>
             </>
           )}
+        </>
+      );
+    if (leftTab === "pages")
+      return (
+        <>
           <PanelTitle
             title="Pages"
-            subtitle={`${template.pages.length} page definitions · expands to 44 pages for the full Chicago scope`}
+            subtitle={`${template.pages.length} page${template.pages.length === 1 ? "" : "s"} · current page highlighted`}
           />
           <button className="create-report-button" onClick={startCreateReport}>
             ＋ Create report from data
           </button>
-          <div className="page-list">
+          <div className="page-list" ref={pageListRef}>
             {template.pages.map((item, index) => (
               <button
                 type="button"
@@ -2530,7 +2567,8 @@ export default function App() {
       <ValidationPanel
         items={validations}
         completeness={reportInstance?.dataSnapshot.dataCompleteness}
-        onSelect={(id) => {
+        onSelect={(id, targetPageId) => {
+          if (targetPageId) setPageId(targetPageId);
           setSelectedIds([id]);
           setLeftTab("elements");
         }}
@@ -2715,6 +2753,7 @@ export default function App() {
           {(
             [
               ["templates", "▤", "Templates"],
+              ["pages", "▥", "Pages"],
               ["elements", "◇", "Elements"],
               ["text", "T", "Text"],
               ["images", "▧", "Images"],
@@ -2735,7 +2774,9 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <aside className="left-panel">
+        <aside
+          className={`left-panel ${leftTab === "pages" ? "pages-panel" : ""}`}
+        >
           {sidebar()}
           <button className="reset-link" onClick={reset}>
             Restore sample document
@@ -3023,7 +3064,9 @@ export default function App() {
                 : !reportInstance
                   ? "Saved locally for recovery"
                   : ""}
-          {!reportInstance && librarySaveState !== "conflict" && librarySaveError
+          {!reportInstance &&
+          librarySaveState !== "conflict" &&
+          librarySaveError
             ? ` · ${librarySaveError}`
             : ""}
         </span>
@@ -3120,6 +3163,48 @@ export default function App() {
                 onClick={confirmDeleteDraft}
               >
                 {deletingDraft ? "Deleting…" : "Delete Draft"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+      {pendingPdfExport && (
+        <div className="wizard-backdrop" role="presentation">
+          <section
+            className="confirmation-dialog export-warning-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Export PDF with QA warnings"
+          >
+            <span className="warning-icon" aria-hidden="true">
+              ⚠
+            </span>
+            <div>
+              <h2>Export with QA warnings?</h2>
+              <p>
+                This report has {pendingPdfExport.warningCount} QA warning
+                {pendingPdfExport.warningCount === 1 ? "" : "s"}. You can review
+                them or export anyway.
+              </p>
+            </div>
+            <footer>
+              <button
+                onClick={() => {
+                  setPendingPdfExport(undefined);
+                  setLeftTab("validate");
+                }}
+              >
+                Review warnings
+              </button>
+              <button
+                className="primary-button export-anyway-button"
+                onClick={() => {
+                  const pending = pendingPdfExport;
+                  setPendingPdfExport(undefined);
+                  void performPdfExport(pending.template, pending.warningCount);
+                }}
+              >
+                Export anyway
               </button>
             </footer>
           </section>

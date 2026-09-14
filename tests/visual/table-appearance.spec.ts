@@ -15,6 +15,7 @@ async function openTemplatePage(page: Page, version: string, name: string) {
   );
   await card.getByRole("button", { name: "Open Draft" }).click();
   expect((await opened).ok()).toBe(true);
+  await page.locator(".rail").getByTitle("Pages").click();
   await page
     .locator(".page-list")
     .getByRole("button", { name: new RegExp(`${name}$`) })
@@ -93,7 +94,9 @@ test("table appearance controls persist and render consistently across editor, s
     await expect(indicatorHeaderAppearance).toBeVisible();
     await indicatorHeaderAppearance.getByLabel("Header Bevel").check();
     await indicatorHeaderAppearance.getByLabel("Bevel size").fill("2");
-    await indicatorHeaderAppearance.getByLabel("Header corner radius").fill("6");
+    await indicatorHeaderAppearance
+      .getByLabel("Header corner radius")
+      .fill("6");
     const indicatorFirstHeaderCell = indicatorNode.locator("thead th").first();
     const indicatorLastHeaderCell = indicatorNode.locator("thead th").last();
     await expect(indicatorFirstHeaderCell).toHaveCSS(
@@ -243,10 +246,9 @@ test("table appearance controls persist and render consistently across editor, s
 
     await page.reload({ waitUntil: "load" });
     await openTemplatePage(page, created.version, "Market Overview");
-    await expect(page.getByTestId("top-leases-table").locator("thead th").last()).toHaveCSS(
-      "border-top-right-radius",
-      "6px",
-    );
+    await expect(
+      page.getByTestId("top-leases-table").locator("thead th").last(),
+    ).toHaveCSS("border-top-right-radius", "6px");
     await expect(page.getByTestId("leases-side-bg")).toHaveCSS(
       "border-radius",
       "6px 0px 6px 6px",

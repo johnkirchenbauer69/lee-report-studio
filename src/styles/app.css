@@ -285,6 +285,23 @@ button {
   border-right: 1px solid var(--border);
   padding: 14px;
 }
+.left-panel.pages-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pages-panel .page-list {
+  flex: 1 1 auto;
+  min-height: 150px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+.pages-panel .page-setup {
+  flex: 0 0 auto;
+  max-height: 34vh;
+  overflow-y: auto;
+}
 .inspector {
   border-left: 1px solid var(--border);
   padding: 0;
@@ -621,6 +638,23 @@ button {
   flex-direction: column;
   gap: 4px;
 }
+.validation-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.validation-group > strong {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.blocking-group > strong {
+  color: #a52e39;
+}
+.warning-group > strong {
+  color: #9a5b0c;
+}
 .validation-row {
   border: 0;
   border-radius: 7px;
@@ -647,7 +681,8 @@ button {
   color: #9a5b0c;
   background: #fff8ec;
 }
-.validation-row.error {
+.validation-row.error,
+.validation-row.blocking {
   color: #a52e39;
   background: #fff1f2;
 }
@@ -1574,6 +1609,19 @@ button {
   color: #b42335;
   font-size: 20px;
   font-weight: 800;
+}
+.warning-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fff8ec;
+  color: #9a5b0c;
+  font-size: 19px;
+}
+.export-warning-dialog .export-anyway-button {
+  color: #fff;
 }
 .confirmation-dialog h2 {
   margin: 0 0 8px;

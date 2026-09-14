@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
+import { sampleTemplate } from "../../src/data/sampleTemplate";
 import type { ReportTemplate } from "../../src/types/report";
 
 const topbar = (page: Page) => page.locator(".topbar");
@@ -10,8 +11,8 @@ const activePageIndex = (page: Page) =>
     buttons.findIndex((button) => button.classList.contains("active")),
   );
 
-async function openTemplates(page: Page) {
-  await page.getByRole("button", { name: /Templates/ }).click();
+async function openPages(page: Page) {
+  await page.getByRole("button", { name: /Pages/ }).click();
   await expect(pageButtons(page).first()).toBeVisible();
 }
 
@@ -30,7 +31,7 @@ test("save, save-as and publish preserve the active page while open starts at pa
   page,
 }) => {
   await page.goto("/", { waitUntil: "load" });
-  await openTemplates(page);
+  await openPages(page);
   await ensureDraft(page);
 
   const targetIndex = Math.min(16, (await pageButtons(page).count()) - 1);
@@ -73,12 +74,15 @@ test("save, save-as and publish preserve the active page while open starts at pa
     topbar(page).getByRole("button", { name: "Save", exact: true }),
   ).toBeDisabled();
 
+  await page.getByRole("button", { name: /Templates/ }).click();
   const published = page
     .locator(".template-version-list > section")
     .filter({ hasText: "published" })
     .first();
   await published.getByRole("button", { name: "Open", exact: true }).click();
-  await expect.poll(() => activePageIndex(page)).toBe(0);
+  await expect(page.locator(".stage-topline span").first()).toHaveText(
+    sampleTemplate.pages[0]!.name,
+  );
 
   const restoreDraftResponse = page.waitForResponse(
     (response) =>
@@ -89,13 +93,17 @@ test("save, save-as and publish preserve the active page while open starts at pa
   await expect(
     topbar(page).getByRole("button", { name: "Save", exact: true }),
   ).toBeEnabled();
+  await openPages(page);
   await pageButtons(page).nth(targetIndex).click();
+  await page.getByRole("button", { name: /Templates/ }).click();
   const draft = page
     .locator(".template-version-list > section")
     .filter({ hasText: "draft" })
     .first();
   await draft.getByRole("button", { name: "Open Draft", exact: true }).click();
-  await expect.poll(() => activePageIndex(page)).toBe(0);
+  await expect(page.locator(".stage-topline span").first()).toHaveText(
+    sampleTemplate.pages[0]!.name,
+  );
 });
 
 test("image shadow and independent corners persist, with a live radius handle", async ({
@@ -121,9 +129,10 @@ test("image shadow and independent corners persist, with a live radius handle", 
     "24px",
   );
 
-  await openTemplates(page);
+  await openPages(page);
   await topbar(page).getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.locator(".canvas-element.is-selected")).toHaveCount(1);
+  await page.getByRole("button", { name: /Templates/ }).click();
   const activeDraft = page
     .locator(".template-version-list > section.active")
     .filter({ hasText: "draft" });
@@ -298,7 +307,7 @@ test("table edit mode applies a text shadow only to the targeted header cell", a
 }) => {
   await page.goto("/", { waitUntil: "load" });
   await ensureDraft(page);
-  await openTemplates(page);
+  await openPages(page);
   await page.getByRole("button", { name: "Overall Market Table" }).click();
   const table = page.getByTestId("submarket-matrix");
   await expect(table).toBeVisible();

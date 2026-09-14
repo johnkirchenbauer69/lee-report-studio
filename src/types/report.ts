@@ -489,5 +489,6 @@ export interface ValidationItem {
   category?: "data" | "design" | "export";
   message: string;
   elementId?: string;
+  pageId?: string;
   path?: string;
 }

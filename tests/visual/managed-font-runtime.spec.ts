@@ -54,7 +54,7 @@ test("managed Nunito Sans resolves, loads, and never exposes a raw CSS family te
     "14/14 loaded",
     { timeout: 30_000 },
   );
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page
@@ -128,7 +128,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
       }),
     ).toHaveCount(0);
 
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page
