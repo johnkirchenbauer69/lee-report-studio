@@ -45,6 +45,8 @@ export interface DropShadow {
   offsetY: number;
   blur: number;
   opacity: number;
+  /** Optional; only meaningful for a container box-shadow, not a text-shadow. */
+  spread?: number;
 }
 
 export interface BevelStyle {
@@ -236,9 +238,22 @@ export interface TableElement extends BaseElement {
   rowHeight?: number;
   headerStyle?: TableCellStyle;
   bodyStyle?: TableCellStyle;
+  /** Text-shadow-capable styling for rows whose rowKindPath value is "total". */
+  totalStyle?: TableCellStyle;
   /** Managed typography for the row-integrated LEE DEAL transaction badge. */
   transactionChipStyle?: TableCellStyle;
   cellStyles?: Record<string, TableCellStyle>;
+  /** Raised/inset surface treatment for the header row. Reuses BevelStyle as-is. */
+  headerBevel?: BevelStyle;
+  /** Rounds only the header's true outer corners; never per-cell, never internal. */
+  headerCornerRadius?: number;
+  /**
+   * Id of a sibling shape element (e.g. a "TOP LEASES" side ribbon) that
+   * should be treated as a continuation of this table's header surface: the
+   * ribbon and header share headerBevel/headerCornerRadius and the edge
+   * where they touch is rendered seamlessly (see engine/tableHeaderGroup.ts).
+   */
+  headerRibbonId?: string;
 }
 
 export interface ChartElement extends BaseElement {

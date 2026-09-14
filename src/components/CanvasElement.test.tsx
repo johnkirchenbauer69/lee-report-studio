@@ -311,6 +311,227 @@ describe("CanvasElement effects", () => {
     expect(markup).toContain('fill="#c4123f"');
     expect(markup).toContain("M0 0 L100 0 L100 50 L0 50 Z");
   });
+
+  it("renders the shared shadow model as one box-shadow around the whole table container, never per-cell", () => {
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={{ ...table, style: { shadow } }}
+        elements={[{ ...table, style: { shadow } }]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    expect(markup.match(/box-shadow:-3px 5px 8px rgba\(18, 52, 86, 0.4\)/g)).toHaveLength(1);
+  });
+
+  it("applies totals text shadow only to rows whose kind is total", () => {
+    const totalsTable: TableElement = {
+      ...table,
+      variant: "market-matrix",
+      rowKindPath: "kind",
+      totalStyle: { shadow },
+      columns: [{ key: "party", label: "SUBMARKET", path: "party" }],
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={totalsTable}
+        elements={[totalsTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{
+          rows: [
+            { party: "North Cook", kind: "detail" },
+            { party: "Total", kind: "total" },
+          ],
+        }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    expect(markup).toContain('class="row-total"');
+    expect(markup.match(/text-shadow:-3px 5px 8px rgba\(18, 52, 86, 0.4\)/g)).toHaveLength(1);
+  });
+
+  it("applies a header bevel and outer-corner radius to the header row only, with no per-cell shadow on the body", () => {
+    const bevel = {
+      enabled: true,
+      size: 3,
+      direction: "raised" as const,
+      highlightColor: "#ffffff",
+      highlightOpacity: 0.5,
+      shadowColor: "#000000",
+      shadowOpacity: 0.25,
+    };
+    const beveledTable: TableElement = {
+      ...table,
+      headerBevel: bevel,
+      headerCornerRadius: 6,
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={beveledTable}
+        elements={[beveledTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    // Standalone header: both outer corners round; internal seams never do.
+    expect(markup).toContain("border-radius:6px 0px 0 0");
+    expect(markup).toContain("border-radius:0px 6px 0 0");
+    // Every header cell gets the same top/bottom-only edge bevel — no
+    // left/right edge shadow, so adjacent cells never show a seam.
+    expect(markup.match(/inset 0 3px 3px -3px rgba\(255, 255, 255, 0.5\)/g)).toHaveLength(2);
+    expect(markup.match(/inset -?3px 0/g)).toBeNull();
+    // The bevel must never reach the body cells.
+    const [, bodyMarkup] = markup.split("</thead>");
+    expect(bodyMarkup).not.toContain("inset");
+  });
+
+  it("disables header bevel and corner radius by default (backward compatible)", () => {
+    const markup = renderElement({ ...table });
+    expect(markup).not.toContain("inset");
+  });
+});
+
+describe("CanvasElement Top Leases / Top Sales continuous header group", () => {
+  const bevel = {
+    enabled: true,
+    size: 3,
+    direction: "raised" as const,
+    highlightColor: "#ffffff",
+    highlightOpacity: 0.5,
+    shadowColor: "#000000",
+    shadowOpacity: 0.25,
+  };
+  const ribbon: ReportElement = {
+    id: "leases-side-bg",
+    type: "shape",
+    name: "Section Side Bar",
+    x: 32,
+    y: 0,
+    width: 23,
+    height: 114,
+    style: { background: "#7a0d26" },
+  };
+  const groupedTable: TableElement = {
+    id: "top-leases-table",
+    type: "table",
+    name: "Top Leases",
+    x: 55,
+    y: 0,
+    width: 729,
+    height: 114,
+    sourcePath: "rows",
+    variant: "transactions",
+    headerRibbonId: "leases-side-bg",
+    headerBevel: bevel,
+    headerCornerRadius: 6,
+    columns: [
+      { key: "party", label: "TENANT", path: "party" },
+      { key: "type", label: "LEASE TYPE", path: "type" },
+    ],
+    style: {},
+  };
+  const elements = [ribbon, groupedTable];
+
+  const renderIn = (element: ReportElement) =>
+    renderToStaticMarkup(
+      <CanvasElement
+        element={element}
+        elements={elements}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+
+  it("suppresses the corner and edge shared with the ribbon on the table's first header cell", () => {
+    const markup = renderIn(groupedTable);
+    // Outer corner (top-right) still rounds; the ribbon-adjacent corner
+    // (top-left of the first cell) never appears as a rounded value.
+    expect(markup).toContain("border-radius:0px 6px 0 0");
+    expect(markup).not.toContain("border-radius:6px 0px 0 0");
+    expect(markup).not.toContain("border-radius:6px 6px 0 0");
+  });
+
+  it("gives the linked ribbon the header's bevel with the shared right edge and corner suppressed", () => {
+    const markup = renderIn(ribbon);
+    // Outer corners (top-left, bottom-left, bottom-right) round; the corner
+    // touching the header (top-right) stays square.
+    expect(markup).toContain("border-radius:6px 0 6px 6px");
+    // Top and left (outer) edges present; right (shared/internal) absent.
+    expect(markup).toContain("inset 0 3px"); // top highlight
+    expect(markup).toContain("inset 3px 0"); // left highlight
+    expect(markup).toContain("inset 0 -3px"); // bottom shadow
+    expect(markup).not.toMatch(/inset -3px 0/); // right edge suppressed
+  });
+
+  it("does not distort the ribbon's own background fill or an unrelated unlinked shape", () => {
+    const markup = renderIn(ribbon);
+    expect(markup).toContain("background:#7a0d26");
+
+    const unlinked: ReportElement = {
+      ...ribbon,
+      id: "unrelated-shape",
+      style: { background: "#123456", bevel: { ...bevel, size: 2 } },
+    };
+    const own = renderToStaticMarkup(
+      <CanvasElement
+        element={unlinked}
+        elements={[unlinked, groupedTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{}}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    // An unlinked shape keeps its own independent bevel untouched.
+    expect(own).toContain("inset 2px 2px 2px rgba(255, 255, 255, 0.5)");
+  });
 });
 
 describe("CanvasElement report semantics", () => {

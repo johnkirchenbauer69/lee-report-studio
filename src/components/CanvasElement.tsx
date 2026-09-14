@@ -31,6 +31,13 @@ import {
   type CornerKey,
 } from "../engine/corners";
 import { shapePathToSvg } from "../engine/shapeUnion";
+import {
+  findLinkedTable,
+  headerCellBoxShadow,
+  headerCellCornerRadius,
+  resolveHeaderGroup,
+  ribbonGroupStyle,
+} from "../engine/tableHeaderGroup";
 import type { ManualOverride } from "../report-engine/schema/generation";
 import { resolveOverviewPageTarget } from "../report-engine/navigation/pageNavigation";
 
@@ -60,6 +67,19 @@ interface Props {
   pages?: readonly ReportPage[];
   onNavigatePage?: (pageId: string) => void;
 }
+
+/**
+ * tableStyle() below always sets every output CSS key, some to `undefined`.
+ * Spreading several `tableStyle(...)` calls in increasing-specificity order
+ * (element -> column -> row-kind -> per-cell) would let a later, unset
+ * layer's explicit `undefined` wipe out an earlier layer's real value.
+ * Merging the raw TableCellStyle objects first — where an unset field is
+ * simply absent, not present-and-undefined — avoids that, regardless of how
+ * many layers are combined.
+ */
+const mergeCellStyle = (
+  ...styles: (TableCellStyle | undefined)[]
+): TableCellStyle => Object.assign({}, ...styles);
 
 const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
   fontFamily: style?.fontFamily
@@ -340,6 +360,18 @@ export function CanvasElement(props: Props) {
     element.height,
   );
   const isPath = element.type === "shape" && element.shape === "path";
+  // A shape can be linked as another table's continuous header ribbon (see
+  // engine/tableHeaderGroup.ts). Linking only overrides what the linking
+  // table has actually configured — an unconfigured aspect falls back to
+  // the shape's own independent styling, so linking never blanks it out.
+  const linkedTable =
+    element.type === "shape" ? findLinkedTable(element, elements) : undefined;
+  const ribbonSide = linkedTable
+    ? resolveHeaderGroup(linkedTable, elements)?.side
+    : undefined;
+  const ribbonOverride = ribbonSide
+    ? ribbonGroupStyle(linkedTable!.headerBevel, linkedTable!.headerCornerRadius, ribbonSide)
+    : undefined;
   const style: React.CSSProperties = {
     position: "absolute",
     left: element.x,
@@ -353,7 +385,7 @@ export function CanvasElement(props: Props) {
     borderRadius:
       element.type === "shape" && element.shape === "circle"
         ? "50%"
-        : cornerRadiiToCss(radii),
+        : (ribbonOverride?.borderRadius ?? cornerRadiiToCss(radii)),
     background: isPath
       ? "transparent"
       : fillToCss(element.style.fill, element.style.background),
@@ -385,13 +417,14 @@ export function CanvasElement(props: Props) {
         ? dropShadowToCss(element.style.shadow)
         : undefined,
     boxShadow:
-      element.type === "shape" || element.type === "image"
+      element.type === "shape" || element.type === "image" || element.type === "table"
         ? isPath
           ? undefined
-          : elementBoxShadowToCss(
+          : (ribbonOverride?.boxShadow ??
+            elementBoxShadowToCss(
               element.style.shadow,
               element.type === "shape" ? element.style.bevel : undefined,
-            )
+            ))
         : undefined,
     cursor: element.locked ? "not-allowed" : "move",
     ...strokeStyle(element),
@@ -673,6 +706,8 @@ export function CanvasElement(props: Props) {
       }
       return formatted;
     };
+    const headerGroup = resolveHeaderGroup(element, elements);
+    const headerBoxShadow = headerCellBoxShadow(element.headerBevel);
     content = (
       <table className={`report-table table-${element.variant ?? "default"}`}>
         <colgroup>
@@ -700,9 +735,14 @@ export function CanvasElement(props: Props) {
                       : undefined
                 }
                 style={{
-                  ...tableStyle(element.headerStyle),
-                  ...tableStyle(c.headerStyle),
+                  ...tableStyle(mergeCellStyle(element.headerStyle, c.headerStyle)),
                   textAlign: c.align,
+                  boxShadow: headerBoxShadow,
+                  borderRadius: headerCellCornerRadius(
+                    element.headerCornerRadius,
+                    { isFirst: column === 0, isLast: column === element.columns.length - 1 },
+                    headerGroup,
+                  ),
                 }}
                 onPointerDown={
                   props.tableEditing
@@ -732,14 +772,14 @@ export function CanvasElement(props: Props) {
               </td>
             </tr>
           ) : (
-            arr.map((row, i) => (
+            arr.map((row, i) => {
+              const rowKind = element.rowKindPath
+                ? String(getByPath(row, element.rowKindPath))
+                : undefined;
+              return (
               <tr
                 key={i}
-                className={
-                  element.rowKindPath
-                    ? `row-${String(getByPath(row, element.rowKindPath))}`
-                    : undefined
-                }
+                className={rowKind ? `row-${rowKind}` : undefined}
               >
                 {element.columns.map((c, column) => (
                   <td
@@ -758,10 +798,13 @@ export function CanvasElement(props: Props) {
                           : undefined
                     }
                     style={{
-                      ...tableStyle(element.bodyStyle),
-                      ...tableStyle(c.bodyStyle),
                       ...tableStyle(
-                        element.cellStyles?.[`body:${i}:${column}`],
+                        mergeCellStyle(
+                          element.bodyStyle,
+                          c.bodyStyle,
+                          rowKind === "total" ? element.totalStyle : undefined,
+                          element.cellStyles?.[`body:${i}:${column}`],
+                        ),
                       ),
                       textAlign: c.align,
                       height: element.rowHeight,
@@ -818,7 +861,8 @@ export function CanvasElement(props: Props) {
                   </td>
                 ))}
               </tr>
-            ))
+              );
+            })
           )}
         </tbody>
       </table>
