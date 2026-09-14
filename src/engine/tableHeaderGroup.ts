@@ -83,6 +83,29 @@ export function headerCellCornerRadius(
 }
 
 /**
+ * Top-left/top-right radius for the table's own header-clip WRAPPER (see
+ * CanvasElement's table rendering) -- the same values `headerCellCornerRadius`
+ * would use for the first/last header <th>, but computed once for the whole
+ * header perimeter rather than per cell, and only ever touching the two top
+ * corners (bottom stays square, matching the existing per-cell behavior).
+ * Returns undefined when there is nothing to round (radius unset/0), so
+ * callers can skip rendering the wrapper entirely and keep the unrounded
+ * path byte-for-byte identical to before this wrapper existed.
+ */
+export function headerWrapperCornerRadii(
+  radius: number | undefined,
+  group?: HeaderGroup,
+): { topLeft: number; topRight: number } | undefined {
+  if (!radius) return undefined;
+  const topLeftSuppressed = group?.side === "left";
+  const topRightSuppressed = group?.side === "right";
+  return {
+    topLeft: topLeftSuppressed ? 0 : radius,
+    topRight: topRightSuppressed ? 0 : radius,
+  };
+}
+
+/**
  * Box-shadow and border-radius to apply to a ribbon shape while it is
  * linked as a table's header ribbon. The edge and corner shared with the
  * header are suppressed so the two elements read as one continuous raised

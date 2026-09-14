@@ -7,6 +7,7 @@ import {
   bevelToCss,
   elementBoxShadowToCss,
   directionalBevelToCss,
+  directionalDropShadowToCss,
 } from "./effects";
 
 describe("element drop shadows", () => {
@@ -110,5 +111,55 @@ describe("directionalBevelToCss", () => {
     const css = directionalBevelToCss({ ...bevel, direction: "inset" });
     expect(css).toContain("inset 0 3px 3px -3px rgba(0, 0, 0, 0.25)"); // top now shadow
     expect(css).toContain("inset 0 -3px 3px -3px rgba(255, 255, 255, 0.5)"); // bottom now highlight
+  });
+});
+
+describe("directionalDropShadowToCss", () => {
+  const shadow = {
+    enabled: true,
+    color: "#000000",
+    offsetX: 0,
+    offsetY: 3,
+    blur: 4,
+    opacity: 0.3,
+  };
+
+  it("is undefined when disabled or when blur+spread are both zero", () => {
+    expect(directionalDropShadowToCss({ ...shadow, enabled: false })).toBeUndefined();
+    expect(directionalDropShadowToCss({ ...shadow, blur: 0, spread: 0 })).toBeUndefined();
+    expect(directionalDropShadowToCss()).toBeUndefined();
+  });
+
+  it("paints only the bottom edge for a positive offsetY, never left/right", () => {
+    const css = directionalDropShadowToCss(shadow)!;
+    expect(css).toContain("inset 0 -4px 4px -4px rgba(0, 0, 0, 0.3)");
+    expect(css).not.toMatch(/inset 0 4px/); // no top band
+    expect(css).not.toMatch(/inset -?4px 0/); // no left/right seam contribution
+  });
+
+  it("paints only the top edge for a negative offsetY", () => {
+    const css = directionalDropShadowToCss({ ...shadow, offsetY: -3 })!;
+    expect(css).toContain("inset 0 4px 4px -4px rgba(0, 0, 0, 0.3)");
+    expect(css).not.toMatch(/inset 0 -4px/);
+  });
+
+  it("paints both top and bottom bands when offsetY is exactly zero", () => {
+    const css = directionalDropShadowToCss({ ...shadow, offsetY: 0 })!;
+    expect(css).toContain("inset 0 4px 4px -4px rgba(0, 0, 0, 0.3)");
+    expect(css).toContain("inset 0 -4px 4px -4px rgba(0, 0, 0, 0.3)");
+  });
+
+  it("never paints left/right unless the caller explicitly allows it", () => {
+    const withSides = directionalDropShadowToCss(
+      { ...shadow, offsetX: 2 },
+      { top: true, bottom: true, left: true, right: true },
+    )!;
+    expect(withSides).toMatch(/inset -4px 0/); // right allowed + offsetX >= 0
+    expect(withSides).not.toMatch(/inset 4px 0/); // left suppressed by offsetX sign
+  });
+
+  it("combines blur and spread into one edge size", () => {
+    const css = directionalDropShadowToCss({ ...shadow, blur: 2, spread: 3 })!;
+    expect(css).toContain("inset 0 -5px 5px -5px");
   });
 });
