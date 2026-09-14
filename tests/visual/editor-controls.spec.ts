@@ -4,7 +4,7 @@ test("text vertical alignment and color controls update the canvas", async ({
   page,
 }) => {
   await page.goto("/", { waitUntil: "load" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page
@@ -108,7 +108,7 @@ const readRotation = (locator: import("@playwright/test").Locator) =>
 
 async function selectTopAvailabilities(page: Page) {
   await page.goto("/", { waitUntil: "load" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
   await page.getByRole("button", { name: "Elements" }).click();
@@ -220,7 +220,7 @@ test("structured tables support real-mouse selection, edit mode, cell and column
   page,
 }) => {
   await page.goto("/", { waitUntil: "load" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Overall Market Table" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
 
@@ -268,7 +268,7 @@ test("Market Indicators, Top Leases, and Top Sales are real-mouse selectable str
   page,
 }) => {
   await page.goto("/", { waitUntil: "load" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Overview" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
   const stage = page.locator(".stage");

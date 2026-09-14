@@ -32,13 +32,20 @@ async function approvedFixture(text: (name: string) => string) {
   return instance;
 }
 
-test("approved narrative fixtures render through Chromium across the 44-page architecture", async ({ request }) => {
+test("approved narrative fixtures render through Chromium across the 44-page architecture", async ({
+  request,
+}) => {
   test.setTimeout(120_000);
   const instance = await approvedFixture(
-    (name) => `${name} maintained balanced industrial fundamentals during the quarter, with the governed metrics and publication-safe transactions informing the market narrative.`,
+    (name) =>
+      `${name} maintained balanced industrial fundamentals during the quarter, with the governed metrics and publication-safe transactions informing the market narrative.`,
   );
   expect(instance.pages).toHaveLength(44);
-  expect(instance.dataSnapshot.submarketDetails.every((item) => item.narrative.length > 0)).toBe(true);
+  expect(
+    instance.dataSnapshot.submarketDetails.every(
+      (item) => item.narrative.length > 0,
+    ),
+  ).toBe(true);
   const response = await request.post("/api/render/pdf", {
     data: {
       template: { ...sampleTemplate, pages: instance.pages },
@@ -51,9 +58,13 @@ test("approved narrative fixtures render through Chromium across the 44-page arc
   expect(pdf.getPageCount()).toBe(44);
 });
 
-test("Chromium publication rendering blocks a narrative that exceeds its actual box", async ({ request }) => {
+test("Chromium publication rendering preserves clipping for an overflowing narrative", async ({
+  request,
+}) => {
   test.setTimeout(120_000);
-  const instance = await approvedFixture(() => Array(800).fill("overflow").join(" "));
+  const instance = await approvedFixture(() =>
+    Array(800).fill("overflow").join(" "),
+  );
   const response = await request.post("/api/render/pdf", {
     data: {
       template: { ...sampleTemplate, pages: instance.pages },
@@ -61,6 +72,7 @@ test("Chromium publication rendering blocks a narrative that exceeds its actual 
       title: "Overflow narrative fixture",
     },
   });
-  expect(response.status()).toBe(400);
-  expect((await response.json()).error).toContain("Narrative overflow blocks publication");
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const pdf = await PDFDocument.load(await response.body());
+  expect(pdf.getPageCount()).toBe(44);
 });

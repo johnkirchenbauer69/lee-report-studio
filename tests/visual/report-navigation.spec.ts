@@ -50,7 +50,7 @@ test("Overall Market links navigate to stable overview pages without saving", as
   await page.goto("/", { waitUntil: "load" });
   await expect(page.locator(".statusbar")).toContainText("Report saved at");
   await page.waitForTimeout(300);
-  await page.locator(".rail").getByTitle("Templates").click();
+  await page.locator(".rail").getByTitle("Pages").click();
   await expect(page.locator(".page-list > button")).toHaveCount(44);
   const overallTableButton = page
     .locator(".page-list > button")

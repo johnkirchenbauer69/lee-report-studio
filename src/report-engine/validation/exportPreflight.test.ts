@@ -61,6 +61,103 @@ describe("runExportPreflight image content-type check", () => {
     vi.unstubAllGlobals();
   });
 
+  it("reports an off-page element as a warning rather than a blocker", async () => {
+    const issues = await runExportPreflight(
+      templateWith({
+        id: "shape-1",
+        type: "shape",
+        shape: "rectangle",
+        name: "Bleed shape",
+        x: -20,
+        y: 0,
+        width: 100,
+        height: 100,
+        style: {},
+      }),
+    );
+    expect(issues).toContainEqual(
+      expect.objectContaining({ level: "warning", kind: "overflow" }),
+    );
+    expect(issues).not.toContainEqual(
+      expect.objectContaining({ level: "error", kind: "overflow" }),
+    );
+  });
+
+  it("reports an intentionally off-page image as a warning", async () => {
+    const issues = await runExportPreflight(
+      templateWith(
+        imageElement({
+          x: 760,
+          src: "",
+          publicationRequired: false,
+        }),
+      ),
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({ level: "warning", kind: "overflow" }),
+    ]);
+  });
+
+  it("keeps low effective DPI advisory", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("image", {
+            status: 200,
+            headers: { "content-type": "image/png" },
+          }),
+      ),
+    );
+    vi.stubGlobal(
+      "Image",
+      class {
+        naturalWidth = 100;
+        naturalHeight = 100;
+        onload?: () => void;
+        onerror?: () => void;
+        set src(_value: string) {
+          this.onload?.();
+        }
+      },
+    );
+    const issues = await runExportPreflight(
+      templateWith(
+        imageElement({ src: "/image.png", width: 200, height: 200 }),
+      ),
+    );
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        level: "warning",
+        kind: "image",
+        message: expect.stringContaining("effective DPI"),
+      }),
+    );
+  });
+
+  it("blocks invalid document structure", async () => {
+    const template = templateWith({
+      id: "shape-1",
+      type: "shape",
+      shape: "rectangle",
+      name: "Broken shape",
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 100,
+      style: {},
+    });
+    template.pages[0]!.height = 0;
+    const issues = await runExportPreflight(template);
+    expect(issues.filter((issue) => issue.kind === "structure")).toEqual([
+      expect.objectContaining({
+        level: "error",
+        message: expect.stringContaining("invalid page dimensions"),
+      }),
+      expect.objectContaining({ level: "error", elementId: "shape-1" }),
+    ]);
+  });
+
   it.each([undefined, "", "   "])(
     "blocks a visible required image with source %p",
     async (src) => {
@@ -137,7 +234,7 @@ describe("runExportPreflight image content-type check", () => {
     );
   });
 
-  it("blocks an unavailable managed Nunito Sans face instead of accepting fallback", async () => {
+  it("warns when a managed Nunito Sans face is unavailable and fallback will render", async () => {
     vi.stubGlobal("document", {
       fonts: { check: vi.fn(() => true) },
     });
@@ -170,7 +267,7 @@ describe("runExportPreflight image content-type check", () => {
     );
     expect(issues).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         kind: "font",
         message: expect.stringContaining("face is unavailable"),
       }),
@@ -219,7 +316,7 @@ describe("runExportPreflight image content-type check", () => {
     );
   });
 
-  it("still blocks a checksum-changed managed face", async () => {
+  it("warns about a checksum-changed managed face", async () => {
     vi.stubGlobal("document", {
       fonts: { check: vi.fn(() => true) },
     });
@@ -257,7 +354,7 @@ describe("runExportPreflight image content-type check", () => {
     );
     expect(issues).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         kind: "font",
         message: expect.stringContaining("missing or changed managed font"),
       }),
@@ -300,7 +397,7 @@ describe("runExportPreflight image content-type check", () => {
     chart.chartStyle.fontChecksum = "changed";
     expect(await runExportPreflight(templateWith(chart, [semibold]))).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         kind: "font",
         message: expect.stringContaining("missing or changed"),
       }),
@@ -342,7 +439,7 @@ describe("runExportPreflight image content-type check", () => {
     table.transactionChipStyle.fontChecksum = "stale-checksum";
     expect(await runExportPreflight(templateWith(table, [black]))).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         kind: "font",
         message: expect.stringContaining("missing or changed managed font"),
       }),
@@ -352,14 +449,14 @@ describe("runExportPreflight image content-type check", () => {
     table.transactionChipStyle.fontAssetId = undefined;
     expect(await runExportPreflight(templateWith(table, [black]))).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         kind: "font",
         message: expect.stringContaining("does not pin the available managed"),
       }),
     ]);
   });
 
-  it("blocks a new publication using a retired face but permits immutable historical reproduction", async () => {
+  it("warns on a new publication using a retired face but permits immutable historical reproduction", async () => {
     vi.stubGlobal("document", { fonts: { check: vi.fn(() => true) } });
     const retired = {
       ...managedNunito,
@@ -387,7 +484,7 @@ describe("runExportPreflight image content-type check", () => {
     const template = templateWith(element, [retired]);
     expect(await runExportPreflight(template)).toEqual([
       expect.objectContaining({
-        level: "error",
+        level: "warning",
         message: expect.stringContaining("non-approved managed font Walrus"),
       }),
     ]);

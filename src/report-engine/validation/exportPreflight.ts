@@ -17,9 +17,9 @@ import { validatePublicationImages } from "./publicationImages";
 
 export interface ExportPreflightIssue {
   level: "warning" | "error";
-  kind: "font" | "image" | "overflow";
+  kind: "font" | "image" | "overflow" | "structure";
   pageId: string;
-  elementId: string;
+  elementId?: string;
   message: string;
 }
 
@@ -30,17 +30,35 @@ export async function runExportPreflight(
   const issues: ExportPreflightIssue[] = options.historical
     ? []
     : findNonApprovedFontUsages(template).map((usage) => ({
-        level: "error" as const,
+        level: "warning" as const,
         kind: "font" as const,
         pageId: usage.pageId,
         elementId: usage.elementId,
-        message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); publication is blocked.`,
+        message: `${usage.elementName} uses non-approved managed font ${usage.family} (${usage.status}); review before publication.`,
       }));
   const structuralImageIssues = validatePublicationImages(template);
   issues.push(...structuralImageIssues);
   const structurallyInvalidImages = new Set(
     structuralImageIssues.map((issue) => issue.elementId),
   );
+  for (const page of template.pages) {
+    if (!(page.width > 0) || !(page.height > 0))
+      issues.push({
+        level: "error",
+        kind: "structure",
+        pageId: page.id,
+        message: `${page.name} has invalid page dimensions and cannot be rendered.`,
+      });
+    for (const element of page.elements)
+      if (!(element.width > 0) || !(element.height > 0))
+        issues.push({
+          level: "error",
+          kind: "structure",
+          pageId: page.id,
+          elementId: element.id,
+          message: `${element.name} has invalid dimensions and cannot be rendered.`,
+        });
+  }
   const checkTypography = (
     pageId: string,
     elementId: string,
@@ -78,7 +96,7 @@ export async function runExportPreflight(
         (managed.fontStyle ?? "normal") !== fontStyle)
     )
       issues.push({
-        level: "error",
+        level: "warning",
         kind: "font",
         pageId,
         elementId,
@@ -86,7 +104,7 @@ export async function runExportPreflight(
       });
     else if (expectedManaged && !typography.fontAssetId)
       issues.push({
-        level: "error",
+        level: "warning",
         kind: "font",
         pageId,
         elementId,
@@ -94,7 +112,7 @@ export async function runExportPreflight(
       });
     else if (family === BRAND_FONT_FAMILY && !expectedManaged)
       issues.push({
-        level: "error",
+        level: "warning",
         kind: "font",
         pageId,
         elementId,
@@ -108,7 +126,7 @@ export async function runExportPreflight(
       )
     )
       issues.push({
-        level: managed ? "error" : "warning",
+        level: "warning",
         kind: "font",
         pageId,
         elementId,
@@ -127,7 +145,7 @@ export async function runExportPreflight(
           bounds.y + bounds.height > page.height)
       )
         issues.push({
-          level: "error",
+          level: "warning",
           kind: "overflow",
           pageId: page.id,
           elementId: element.id,

@@ -166,13 +166,18 @@ test("generated unavailable copy remains exactly pinned through publication pref
     await dialog.getByRole("button", { name: "Continue" }).click();
     await dialog.getByRole("button", { name: "Generate Report" }).click();
     await expect(dialog).toHaveCount(0, { timeout: 60_000 });
-    await page.locator(".rail").getByTitle("Templates").click();
+    await page.locator(".rail").getByTitle("Pages").click();
     await expect(page.locator(".page-list > button")).toHaveCount(44);
 
+    await page.getByRole("button", { name: "Export PDF" }).click();
+    const warningDialog = page.getByRole("dialog", {
+      name: "Export PDF with QA warnings",
+    });
+    await expect(warningDialog).toBeVisible();
     const downloadPromise = page.waitForEvent("download", {
       timeout: 120_000,
     });
-    await page.getByRole("button", { name: "Export PDF" }).click();
+    await warningDialog.getByRole("button", { name: "Export anyway" }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).toBeTruthy();

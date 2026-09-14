@@ -14,7 +14,7 @@ async function ensureDraft(page: Page) {
 }
 
 async function selectCoverImage(page: Page) {
-  await page.getByRole("button", { name: "Templates" }).click();
+  await page.getByRole("button", { name: "Pages" }).click();
   await pageButtons(page).filter({ hasText: "Cover" }).first().click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page
@@ -49,14 +49,14 @@ test("crop and table edit modes reset across page navigation and Escape", async 
   await expect(page.locator(".canvas-element.is-selected")).toHaveCount(1);
 
   await clickTransientModeButton(page, "Crop image");
-  await page.getByRole("button", { name: "Templates" }).click();
+  await page.getByRole("button", { name: "Pages" }).click();
   await pageButtons(page).nth(1).click();
   await expect(page.locator(".canvas-element.is-cropping")).toHaveCount(0);
 
   await pageButtons(page).nth(0).click();
   await selectCoverImage(page);
   await clickTransientModeButton(page, "Crop image");
-  await page.getByRole("button", { name: "Templates" }).click();
+  await page.getByRole("button", { name: "Pages" }).click();
   await pageButtons(page).nth(1).click();
   await pageButtons(page).nth(0).click();
   await expect(page.locator(".canvas-element.is-cropping")).toHaveCount(0);
@@ -72,7 +72,7 @@ test("crop and table edit modes reset across page navigation and Escape", async 
     .click();
   await clickTransientModeButton(page, "Edit table");
   await expect(page.locator(".canvas-element.is-table-editing")).toHaveCount(1);
-  await page.getByRole("button", { name: "Templates" }).click();
+  await page.getByRole("button", { name: "Pages" }).click();
   await pageButtons(page).nth(0).click();
   await expect(page.locator(".canvas-element.is-table-editing")).toHaveCount(0);
 
@@ -87,24 +87,22 @@ test("crop and table edit modes reset across page navigation and Escape", async 
     (response) =>
       response.request().method() === "POST" && response.url().endsWith("/new"),
   );
-  await topbar(page)
-    .getByRole("button", { name: "Save as version" })
-    .click();
+  await topbar(page).getByRole("button", { name: "Save as version" }).click();
   expect((await versionResponse).ok()).toBe(true);
   await expect(page.locator(".canvas-element.is-cropping")).toHaveCount(0);
 
   await selectCoverImage(page);
   await clickTransientModeButton(page, "Crop image");
-  await topbar(page).getByRole("button", { name: /Create report/ }).click();
+  await topbar(page)
+    .getByRole("button", { name: /Create report/ })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Create report" });
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Sample data" }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
   await dialog.getByRole("button", { name: "Continue" }).click();
-  await dialog
-    .getByRole("button", { name: "Load & Validate Data" })
-    .click();
+  await dialog.getByRole("button", { name: "Load & Validate Data" }).click();
   await expect(dialog.getByTestId("narrative-workspace")).toBeVisible();
   await dialog.getByRole("button", { name: "Review Report" }).click();
   await dialog.getByRole("button", { name: "Open Report Editor" }).click();

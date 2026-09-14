@@ -15,6 +15,7 @@ async function openTemplatePage(page: Page, version: string, name: string) {
   );
   await card.getByRole("button", { name: "Open Draft" }).click();
   expect((await opened).ok()).toBe(true);
+  await page.locator(".rail").getByTitle("Pages").click();
   await page
     .locator(".page-list")
     .getByRole("button", { name: new RegExp(`${name}$`) })
@@ -303,9 +304,10 @@ test("static page header backgrounds are directly selectable, editable, and pers
       }
       const headerMask = page.getByTestId(`${id}-header-mask`);
       await headerMask.click();
-      await expect(
-        page.locator(".canvas-element.is-selected"),
-      ).toHaveAttribute("data-testid", `${id}-header-mask`);
+      await expect(page.locator(".canvas-element.is-selected")).toHaveAttribute(
+        "data-testid",
+        `${id}-header-mask`,
+      );
 
       const inspector = page.locator("aside.inspector");
       await expect(inspector).toContainText("Native Header Background");
@@ -332,9 +334,10 @@ test("static page header backgrounds are directly selectable, editable, and pers
       // not the now-selectable background sitting behind them.
       const logo = logoId(source, id);
       await page.getByTestId(logo).click();
-      await expect(
-        page.locator(".canvas-element.is-selected"),
-      ).toHaveAttribute("data-testid", logo);
+      await expect(page.locator(".canvas-element.is-selected")).toHaveAttribute(
+        "data-testid",
+        logo,
+      );
     }
 
     const saveResponse = page.waitForResponse(

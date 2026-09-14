@@ -15,6 +15,7 @@ async function openTemplatePage(page: Page, version: string, name: string) {
   );
   await card.getByRole("button", { name: "Open Draft" }).click();
   expect((await opened).ok()).toBe(true);
+  await page.locator(".rail").getByTitle("Pages").click();
   await page
     .locator(".page-list")
     .getByRole("button", { name: new RegExp(`${name}$`) })
