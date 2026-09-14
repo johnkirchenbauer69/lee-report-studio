@@ -1,0 +1,84 @@
+{
+  "contractVersion": "narrative-v2",
+  "qualityFlags": [
+    "limited_driver_context",
+    "limited_transaction_context",
+    "interpretive_statement",
+    "numeric_validation_warning",
+    "entity_validation_warning",
+    "template_opening",
+    "batch_repeated_opening",
+    "metric_dump",
+    "repetitive_sentence_structure",
+    "boilerplate_phrasing",
+    "missing_comparative_context"
+  ],
+  "evidenceClasses": ["direct", "derived", "interpretive"],
+  "contextCategories": [
+    "metric", "trend", "ranking", "driver", "lease", "sale",
+    "availability", "construction", "delivery", "count", "composition",
+    "historical", "concentration", "market_driver"
+  ],
+  "contextSourceTypes": [
+    "Market_Data__c", "Property_Data__c", "Market_Data_Contributor__c",
+    "Report_Data_Service"
+  ],
+  "marketIds": [
+    "overall-market",
+    "central-dupage",
+    "chicago-south",
+    "fox-valley",
+    "i55-corridor",
+    "i57-corridor",
+    "i80-joliet",
+    "i88-corridor",
+    "lake-county",
+    "north-cook",
+    "north-dupage",
+    "north-kane",
+    "northwest-cook",
+    "northwest-indiana",
+    "ohare",
+    "south-cook",
+    "southeast-wisconsin",
+    "southwest-cook",
+    "west-cook"
+  ],
+  "requiredSubmitFields": [
+    "marketId",
+    "narrative",
+    "claims",
+    "contextKeysUsed",
+    "qualityFlags",
+    "promptVersion"
+  ],
+  "requiredClaimFields": ["claim", "supportKeys", "evidenceClass"],
+  "limits": {
+    "narrativeCharacters": 5000,
+    "claims": 16,
+    "claimCharacters": 1000,
+    "supportKeysPerClaim": 12,
+    "contextKeyCharacters": 160,
+    "contextKeysUsed": 40,
+    "qualityFlags": 8
+  },
+  "profiles": {
+    "overall": {
+      "version": "overall-market-v2",
+      "targetMinWords": 225,
+      "targetMaxWords": 325,
+      "hardMaxWords": 375,
+      "targetParagraphsMin": 3,
+      "targetParagraphsMax": 5
+    },
+    "submarket": {
+      "version": "submarket-v2",
+      "targetMinWords": 160,
+      "targetMaxWords": 230,
+      "hardMaxWords": 275,
+      "targetParagraphsMin": 2,
+      "targetParagraphsMax": 4
+    }
+  },
+  "paragraphValidation": "advisory"
+}

@@ -5,6 +5,10 @@ import {
   narrativeHandoffPrompt,
   type NarrativeMcpSession,
 } from "./NarrativeMcpBridgeClient.ts";
+import {
+  NARRATIVE_OUTPUT_CONTRACT_VERSION,
+  NARRATIVE_PROMPT_PROFILES,
+} from "../../src/report-engine/narratives/schema.ts";
 
 const ALL_TOOLS = [
   ...REQUIRED_NARRATIVE_MCP_TOOLS.map((name) => ({ name })),
@@ -16,7 +20,12 @@ const context = (marketId: string) => ({
   marketName: marketId,
   marketKind: "submarket" as const,
   period: "2026 Q2",
-  promptVersion: "submarket-v1",
+  promptVersion:
+    NARRATIVE_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"].version,
+  outputContractVersion: NARRATIVE_OUTPUT_CONTRACT_VERSION,
+  promptProfile: {
+    ...NARRATIVE_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"],
+  },
   contextHash: `hash-${marketId}`,
   facts: [
     {
@@ -132,6 +141,7 @@ describe("NarrativeMcpBridgeClient", () => {
           market_ids: ["overall-market", "ohare"],
           created_at: "2026-09-03T12:00:00.000Z",
           expires_at: "2026-09-03T14:00:00.000Z",
+          output_contract_version: NARRATIVE_OUTPUT_CONTRACT_VERSION,
         },
       },
     });
@@ -155,6 +165,7 @@ describe("NarrativeMcpBridgeClient", () => {
       report_instance_id: "report-1",
       generation_scope: "selected",
       market_ids: ["overall-market", "ohare"],
+      output_contract_version: NARRATIVE_OUTPUT_CONTRACT_VERSION,
     });
     expect((calls[0]!.args.contexts as unknown[])).toHaveLength(2);
   });
@@ -171,6 +182,7 @@ describe("NarrativeMcpBridgeClient", () => {
           narrative_count: 1,
           period: "2026 Q2",
           context_hashes: { ohare: "hash-ohare" },
+          output_contract_version: NARRATIVE_OUTPUT_CONTRACT_VERSION,
         },
       },
     });
@@ -189,6 +201,7 @@ describe("NarrativeMcpBridgeClient", () => {
           status: "complete",
           required_market_ids: ["ohare"],
           completed_at: "2026-09-03T12:30:00.000Z",
+          output_contract_version: NARRATIVE_OUTPUT_CONTRACT_VERSION,
           narratives: [
             {
               marketId: "ohare",
@@ -196,7 +209,7 @@ describe("NarrativeMcpBridgeClient", () => {
               claims: [],
               contextKeysUsed: [],
               qualityFlags: [],
-              promptVersion: "submarket-v1",
+              promptVersion: "submarket-v2",
             },
           ],
         },
@@ -218,6 +231,37 @@ describe("NarrativeMcpBridgeClient", () => {
       },
     });
     await expect(client.getJob("job-9")).rejects.toThrow(/has expired/);
+  });
+
+  it("preserves stable structured remote error codes", async () => {
+    const { client } = fakeBridge({
+      results: {
+        get_report_studio_narrative_job: {
+          ok: false,
+          code: "PROMPT_VERSION_MISMATCH",
+          error: "The submitted prompt version is stale.",
+        },
+      },
+    });
+    await expect(client.getJob("job-9")).rejects.toThrow(
+      /PROMPT_VERSION_MISMATCH: The submitted prompt version is stale/,
+    );
+  });
+
+  it("fails closed when the remote omits or changes the contract version", async () => {
+    const { client } = fakeBridge({
+      results: {
+        get_report_studio_narrative_job: {
+          ok: true,
+          job_id: "job-old",
+          status: "claimed",
+          output_contract_version: "narrative-v1",
+        },
+      },
+    });
+    await expect(client.getJob("job-old")).rejects.toThrow(
+      /UNSUPPORTED_NARRATIVE_CONTRACT_VERSION.*narrative-v2.*narrative-v1/,
+    );
   });
 
   it("retries once on a dropped session, then reports the bridge unavailable", async () => {
@@ -247,6 +291,9 @@ describe("NarrativeMcpBridgeClient", () => {
     expect(prompt).toMatch(/no repetitive template/i);
     expect(prompt).toMatch(/no internal system, salesforce, ascendix/i);
     expect(prompt).toMatch(/no unsupported causal claims/i);
+    expect(prompt).toMatch(/marketId, narrative, claims/i);
+    expect(prompt).toMatch(/evidenceClass/i);
+    expect(prompt).toMatch(/GET the same job again/i);
   });
 
   it("bans em dashes and formulaic rhetorical phrasing in the handoff contract", () => {

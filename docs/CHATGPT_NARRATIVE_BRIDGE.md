@@ -65,6 +65,30 @@ which strips server-only `internalSourceIds` and throws on any raw Salesforce
 identifier — and sent with job metadata, prompt versions, and any editorial
 instruction. The full `ReportInstance` is never sent.
 
+Every job carries `output_contract_version: "narrative-v2"`. Every public
+context carries the same `outputContractVersion` and a governed
+`promptProfile`. Overall Market targets 225–325 words across 3–5 short
+paragraphs with a 375-word hard maximum; submarkets target 160–230 words across
+2–4 short paragraphs with a 275-word hard maximum. Paragraph counts are
+editorial guidance, while the hard word maximum is enforced. There is no
+single-paragraph requirement.
+
+The complete per-market submission shape is `marketId`, `narrative`, `claims`,
+`contextKeysUsed`, `qualityFlags`, and `promptVersion`. Every claim requires
+`claim`, `supportKeys`, and `evidenceClass` (`direct`, `derived`, or
+`interpretive`). The current quality flags are
+`limited_driver_context`, `limited_transaction_context`,
+`interpretive_statement`, `numeric_validation_warning`,
+`entity_validation_warning`, `template_opening`, `batch_repeated_opening`,
+`metric_dump`, `repetitive_sentence_structure`, `boilerplate_phrasing`, and
+`missing_comparative_context`.
+
+The canonical machine-readable artifact is
+`contracts/report-studio-narrative-contract-v2.json`. A regression test compares
+it with the runtime schema, profiles, and market registry. The MCP pins the
+same artifact and rejects unknown versions, so a future incompatible change
+cannot silently fall back to old rules.
+
 Approved and edited narratives are held back by default, so a batch can never
 silently overwrite reviewed work. Per-market Generate/Regenerate uses the same
 job mechanism with `generation_scope: "selected"` and a single market.
@@ -136,6 +160,15 @@ GET /api/report-instances/:id/narratives/external-job
 
 which polls the remote MCP and imports the batch as soon as it is available.
 The browser never implements an MCP session.
+
+ChatGPT's verified sequence is GET job -> generate every requested market ->
+SUBMIT one complete batch -> GET the same job again. It must see
+`status: "complete"` and matching `expected_narratives` /
+`accepted_narratives` before representing the job as complete. Successful
+submit and readback include empty `missing_market_ids` and
+`rejected_market_ids`; domain failures carry stable error codes and actionable
+market-level metadata. MCP SDK/Zod input-shape failures remain distinguishable
+as protocol input-validation errors.
 
 ## Testing
 

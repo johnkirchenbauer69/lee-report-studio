@@ -175,8 +175,38 @@ try {
       narratives: jobPayload.contexts.map(deterministicNarrative),
     },
   });
-  const submitPayload = submitted.structuredContent as { ok: boolean; error?: string; narratives_received?: number };
+  const submitPayload = submitted.structuredContent as {
+    ok: boolean;
+    error?: string;
+    status?: string;
+    expected_narratives?: number;
+    accepted_narratives?: number;
+  };
   if (!submitPayload?.ok) throw new Error(`submit batch failed: ${submitPayload?.error}`);
+  if (
+    submitPayload.status !== "complete" ||
+    submitPayload.expected_narratives !== 19 ||
+    submitPayload.accepted_narratives !== 19
+  )
+    throw new Error("submit batch did not return exact completion metadata.");
+
+  const verified = await chatgpt.callTool({
+    name: "get_report_studio_narrative_job",
+    arguments: { job_id: job.jobId },
+  });
+  const verifiedPayload = verified.structuredContent as {
+    status?: string;
+    narratives?: unknown[];
+    expected_narratives?: number;
+    accepted_narratives?: number;
+  };
+  if (
+    verifiedPayload.status !== "complete" ||
+    verifiedPayload.narratives?.length !== 19 ||
+    verifiedPayload.expected_narratives !== 19 ||
+    verifiedPayload.accepted_narratives !== 19
+  )
+    throw new Error("post-submit GET did not verify the complete 19-market batch.");
   await chatgpt.close();
 
   // 4. Report Studio polls, detects completion, and imports through its own

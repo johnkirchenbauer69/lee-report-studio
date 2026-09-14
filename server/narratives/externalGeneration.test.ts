@@ -63,6 +63,7 @@ class FakeNarrativeMcp {
               market_ids: args.market_ids,
               created_at: new Date().toISOString(),
               expires_at: new Date(Date.now() + 7_200_000).toISOString(),
+              output_contract_version: args.output_contract_version,
             },
           };
         }
@@ -89,6 +90,7 @@ class FakeNarrativeMcp {
               status: this.status,
               required_market_ids: job.marketIds,
               narrative_count: (job.marketIds as string[]).length,
+              output_contract_version: "narrative-v2",
               context_hashes: Object.fromEntries(
                 contexts.map((context) => [
                   context.marketId,

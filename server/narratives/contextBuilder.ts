@@ -4,6 +4,7 @@ import {
 } from "../../src/shared/salesforceIds.ts";
 import { sanitizePublicationEntity } from "../../src/shared/publicationEntitySafety.ts";
 import {
+  NARRATIVE_OUTPUT_CONTRACT_VERSION,
   NARRATIVE_PROMPT_PROFILES,
   type NarrativeContext,
   type NarrativeContextCategory,
@@ -1007,6 +1008,12 @@ export function publicNarrativeContext(
 ): PublicNarrativeContext {
   const output = {
     ...context,
+    outputContractVersion: NARRATIVE_OUTPUT_CONTRACT_VERSION,
+    promptProfile: {
+      ...NARRATIVE_PROMPT_PROFILES[
+        context.marketKind === "overall" ? "overall" : "submarket"
+      ],
+    },
     facts: context.facts.map(({ internalSourceIds: _ids, ...item }) => item),
   };
   const inspect = (value: unknown, path = "narrative context") => {

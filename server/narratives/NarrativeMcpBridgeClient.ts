@@ -3,6 +3,7 @@ import type {
   NarrativeQualityFlag,
   PublicNarrativeContext,
 } from "../../src/report-engine/narratives/schema.ts";
+import { NARRATIVE_OUTPUT_CONTRACT_VERSION } from "../../src/report-engine/narratives/schema.ts";
 
 /**
  * Server-side MCP client for the LEE Intelligence narrative bridge.
@@ -45,6 +46,7 @@ export interface NarrativeMcpJobSummary {
   marketIds: string[];
   createdAt: string;
   expiresAt: string;
+  outputContractVersion: string;
 }
 
 export interface NarrativeMcpSubmittedNarrative {
@@ -78,6 +80,7 @@ export interface CreateNarrativeMcpJobInput {
   editorialInstruction?: string;
   contexts: PublicNarrativeContext[];
   idempotencyKey?: string;
+  outputContractVersion?: string;
 }
 
 /** Minimal MCP surface this client needs. Injectable so tests never dial out. */
@@ -242,7 +245,11 @@ export class NarrativeMcpBridgeClient {
     if (result.isError || payload.ok === false)
       throw new Error(
         friendlyBridgeError(
-          new Error(string(payload.error, `The ${name} request failed.`)),
+          new Error(
+            payload.code
+              ? `${string(payload.code)}: ${string(payload.error, `The ${name} request failed.`)}`
+              : string(payload.error, `The ${name} request failed.`),
+          ),
         ),
       );
     return payload as T & Record<string, unknown>;
@@ -305,6 +312,8 @@ export class NarrativeMcpBridgeClient {
 
   async createJob(input: CreateNarrativeMcpJobInput): Promise<NarrativeMcpJobSummary> {
     const payload = await this.call("create_report_studio_narrative_job", {
+      output_contract_version:
+        input.outputContractVersion ?? NARRATIVE_OUTPUT_CONTRACT_VERSION,
       report_instance_id: input.reportInstanceId,
       template_version: input.templateVersion,
       period: input.period,
@@ -320,6 +329,11 @@ export class NarrativeMcpBridgeClient {
     });
     const jobId = string(payload.job_id);
     if (!jobId) throw new Error("The narrative MCP did not return a job identifier.");
+    const outputContractVersion = string(payload.output_contract_version);
+    if (outputContractVersion !== NARRATIVE_OUTPUT_CONTRACT_VERSION)
+      throw new Error(
+        `UNSUPPORTED_NARRATIVE_CONTRACT_VERSION: expected ${NARRATIVE_OUTPUT_CONTRACT_VERSION}; received ${outputContractVersion || "(missing)"}.`,
+      );
     return {
       jobId,
       status: (string(payload.status, "pending") as NarrativeMcpJobSummary["status"]),
@@ -330,6 +344,7 @@ export class NarrativeMcpBridgeClient {
         : input.marketIds,
       createdAt: string(payload.created_at, new Date(this.now()).toISOString()),
       expiresAt: string(payload.expires_at),
+      outputContractVersion,
     };
   }
 
@@ -342,6 +357,11 @@ export class NarrativeMcpBridgeClient {
       : Array.isArray(asRecord(payload.result).narratives)
       ? (asRecord(payload.result).narratives as NarrativeMcpSubmittedNarrative[])
       : undefined;
+    const outputContractVersion = string(payload.output_contract_version);
+    if (outputContractVersion !== NARRATIVE_OUTPUT_CONTRACT_VERSION)
+      throw new Error(
+        `UNSUPPORTED_NARRATIVE_CONTRACT_VERSION: expected ${NARRATIVE_OUTPUT_CONTRACT_VERSION}; received ${outputContractVersion || "(missing)"}.`,
+      );
     return {
       jobId: string(payload.job_id, jobId),
       status: string(payload.status, "pending") as NarrativeMcpJob["status"],
@@ -358,6 +378,7 @@ export class NarrativeMcpBridgeClient {
       editorialInstruction: string(payload.editorial_instruction) || undefined,
       createdAt: string(payload.created_at),
       expiresAt: string(payload.expires_at),
+      outputContractVersion,
       completedAt: string(payload.completed_at) || undefined,
       contextHashes: payload.context_hashes
         ? (asRecord(payload.context_hashes) as Record<string, string>)
@@ -392,4 +413,6 @@ Narrative hierarchy — use only what is meaningful for each market, in no fixed
 
 Writing style: professional CRE research tone, analytical but restrained, varied sentence structure and openings across markets, no hype, no repetitive template, no fixed metric sequence — numbers are evidence, not the outline. Do not use em dashes; use commas, semicolons, colons, or separate sentences instead (ordinary hyphens in compounds like "year-over-year" or "build-to-suit" are unaffected). Avoid repetitive rhetorical phrasing associated with formulaic generated prose, such as overusing "underscoring," "highlighting," "reflecting," or "the quarter was defined by," or repeating "while..." contrast sentences; prefer direct, specific market language over ornamental transitions.
 
-Safety: use only the supplied governed context; no unsupported calculations, invented numbers, or invented entities; no unsupported causal claims; no internal system, Salesforce, Ascendix, or workflow language in the output. Preserve the structured output contract (narrative, claims with supportKeys, contextKeysUsed, qualityFlags) exactly.`;
+Safety: use only the supplied governed context; no unsupported calculations, invented numbers, or invented entities; no unsupported causal claims; no internal system, Salesforce, Ascendix, or workflow language in the output.
+
+For every required market, submit exactly: marketId, narrative, claims (each with claim, supportKeys, and evidenceClass), contextKeysUsed, qualityFlags, and promptVersion. Echo each marketId and promptVersion exactly from the job. After submitting the full batch, GET the same job again and claim completion only after status is complete and the accepted narrative count matches the required market count.`;
