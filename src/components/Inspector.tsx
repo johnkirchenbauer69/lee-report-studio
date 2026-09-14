@@ -4,6 +4,7 @@ import type {
   DropShadow,
   Fill,
   ReportElement,
+  ShapeElement,
   Stroke,
   TableCellStyle,
   TableElement,
@@ -65,6 +66,8 @@ interface Props {
   readOnly?: boolean;
   onToggleTableEdit?: () => void;
   onTableSelectionChange?: (selection: TableSelection | undefined) => void;
+  /** Sibling elements on the same page, used to list side-ribbon link candidates. */
+  pageElements?: ReportElement[];
 }
 
 function Section({
@@ -123,6 +126,204 @@ function ColorField({
   );
 }
 
+/**
+ * The enabled/color/offset/blur/opacity control set shared by every drop
+ * shadow in the app (element drop shadow, table container shadow, and the
+ * per-region table text shadows). `toggleLabel` names the on/off checkbox;
+ * `fieldPrefix` names the sub-fields ("Shadow" for the existing generic
+ * Drop Shadow section, a more specific prefix wherever more than one shadow
+ * control can be visible at once so aria-labels stay unique).
+ */
+function ShadowFields({
+  toggleLabel,
+  fieldPrefix = "Shadow",
+  shadow,
+  onChange,
+}: {
+  toggleLabel: string;
+  fieldPrefix?: string;
+  shadow: DropShadow;
+  onChange: (patch: Partial<DropShadow>) => void;
+}) {
+  return (
+    <>
+      <label className="toggle-row">
+        <input
+          aria-label={toggleLabel}
+          type="checkbox"
+          checked={shadow.enabled}
+          onChange={(event) => onChange({ enabled: event.target.checked })}
+        />
+        <span>{shadow.enabled ? "On" : "Off"}</span>
+      </label>
+      {shadow.enabled && (
+        <>
+          <ColorField
+            label={`${fieldPrefix} color`}
+            value={shadow.color}
+            onChange={(color) => onChange({ color })}
+          />
+          <div className="field-grid">
+            <label>
+              X Offset <span>px</span>
+              <input
+                aria-label={`${fieldPrefix} X Offset`}
+                type="number"
+                step=".5"
+                value={shadow.offsetX}
+                onChange={(event) =>
+                  onChange({ offsetX: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Y Offset <span>px</span>
+              <input
+                aria-label={`${fieldPrefix} Y Offset`}
+                type="number"
+                step=".5"
+                value={shadow.offsetY}
+                onChange={(event) =>
+                  onChange({ offsetY: Number(event.target.value) })
+                }
+              />
+            </label>
+          </div>
+          <div className="field-grid">
+            <label>
+              Blur <span>px</span>
+              <input
+                aria-label={`${fieldPrefix} Blur`}
+                type="number"
+                min="0"
+                step=".5"
+                value={shadow.blur}
+                onChange={(event) =>
+                  onChange({ blur: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Opacity <span>%</span>
+              <input
+                aria-label={`${fieldPrefix} Opacity`}
+                type="number"
+                min="0"
+                max="100"
+                value={Math.round(shadow.opacity * 100)}
+                onChange={(event) =>
+                  onChange({
+                    opacity: Math.max(
+                      0,
+                      Math.min(1, Number(event.target.value) / 100),
+                    ),
+                  })
+                }
+              />
+            </label>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/** The enabled/size/direction/highlight/shadow control set shared by every bevel. */
+function BevelFields({
+  toggleLabel = "Bevel",
+  bevel,
+  onChange,
+}: {
+  toggleLabel?: string;
+  bevel: BevelStyle;
+  onChange: (patch: Partial<BevelStyle>) => void;
+}) {
+  return (
+    <>
+      <label className="toggle-row">
+        <input
+          aria-label={toggleLabel}
+          type="checkbox"
+          checked={bevel.enabled}
+          onChange={(event) => onChange({ enabled: event.target.checked })}
+        />
+        <span>{bevel.enabled ? "On" : "Off"}</span>
+      </label>
+      {bevel.enabled && (
+        <>
+          <div className="field-grid">
+            <label>
+              Size <span>px</span>
+              <input
+                aria-label="Bevel size"
+                type="number"
+                min="0"
+                value={bevel.size}
+                onChange={(event) =>
+                  onChange({ size: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              Direction
+              <select
+                aria-label="Bevel direction"
+                value={bevel.direction}
+                onChange={(event) =>
+                  onChange({
+                    direction: event.target.value as BevelStyle["direction"],
+                  })
+                }
+              >
+                <option value="raised">Raised</option>
+                <option value="inset">Inset</option>
+              </select>
+            </label>
+          </div>
+          <ColorField
+            label="Highlight"
+            value={bevel.highlightColor}
+            onChange={(highlightColor) => onChange({ highlightColor })}
+          />
+          <label>
+            Highlight opacity <span>%</span>
+            <input
+              aria-label="Bevel highlight opacity"
+              type="number"
+              min="0"
+              max="100"
+              value={Math.round(bevel.highlightOpacity * 100)}
+              onChange={(event) =>
+                onChange({
+                  highlightOpacity: Number(event.target.value) / 100,
+                })
+              }
+            />
+          </label>
+          <ColorField
+            label="Shadow"
+            value={bevel.shadowColor}
+            onChange={(shadowColor) => onChange({ shadowColor })}
+          />
+          <label>
+            Shadow opacity <span>%</span>
+            <input
+              aria-label="Bevel shadow opacity"
+              type="number"
+              min="0"
+              max="100"
+              value={Math.round(bevel.shadowOpacity * 100)}
+              onChange={(event) =>
+                onChange({ shadowOpacity: Number(event.target.value) / 100 })
+              }
+            />
+          </label>
+        </>
+      )}
+    </>
+  );
+}
+
 const strokeDefaults: Stroke = {
   enabled: false,
   color: "#111827",
@@ -154,6 +355,7 @@ export function Inspector({
   readOnly = false,
   onToggleTableEdit,
   onTableSelectionChange,
+  pageElements = [],
 }: Props) {
   if (!element)
     return (
@@ -355,6 +557,32 @@ export function Inspector({
     });
   const table =
     element.type === "table" ? (element as TableElement) : undefined;
+  const headerBevel = resolveBevel(table?.headerBevel);
+  const setHeaderBevel = (patch: Partial<BevelStyle>) =>
+    onChange({ headerBevel: { ...headerBevel, ...patch } } as Partial<ReportElement>);
+  const setHeaderCornerRadius = (value: number) =>
+    onChange({ headerCornerRadius: value } as Partial<ReportElement>);
+  const setHeaderRibbonId = (value: string | undefined) =>
+    onChange({ headerRibbonId: value } as Partial<ReportElement>);
+  const ribbonCandidates = pageElements.filter(
+    (candidate): candidate is ShapeElement =>
+      candidate.type === "shape" && candidate.id !== element.id,
+  );
+  const headerTextShadow = resolveDropShadow(table?.headerStyle?.shadow);
+  const setHeaderTextShadow = (patch: Partial<DropShadow>) =>
+    onChange({
+      headerStyle: { ...table?.headerStyle, shadow: { ...headerTextShadow, ...patch } },
+    } as Partial<ReportElement>);
+  const bodyTextShadow = resolveDropShadow(table?.bodyStyle?.shadow);
+  const setBodyTextShadow = (patch: Partial<DropShadow>) =>
+    onChange({
+      bodyStyle: { ...table?.bodyStyle, shadow: { ...bodyTextShadow, ...patch } },
+    } as Partial<ReportElement>);
+  const totalsTextShadow = resolveDropShadow(table?.totalStyle?.shadow);
+  const setTotalsTextShadow = (patch: Partial<DropShadow>) =>
+    onChange({
+      totalStyle: { ...table?.totalStyle, shadow: { ...totalsTextShadow, ...patch } },
+    } as Partial<ReportElement>);
   const selectedColumn = tableSelection
     ? table?.columns[tableSelection.column]
     : undefined;
@@ -1168,170 +1396,98 @@ export function Inspector({
       )}
       {element.type === "shape" && (
         <Section title="Bevel">
-          <label className="toggle-row">
-            <input
-              aria-label="Bevel"
-              type="checkbox"
-              checked={bevel.enabled}
-              onChange={(event) => setBevel({ enabled: event.target.checked })}
-            />
-            <span>{bevel.enabled ? "On" : "Off"}</span>
-          </label>
-          {bevel.enabled && (
-            <>
-              <div className="field-grid">
-                <label>
-                  Size <span>px</span>
-                  <input
-                    aria-label="Bevel size"
-                    type="number"
-                    min="0"
-                    value={bevel.size}
-                    onChange={(event) =>
-                      setBevel({ size: Number(event.target.value) })
-                    }
-                  />
-                </label>
-                <label>
-                  Direction
-                  <select
-                    aria-label="Bevel direction"
-                    value={bevel.direction}
-                    onChange={(event) =>
-                      setBevel({
-                        direction: event.target
-                          .value as BevelStyle["direction"],
-                      })
-                    }
-                  >
-                    <option value="raised">Raised</option>
-                    <option value="inset">Inset</option>
-                  </select>
-                </label>
-              </div>
-              <ColorField
-                label="Highlight"
-                value={bevel.highlightColor}
-                onChange={(highlightColor) => setBevel({ highlightColor })}
-              />
-              <label>
-                Highlight opacity <span>%</span>
-                <input
-                  aria-label="Bevel highlight opacity"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={Math.round(bevel.highlightOpacity * 100)}
-                  onChange={(event) =>
-                    setBevel({
-                      highlightOpacity: Number(event.target.value) / 100,
-                    })
-                  }
-                />
-              </label>
-              <ColorField
-                label="Shadow"
-                value={bevel.shadowColor}
-                onChange={(shadowColor) => setBevel({ shadowColor })}
-              />
-              <label>
-                Shadow opacity <span>%</span>
-                <input
-                  aria-label="Bevel shadow opacity"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={Math.round(bevel.shadowOpacity * 100)}
-                  onChange={(event) =>
-                    setBevel({
-                      shadowOpacity: Number(event.target.value) / 100,
-                    })
-                  }
-                />
-              </label>
-            </>
-          )}
+          <BevelFields bevel={bevel} onChange={setBevel} />
         </Section>
       )}
       {(element.type === "shape" ||
         element.type === "text" ||
-        element.type === "image") && (
-        <Section title="Drop Shadow">
-          <label className="toggle-row">
+        element.type === "image" ||
+        element.type === "table") && (
+        <Section title={element.type === "table" ? "Table Shadow" : "Drop Shadow"}>
+          <ShadowFields
+            toggleLabel={element.type === "table" ? "Table Shadow" : "Drop Shadow"}
+            shadow={shadow}
+            onChange={setShadow}
+          />
+        </Section>
+      )}
+      {table && (
+        <Section title="Header Appearance">
+          <strong>Header bevel</strong>
+          <BevelFields
+            toggleLabel="Header Bevel"
+            bevel={headerBevel}
+            onChange={setHeaderBevel}
+          />
+          <label>
+            Header corner radius <span>px</span>
             <input
-              aria-label="Drop Shadow"
-              type="checkbox"
-              checked={shadow.enabled}
-              onChange={(event) => setShadow({ enabled: event.target.checked })}
+              aria-label="Header corner radius"
+              type="number"
+              min="0"
+              value={table.headerCornerRadius ?? 0}
+              onChange={(event) =>
+                setHeaderCornerRadius(Number(event.target.value))
+              }
             />
-            <span>{shadow.enabled ? "On" : "Off"}</span>
           </label>
-          {shadow.enabled && (
+          <small>
+            Rounds only the header's outer corners — never per cell, and
+            never the seam shared with a linked side ribbon.
+          </small>
+          <label>
+            Linked side ribbon
+            <select
+              aria-label="Header ribbon link"
+              value={table.headerRibbonId ?? ""}
+              onChange={(event) =>
+                setHeaderRibbonId(event.target.value || undefined)
+              }
+            >
+              <option value="">None</option>
+              {ribbonCandidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {table.headerRibbonId && (
+            <small>
+              {ribbonCandidates.some((candidate) => candidate.id === table.headerRibbonId)
+                ? `The header bevel and corner radius above are also applied to "${
+                    ribbonCandidates.find((candidate) => candidate.id === table.headerRibbonId)?.name
+                  }" as one continuous surface, with the shared edge kept seamless.`
+                : "The linked ribbon element was not found on this page."}
+            </small>
+          )}
+        </Section>
+      )}
+      {table && (
+        <Section title="Text Effects">
+          <strong>Header text shadow</strong>
+          <ShadowFields
+            toggleLabel="Header Text Shadow"
+            fieldPrefix="Header Text Shadow"
+            shadow={headerTextShadow}
+            onChange={setHeaderTextShadow}
+          />
+          <strong>Body text shadow</strong>
+          <ShadowFields
+            toggleLabel="Body Text Shadow"
+            fieldPrefix="Body Text Shadow"
+            shadow={bodyTextShadow}
+            onChange={setBodyTextShadow}
+          />
+          {table.rowKindPath && (
             <>
-              <ColorField
-                label="Shadow color"
-                value={shadow.color}
-                onChange={(color) => setShadow({ color })}
+              <strong>Totals text shadow</strong>
+              <ShadowFields
+                toggleLabel="Totals Text Shadow"
+                fieldPrefix="Totals Text Shadow"
+                shadow={totalsTextShadow}
+                onChange={setTotalsTextShadow}
               />
-              <div className="field-grid">
-                <label>
-                  X Offset <span>px</span>
-                  <input
-                    aria-label="Shadow X Offset"
-                    type="number"
-                    step=".5"
-                    value={shadow.offsetX}
-                    onChange={(event) =>
-                      setShadow({ offsetX: Number(event.target.value) })
-                    }
-                  />
-                </label>
-                <label>
-                  Y Offset <span>px</span>
-                  <input
-                    aria-label="Shadow Y Offset"
-                    type="number"
-                    step=".5"
-                    value={shadow.offsetY}
-                    onChange={(event) =>
-                      setShadow({ offsetY: Number(event.target.value) })
-                    }
-                  />
-                </label>
-              </div>
-              <div className="field-grid">
-                <label>
-                  Blur <span>px</span>
-                  <input
-                    aria-label="Shadow Blur"
-                    type="number"
-                    min="0"
-                    step=".5"
-                    value={shadow.blur}
-                    onChange={(event) =>
-                      setShadow({ blur: Number(event.target.value) })
-                    }
-                  />
-                </label>
-                <label>
-                  Opacity <span>%</span>
-                  <input
-                    aria-label="Shadow Opacity"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={Math.round(shadow.opacity * 100)}
-                    onChange={(event) =>
-                      setShadow({
-                        opacity: Math.max(
-                          0,
-                          Math.min(1, Number(event.target.value) / 100),
-                        ),
-                      })
-                    }
-                  />
-                </label>
-              </div>
             </>
           )}
         </Section>
