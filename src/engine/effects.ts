@@ -44,6 +44,63 @@ export const shadowColorToCss = (color: string, opacity: number) => {
 };
 
 /**
+ * Flattens an alpha-channel color (`rgba(...)`, `hsla(...)`, or 8-digit
+ * `#RRGGBBAA` hex) against an opaque backdrop into a fully opaque
+ * `rgb(...)` string. A table cell's tinted background (e.g. a highlighted
+ * "current quarter" column) is normally authored as a translucent color so
+ * it reads as a light tint over the white page beneath it. That reliance on
+ * runtime alpha compositing is fragile for print: a light/low-alpha tint
+ * that renders correctly in an on-screen or viewed PDF can fall under a
+ * physical printer's minimum reproducible dot/halftone threshold and come
+ * out as plain white on paper, even though nothing is wrong with the PDF
+ * itself. Pre-compositing the color once here removes that dependency —
+ * the exact intended opaque RGB value is what reaches print, with no
+ * alpha/compositing step left for the print pipeline to get wrong.
+ *
+ * Fully opaque colors (hex without alpha, `rgb(...)`, named colors,
+ * `transparent`, css variables, gradients, etc.) are returned unchanged:
+ * this only ever touches genuinely alpha-bearing values it can parse.
+ */
+export const flattenAlphaForPrint = (
+  color: string | undefined,
+  backdrop: readonly [number, number, number] = [255, 255, 255],
+): string | undefined => {
+  if (!color) return color;
+  const value = color.trim();
+  const hex8 = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(
+    value,
+  );
+  if (hex8) {
+    const [r, g, b, a] = hex8
+      .slice(1)
+      .map((part) => Number.parseInt(part, 16));
+    return compositeOpaque([r, g, b], a / 255, backdrop);
+  }
+  const rgba =
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(
+      value,
+    );
+  if (rgba) {
+    const [r, g, b] = rgba.slice(1, 4).map(Number);
+    const a = rgba[4] === undefined ? 1 : Number(rgba[4]);
+    if (a >= 1) return value;
+    return compositeOpaque([r, g, b], a, backdrop);
+  }
+  return value;
+};
+
+const compositeOpaque = (
+  rgb: readonly [number, number, number],
+  alpha: number,
+  backdrop: readonly [number, number, number],
+): string => {
+  const a = Math.max(0, Math.min(1, alpha));
+  const mix = (channel: number, back: number) =>
+    Math.round(channel * a + back * (1 - a));
+  return `rgb(${mix(rgb[0], backdrop[0])}, ${mix(rgb[1], backdrop[1])}, ${mix(rgb[2], backdrop[2])})`;
+};
+
+/**
  * `includeSpread` is opt-in and only meaningful for a container box-shadow —
  * CSS text-shadow has no spread component. Existing callers (text-shadow,
  * shape/image box-shadow) never pass it, so their output is unchanged.

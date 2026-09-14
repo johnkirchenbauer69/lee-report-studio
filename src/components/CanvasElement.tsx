@@ -24,7 +24,9 @@ import {
   directionalDropShadowToCss,
   dropShadowToCss,
   elementBoxShadowToCss,
+  flattenAlphaForPrint,
   resolveBevel,
+  resolveDropShadow,
 } from "../engine/effects";
 import {
   cornerRadiiToCss,
@@ -102,7 +104,12 @@ const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
   fontWeight: style?.fontWeight,
   fontSize: style?.fontSize,
   color: style?.color,
-  background: style?.background,
+  // Flatten any alpha channel (e.g. a tinted "current quarter" highlighted
+  // column authored as rgba(...)) into an opaque rgb(...) equivalent — see
+  // flattenAlphaForPrint for why: a light translucent tint that composites
+  // fine on screen/in a viewed PDF can fall under a physical printer's
+  // minimum reproducible tint and print as plain white.
+  background: flattenAlphaForPrint(style?.background),
   textAlign: style?.textAlign,
   padding: style?.padding,
   borderColor: style?.borderColor,
@@ -589,20 +596,39 @@ export function CanvasElement(props: Props) {
     const path = shapePathToSvg(element as ShapeElement);
     const fill = element.style.fill;
     const gradientId = `union-gradient-${element.id}`;
+    const shadowFilterId = `union-shadow-${element.id}`;
     const bevel = resolveBevel(element.style.bevel);
+    // Print-safe shadow for custom/union path shapes (report banners built
+    // with the freeform shape tool, e.g. a ribbon or wave-edged header).
+    // A CSS `filter: drop-shadow()` on the <svg> box forces the browser to
+    // isolate the whole element into an offscreen compositing/transparency
+    // group; Chromium's "Print to PDF" pipeline flattens that group against
+    // an opaque backdrop instead of preserving transparency, which paints
+    // as a solid white rectangle behind the shape in the exported PDF even
+    // though the on-screen (non-printed) render composites correctly.
+    // Rectangle/other shapes never hit this because they use the CSS
+    // `box-shadow` property (see elementBoxShadowToCss below), which is
+    // painted directly rather than requiring a filter compositing pass —
+    // that is the entire dynamic-vs-static print difference.
+    //
+    // The fix below stays inside the SVG's own raster/alpha model instead:
+    // an <feOffset>/<feGaussianBlur>/<feFlood>/<feComposite> recipe applied
+    // only to a dedicated shadow <path> (not the whole <svg>), producing an
+    // explicit shadow layer that survives print/PDF export unchanged.
+    const shadow = resolveDropShadow(element.style.shadow);
+    const shadowPad = shadow.enabled
+      ? Math.max(0, shadow.blur) * 2 +
+        Math.max(Math.abs(shadow.offsetX), Math.abs(shadow.offsetY)) +
+        4
+      : 0;
     content = (
       <svg
         className="shape-path-svg"
         viewBox={`0 0 ${element.width} ${element.height}`}
         preserveAspectRatio="none"
-        style={{
-          filter: dropShadowToCss(element.style.shadow)
-            ?.replace(/^/, "drop-shadow(")
-            .replace(/$/, ")"),
-        }}
       >
-        {fill?.type === "linear-gradient" && (
-          <defs>
+        <defs>
+          {fill?.type === "linear-gradient" && (
             <linearGradient
               id={gradientId}
               gradientTransform={`rotate(${fill.angle} .5 .5)`}
@@ -615,7 +641,38 @@ export function CanvasElement(props: Props) {
                 />
               ))}
             </linearGradient>
-          </defs>
+          )}
+          {shadow.enabled && (
+            <filter
+              id={shadowFilterId}
+              x={-shadowPad}
+              y={-shadowPad}
+              width={element.width + shadowPad * 2}
+              height={element.height + shadowPad * 2}
+              filterUnits="userSpaceOnUse"
+            >
+              <feOffset
+                in="SourceAlpha"
+                dx={shadow.offsetX}
+                dy={shadow.offsetY}
+                result="offset"
+              />
+              <feGaussianBlur
+                in="offset"
+                stdDeviation={Math.max(0, shadow.blur) / 2}
+                result="blurred"
+              />
+              <feFlood
+                floodColor={shadow.color}
+                floodOpacity={Math.max(0, Math.min(1, shadow.opacity))}
+                result="color"
+              />
+              <feComposite in="color" in2="blurred" operator="in" />
+            </filter>
+          )}
+        </defs>
+        {shadow.enabled && (
+          <path d={path} fill="#000" filter={`url(#${shadowFilterId})`} />
         )}
         {bevel.enabled && (
           <path
