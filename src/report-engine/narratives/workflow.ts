@@ -1,6 +1,10 @@
 import { CHICAGO_SUBMARKETS } from "../submarkets";
 import type { ReportValidationIssue } from "../validation/reportValidation";
-import type { NarrativeRecord, NarrativeRevision } from "./schema";
+import type {
+  NarrativeQualityFlag,
+  NarrativeRecord,
+  NarrativeRevision,
+} from "./schema";
 import {
   countNarrativeWords,
   NARRATIVE_PROMPT_PROFILES,
@@ -31,6 +35,7 @@ export function initializeNarratives(
     claims: [],
     contextKeysUsed: [],
     qualityFlags: [],
+    validationWarnings: [],
     revisions: [],
     wordCount: 0,
     overflow: false,
@@ -57,6 +62,9 @@ export const narrativeRevision = (
   regenerationInstruction: record.regenerationInstruction,
   claims: structuredClone(record.claims),
   qualityFlags: [...record.qualityFlags],
+  validationWarnings: record.validationWarnings
+    ? structuredClone(record.validationWarnings)
+    : undefined,
 });
 
 export function editNarrative(
@@ -79,6 +87,7 @@ export function editNarrative(
     claims: [],
     contextKeysUsed: [],
     qualityFlags: [],
+    validationWarnings: [],
     revisions,
   };
 }
@@ -103,6 +112,29 @@ export function approveNarrative(
       `${record.marketName} narrative exceeds the ${profile.hardMaxWords}-word limit.`,
     );
   return { ...record, status: "approved", approvedAt: now, error: undefined };
+}
+
+// Quality flags that represent an unresolved, reviewer-facing grounding
+// warning rather than pure editorial-style feedback (template openings,
+// metric dumps, etc., are informative but were never a review gate and stay
+// out of this list).
+const REVIEW_WARNING_FLAGS: ReadonlySet<NarrativeQualityFlag> = new Set([
+  "entity_validation_warning",
+  "numeric_validation_warning",
+]);
+
+/**
+ * True when a narrative carries an unresolved grounding/review warning
+ * (an unmatched entity or number) that a human reviewer has not yet
+ * addressed. This is advisory only — see approveNarrative below, which
+ * intentionally does NOT block approval on this: the reviewer is the
+ * final authority, and a possessive, naming variation, or plausible
+ * paraphrase should not require an extra unlock/edit cycle before a
+ * narrative can be approved. Callers (e.g. the review UI) use this to
+ * surface the warning prominently at the moment of approval.
+ */
+export function narrativeHasUnresolvedWarnings(record: NarrativeRecord): boolean {
+  return record.qualityFlags.some((flag) => REVIEW_WARNING_FLAGS.has(flag));
 }
 
 export function unlockNarrative(record: NarrativeRecord): NarrativeRecord {
@@ -138,6 +170,9 @@ export function restoreNarrativeRevision(
       ...new Set(revision.claims.flatMap((claim) => claim.supportKeys)),
     ],
     qualityFlags: [...revision.qualityFlags],
+    validationWarnings: revision.validationWarnings
+      ? structuredClone(revision.validationWarnings)
+      : undefined,
     editedAt: now,
     approvedAt: undefined,
     error: undefined,

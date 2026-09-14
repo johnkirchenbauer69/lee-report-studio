@@ -104,29 +104,54 @@ never by mutating JSON in React. For every returned narrative it:
    while ChatGPT was writing, so the market is marked **stale** for
    regeneration rather than imported;
 3. checks the prompt version matches the current profile;
-4. re-runs `validateNarrativeResult()`: support-key grounding, numeric support,
-   named-entity support, raw Salesforce identifiers, and hard word limits.
+4. re-runs `validateNarrativeResult()`: support-key grounding, numeric
+   grounding, named-entity grounding, raw Salesforce identifiers, internal
+   workflow language, and hard word limits.
 
-The entity check treats digits and slashes as part of a name, because real
-markets are called `I-55 Corridor` and `I-80/Joliet Area`. A class that
-excluded them truncated `I-55` to `I-` and rejected correct prose.
+Every imported narrative is manually reviewed before it can be approved and
+published, so validation draws a hard line only around **integrity**:
+malformed payload, a support key that does not exist in the trusted context, a
+raw Salesforce identifier, internal workflow language, an over-length
+narrative, or the market/context/prompt-version checks in steps 1-3 above.
+Entity and numeric **grounding ambiguity** — a possessive, a punctuation or
+unit-format difference, a plausible paraphrase, a name that cannot be matched
+exactly — is not a hard failure. It is surfaced as a review warning
+(`entity_validation_warning` / `numeric_validation_warning`) on the imported
+Draft, with the exact phrase and a reviewer-facing explanation recorded in
+`validationWarnings`, so the reviewer sees precisely what to check.
 
-**Import is atomic.** If any requested market fails — unknown market, duplicate
-market, missing market, stale context, prompt mismatch, or a validation error —
-nothing is imported, existing narratives are untouched, and the panel shows
-"ChatGPT returned a batch that failed Report Studio grounding validation." That
-avoids a mixed quarter where some markets reflect current data and others do
-not. The analyst can retry.
+The entity check normalizes conservatively before comparing — case,
+whitespace, surrounding punctuation, and a trailing possessive (`Hyundai
+Translead's` / `Hyundai Translead’s` / `Prologis'`) — so a possessive or
+punctuation variant of a governed name never reads as ungrounded. It also
+treats digits and slashes as part of a name, because real markets are called
+`I-55 Corridor` and `I-80/Joliet Area`; a class that excluded them truncated
+`I-55` to `I-` and misflagged correct prose.
+
+**Import is atomic only with respect to hard (integrity) blockers.** If any
+requested market fails a hard blocker — unknown market, duplicate market,
+missing market, stale context, prompt mismatch, a raw Salesforce ID, internal
+workflow language, or invalid support keys — nothing is imported, existing
+narratives are untouched, and the panel shows "ChatGPT returned a batch that
+failed Report Studio grounding validation" naming the exact market and reason.
+That avoids a mixed quarter where some markets reflect current data and others
+do not. A soft grounding warning on one market, by contrast, never blocks the
+rest of the batch: every valid narrative imports as Draft, with its warnings
+attached, for the reviewer to resolve.
 
 A rejected batch usually still sits on the MCP until its TTL expires, so
 **Retry Import** re-runs the import against the same job
-(`POST /report-instances/:id/narratives/external-job/reimport`). A grounding
+(`POST /report-instances/:id/narratives/external-job/reimport`). An integrity
 fix does not require another ChatGPT round trip.
 
 Successful records become ordinary Draft `NarrativeRecord`s with
 `source: "ai"`, `model: "chatgpt-mcp"`, the locally verified `contextHash`, the
-returned claims, `contextKeysUsed`, and quality flags. Revision history,
-staleness, approval, overflow blocking, and the evidence panel are unchanged.
+returned claims, `contextKeysUsed`, quality flags, and (when applicable)
+detailed `validationWarnings`. Revision history, staleness, approval, overflow
+blocking, and the evidence panel are unchanged. Approval itself is never
+blocked by a soft warning — the reviewer is the final authority — but the
+review UI surfaces unresolved warnings prominently right up to the point of
+approval and again on the pre-export review screen.
 
 `model` is `chatgpt-mcp` rather than a specific model name: ChatGPT does not
 expose which model wrote the batch through this workflow, and inventing one

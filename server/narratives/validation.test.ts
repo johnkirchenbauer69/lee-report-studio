@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { NarrativeContext, NarrativeGenerationResult } from "../../src/report-engine/narratives/schema.ts";
-import { detectRepeatedBatchOpenings, validateNarrativeResult } from "./validation.ts";
+import {
+  detectRepeatedBatchOpenings,
+  normalizeEntityForMatch,
+  validateNarrativeResult,
+} from "./validation.ts";
 
 const context: NarrativeContext = {
   marketId: "central-dupage",
@@ -35,13 +39,128 @@ describe("validateNarrativeResult", () => {
     );
   });
 
-  it("rejects hallucinated entities and numeric facts", () => {
-    const issues = validateNarrativeResult(
+  it("flags an unmatched entity and unsupported numbers as review warnings, not rejection", () => {
+    const validation = validateNarrativeResult(
       context,
       valid("Acme Logistics completed a 900,000 SF lease while vacancy reached 9.9%."),
-    ).issues;
-    expect(issues.some((item) => item.kind === "entity")).toBe(true);
-    expect(issues.filter((item) => item.kind === "numeric")).toHaveLength(2);
+    );
+    // Grounding ambiguity never blocks import: every issue here is a
+    // warning, so this narrative (and the batch it shipped in) still
+    // imports as Draft for human review.
+    expect(validation.issues.every((issue) => issue.severity === "warning")).toBe(true);
+    expect(validation.issues.some((item) => item.kind === "entity")).toBe(true);
+    expect(validation.issues.filter((item) => item.kind === "numeric")).toHaveLength(2);
+    expect(validation.qualityFlags).toContain("entity_validation_warning");
+    expect(validation.qualityFlags).toContain("numeric_validation_warning");
+    expect(validation.warnings.some((w) => w.flag === "entity_validation_warning" && w.phrase === "Acme Logistics")).toBe(true);
+  });
+
+  // --- Entity normalization ------------------------------------------------
+  describe("entity normalization", () => {
+    it.each([
+      ["straight possessive", "Hyundai Translead's", "Hyundai Translead"],
+      ["curly possessive", "Hyundai Translead’s", "Hyundai Translead"],
+      ["trailing bare apostrophe", "Prologis'", "Prologis"],
+      ["trailing curly apostrophe", "Prologis’", "Prologis"],
+      ["case difference", "HYUNDAI TRANSLEAD", "Hyundai Translead"],
+      ["repeated whitespace", "Hyundai   Translead", "Hyundai Translead"],
+      ["surrounding punctuation", "“Hyundai Translead.”", "Hyundai Translead"],
+    ])("normalizes %s to match the governed form", (_label, raw, governed) => {
+      expect(normalizeEntityForMatch(raw)).toBe(normalizeEntityForMatch(governed));
+    });
+
+    it("does not conflate a genuinely different entity with a normalization variant", () => {
+      expect(normalizeEntityForMatch("Hyundai Translead Logistics")).not.toBe(
+        normalizeEntityForMatch("Hyundai Translead"),
+      );
+    });
+  });
+
+  // The exact production incident: the MCP bridge's I-80/Joliet narrative
+  // used the possessive "Hyundai Translead's" while the governed context
+  // held the bare form "Hyundai Translead". This must match after
+  // normalization and add no warning at all.
+  it("matches a straight possessive against the bare governed entity name (Hyundai Translead incident)", () => {
+    const joliet: NarrativeContext = {
+      marketId: "i80-joliet",
+      marketName: "I-80/Joliet Area",
+      marketKind: "submarket",
+      period: "2026 Q2",
+      promptVersion: "submarket-v2",
+      contextHash: "hash-i80",
+      facts: [
+        {
+          contextKey: "lease.1",
+          category: "lease",
+          label: "Hyundai Translead",
+          value: 615_000,
+          displayValue: "Hyundai Translead · 615,000 SF · 1235 Brandon Road",
+          sourceType: "Market_Data_Contributor__c",
+          authority: "finalist",
+          publicationSafe: true,
+          entityNames: ["Hyundai Translead", "1235 Brandon Road"],
+        },
+      ],
+    };
+    const validation = validateNarrativeResult(joliet, {
+      narrative:
+        "Hyundai Translead's expansion anchored an active quarter for the I-80/Joliet Area submarket.",
+      claims: [
+        { claim: "Hyundai Translead expanded.", supportKeys: ["lease.1"], evidenceClass: "direct" },
+      ],
+      contextKeysUsed: ["lease.1"],
+      qualityFlags: [],
+    });
+    expect(validation.issues.filter((issue) => issue.kind === "entity")).toEqual([]);
+    expect(validation.qualityFlags).not.toContain("entity_validation_warning");
+  });
+
+  it("matches a curly possessive against the bare governed entity name", () => {
+    const validation = validateNarrativeResult(
+      context,
+      valid("Known Tenant’s lease covered 400,000 SF while vacancy was 4.8%."),
+    );
+    expect(validation.issues.filter((issue) => issue.kind === "entity")).toEqual([]);
+  });
+
+  it("adds an entity_validation_warning (but no error) for an entity that is close but not exact", () => {
+    const validation = validateNarrativeResult(
+      context,
+      valid("Known Tenant Logistics expanded into 400,000 SF while vacancy was 4.8%."),
+    );
+    expect(validation.issues).toContainEqual(
+      expect.objectContaining({ kind: "entity", severity: "warning" }),
+    );
+    expect(validation.qualityFlags).toContain("entity_validation_warning");
+    const warning = validation.warnings.find((w) => w.flag === "entity_validation_warning");
+    expect(warning?.phrase).toBe("Known Tenant Logistics");
+  });
+
+  it("imports a plausible but wholly unmatched entity as a Draft-safe warning, not a rejection", () => {
+    const validation = validateNarrativeResult(
+      context,
+      valid("Acme Logistics leased 500,000 SF while vacancy was 4.8%."),
+    );
+    expect(validation.issues.every((issue) => issue.severity !== "error")).toBe(true);
+    expect(validation.qualityFlags).toContain("entity_validation_warning");
+    expect(
+      validation.warnings.some(
+        (w) => w.flag === "entity_validation_warning" && w.phrase === "Acme Logistics",
+      ),
+    ).toBe(true);
+  });
+
+  it("preserves existing market-name alias handling (e.g. I-80/Joliet Area) without a warning", () => {
+    const corridor: NarrativeContext = {
+      ...context,
+      marketId: "i80-joliet",
+      marketName: "I-80/Joliet Area",
+    };
+    const validation = validateNarrativeResult(
+      corridor,
+      valid("The I-80/Joliet Area closed 2026 Q2 with vacancy at 4.8% alongside a 400,000 SF lease by Known Tenant."),
+    );
+    expect(validation.issues.filter((issue) => issue.kind === "entity")).toEqual([]);
   });
 
   it("flags an ambiguous nearby rounded value for review", () => {
@@ -53,6 +172,31 @@ describe("validateNarrativeResult", () => {
       expect.objectContaining({ kind: "numeric", severity: "warning" }),
     );
     expect(validation.qualityFlags).toContain("numeric_validation_warning");
+  });
+
+  it("does not hard-fail a numeric value that cannot be matched exactly (ambiguous grounding)", () => {
+    const validation = validateNarrativeResult(
+      context,
+      valid("Vacancy finished the quarter at 87.3% alongside a 400,000 SF lease by Known Tenant."),
+    );
+    expect(validation.issues.some((issue) => issue.kind === "numeric" && issue.severity === "error")).toBe(
+      false,
+    );
+    expect(validation.issues).toContainEqual(
+      expect.objectContaining({ kind: "numeric", severity: "warning" }),
+    );
+    expect(validation.qualityFlags).toContain("numeric_validation_warning");
+  });
+
+  it("does not hard-fail a plain formatting/phrasing difference in a governed number", () => {
+    // "440,000 SF" is a rounding-distance restatement of the governed
+    // 400,000 SF lease value — a punctuation/format difference a reviewer
+    // resolves at a glance, not an integrity problem.
+    const validation = validateNarrativeResult(
+      context,
+      valid("Known Tenant signed a lease for roughly 440,000 SF while vacancy held at 4.8%."),
+    );
+    expect(validation.issues.some((issue) => issue.severity === "error")).toBe(false);
   });
 
   // Real market names carry digits and slashes. A character class that
@@ -80,19 +224,20 @@ describe("validateNarrativeResult", () => {
     expect(issues.filter((item) => item.kind === "entity")).toEqual([]);
   });
 
-  it("still rejects a hallucinated entity that contains digits", () => {
+  it("still flags a hallucinated entity that contains digits, as a review warning", () => {
     const corridor: NarrativeContext = {
       ...context,
       marketId: "i55-corridor",
       marketName: "I-55 Corridor",
     };
-    const issues = validateNarrativeResult(
+    const validation = validateNarrativeResult(
       corridor,
       valid("The I-99 Corridor closed 2026 Q2 with vacancy at 4.8%."),
-    ).issues;
-    expect(issues).toContainEqual(
-      expect.objectContaining({ kind: "entity", severity: "error" }),
     );
+    expect(validation.issues).toContainEqual(
+      expect.objectContaining({ kind: "entity", severity: "warning" }),
+    );
+    expect(validation.issues.some((issue) => issue.severity === "error")).toBe(false);
   });
 
   it("rejects an em dash as a blocking publication-style error", () => {

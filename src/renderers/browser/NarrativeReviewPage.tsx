@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NarrativeWorkspace } from "../../components/NarrativeWorkspace";
+import { narrativeHasUnresolvedWarnings } from "../../report-engine/narratives/workflow";
 import type { ReportInstance } from "../../report-engine/schema/generation";
 import { reportInstanceStore } from "../../services/reportInstanceStore";
 
@@ -24,6 +25,12 @@ export function NarrativeReviewPage({ reportInstanceId }: { reportInstanceId: st
   const approved = instance.narratives.filter(
     (record) => record.status === "approved",
   ).length;
+  // Soft grounding warnings never block export — the human reviewer is the
+  // final authority — but they are worth one more prominent surface here,
+  // the last stop before the report editor / PDF export.
+  const unresolvedWarningCount = instance.narratives.filter(
+    narrativeHasUnresolvedWarnings,
+  ).length;
   return (
     <main style={{ padding: 24, background: "#eef2f4", minHeight: "100vh" }}>
       <section className="report-wizard" style={{ margin: "0 auto", maxHeight: "none" }}>
@@ -37,6 +44,14 @@ export function NarrativeReviewPage({ reportInstanceId }: { reportInstanceId: st
         <div className="wizard-body">
           <NarrativeWorkspace instance={instance} onChange={setInstance} />
         </div>
+        {unresolvedWarningCount > 0 && (
+          <p className="narrative-review-warnings-summary" role="status">
+            {unresolvedWarningCount} market{unresolvedWarningCount === 1 ? "" : "s"} still{" "}
+            {unresolvedWarningCount === 1 ? "has" : "have"} unresolved review warnings
+            (entity or numeric grounding). These do not block export — review them in the
+            narrative panel above before publishing.
+          </p>
+        )}
         <footer>
           <span className="narrative-review-readiness">
             {approved} approved / {instance.narratives.length} required ·{" "}

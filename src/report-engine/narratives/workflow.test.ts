@@ -3,6 +3,7 @@ import {
   approveNarrative,
   editNarrative,
   initializeNarratives,
+  narrativeHasUnresolvedWarnings,
   narrativeReadinessIssues,
   restoreNarrativeRevision,
   unlockNarrative,
@@ -32,5 +33,27 @@ describe("narrative workflow", () => {
     expect(restored.text).toBe("First text.");
     expect(restored.status).toBe("edited");
     expect(restored.approvedAt).toBeUndefined();
+  });
+
+  it("surfaces unresolved review warnings without blocking approval", () => {
+    const draft = {
+      ...initializeNarratives("2026 Q2", "hash")[0]!,
+      text: "Hyundai Translead Logistics expanded this quarter.",
+      qualityFlags: ["entity_validation_warning" as const],
+    };
+    expect(narrativeHasUnresolvedWarnings(draft)).toBe(true);
+    // Approval remains available — the reviewer is the final authority,
+    // and a soft grounding warning must never gate it.
+    const approved = approveNarrative(draft);
+    expect(approved.status).toBe("approved");
+  });
+
+  it("does not report unresolved warnings for editorial-only quality flags", () => {
+    const draft = {
+      ...initializeNarratives("2026 Q2", "hash")[0]!,
+      text: "Vacancy finished the quarter at 4.8%.",
+      qualityFlags: ["template_opening" as const, "metric_dump" as const],
+    };
+    expect(narrativeHasUnresolvedWarnings(draft)).toBe(false);
   });
 });

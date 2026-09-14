@@ -425,6 +425,7 @@ export class NarrativeService {
             claims: response.result.claims,
             contextKeysUsed: response.result.contextKeysUsed,
             qualityFlags: validation.qualityFlags,
+            validationWarnings: validation.warnings,
             revisions: latest.text
               ? [...latest.revisions, narrativeRevision(latest, now)]
               : latest.revisions,

@@ -37,6 +37,28 @@ export type NarrativeQualityFlag = z.infer<
   typeof narrativeQualityFlagSchema
 >;
 
+/**
+ * Detailed, human-reviewable metadata for a single non-blocking grounding
+ * warning (see NARRATIVE_QUALITY_FLAGS' entity/numeric warning flags).
+ *
+ * The flag stays the reviewer-facing signal already carried on
+ * qualityFlags; this is the small companion structure the review UI needs
+ * to show WHICH phrase triggered it and WHY, without inventing a parallel
+ * warning system.
+ */
+export const narrativeValidationWarningSchema = z
+  .object({
+    flag: narrativeQualityFlagSchema,
+    /** The exact narrative phrase, entity, or number that could not be matched. */
+    phrase: z.string().min(1).max(300),
+    /** Reviewer-facing explanation, safe to render directly (no internal IDs). */
+    message: z.string().min(1).max(500),
+  })
+  .strict();
+export type NarrativeValidationWarning = z.infer<
+  typeof narrativeValidationWarningSchema
+>;
+
 export const NARRATIVE_EVIDENCE_CLASSES = ["direct", "derived", "interpretive"] as const;
 
 export const narrativeClaimSchema = z
@@ -77,6 +99,8 @@ export interface NarrativeRevision {
   regenerationInstruction?: string;
   claims: NarrativeClaim[];
   qualityFlags: NarrativeQualityFlag[];
+  /** Populated when qualityFlags includes a detailed grounding warning. */
+  validationWarnings?: NarrativeValidationWarning[];
 }
 
 export interface NarrativeRecord {
@@ -97,6 +121,12 @@ export interface NarrativeRecord {
   claims: NarrativeClaim[];
   contextKeysUsed: string[];
   qualityFlags: NarrativeQualityFlag[];
+  /**
+   * Detailed, reviewer-facing metadata for entity/numeric grounding
+   * warnings and other non-blocking review flags. Never contains
+   * Salesforce IDs or other internal identifiers.
+   */
+  validationWarnings?: NarrativeValidationWarning[];
   revisions: NarrativeRevision[];
   regenerationInstruction?: string;
   wordCount: number;
