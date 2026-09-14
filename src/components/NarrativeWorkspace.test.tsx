@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ExternalJobPanel } from "./NarrativeWorkspace";
+import { sampleTemplate } from "../data/sampleTemplate";
+import { generateReportInstance } from "../report-engine/generation/generateReport";
+import { ExternalJobPanel, NarrativeWorkspace } from "./NarrativeWorkspace";
 import type { ExternalNarrativeJob } from "../report-engine/schema/generation";
 
 const noop = () => undefined;
@@ -81,5 +83,61 @@ describe("ExternalJobPanel", () => {
     const markup = render({ ...baseJob, status: "waiting_for_chatgpt", error: undefined, errorCode: undefined });
     expect(markup).toContain("Waiting for ChatGPT");
     expect(markup).not.toContain("narrative-error");
+  });
+});
+
+describe("NarrativeWorkspace review warnings", () => {
+  const buildInstance = () =>
+    generateReportInstance(sampleTemplate, {
+      templateId: sampleTemplate.id,
+      templateVersion: sampleTemplate.version,
+      market: "Chicago",
+      period: "2026 Q2",
+      calculationScope: { type: "all-submarkets" },
+      pageSelection: { submarketIds: [] },
+      source: { provider: "sample" },
+    });
+
+  it("renders warning count, type, phrase, and explanation without exposing internal IDs", async () => {
+    const instance = await buildInstance();
+    const withWarning = {
+      ...instance,
+      narratives: instance.narratives.map((record, index) =>
+        index === 0
+          ? {
+              ...record,
+              status: "draft" as const,
+              text: "Hyundai Translead Logistics expanded this quarter.",
+              qualityFlags: ["entity_validation_warning" as const],
+              validationWarnings: [
+                {
+                  flag: "entity_validation_warning" as const,
+                  phrase: "Hyundai Translead Logistics",
+                  message:
+                    'Entity warning: "Hyundai Translead Logistics" was not found exactly in the governed context.',
+                },
+              ],
+            }
+          : record,
+      ),
+    };
+    const markup = renderToStaticMarkup(
+      <NarrativeWorkspace instance={withWarning} onChange={() => undefined} />,
+    );
+    expect(markup).toContain("1 review warning");
+    expect(markup).toContain("Entity warning");
+    expect(markup).toContain("Hyundai Translead Logistics");
+    expect(markup).toContain("was not found exactly in the governed context");
+    expect(markup).not.toMatch(/00[a-zA-Z0-9]{12,15}/); // no raw Salesforce ID pattern
+    // Approval stays available for a draft with only a soft warning.
+    expect(markup).toContain("unresolved review warnings");
+  });
+
+  it("renders no review-warnings panel when there are no validation warnings", async () => {
+    const instance = await buildInstance();
+    const markup = renderToStaticMarkup(
+      <NarrativeWorkspace instance={instance} onChange={() => undefined} />,
+    );
+    expect(markup).not.toContain("narrative-review-warnings");
   });
 });

@@ -716,30 +716,112 @@ describe("ChatGPT MCP narrative generation", () => {
         /support key metric\.invented\.key is not present/i,
       ));
 
-    it("rejects a hallucinated named entity", () =>
-      reject(
-        (batch) =>
-          batch.map((item, index) =>
-            index === 0
-              ? {
-                  ...item,
-                  narrative: `${item.narrative} Fictitious Logistics Group expanded.`,
-                }
-              : item,
-          ),
-        /Named entity/i,
-      ));
+    it("imports a batch with an unmatched named entity as a Draft review warning, not a rejection", async () => {
+      const { instance, service, mcp } = await setup();
+      const started = await service.startExternalGeneration(instance.id, {
+        marketIds: ["central-dupage", "ohare"],
+      });
+      const job = started.externalNarrativeJob!;
+      const batch = job.marketIds.map((marketId) =>
+        grounded(buildNarrativeContext({ reportInstance: started, marketId })),
+      );
+      mcp.complete(
+        job.jobId,
+        batch.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                narrative: `${item.narrative} Fictitious Logistics Group expanded.`,
+              }
+            : item,
+        ),
+      );
+      const state = await service.externalJobState(instance.id);
+      expect(state.job?.status).toBe("complete");
+      const drafts = state.instance.narratives.filter((item) => item.status === "draft");
+      expect(drafts).toHaveLength(2);
+      const flagged = drafts.find((item) => item.marketId === job.marketIds[0]);
+      expect(flagged?.qualityFlags).toContain("entity_validation_warning");
+      expect(
+        flagged?.validationWarnings?.some(
+          (warning) =>
+            warning.flag === "entity_validation_warning" &&
+            warning.phrase === "Fictitious Logistics Group",
+        ),
+      ).toBe(true);
+    });
 
-    it("rejects an unsupported number", () =>
-      reject(
-        (batch) =>
-          batch.map((item, index) =>
-            index === 0
-              ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." }
-              : item,
-          ),
-        /not supported by the trusted context/i,
-      ));
+    it("imports a batch with an unmatched number as a Draft review warning, not a rejection", async () => {
+      const { instance, service, mcp } = await setup();
+      const started = await service.startExternalGeneration(instance.id, {
+        marketIds: ["central-dupage", "ohare"],
+      });
+      const job = started.externalNarrativeJob!;
+      const batch = job.marketIds.map((marketId) =>
+        grounded(buildNarrativeContext({ reportInstance: started, marketId })),
+      );
+      mcp.complete(
+        job.jobId,
+        batch.map((item, index) =>
+          index === 0
+            ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." }
+            : item,
+        ),
+      );
+      const state = await service.externalJobState(instance.id);
+      expect(state.job?.status).toBe("complete");
+      const drafts = state.instance.narratives.filter((item) => item.status === "draft");
+      expect(drafts).toHaveLength(2);
+      const flagged = drafts.find((item) => item.marketId === job.marketIds[0]);
+      expect(flagged?.qualityFlags).toContain("numeric_validation_warning");
+    });
+
+    it("imports a full 19-market batch when only one market carries a soft entity warning", async () => {
+      const { instance, service, mcp } = await setup();
+      const started = await service.startExternalGeneration(instance.id);
+      const job = started.externalNarrativeJob!;
+      mcp.complete(
+        job.jobId,
+        job.marketIds.map((marketId, index) => {
+          const item = grounded(buildNarrativeContext({ reportInstance: started, marketId }));
+          return index === 0
+            ? { ...item, narrative: `${item.narrative} Hyundai Translead's expansion continued.` }
+            : item;
+        }),
+      );
+      const state = await service.externalJobState(instance.id);
+      expect(state.job?.status).toBe("complete");
+      expect(
+        state.instance.narratives.filter((item) => item.status === "draft"),
+      ).toHaveLength(19);
+    });
+
+    it("imports a full 19-market batch when multiple markets carry soft warnings", async () => {
+      const { instance, service, mcp } = await setup();
+      const started = await service.startExternalGeneration(instance.id);
+      const job = started.externalNarrativeJob!;
+      mcp.complete(
+        job.jobId,
+        job.marketIds.map((marketId, index) => {
+          const item = grounded(buildNarrativeContext({ reportInstance: started, marketId }));
+          if (index % 4 === 0)
+            return { ...item, narrative: `${item.narrative} Acme Logistics Group leased space.` };
+          if (index % 4 === 1)
+            return { ...item, narrative: "Vacancy finished the quarter at 61.2%." };
+          return item;
+        }),
+      );
+      const state = await service.externalJobState(instance.id);
+      expect(state.job?.status).toBe("complete");
+      const drafts = state.instance.narratives.filter((item) => item.status === "draft");
+      expect(drafts).toHaveLength(19);
+      const warned = drafts.filter(
+        (item) =>
+          item.qualityFlags.includes("entity_validation_warning") ||
+          item.qualityFlags.includes("numeric_validation_warning"),
+      );
+      expect(warned.length).toBeGreaterThan(1);
+    });
 
     it("rejects a raw Salesforce identifier", () =>
       reject(
@@ -804,12 +886,17 @@ describe("ChatGPT MCP narrative generation", () => {
       const good = job.marketIds.map((marketId) =>
         grounded(buildNarrativeContext({ reportInstance: started, marketId })),
       );
-      // First submission is ungrounded and is rejected whole.
+      // First submission has a hard blocker (bad support key) and is
+      // rejected whole. A soft grounding issue would no longer do this —
+      // see "imports a batch with an unmatched number..." above.
       mcp.complete(
         job.jobId,
         good.map((item, index) =>
           index === 0
-            ? { ...item, narrative: "Vacancy finished the quarter at 87.3%." }
+            ? {
+                ...item,
+                claims: [{ ...item.claims[0]!, supportKeys: ["metric.invented.key"] }],
+              }
             : item,
         ),
       );

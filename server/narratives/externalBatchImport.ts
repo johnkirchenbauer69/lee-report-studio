@@ -13,12 +13,24 @@ import { validateNarrativeResult } from "./validation.ts";
  * Report Studio never trusts what comes back from the bridge. For every
  * returned narrative it rebuilds the CURRENT local NarrativeContext, checks
  * the context has not moved since the job was created, and re-runs the same
- * grounding, numeric, entity, identifier, and length validators that the
+ * integrity, numeric, entity, identifier, and length validators that the
  * in-process model path uses.
  *
- * Import is atomic: if any requested market fails, nothing is imported. That
- * avoids a mixed quarter where some markets reflect current data and others
- * do not.
+ * Every narrative is manually reviewed before it can be approved and
+ * published, so validation here draws a hard line only around integrity
+ * (raw Salesforce IDs, internal workflow language, stale/mismatched
+ * context, malformed payload, missing/duplicate/unknown markets, invalid
+ * support keys). Entity and numeric grounding ambiguity — a possessive, a
+ * punctuation difference, a plausible paraphrase, a name that cannot be
+ * matched exactly — is surfaced as a review warning on the imported record
+ * (qualityFlags + validationWarnings) instead. A single soft warning on one
+ * market must never discard an otherwise-good multi-market batch.
+ *
+ * Import stays atomic only with respect to hard (integrity) failures: if
+ * any requested market fails a hard blocker, nothing is imported and the
+ * exact market + reason is reported, avoiding a mixed quarter where some
+ * markets reflect current data and others do not. Soft warnings never
+ * trigger this — they ride along on the imported Draft for the reviewer.
  */
 
 export interface ExternalBatchFailure {
@@ -164,6 +176,7 @@ export function planExternalBatchImport(
       claims: result.claims,
       contextKeysUsed: result.contextKeysUsed,
       qualityFlags: validation.qualityFlags,
+      validationWarnings: validation.warnings,
       revisions: record.text
         ? [...record.revisions, input.revision(record, now)]
         : record.revisions,

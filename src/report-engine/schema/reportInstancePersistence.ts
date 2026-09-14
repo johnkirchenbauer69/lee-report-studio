@@ -5,6 +5,7 @@ import {
   narrativeClaimSchema,
   narrativeQualityFlagSchema,
   narrativeStatusSchema,
+  narrativeValidationWarningSchema,
 } from "../narratives/schema";
 import {
   industrialMarketReportSchema,
@@ -460,6 +461,7 @@ const narrativeRevisionSchema = z
     regenerationInstruction: z.string().optional(),
     claims: z.array(narrativeClaimSchema),
     qualityFlags: z.array(narrativeQualityFlagSchema),
+    validationWarnings: z.array(narrativeValidationWarningSchema).optional(),
   })
   .strict();
 const narrativeRecordSchema = z
@@ -481,6 +483,7 @@ const narrativeRecordSchema = z
     claims: z.array(narrativeClaimSchema),
     contextKeysUsed: z.array(z.string()),
     qualityFlags: z.array(narrativeQualityFlagSchema),
+    validationWarnings: z.array(narrativeValidationWarningSchema).optional(),
     revisions: z.array(narrativeRevisionSchema),
     regenerationInstruction: z.string().optional(),
     wordCount: z.number().int().nonnegative(),

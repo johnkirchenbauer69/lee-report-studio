@@ -5,6 +5,7 @@ import {
   type NarrativeContext,
   type NarrativeGenerationResult,
   type NarrativeQualityFlag,
+  type NarrativeValidationWarning,
 } from "../../src/report-engine/narratives/schema.ts";
 
 export interface NarrativeValidationIssue {
@@ -131,24 +132,82 @@ const plausiblyRounded = (left: NumericToken, right: NumericToken) => {
   );
 };
 
-const knownEntity = (candidate: string, context: NarrativeContext) => {
-  const normalized = candidate.toLocaleLowerCase();
-  if (
-    [
-      "overall market",
-      "chicago industrial",
-      "industrial market",
-      "market data",
-      "report data service",
-    ].some((value) => normalized.includes(value))
-  ) return true;
+// Generic descriptive phrases that are not really "named entities" needing
+// grounding — safe to treat as always-known regardless of context.
+const GENERIC_ENTITY_TERMS = [
+  "overall market",
+  "chicago industrial",
+  "industrial market",
+  "market data",
+  "report data service",
+];
+
+// Curly/typographic apostrophe and backtick variants, normalized to a
+// single straight apostrophe before possessive stripping so "Hyundai
+// Translead's" and "Hyundai Translead’s" compare identically.
+const APOSTROPHE_VARIANTS = /[‘’‛ʼ`´]/g;
+
+/**
+ * Conservative entity-name normalization for grounding comparison ONLY.
+ * This never changes what is stored or displayed — it exists purely so the
+ * validator can tell "Hyundai Translead's" and "Hyundai Translead" apart
+ * from a genuinely different entity, instead of hard-rejecting a possessive
+ * or a punctuation variant.
+ *
+ * Rules (deliberately narrow — this is not general fuzzy matching):
+ *  - unify curly/backtick apostrophes to a straight apostrophe
+ *  - strip a trailing possessive ('s or bare trailing ' as in "Prologis'")
+ *  - strip leading/trailing punctuation and quote characters
+ *  - collapse repeated whitespace
+ *  - case-fold
+ */
+export const normalizeEntityForMatch = (raw: string): string => {
+  let value = raw.replace(APOSTROPHE_VARIANTS, "'");
+  value = value.trim();
+  value = value.replace(/^["'“”.,;:!?()]+/, "").replace(/["'“”.,;:!?()]+$/, "");
+  // Trailing possessive: "Hyundai Translead's" -> "Hyundai Translead";
+  // "Prologis'" -> "Prologis".
+  value = value.replace(/'s$/i, "").replace(/'$/, "");
+  value = value.replace(/\s+/g, " ").trim();
+  return value.toLocaleLowerCase();
+};
+
+interface EntityMatchResult {
+  matched: boolean;
+  normalizedCandidate: string;
+}
+
+/**
+ * Alias handling: market identity (canonical name, display name, and known
+ * aliases like "I-80/Joliet Area" vs "I-80/Joliet") is already resolved
+ * upstream in contextBuilder.ts / submarkets.ts before context.marketName
+ * reaches here, so no separate alias table is needed at this layer — this
+ * function only needs to compare the candidate against the resolved
+ * marketName and the governed entityNames already attached to context.
+ */
+// A narrated market name is routinely prefixed with a leading definite
+// article ("The I-55 Corridor closed…") that never appears in the governed
+// marketName itself. This is ordinary English grammar, not a naming
+// variation, so it is stripped before comparison — narrowly, and only as a
+// leading token, not general fuzzy trimming.
+const stripLeadingArticle = (value: string) => value.replace(/^the\s+/, "");
+
+const matchEntity = (candidate: string, context: NarrativeContext): EntityMatchResult => {
+  const normalizedCandidate = normalizeEntityForMatch(candidate);
+  if (GENERIC_ENTITY_TERMS.some((term) => normalizedCandidate.includes(term)))
+    return { matched: true, normalizedCandidate };
+  const candidateVariants = new Set([
+    normalizedCandidate,
+    stripLeadingArticle(normalizedCandidate),
+  ]);
   const allowed = [
     context.marketName,
     ...context.facts.flatMap((item) => item.entityNames ?? []),
-  ].map((item) => item.toLocaleLowerCase());
-  return allowed.some(
-    (value) => value.includes(normalized) || normalized.includes(value),
+  ];
+  const matched = allowed.some((value) =>
+    candidateVariants.has(normalizeEntityForMatch(value)),
   );
+  return { matched, normalizedCandidate };
 };
 
 export function validateNarrativeResult(
@@ -156,6 +215,7 @@ export function validateNarrativeResult(
   result: NarrativeGenerationResult,
 ) {
   const issues: NarrativeValidationIssue[] = [];
+  const warnings: NarrativeValidationWarning[] = [];
   const keys = new Set(context.facts.map((item) => item.contextKey));
   for (const key of [
     ...result.contextKeysUsed,
@@ -209,36 +269,50 @@ export function validateNarrativeResult(
       message: "Generated output contains a raw Salesforce record identifier.",
     });
 
+  // Numeric grounding is advisory, not a hard blocker: format/phrasing
+  // differences ("$14.50/SF" vs "$14.50 per square foot"), unit
+  // restatements ("1.2 million SF" vs "1,200,000 SF"), and rounding are all
+  // things a reviewer can evaluate against the visible governed context in
+  // seconds. A number that cannot be matched at all is still worth flagging
+  // for review — it just should not silently reject a professionally usable
+  // draft (and the whole batch it shipped in) on its own. Hard rejection is
+  // reserved for integrity-level problems (unsupported support keys,
+  // corrupted payload, stale/version mismatch), handled elsewhere in this
+  // function.
   const allowedNumbers = context.facts.flatMap((item) => numericTokens(item.displayValue));
   numericTokens(result.narrative).forEach((token) => {
     if (allowedNumbers.some((allowed) => closeEnough(token, allowed))) return;
-    if (allowedNumbers.some((allowed) => plausiblyRounded(token, allowed)))
-      issues.push({
-        severity: "warning",
-        kind: "numeric",
-        message: `Generated numeric fact ${token.raw} may be a rounded form of trusted context and requires review.`,
-      });
-    else
-      issues.push({
-        severity: "error",
-        kind: "numeric",
-        message: `Generated numeric fact ${token.raw} is not supported by the trusted context.`,
-      });
+    const rounded = allowedNumbers.some((allowed) => plausiblyRounded(token, allowed));
+    const message = rounded
+      ? `Generated numeric fact ${token.raw} may be a rounded form of trusted context and requires review.`
+      : `Generated numeric fact ${token.raw} could not be matched exactly to a governed display value and requires review.`;
+    issues.push({ severity: "warning", kind: "numeric", message });
+    warnings.push({ flag: "numeric_validation_warning", phrase: token.raw, message });
   });
 
   // Digits and slashes are part of real market names — I-55 Corridor,
   // I-80/Joliet Area. Excluding them truncates "I-55" to "I-" and reports the
   // fragment as an unsupported entity.
+  //
+  // Entity grounding is advisory, not a hard blocker (see matchEntity /
+  // normalizeEntityForMatch above): once conservative normalization (case,
+  // whitespace, punctuation, possessive form) is applied, anything that
+  // still does not match exactly is surfaced as a review warning rather
+  // than rejected outright. A human reviewer can evaluate a naming
+  // variation, alias, or genuinely ungrounded mention against the visible
+  // narrative and governed context far more reliably than a substring
+  // heuristic can, and this must never silently reject a real 19-market
+  // batch over one possessive or a plausible paraphrase.
   const entityCandidates = result.narrative.match(
     /\b[A-Z][A-Za-z0-9&’'/-]+(?:\s+[A-Z][A-Za-z0-9&’'/-]+){1,3}\b/g,
   ) ?? [];
-  for (const candidate of entityCandidates)
-    if (!knownEntity(candidate, context))
-      issues.push({
-        severity: "error",
-        kind: "entity",
-        message: `Named entity “${candidate}” is not present in the publication-safe context.`,
-      });
+  for (const candidate of entityCandidates) {
+    const { matched } = matchEntity(candidate, context);
+    if (matched) continue;
+    const message = `Named entity “${candidate}” was not found exactly in the publication-safe context and requires review.`;
+    issues.push({ severity: "warning", kind: "entity", message });
+    warnings.push({ flag: "entity_validation_warning", phrase: candidate, message });
+  }
 
   for (const pattern of INTERNAL_WORKFLOW_PATTERNS) {
     const match = pattern.exec(result.narrative);
@@ -309,7 +383,7 @@ export function validateNarrativeResult(
   if (hasComparativeHistory && !COMPARATIVE_LANGUAGE.test(result.narrative))
     flags.add("missing_comparative_context");
 
-  return { issues, qualityFlags: [...flags] };
+  return { issues, qualityFlags: [...flags], warnings };
 }
 
 /**

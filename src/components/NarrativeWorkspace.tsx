@@ -4,6 +4,7 @@ import type {
   PublicNarrativeContext,
 } from "../report-engine/narratives/schema";
 import { NARRATIVE_PROMPT_PROFILES } from "../report-engine/narratives/schema";
+import { narrativeHasUnresolvedWarnings } from "../report-engine/narratives/workflow";
 import { CHICAGO_SUBMARKETS } from "../report-engine/submarkets";
 import type {
   ExternalNarrativeJob,
@@ -423,7 +424,10 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
                 {statusLabel(record.status)}
               </span>
               <span>{record.wordCount}</span>
-              <span>{record.qualityFlags.length + (record.overflow ? 1 : 0)}</span>
+              <span>
+                {(record.validationWarnings?.length ?? record.qualityFlags.length) +
+                  (record.overflow ? 1 : 0)}
+              </span>
             </button>
           ))}
         </div>
@@ -475,10 +479,40 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
               onClick={() => update(() => reportInstanceStore.approve(instance.id, selected.marketId))}
             >Approve</button>
           </div>
+          {selected.status !== "approved" && narrativeHasUnresolvedWarnings(selected) && (
+            <p className="narrative-approve-warning" role="status">
+              This narrative has unresolved review warnings (see below). Approval is still
+              allowed — the reviewer is the final authority — but please read them first.
+            </p>
+          )}
           {selected.error && <p className="narrative-error">{selected.error}</p>}
           {!!selected.qualityFlags.length && (
             <div className="quality-flags">
               {selected.qualityFlags.map((flag) => <span key={flag}>{statusLabel(flag)}</span>)}
+            </div>
+          )}
+          {!!selected.validationWarnings?.length && (
+            <div className="narrative-review-warnings" role="status">
+              <strong>
+                {selected.validationWarnings.length} review{" "}
+                {selected.validationWarnings.length === 1 ? "warning" : "warnings"} — imported
+                for review, not blocking
+              </strong>
+              <ul>
+                {selected.validationWarnings.map((warning, index) => (
+                  <li key={`${warning.flag}-${index}`}>
+                    <span className={`warning-kind warning-kind-${warning.flag}`}>
+                      {warning.flag === "entity_validation_warning"
+                        ? "Entity warning"
+                        : warning.flag === "numeric_validation_warning"
+                        ? "Numeric warning"
+                        : statusLabel(warning.flag)}
+                    </span>
+                    <span className="warning-phrase">“{warning.phrase}”</span>
+                    <span className="warning-message">{warning.message}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <details className="narrative-evidence">
