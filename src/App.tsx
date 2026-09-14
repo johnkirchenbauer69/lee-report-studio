@@ -2941,6 +2941,7 @@ export default function App() {
           element={selected}
           unit={settings.unit}
           selectionCount={selectedIds.length}
+          pageElements={page.elements}
           data={reportData}
           report={normalizedReport}
           fontAssets={(template.assets ?? []).filter(

@@ -115,6 +115,7 @@ const shadowSchema = z
     offsetY: finite,
     blur: nonNegative,
     opacity: finite.min(0).max(1),
+    spread: finite.optional(),
   })
   .strict();
 const bevelSchema = z
@@ -346,8 +347,12 @@ export const reportElementSchema = z.discriminatedUnion("type", [
       rowHeight: nonNegative.optional(),
       headerStyle: tableCellStyleSchema.optional(),
       bodyStyle: tableCellStyleSchema.optional(),
+      totalStyle: tableCellStyleSchema.optional(),
       transactionChipStyle: tableCellStyleSchema.optional(),
       cellStyles: z.record(z.string(), tableCellStyleSchema).optional(),
+      headerBevel: bevelSchema.optional(),
+      headerCornerRadius: nonNegative.optional(),
+      headerRibbonId: z.string().optional(),
     })
     .strict(),
   z
