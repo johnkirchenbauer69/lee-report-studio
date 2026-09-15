@@ -194,6 +194,21 @@ describe("flattenAlphaForPrint", () => {
     expect(flattenAlphaForPrint(undefined)).toBeUndefined();
   });
 
+  it("composites an hsla() tint against a white backdrop into opaque rgb()", () => {
+    expect(flattenAlphaForPrint("hsla(348, 83%, 42%, 0.15)")).toBe(
+      "rgb(246, 219, 225)",
+    );
+  });
+
+  it("leaves a fully opaque hsl()/hsla() (alpha 1) as-is", () => {
+    expect(flattenAlphaForPrint("hsl(348, 83%, 42%)")).toBe(
+      "hsl(348, 83%, 42%)",
+    );
+    expect(flattenAlphaForPrint("hsla(348, 83%, 42%, 1)")).toBe(
+      "hsla(348, 83%, 42%, 1)",
+    );
+  });
+
   it("composites against a caller-supplied backdrop instead of white", () => {
     expect(
       flattenAlphaForPrint("rgba(0, 0, 0, 0.5)", [0, 60, 80]),

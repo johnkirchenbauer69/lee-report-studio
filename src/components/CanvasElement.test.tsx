@@ -353,7 +353,8 @@ describe("CanvasElement effects", () => {
     expect(markup).not.toContain("drop-shadow(");
     // Instead, an SVG-native filter (offset/blur/flood/composite) scoped to
     // a dedicated shadow <path> renders the same effect inside the SVG's
-    // own raster model, which survives print flattening unchanged.
+    // own raster model, avoiding the whole-SVG CSS compositing group that
+    // caused the artifact.
     expect(markup).toMatch(/<filter id="union-shadow-banner-union"/);
     expect(markup).toContain("<feOffset");
     expect(markup).toContain("<feGaussianBlur");
@@ -444,6 +445,49 @@ describe("CanvasElement effects", () => {
     // channel reaches the rendered markup at all.
     expect(markup).toContain("background:rgb(246, 219, 226)");
     expect(markup).not.toContain("rgba(196, 18, 63, 0.15)");
+  });
+
+  it("flattens a translucent cell background against its actual (non-white) row backdrop, not white", () => {
+    // A market-matrix "minimum"/"maximum" row paints its own navy
+    // (#003c50) background under its cells (see .table-market-matrix
+    // tbody tr.row-minimum in advanced.css) -- flattening a translucent
+    // cell there against white would bake in a visibly wrong, too-light
+    // color instead of the true on-screen composite.
+    const navyRowTable: TableElement = {
+      ...table,
+      variant: "market-matrix",
+      rowKindPath: "kind",
+      columns: [
+        table.columns[0],
+        {
+          ...table.columns[1],
+          bodyStyle: { background: "rgba(196, 18, 63, 0.15)" },
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={navyRowTable}
+        elements={[navyRowTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New", kind: "minimum" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    // rgba(196, 18, 63, 0.15) over navy (#003c50 = rgb(0, 60, 80)), not
+    // over white -- the same tint composited against white (used by the
+    // earlier "highlighted column" test) would be rgb(246, 219, 226).
+    expect(markup).toContain("background:rgb(29, 54, 77)");
+    expect(markup).not.toContain("background:rgb(246, 219, 226)");
   });
 
   it("applies totals text shadow only to rows whose kind is total", () => {

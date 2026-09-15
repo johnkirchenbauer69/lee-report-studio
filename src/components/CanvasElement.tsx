@@ -6,6 +6,7 @@ import type {
   ReportElement,
   ReportPage,
   TableCellStyle,
+  TableElement,
   TableSelection,
   ShapeElement,
 } from "../types/report";
@@ -97,7 +98,44 @@ const mergeCellStyle = (
   ...styles: (TableCellStyle | undefined)[]
 ): TableCellStyle => Object.assign({}, ...styles);
 
-const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
+/**
+ * Best-effort mirror of this file's own `.report-table`/`.table-<variant>`
+ * CSS row/header backgrounds (see src/styles/advanced.css), used only to
+ * pick a realistic backdrop for flattenAlphaForPrint below. A translucent
+ * cell background composites against whatever actually paints behind that
+ * cell in the browser — for the "default" variant and most rows that is
+ * the page's white background, but market-matrix's striped/total/min-max
+ * rows and the indicators/transactions header bands paint their own
+ * non-white background, and flattening a translucent cell there against
+ * white would bake in a visibly wrong (too-light) color instead of the
+ * true on-screen composite. Falls back to white for anything this can't
+ * resolve (the default/most common case).
+ */
+const resolveCellBackdrop = (
+  variant: TableElement["variant"],
+  section: "header" | "body",
+  rowKind: string | undefined,
+  rowIndex: number,
+): readonly [number, number, number] => {
+  const white: [number, number, number] = [255, 255, 255];
+  if (variant === "market-matrix") {
+    if (section === "header") return [0, 60, 80]; // .table-market-matrix th, #003c50
+    if (rowKind === "total") return [143, 145, 148]; // tr.row-total, #8f9194
+    if (rowKind === "minimum" || rowKind === "maximum") return [0, 60, 80]; // tr.row-minimum/-maximum, #003c50
+    // tbody tr:nth-child(odd/even) — nth-child is 1-based, rowIndex is 0-based.
+    return rowIndex % 2 === 0 ? [212, 214, 215] : white; // #d4d6d7 / #fff
+  }
+  if (section === "header") {
+    if (variant === "indicators") return [206, 18, 63]; // .table-indicators th gradient, top stop #ce123f
+    if (variant === "transactions") return [196, 18, 63]; // .table-transactions th, #c4123f
+  }
+  return white;
+};
+
+const tableStyle = (
+  style?: TableCellStyle,
+  backdrop?: readonly [number, number, number],
+): React.CSSProperties => ({
   fontFamily: style?.fontFamily
     ? fontFamilyToCss(style.fontFamily, style.fontAssetId)
     : undefined,
@@ -108,8 +146,10 @@ const tableStyle = (style?: TableCellStyle): React.CSSProperties => ({
   // column authored as rgba(...)) into an opaque rgb(...) equivalent — see
   // flattenAlphaForPrint for why: a light translucent tint that composites
   // fine on screen/in a viewed PDF can fall under a physical printer's
-  // minimum reproducible tint and print as plain white.
-  background: flattenAlphaForPrint(style?.background),
+  // minimum reproducible tint and print as plain white. `backdrop` (from
+  // resolveCellBackdrop above) keeps that composite accurate for cells
+  // that don't actually sit on a white background.
+  background: flattenAlphaForPrint(style?.background, backdrop),
   textAlign: style?.textAlign,
   padding: style?.padding,
   borderColor: style?.borderColor,
@@ -614,7 +654,10 @@ export function CanvasElement(props: Props) {
     // The fix below stays inside the SVG's own raster/alpha model instead:
     // an <feOffset>/<feGaussianBlur>/<feFlood>/<feComposite> recipe applied
     // only to a dedicated shadow <path> (not the whole <svg>), producing an
-    // explicit shadow layer that survives print/PDF export unchanged.
+    // explicit shadow layer. This avoids the whole-SVG CSS filter
+    // compositing group that caused the observed white-block artifact —
+    // it is not a general guarantee against every possible print/PDF
+    // rendering quirk, just against that specific mechanism.
     const shadow = resolveDropShadow(element.style.shadow);
     const shadowPad = shadow.enabled
       ? Math.max(0, shadow.blur) * 2 +
@@ -971,7 +1014,10 @@ export function CanvasElement(props: Props) {
                       : undefined
                 }
                 style={{
-                  ...tableStyle(mergeCellStyle(element.headerStyle, c.headerStyle)),
+                  ...tableStyle(
+                    mergeCellStyle(element.headerStyle, c.headerStyle),
+                    resolveCellBackdrop(element.variant, "header", undefined, 0),
+                  ),
                   textAlign: c.align,
                   boxShadow: headerBoxShadow,
                   borderRadius: headerCellCornerRadius(
@@ -1047,6 +1093,7 @@ export function CanvasElement(props: Props) {
                           rowKind === "total" ? element.totalStyle : undefined,
                           element.cellStyles?.[`body:${i}:${column}`],
                         ),
+                        resolveCellBackdrop(element.variant, "body", rowKind, i),
                       ),
                       textAlign: c.align,
                       height: element.rowHeight,
