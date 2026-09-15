@@ -313,6 +313,83 @@ describe("CanvasElement effects", () => {
     expect(markup).toContain("M0 0 L100 0 L100 50 L0 50 Z");
   });
 
+  it("renders a union path's shadow as a print-safe native SVG filter, never a CSS filter on the <svg>", () => {
+    const markup = renderElement({
+      id: "banner-union",
+      type: "shape",
+      shape: "path",
+      name: "Banner",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      style: {
+        fill: { type: "solid", color: "#c4123f" },
+        shadow: {
+          enabled: true,
+          color: "#000000",
+          offsetX: 2,
+          offsetY: 4,
+          blur: 6,
+          opacity: 0.3,
+        },
+      },
+      pathGeometry: {
+        rings: [
+          [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+            { x: 0, y: 1 },
+          ],
+        ],
+      },
+    });
+    // A CSS `filter: drop-shadow(...)` on the <svg> box is exactly the
+    // pattern that produces a white compositing artifact when Chromium
+    // flattens transparency groups for print/PDF export — the <svg> itself
+    // must never carry one.
+    expect(markup).not.toMatch(/<svg[^>]*style="[^"]*filter:/);
+    expect(markup).not.toContain("drop-shadow(");
+    // Instead, an SVG-native filter (offset/blur/flood/composite) scoped to
+    // a dedicated shadow <path> renders the same effect inside the SVG's
+    // own raster model, avoiding the whole-SVG CSS compositing group that
+    // caused the artifact.
+    expect(markup).toMatch(/<filter id="union-shadow-banner-union"/);
+    expect(markup).toContain("<feOffset");
+    expect(markup).toContain("<feGaussianBlur");
+    expect(markup).toContain("<feFlood");
+    expect(markup).toContain("<feComposite");
+    expect(markup).toMatch(/<path[^>]*filter="url\(#union-shadow-banner-union\)"/);
+  });
+
+  it("omits the shadow filter entirely for a union path with no shadow enabled", () => {
+    const markup = renderElement({
+      id: "banner-no-shadow",
+      type: "shape",
+      shape: "path",
+      name: "Banner",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      style: { fill: { type: "solid", color: "#c4123f" } },
+      pathGeometry: {
+        rings: [
+          [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+            { x: 0, y: 1 },
+          ],
+        ],
+      },
+    });
+    expect(markup).not.toContain("<filter");
+    expect(markup).not.toContain("<feOffset");
+    expect(markup).not.toMatch(/<svg[^>]*style="[^"]*filter:/);
+  });
+
   it("renders the shared shadow model as one box-shadow around the whole table container, never per-cell", () => {
     const markup = renderToStaticMarkup(
       <CanvasElement
@@ -333,6 +410,84 @@ describe("CanvasElement effects", () => {
       />,
     );
     expect(markup.match(/box-shadow:-3px 5px 8px rgba\(18, 52, 86, 0.4\)/g)).toHaveLength(1);
+  });
+
+  it("flattens a translucent highlighted-column background to an opaque rgb() for print safety", () => {
+    // Mirrors an Indicators table with the current-quarter column tinted
+    // via a low-alpha rgba() background (the pattern that can fall under a
+    // physical printer's minimum reproducible tint and come out white).
+    const highlightedTable: TableElement = {
+      ...table,
+      columns: [
+        table.columns[0],
+        { ...table.columns[1], bodyStyle: { background: "rgba(196, 18, 63, 0.15)" } },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={highlightedTable}
+        elements={[highlightedTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    // The exact opaque composite of that rgba() over white -- no alpha
+    // channel reaches the rendered markup at all.
+    expect(markup).toContain("background:rgb(246, 219, 226)");
+    expect(markup).not.toContain("rgba(196, 18, 63, 0.15)");
+  });
+
+  it("flattens a translucent cell background against its actual (non-white) row backdrop, not white", () => {
+    // A market-matrix "minimum"/"maximum" row paints its own navy
+    // (#003c50) background under its cells (see .table-market-matrix
+    // tbody tr.row-minimum in advanced.css) -- flattening a translucent
+    // cell there against white would bake in a visibly wrong, too-light
+    // color instead of the true on-screen composite.
+    const navyRowTable: TableElement = {
+      ...table,
+      variant: "market-matrix",
+      rowKindPath: "kind",
+      columns: [
+        table.columns[0],
+        {
+          ...table.columns[1],
+          bodyStyle: { background: "rgba(196, 18, 63, 0.15)" },
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <CanvasElement
+        element={navyRowTable}
+        elements={[navyRowTable]}
+        pageSize={{ width: 816, height: 1056 }}
+        settings={settings}
+        data={{ rows: [{ party: "Tenant", type: "New", kind: "minimum" }] }}
+        mode="data"
+        selected={false}
+        zoom={1}
+        onSelect={() => undefined}
+        onChange={() => undefined}
+        onInteractionStart={() => undefined}
+        onInteractionEnd={() => undefined}
+        onGuides={() => undefined}
+        onContextMenu={() => undefined}
+      />,
+    );
+    // rgba(196, 18, 63, 0.15) over navy (#003c50 = rgb(0, 60, 80)), not
+    // over white -- the same tint composited against white (used by the
+    // earlier "highlighted column" test) would be rgb(246, 219, 226).
+    expect(markup).toContain("background:rgb(29, 54, 77)");
+    expect(markup).not.toContain("background:rgb(246, 219, 226)");
   });
 
   it("applies totals text shadow only to rows whose kind is total", () => {

@@ -44,6 +44,117 @@ export const shadowColorToCss = (color: string, opacity: number) => {
 };
 
 /**
+ * Flattens an alpha-channel color (`rgba(...)`, `hsla(...)`, or 8-digit
+ * `#RRGGBBAA` hex) against an opaque backdrop into a fully opaque
+ * `rgb(...)` string. A table cell's tinted background (e.g. a highlighted
+ * "current quarter" column) is normally authored as a translucent color so
+ * it reads as a light tint over whatever is behind it. That reliance on
+ * runtime alpha compositing is fragile for print: a light/low-alpha tint
+ * that renders correctly in an on-screen or viewed PDF can fall under a
+ * physical printer's minimum reproducible dot/halftone threshold and come
+ * out as plain white on paper, even though nothing is wrong with the PDF
+ * itself. Pre-compositing the color once here removes that dependency —
+ * the exact intended opaque RGB value is what reaches print, with no
+ * alpha/compositing step left for the print pipeline to get wrong.
+ *
+ * `backdrop` defaults to white, the common case (the page background, and
+ * every "default"-variant table), but is NOT always correct: some table
+ * variants paint their own non-white row/header background underneath a
+ * cell (see e.g. `.table-market-matrix` in styles/advanced.css — striped,
+ * total, and min/max rows; the indicators/transactions header bands), and
+ * flattening against white there would bake in the wrong composited color.
+ * Callers with a known non-white backdrop (see `resolveCellBackdrop` in
+ * CanvasElement.tsx) should pass it explicitly rather than relying on the
+ * default.
+ *
+ * Fully opaque colors (hex without alpha, `rgb()`/`hsl()`, named colors,
+ * `transparent`, css variables, gradients, etc.) are returned unchanged:
+ * this only ever touches genuinely alpha-bearing values it can parse.
+ */
+export const flattenAlphaForPrint = (
+  color: string | undefined,
+  backdrop: readonly [number, number, number] = [255, 255, 255],
+): string | undefined => {
+  if (!color) return color;
+  const value = color.trim();
+  const hex8 = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(
+    value,
+  );
+  if (hex8) {
+    const [r, g, b, a] = hex8
+      .slice(1)
+      .map((part) => Number.parseInt(part, 16));
+    return compositeOpaque([r, g, b], a / 255, backdrop);
+  }
+  const rgba =
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(
+      value,
+    );
+  if (rgba) {
+    const [r, g, b] = rgba.slice(1, 4).map(Number);
+    const a = rgba[4] === undefined ? 1 : Number(rgba[4]);
+    if (a >= 1) return value;
+    return compositeOpaque([r, g, b], a, backdrop);
+  }
+  const hsla =
+    /^hsla?\(\s*([\d.]+)(?:deg)?\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(
+      value,
+    );
+  if (hsla) {
+    const a = hsla[4] === undefined ? 1 : Number(hsla[4]);
+    if (a >= 1) return value;
+    const rgb = hslToRgb(
+      Number(hsla[1]),
+      Number(hsla[2]) / 100,
+      Number(hsla[3]) / 100,
+    );
+    return compositeOpaque(rgb, a, backdrop);
+  }
+  return value;
+};
+
+const hslToRgb = (
+  hue: number,
+  saturation: number,
+  lightness: number,
+): [number, number, number] => {
+  const h = ((hue % 360) + 360) % 360;
+  const s = Math.max(0, Math.min(1, saturation));
+  const l = Math.max(0, Math.min(1, lightness));
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r1, g1, b1] =
+    h < 60
+      ? [c, x, 0]
+      : h < 120
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x];
+  return [
+    Math.round((r1 + m) * 255),
+    Math.round((g1 + m) * 255),
+    Math.round((b1 + m) * 255),
+  ];
+};
+
+const compositeOpaque = (
+  rgb: readonly [number, number, number],
+  alpha: number,
+  backdrop: readonly [number, number, number],
+): string => {
+  const a = Math.max(0, Math.min(1, alpha));
+  const mix = (channel: number, back: number) =>
+    Math.round(channel * a + back * (1 - a));
+  return `rgb(${mix(rgb[0], backdrop[0])}, ${mix(rgb[1], backdrop[1])}, ${mix(rgb[2], backdrop[2])})`;
+};
+
+/**
  * `includeSpread` is opt-in and only meaningful for a container box-shadow —
  * CSS text-shadow has no spread component. Existing callers (text-shadow,
  * shape/image box-shadow) never pass it, so their output is unchanged.

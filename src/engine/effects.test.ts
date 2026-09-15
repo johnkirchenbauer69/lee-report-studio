@@ -8,6 +8,7 @@ import {
   elementBoxShadowToCss,
   directionalBevelToCss,
   directionalDropShadowToCss,
+  flattenAlphaForPrint,
 } from "./effects";
 
 describe("element drop shadows", () => {
@@ -161,5 +162,56 @@ describe("directionalDropShadowToCss", () => {
   it("combines blur and spread into one edge size", () => {
     const css = directionalDropShadowToCss({ ...shadow, blur: 2, spread: 3 })!;
     expect(css).toContain("inset 0 -5px 5px -5px");
+  });
+});
+
+describe("flattenAlphaForPrint", () => {
+  it("composites an rgba() tint against a white backdrop into opaque rgb()", () => {
+    // A 15%-opacity crimson highlight (#c4123f) over white composites to
+    // this exact opaque value; a print pipeline that receives this rgb()
+    // directly has no alpha step left to lose.
+    expect(flattenAlphaForPrint("rgba(196, 18, 63, 0.15)")).toBe(
+      "rgb(246, 219, 226)",
+    );
+  });
+
+  it("composites an 8-digit hex color's alpha channel the same way", () => {
+    // 0x26 / 255 ≈ 0.149 alpha, same crimson -- matches the rgba() case
+    // above within a rounding unit.
+    expect(flattenAlphaForPrint("#c4123f26")).toBe("rgb(246, 220, 226)");
+  });
+
+  it("leaves a fully opaque rgba() (alpha 1) as-is", () => {
+    expect(flattenAlphaForPrint("rgba(196, 18, 63, 1)")).toBe(
+      "rgba(196, 18, 63, 1)",
+    );
+  });
+
+  it("leaves plain hex, rgb(), named, and non-color CSS values untouched", () => {
+    expect(flattenAlphaForPrint("#c4123f")).toBe("#c4123f");
+    expect(flattenAlphaForPrint("rgb(196, 18, 63)")).toBe("rgb(196, 18, 63)");
+    expect(flattenAlphaForPrint("transparent")).toBe("transparent");
+    expect(flattenAlphaForPrint(undefined)).toBeUndefined();
+  });
+
+  it("composites an hsla() tint against a white backdrop into opaque rgb()", () => {
+    expect(flattenAlphaForPrint("hsla(348, 83%, 42%, 0.15)")).toBe(
+      "rgb(246, 219, 225)",
+    );
+  });
+
+  it("leaves a fully opaque hsl()/hsla() (alpha 1) as-is", () => {
+    expect(flattenAlphaForPrint("hsl(348, 83%, 42%)")).toBe(
+      "hsl(348, 83%, 42%)",
+    );
+    expect(flattenAlphaForPrint("hsla(348, 83%, 42%, 1)")).toBe(
+      "hsla(348, 83%, 42%, 1)",
+    );
+  });
+
+  it("composites against a caller-supplied backdrop instead of white", () => {
+    expect(
+      flattenAlphaForPrint("rgba(0, 0, 0, 0.5)", [0, 60, 80]),
+    ).toBe("rgb(0, 30, 40)");
   });
 });
