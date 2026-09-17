@@ -139,11 +139,15 @@ describe("MarketingChart vector output", () => {
       />,
     );
     expect(html).toContain("-350K SF");
-    expect(html).toContain('x="359"');
+    // The Vacancy/Availability value axis renders on the left, so its tick
+    // labels sit just left of the plot area (anchor "end").
+    const combinationMargin = marketingChartTheme.margins.combination;
+    expect(html).toContain(`x="${combinationMargin.left - 5}"`);
+    expect(html).toContain('data-axis-tick="left"');
     expect(html).toContain('text-anchor="end"');
   });
 
-  it("keeps the sales price axis and ticks while omitting its title", () => {
+  it("keeps the sales price axis and ticks on the left while omitting its title", () => {
     const html = renderToStaticMarkup(
       <MarketingChart
         element={element("sales_volume_cap_rates")}
@@ -152,10 +156,15 @@ describe("MarketingChart vector output", () => {
     );
     expect(html).toContain(">$0<");
     expect(html).toContain(">$140<");
-    expect(html).toContain('data-right-axis-min="0"');
-    expect(html).toContain('data-axis-tick="right"');
+    expect(html).toContain('data-line-axis-min="0"');
+    expect(html).toContain('data-axis-tick="left"');
+    expect(html).not.toContain('data-axis-tick="right"');
     expect(html).not.toContain("PRICE ($/SF)");
-    expect(marketingChartTheme.margins.sales.right).toBe(48);
+    // Net Absorption and Sales Volume now share identical plot-area
+    // proportions so the two charts line up visually on the page.
+    expect(marketingChartTheme.margins.sales).toEqual(
+      marketingChartTheme.margins.combination,
+    );
   });
 
   it("renders explicit compact SF zero labels", () => {
