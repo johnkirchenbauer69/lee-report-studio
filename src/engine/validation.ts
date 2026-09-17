@@ -1,6 +1,33 @@
 import type { ReportPage, ValidationItem } from "../types/report";
-import { getByPath } from "./bindings";
+import { getByContextPath } from "./bindings";
 import { elementRect, getRotatedAabb } from "./geometry";
+
+/**
+ * Card-repeater bindings (property/project highlight slots such as
+ * `market.topConstruction[0].image`) carry a sibling `.state` field written
+ * by `buildPresentationModel`'s `presentProperties` helper:
+ *   - "record": a real qualifying record — all normal checks apply.
+ *   - "image-unavailable": a real record whose image genuinely could not be
+ *     resolved — the "missing an image" check must still fire.
+ *   - "none": a padding slot for a repeater index beyond the governed
+ *     record count (including the entire section when there are zero
+ *     qualifying records, i.e. a legitimate "None to Report" state) — no
+ *     field on this slot should ever generate a QA warning.
+ * This mirrors the lookup CanvasElement.tsx already performs to render the
+ * "None to Report" placeholder, so QA and rendering agree on the same
+ * canonical section/slot state instead of re-deriving it independently.
+ */
+const CARD_FIELD_BINDING = /\.(address|detail|image)$/;
+
+function resolveCardState(
+  data: unknown,
+  binding: { path: string } | undefined,
+  bindingContext: { name: string; path: string } | undefined,
+): unknown {
+  if (!binding || !CARD_FIELD_BINDING.test(binding.path)) return undefined;
+  const statePath = binding.path.replace(CARD_FIELD_BINDING, ".state");
+  return getByContextPath(data, statePath, bindingContext);
+}
 
 export function validatePage(
   page: ReportPage,
@@ -16,9 +43,27 @@ export function validatePage(
         message: `${el.name} has an invalid size`,
         elementId: el.id,
       });
-    if (el.binding) {
-      const value = getByPath(data, el.binding.path);
-      if (value == null) {
+    // Page-repeat bindings (for example a submarket detail page's
+    // `submarket.topAvailabilities[0].image`) have no concrete context to
+    // resolve against until expandTemplatePages runs per submarket — this
+    // mirrors prepareTemplate.ts's identical `deferredPageBinding` guard.
+    // Validating them here against the un-expanded template would produce
+    // meaningless false positives, not a real data gap.
+    const deferredPageBinding = Boolean(
+      page.repeat &&
+        el.binding?.path.startsWith(`${page.repeat.contextName}.`),
+    );
+    const cardState = deferredPageBinding
+      ? undefined
+      : resolveCardState(data, el.binding, el.bindingContext);
+    const isNoneToReportSlot = cardState === "none";
+    if (el.binding && !deferredPageBinding) {
+      const value = getByContextPath(data, el.binding.path, el.bindingContext);
+      if (isNoneToReportSlot) {
+        // Nonexistent repeater slot (zero qualifying records, or an index
+        // past the actual record count) — a resolved, valid absence, not a
+        // data gap. Neither warn nor count it as a resolved binding.
+      } else if (value == null) {
         items.push({
           level: "warning",
           message: `Missing data: ${el.binding.label ?? el.binding.path}`,
@@ -40,7 +85,21 @@ export function validatePage(
         elementId: el.id,
       });
     }
-    if (el.type === "image" && !el.src)
+    if (el.type === "image" && el.binding && !deferredPageBinding) {
+      // Bound images resolve their real src from data at render time; the
+      // element's design-time `src` is not meaningful for a bound image, so
+      // check the resolved value instead of the stale static field. Skip
+      // entirely for a nonexistent ("none") card slot — only a real record
+      // (state "record"/"image-unavailable", or no card-state binding at
+      // all) with a genuinely unresolved image should warn.
+      const value = getByContextPath(data, el.binding.path, el.bindingContext);
+      if (!isNoneToReportSlot && !value)
+        items.push({
+          level: "error",
+          message: `${el.name} is missing an image`,
+          elementId: el.id,
+        });
+    } else if (el.type === "image" && !el.src)
       items.push({
         level: "error",
         message: `${el.name} is missing an image`,
