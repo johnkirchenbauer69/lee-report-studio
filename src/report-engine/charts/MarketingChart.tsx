@@ -491,8 +491,8 @@ function CombinationChart({
     : [marketingChartTheme.palette.vacancy, marketingChartTheme.palette.navy];
   return (
     <g
-      data-right-axis-min={rightDomain.minimum}
-      data-right-axis-max={rightDomain.maximum}
+      data-line-axis-min={rightDomain.minimum}
+      data-line-axis-max={rightDomain.maximum}
     >
       <GridAxis
         ticks={rightTicks}
@@ -501,7 +501,7 @@ function CombinationChart({
         format={
           sales ? wholeCurrency : (value) => `${Math.round(value * 100)}%`
         }
-        side="right"
+        side="left"
       />
       {bars.flatMap((value, index) =>
         value === undefined ? (

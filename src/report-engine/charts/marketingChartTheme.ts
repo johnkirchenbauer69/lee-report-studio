@@ -19,10 +19,16 @@ export const marketingChartTheme = {
   gridWidth: 0.3,
   lineWidth: 0.84,
   dash: "4 3",
+  // `combination` and `sales` intentionally share one margin so the Net
+  // Absorption and Sales Volume charts render with identical plot-area
+  // proportions. Both now place their line-series value axis on the left
+  // (see MarketingChart's CombinationChart), so the left margin is sized to
+  // fit that axis's widest label (whole-dollar PSF or whole-percent ticks)
+  // and the right margin matches the other left-axis charts below.
   margins: {
     availability: { left: 47.94, right: 13.33, top: 9.56, bottom: 35.63 },
-    combination: { left: 35.36, right: 11.5, top: 11.64, bottom: 35.49 },
-    sales: { left: 56.28, right: 48, top: 11.64, bottom: 35.49 },
+    combination: { left: 44, right: 13.33, top: 11.64, bottom: 35.49 },
+    sales: { left: 44, right: 13.33, top: 11.64, bottom: 35.49 },
     construction: { left: 35.36, right: 11.5, top: 11.64, bottom: 35.49 },
   },
   shadow: { dx: 3, dy: 3, blur: 1.4, opacity: 0.26 },

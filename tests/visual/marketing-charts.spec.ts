@@ -71,40 +71,53 @@ for (const chart of charts) {
     await expect(target.locator("svg filter")).toHaveCount(1);
     if (chart.id === "chart-net") {
       await assertLegendCentered(target);
-      const axis = target.locator("svg g[data-right-axis-min]");
-      await expect(axis).toHaveAttribute("data-right-axis-min", "0.031");
-      await expect(axis).toHaveAttribute("data-right-axis-max", "0.115");
+      // Vacancy/Availability now render on the left value axis (the same
+      // side as every other marketing chart), so this attribute-holding <g>
+      // no longer sits on the chart's right edge.
+      const axis = target.locator("svg g[data-line-axis-min]");
+      await expect(axis).toHaveAttribute("data-line-axis-min", "0.031");
+      await expect(axis).toHaveAttribute("data-line-axis-max", "0.115");
       await expect(
         target.locator("svg text").filter({ hasText: "SF" }),
       ).not.toHaveCount(0);
+      await expect(
+        target.locator('svg text[data-axis-tick="right"]'),
+      ).toHaveCount(0);
       const tickBoxes = await target
-        .locator('svg text[data-axis-tick="right"]')
+        .locator('svg text[data-axis-tick="left"]')
         .evaluateAll((ticks) =>
           ticks.map((tick) => {
             const box = (tick as SVGTextElement).getBBox();
-            return { right: box.x + box.width };
+            return { left: box.x };
           }),
         );
-      expect(
-        Math.max(...tickBoxes.map((box) => box.right)),
-      ).toBeLessThanOrEqual(360);
+      expect(tickBoxes.length).toBeGreaterThan(0);
+      expect(Math.min(...tickBoxes.map((box) => box.left))).toBeGreaterThanOrEqual(
+        0,
+      );
     }
     if (chart.id === "chart-sales-unavailable") {
       await assertLegendCentered(target);
-      const axis = target.locator("svg g[data-right-axis-min]");
-      await expect(axis).toHaveAttribute("data-right-axis-min", "0");
+      const axis = target.locator("svg g[data-line-axis-min]");
+      await expect(axis).toHaveAttribute("data-line-axis-min", "0");
       await expect(
         target.locator("svg text", { hasText: "PRICE ($/SF)" }),
       ).toHaveCount(0);
+      await expect(
+        target.locator('svg text[data-axis-tick="right"]'),
+      ).toHaveCount(0);
       const tickBoxes = await target
-        .locator('svg text[data-axis-tick="right"]')
+        .locator('svg text[data-axis-tick="left"]')
         .evaluateAll((ticks) =>
           ticks.map((tick) => {
             const box = (tick as SVGTextElement).getBBox();
-            return { right: box.x + box.width };
+            return { left: box.x };
           }),
         );
-      expect(Math.max(...tickBoxes.map((box) => box.right))).toBeLessThan(350);
+      expect(tickBoxes.length).toBeGreaterThan(0);
+      expect(Math.min(...tickBoxes.map((box) => box.left))).toBeGreaterThanOrEqual(
+        0,
+      );
     }
     if (chart.id === "availability-chart") {
       await expect(
