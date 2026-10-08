@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "exportedAt": "2026-10-08T17:49:37.138Z",
+  "exportedAt": "2026-10-08T17:59:48.561Z",
   "reportName": "Synthetic Market Asset QA",
   "reportId": "report-market-assets-synthetic-qa",
   "reportingPeriod": "Q3 2026",
@@ -16,7 +16,8 @@
     }
   ],
   "selectedCategories": [
-    "charts"
+    "charts",
+    "section"
   ],
   "files": [
     {
@@ -24,8 +25,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "265950644ad2281071746e57af933de455590ed24e0bdc9e6cf242f3a29ec8c0",
-      "bytes": 200191,
+      "checksum": "8e3a04669944b198cbb401b16372b705689f1543802eb1619577f353412b1795",
+      "bytes": 85475,
       "warnings": []
     },
     {
@@ -33,8 +34,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "041f786f541363ad92c94d4927aee7f750f4247458320e3765cda5ec2fe7e0f4",
-      "bytes": 89459,
+      "checksum": "eef9169159481827220cfbc3d494b98a2882e3cd6d0fb5e8aea28d441ef331d4",
+      "bytes": 37548,
       "warnings": []
     },
     {
@@ -42,8 +43,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "4549ed8f1a03acc9f22254f41408d356a0753fd06e16bdb17a7904d829a34643",
-      "bytes": 138668,
+      "checksum": "5d40485ed26ad83ccdd04b1e02eae9d42cc712805c473be824146fc838e9e92a",
+      "bytes": 61457,
       "warnings": []
     },
     {
@@ -51,8 +52,17 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "1a138beddfe695d4f1c2f36bf999cc9b5775eaa6408c02a4eca5cd77e8e1bec8",
-      "bytes": 150746,
+      "checksum": "5bc5e61c7366ddebdcd7bc79c0c95af1a108a7acb59ec2d53c46017c98612947",
+      "bytes": 64319,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Complete Section/I-55 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-55 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c723cb372b269b3fe99e5bcd1bcb04bb7002d4a94395e75c2903cf71156427ea",
+      "bytes": 2787037,
       "warnings": []
     }
   ],

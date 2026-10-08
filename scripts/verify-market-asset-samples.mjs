@@ -40,7 +40,17 @@ function unzip(bytes) {
   );
 }
 const results = [];
-for (const name of (await fs.readdir(root)).filter((n) => n.endsWith(".zip"))) {
+const packages = (await fs.readdir(root)).filter((n) => n.endsWith(".zip"));
+for (const required of [
+  "I-55-charts-only-synthetic.zip",
+  "I-55-all-assets-synthetic.zip",
+  "multiple-markets-synthetic.zip",
+  "all-19-markets-synthetic.zip",
+]) {
+  if (!packages.includes(required))
+    throw new Error(`Required sample missing: ${required}`);
+}
+for (const name of packages) {
   const entries = await unzip(await fs.readFile(path.join(root, name)));
   const manifestEntry = [...entries].find(([name]) =>
     name.endsWith("/ExportManifest.json"),
@@ -166,6 +176,10 @@ for (const name of (await fs.readdir(root)).filter((n) => n.endsWith(".zip"))) {
     checksums: "passed",
     omissions: manifest.omissions.length,
   });
+  await fs.writeFile(
+    path.join(root, name.replace(/\.zip$/, "-manifest.json")),
+    JSON.stringify(manifest, null, 2),
+  );
 }
 await fs.writeFile(
   path.join(root, "artifact-validation.json"),

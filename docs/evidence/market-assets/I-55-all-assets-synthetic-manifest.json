@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "exportedAt": "2026-10-08T17:12:28.885Z",
+  "exportedAt": "2026-10-08T17:49:05.418Z",
   "reportName": "Synthetic Market Asset QA",
   "reportId": "report-market-assets-synthetic-qa",
   "reportingPeriod": "Q3 2026",
   "revision": 1,
-  "snapshotHash": "0c7b8db2556f57bfe24cf04e6c17f1767534c74e3c951672aa9407f876568ca2",
+  "snapshotHash": "e9657ea83a31f27c97af17eece6be23032e092fd5c8d4af55a02844ca0171225",
   "templateVersion": "1.3.0",
   "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
-  "generatedAt": "2026-10-08T17:12:19.929Z",
+  "generatedAt": "2026-10-08T17:48:57.772Z",
   "selectedMarkets": [
     {
       "id": "i55-corridor",
@@ -31,8 +31,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
-      "bytes": 198203,
+      "checksum": "265950644ad2281071746e57af933de455590ed24e0bdc9e6cf242f3a29ec8c0",
+      "bytes": 200191,
       "warnings": []
     },
     {
@@ -40,8 +40,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
-      "bytes": 89460,
+      "checksum": "041f786f541363ad92c94d4927aee7f750f4247458320e3765cda5ec2fe7e0f4",
+      "bytes": 89459,
       "warnings": []
     },
     {
@@ -49,8 +49,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
-      "bytes": 146793,
+      "checksum": "4549ed8f1a03acc9f22254f41408d356a0753fd06e16bdb17a7904d829a34643",
+      "bytes": 138668,
       "warnings": []
     },
     {
@@ -58,8 +58,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
-      "bytes": 149906,
+      "checksum": "1a138beddfe695d4f1c2f36bf999cc9b5775eaa6408c02a4eca5cd77e8e1bec8",
+      "bytes": 150746,
       "warnings": []
     },
     {
@@ -67,8 +67,8 @@
       "market": "I-55 Corridor",
       "category": "indicators",
       "format": "png",
-      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
-      "bytes": 97968,
+      "checksum": "63e21dbc133d25aa64113a9f3e51de1c586f6d746539332bbc8dd208bccd246e",
+      "bytes": 97362,
       "warnings": []
     },
     {
@@ -76,8 +76,8 @@
       "market": "I-55 Corridor",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "fa37f1a46b3e255b8841e8de0b132b3ff3aad56e3eb3334099ce17790796eb2b",
-      "bytes": 8725,
+      "checksum": "a94148dde79f70c7dd40d6de4abd5f5e3b9be87af15e47e429ad4f6e266f5e3a",
+      "bytes": 8802,
       "warnings": []
     },
     {
@@ -85,8 +85,8 @@
       "market": "I-55 Corridor",
       "category": "transactions",
       "format": "png",
-      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
-      "bytes": 60715,
+      "checksum": "6b497464f7b966928343dc2e429d65bc920243a0e5f925eac4f02d92f0eb50cc",
+      "bytes": 60537,
       "warnings": []
     },
     {
@@ -94,8 +94,8 @@
       "market": "I-55 Corridor",
       "category": "transactions",
       "format": "png",
-      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
-      "bytes": 63120,
+      "checksum": "43d39d4f865a6e8a1b7db6f767e5cf6eec05f611d1bac37e68bbb28eeebd2c2b",
+      "bytes": 66069,
       "warnings": []
     },
     {
@@ -103,8 +103,8 @@
       "market": "I-55 Corridor",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "be1a152a9385f27843ce990832d7d1e60d2f839e8b8d3d1214a3696db0e9d6d6",
-      "bytes": 10714,
+      "checksum": "170089a42644bc3986d645bcc68cd2a20d6c9c2e586e5e7071791e5e5772c557",
+      "bytes": 10778,
       "warnings": []
     },
     {
@@ -112,8 +112,8 @@
       "market": "I-55 Corridor",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "48a350f1cfd45bc54f072aee138fcaf20ce0c7f614ce444df81310460b6444cf",
-      "bytes": 11088,
+      "checksum": "494a49cc9b32a4caaca5b280f15a67e830c602abe434caa9def28d69d8a1603f",
+      "bytes": 11170,
       "warnings": []
     },
     {
@@ -121,7 +121,7 @@
       "market": "I-55 Corridor",
       "category": "narrative",
       "format": "docx",
-      "checksum": "5e8c6ac7503ed68162df9395fdbd4ed9d3097efb9f6852c36a9c87c2b3c6e289",
+      "checksum": "c86627fe154fbb0ea2dbf8f59aa19b6be640a73b73d283d6c00ef64efbf7f09f",
       "bytes": 1843,
       "warnings": []
     },
@@ -139,8 +139,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "png",
-      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
-      "bytes": 998700,
+      "checksum": "8b2ed733d95cb91a071ba62e2f5f02de18c386aa76a38eb98fdf9a0979f3d5ad",
+      "bytes": 1000179,
       "warnings": []
     },
     {
@@ -148,8 +148,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "png",
-      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
-      "bytes": 1174175,
+      "checksum": "8b658ef108443209050b15b3af9116c39784147562ad0cd238d06a8100155414",
+      "bytes": 1174142,
       "warnings": []
     },
     {
@@ -157,8 +157,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "png",
-      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
-      "bytes": 1126363,
+      "checksum": "14b3051d76a45706a01069b28743a2eb07b9d7fb02fe594936a5b9affe304290",
+      "bytes": 1127209,
       "warnings": []
     },
     {
@@ -166,8 +166,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "ceed8fd9711c0e094d483d960940a231b6ba5f66042baefadc68a6abc20bfb91",
-      "bytes": 10164,
+      "checksum": "0579384fc321d4a1d424976997c1cf72c909c0105eb8e8de27f469ea4c0805e1",
+      "bytes": 10215,
       "warnings": []
     },
     {
@@ -175,8 +175,8 @@
       "market": "I-55 Corridor",
       "category": "map",
       "format": "png",
-      "checksum": "6c789f265cc916c82ae451b618e9a6d1fa432e7e2ee6f895e4dfc660640b4283",
-      "bytes": 3579455,
+      "checksum": "b0aa4ff76da89f5a65fbaab53423ffb506cf1e8b3f08d7ebd9b1f4e76a3f7c68",
+      "bytes": 3577053,
       "warnings": [
         "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
       ]

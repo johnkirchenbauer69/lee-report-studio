@@ -9,6 +9,7 @@ import {
   buildExportPlan,
   discoverMarkets,
   fragmentPage,
+  tablePayload,
 } from "../../src/report-engine/market-assets/discovery";
 import {
   CATEGORIES,
@@ -62,6 +63,36 @@ const unzip = (bytes: Buffer): Promise<Record<string, string>> =>
       .catch(reject);
   });
 describe("saved market asset exports", () => {
+  it("keeps native transaction amounts aligned when a saved placeholder is omitted", () => {
+    const table = {
+      type: "table",
+      name: "Top Leases",
+      sourcePath: "rows",
+      variant: "transactions",
+      columns: [
+        { path: "party", label: "Tenant" },
+        { path: "amount", label: "Size (SF)" },
+      ],
+    } as import("../../src/types/report").TableElement;
+    const market = {
+      id: "fixture-market",
+      name: "Fixture Market",
+      pages: [],
+      source: { leasing: [{ sizeSf: 100 }, { sizeSf: 200 }, { sizeSf: 300 }] },
+    } as import("../../src/report-engine/market-assets/contracts").MarketSection;
+    const result = tablePayload(
+      table,
+      {
+        rows: [
+          { party: "-", amount: "100" },
+          { party: "Second", amount: "200" },
+          { party: "Third", amount: "300" },
+        ],
+      },
+      market,
+    );
+    expect(result.rows.map((row) => row[1].value)).toEqual([200, 300]);
+  });
   it("discovers all actual saved markets and produces the complete eight-category matrix", async () => {
     const instance = await marketAssetFixture(),
       plan = buildExportPlan(

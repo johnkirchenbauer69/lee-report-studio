@@ -192,12 +192,13 @@ export function tablePayload(
     title: table.name,
     headers: table.columns.map((c) => c.label),
     rows: shown
+      .map((row, index) => ({ row, index }))
       .filter(
-        (row) =>
+        ({ row }) =>
           !table.variant?.includes("transactions") ||
           getByPath(row, "party") !== "-",
       )
-      .map((row, index) =>
+      .map(({ row, index }) =>
         table.columns.map((col, columnIndex) => {
           let value = getByPath(row, col.path),
             format = col.format ?? "text";
