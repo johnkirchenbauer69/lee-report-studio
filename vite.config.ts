@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
     // Generated QA/Office temporary files are not source modules.
-    watch: { ignored: ["**/docs/evidence/**"] },
+    watch: { ignored: ["**/docs/evidence/**", "**/output/**", "**/test-results/**", "**/visual-report/**"] },
     proxy: { "/api": process.env.LEE_API_URL ?? "http://127.0.0.1:8787" },
   },
 });
