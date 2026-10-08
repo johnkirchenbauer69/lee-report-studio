@@ -4,8 +4,12 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sampleTemplate } from "../../src/data/sampleTemplate.ts";
 import { generateReportInstance } from "../../src/report-engine/generation/generateReport.ts";
-import type { NarrativeContext } from "../../src/report-engine/narratives/schema.ts";
+import {
+  transportPromptVersion,
+  type NarrativeContext,
+} from "../../src/report-engine/narratives/schema.ts";
 import { FileSystemReportInstanceRepository } from "../report-instances/FileSystemReportInstanceRepository.ts";
+import { containsSalesforceIdToken } from "../../src/shared/salesforceIds.ts";
 import { buildNarrativeContext } from "./contextBuilder.ts";
 import { MockNarrativeModelClient } from "./modelClient.ts";
 import {
@@ -185,7 +189,7 @@ function grounded(
     ],
     contextKeysUsed: [vacancy.contextKey],
     qualityFlags: [],
-    promptVersion: context.promptVersion,
+    promptVersion: transportPromptVersion(context.marketKind),
     ...overrides,
   };
 }
@@ -452,7 +456,11 @@ describe("ChatGPT MCP narrative generation", () => {
     // No server-only provenance and no raw Salesforce identifiers leave here.
     const serialized = JSON.stringify(contexts);
     expect(serialized).not.toContain("internalSourceIds");
-    expect(serialized).not.toMatch(/\b[a-zA-Z0-9]{18}\b/);
+    // Same identifier rule the publication guard enforces (an ID-shaped
+    // token must mix letters and digits), so digit-free context v3 field
+    // names such as materialityPercent are not mistaken for record IDs.
+    expect(containsSalesforceIdToken(serialized)).toBe(false);
+    expect(serialized).not.toContain("001A0000009z3ZI");
   });
 
   it("imports a valid batch as 19 Draft narratives with chatgpt-mcp provenance", async () => {

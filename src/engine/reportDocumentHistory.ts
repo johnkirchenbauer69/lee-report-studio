@@ -23,9 +23,10 @@ export const upsertManualOverride = (
 ) => {
   const matches = (item: ManualOverride) =>
     item.elementId === input.elementId &&
+    item.cellKey === input.cellKey &&
     item.bindingPath === input.bindingPath;
   const withoutElement = current.filter((item) => !matches(item));
-  if (String(input.overrideValue ?? "") === String(input.generatedValue ?? ""))
+  if (!input.cellKey && String(input.overrideValue ?? "") === String(input.generatedValue ?? ""))
     return withoutElement;
   const existing = current.find(matches);
   return [

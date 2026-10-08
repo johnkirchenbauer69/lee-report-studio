@@ -171,6 +171,22 @@ export const reportInstanceStore = {
       "POST",
       options,
     ),
+  /** Optional broker interview upload (PDF/DOCX); returns the updated instance. */
+  uploadBrokerInterviews: (id: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file, file.name);
+    return json<ReportInstance>(
+      fetch(`/api/report-instances/${encodeURIComponent(id)}/broker-interviews`, {
+        method: "POST",
+        body,
+      }),
+    );
+  },
+  removeBrokerInterviews: (id: string) =>
+    send<ReportInstance>(
+      `/api/report-instances/${encodeURIComponent(id)}/broker-interviews`,
+      "DELETE",
+    ),
   retryExternalImport: (id: string) =>
     send<ReportInstance>(
       `/api/report-instances/${encodeURIComponent(id)}/narratives/external-job/reimport`,

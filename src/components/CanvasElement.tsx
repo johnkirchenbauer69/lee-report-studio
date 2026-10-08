@@ -1,4 +1,7 @@
+import { ClosingContent } from "./ClosingContent";
+import { INDICATOR_STYLE, indicatorColor } from "../report-engine/indicators/indicatorStyle";
 import React, { useEffect, useRef, useState } from "react";
+import { tableCellDisplayValue, findTableValueOverride } from "../engine/tableValueOverrides";
 import type {
   EditorSettings,
   ImageCrop,
@@ -14,6 +17,10 @@ import type { SnapGuide } from "../engine/editorMath";
 import { fillToCss, snapPosition } from "../engine/editorMath";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 import { NativeChart } from "../report-engine/charts/NativeChart";
+import {
+  useNarrativeFontFit,
+  type NarrativeFitListener,
+} from "./useNarrativeFontFit";
 import { normalizeRotation, snapRotation } from "../engine/geometry";
 import { getRotatedAabb, elementRect } from "../engine/geometry";
 import {
@@ -81,6 +88,11 @@ interface Props {
    * below for the commit/cancel rule.
    */
   onCommitCrop?: (id: string) => void;
+  /**
+   * Reports the dynamic narrative font fit (chosen size, and whether the
+   * text overflows even at the authored minimum) for narrative-bound text.
+   */
+  onNarrativeFit?: NarrativeFitListener;
 }
 
 const DEFAULT_IMAGE_CROP: ImageCrop = { x: 50, y: 50, zoom: 1 };
@@ -189,6 +201,38 @@ export function CanvasElement(props: Props) {
     onGuides,
   } = props;
   const [rotationAngle, setRotationAngle] = useState<number | null>(null);
+
+  // Bound narrative text: identified by its binding, and dynamically sized
+  // (authored size up to +2 pt) to the largest size that fits its box.
+  const narrativeMarketId =
+    element.type === "text" &&
+    element.binding?.path === "overallMarket.narrative"
+      ? "overall-market"
+      : element.type === "text" && element.binding?.path === "market.narrative"
+        ? String(
+            getByContextPath(data, "market.id", element.bindingContext) ??
+              getByContextPath(data, "market.name", element.bindingContext) ??
+              "submarket",
+          )
+        : undefined;
+  const narrativeTextRef = useRef<HTMLSpanElement>(null);
+  useNarrativeFontFit(
+    narrativeTextRef,
+    {
+      enabled: Boolean(narrativeMarketId) && mode === "data" && !element.hidden,
+      marketId: narrativeMarketId,
+      onFit: props.onNarrativeFit,
+    },
+    [
+      data,
+      props.manualOverrides,
+      element.width,
+      element.height,
+      element.style,
+      element.binding?.path,
+      element.bindingContext?.path,
+    ],
+  );
 
   // --- Crop mode: temporary, non-persisted state ---------------------
   //
@@ -790,11 +834,14 @@ export function CanvasElement(props: Props) {
                 element.binding,
               )
             : element.text;
-    content = (
+    content = element.closingContent ? <ClosingContent content={element.closingContent} /> : (
       <div
         className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}
       >
-        <span className="text-value">
+        <span
+          className="text-value"
+          ref={narrativeMarketId ? narrativeTextRef : undefined}
+        >
           {typography?.uppercase ? raw.toUpperCase() : raw}
         </span>
       </div>
@@ -880,24 +927,18 @@ export function CanvasElement(props: Props) {
       row: unknown,
       column: (typeof element.columns)[number],
     ) => {
-      const formatted = formatValue(getByPath(row, column.path), {
-        path: column.path,
-        format: column.format,
-        decimals: column.decimals ?? 1,
-      });
+      const formatted = tableCellDisplayValue(element, row, column, data, props.manualOverrides);
+      if (findTableValueOverride(element, row, column, data, props.manualOverrides)) return formatted;
       if (element.variant === "indicators" && column.path === "metric") {
         const direction = String(getByPath(row, "direction") ?? "equal");
         const semanticStatus = String(
           getByPath(row, "semanticStatus") ?? "neutral",
         );
-        const indicatorKind = String(
-          getByPath(row, "indicatorKind") ??
-            (direction === "equal" ? "bar" : "arrow"),
-        );
+        const indicatorKind = direction === "unavailable" ? "unavailable" : direction === "equal" ? "bar" : "arrow";
         return (
           <span
             className="metric-direction-label"
-            aria-label={`${formatted}: ${indicatorKind === "bar" ? "neutral" : direction}, ${semanticStatus}`}
+            aria-label={`${formatted}: ${indicatorKind === "bar" ? "unchanged" : direction}, ${semanticStatus}`}
           >
             <span
               aria-hidden="true"
@@ -906,14 +947,15 @@ export function CanvasElement(props: Props) {
               data-indicator-kind={indicatorKind}
               data-semantic-status={semanticStatus}
               style={{
-                color: String(getByPath(row, "indicatorColor") ?? "#4E131E"),
+                color: indicatorColor(direction),
               }}
             >
-              {indicatorKind === "bar" ? (
-                <span className="metric-neutral-bar" />
-              ) : (
-                String(getByPath(row, "indicatorGlyph") ?? "")
-              )}
+              <svg width="10" height="10" viewBox="0 0 10 10" focusable="false" data-testid="metric-indicator-svg">
+                {direction === "unavailable" ? <rect x="1" y="4.5" width="8" height="1" fill="currentColor" />
+                  : direction === "up" ? <path d="M5 1L10 9H0Z" fill="currentColor" />
+                  : direction === "down" ? <path d="M0 1H10L5 9Z" fill="currentColor" />
+                  : <rect x="0" y="3.5" width="10" height="3" rx="1" fill="currentColor" />}
+              </svg>
             </span>
             <span>{formatted}</span>
           </span>
@@ -987,7 +1029,8 @@ export function CanvasElement(props: Props) {
     const table = (
       <table
         className={`report-table table-${element.variant ?? "default"}`}
-        style={headerWrapperRadii ? { background: "transparent" } : undefined}
+        style={{ ...(headerWrapperRadii ? { background: "transparent" } : {}),
+          ...(element.variant === "indicators" ? { fontFamily: INDICATOR_STYLE.fontFamily, fontSize: INDICATOR_STYLE.fontSize, color: INDICATOR_STYLE.color } : {}) }}
       >
         <colgroup>
           {element.columns.map((c) => (
@@ -1096,6 +1139,7 @@ export function CanvasElement(props: Props) {
                         resolveCellBackdrop(element.variant, "body", rowKind, i),
                       ),
                       textAlign: c.align,
+                      ...(element.variant === "indicators" ? { fontWeight: column <= 1 ? INDICATOR_STYLE.bold : INDICATOR_STYLE.regular } : {}),
                       height: element.rowHeight,
                       boxShadow: rowShadow,
                     }}
@@ -1117,7 +1161,8 @@ export function CanvasElement(props: Props) {
                         : undefined
                     }
                   >
-                    {element.variant === "transactions" && c.path === "type" ? (
+                    {element.variant === "transactions" && c.path === "type" &&
+                      !findTableValueOverride(element, row, c, data, props.manualOverrides) ? (
                       <div className="transaction-type-cell">
                         <span className="transaction-type-value">
                           {formatValue(getByPath(row, c.path), {
@@ -1177,17 +1222,6 @@ export function CanvasElement(props: Props) {
     content = <NativeChart element={element} data={data} />;
   }
   if (element.hidden) return null;
-  const narrativeMarketId =
-    element.type === "text" &&
-    element.binding?.path === "overallMarket.narrative"
-      ? "overall-market"
-      : element.type === "text" && element.binding?.path === "market.narrative"
-        ? String(
-            getByContextPath(data, "market.id", element.bindingContext) ??
-              getByContextPath(data, "market.name", element.bindingContext) ??
-              "submarket",
-          )
-        : undefined;
   return (
     <div
       data-testid={element.id}

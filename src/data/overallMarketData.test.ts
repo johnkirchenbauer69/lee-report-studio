@@ -63,7 +63,7 @@ describe("normalized overall-market data", () => {
     periods.slice(0, 5).forEach((period, index) => {
       const quarterlyWindow = periods
         .slice(index, index + 4)
-        .reduce((sum, input) => sum + input.quarterlyNetAbsorptionSf, 0);
+        .reduce((sum, input) => sum + input.quarterlyNetAbsorptionSf!, 0);
       expect(period.trailing12MonthNetAbsorptionSf).toBe(quarterlyWindow);
     });
   });

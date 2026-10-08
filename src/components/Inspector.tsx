@@ -1,3 +1,4 @@
+import { ClosingContentEditor } from "./ClosingContentEditor";
 import type {
   Asset,
   BevelStyle,
@@ -36,6 +37,10 @@ import {
   resolveContextPath,
 } from "../engine/bindings";
 import type { IndustrialMarketReport } from "../report-engine/schema/industrialMarketReport";
+import type { ManualOverride } from "../report-engine/schema/generation";
+import { tableCellKey, findTableValueOverride } from "../engine/tableValueOverrides";
+import { getByPath } from "../engine/bindings";
+import { TableValueOverrideControls } from "./TableValueOverrideControls";
 import {
   findPresentationOverride,
   findProvenance,
@@ -60,6 +65,8 @@ interface Props {
   onReplaceImage?: () => void;
   data?: unknown;
   report?: IndustrialMarketReport;
+  manualOverrides?: ManualOverride[];
+  onTableValueOverride?: (cellKey: string, bindingPath: string, generatedValue: unknown, value: string | null) => void;
   tableEditing?: boolean;
   tableSelection?: TableSelection;
   generated?: boolean;
@@ -349,6 +356,8 @@ export function Inspector({
   onUnion,
   data,
   report,
+  manualOverrides,
+  onTableValueOverride,
   tableEditing,
   tableSelection,
   generated,
@@ -728,6 +737,10 @@ export function Inspector({
           decimals: selectedColumn.decimals,
         })
       : undefined;
+  const selectedCellKey = table && selectedRow && selectedColumn
+    ? tableCellKey(table, selectedRow, selectedColumn, data) : undefined;
+  const selectedOverride = table && selectedRow && selectedColumn
+    ? findTableValueOverride(table, selectedRow, selectedColumn, data, manualOverrides) : undefined;
   return (
     <aside className="inspector" inert={readOnly ? true : undefined}>
       <div className="inspector-header">
@@ -1339,6 +1352,20 @@ export function Inspector({
                 Data-bound report values are read-only; style and formatting
                 changes do not modify Salesforce.
               </small>
+              {generated && onTableValueOverride && selectedCellKey && (
+                <TableValueOverrideControls
+                  cellKey={`${table.id}:${selectedCellKey}`}
+                  sourceValue={selectedDisplayValue ?? "—"}
+                  overrideValue={selectedOverride ? String(selectedOverride.overrideValue ?? "") : undefined}
+                  onApply={(value) => onTableValueOverride(selectedCellKey,
+                    `${table.sourcePath}.${selectedColumn.path}`, getByPath(selectedRow, selectedColumn.path), value)}
+                  onClear={() => onTableValueOverride(selectedCellKey,
+                    `${table.sourcePath}.${selectedColumn.path}`, getByPath(selectedRow, selectedColumn.path), null)}
+                />
+              )}
+              {generated && onTableValueOverride && !selectedCellKey && (
+                <small>A unique semantic row and column identity is required for a display override.</small>
+              )}
             </>
           )}
         </Section>
@@ -1721,7 +1748,10 @@ export function Inspector({
           )}
         </Section>
       )}
-      {element.type === "text" && (
+      {element.type === "text" && element.closingContent && (
+        <Section title="Closing page content" open><ClosingContentEditor content={element.closingContent} onChange={closingContent => onChange({ closingContent } as Partial<ReportElement>)} /></Section>
+      )}
+      {element.type === "text" && !element.closingContent && (
         <Section title="Typography">
           <label>
             Text

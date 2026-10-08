@@ -92,6 +92,174 @@ const PlotText = ({ children, ...props }: React.SVGProps<SVGTextElement>) => (
   </text>
 );
 
+/**
+ * A displayable count for a bar: a positive integer, and only when the bar
+ * itself has a positive value. A zero/absent bar never gets a chip, even if a
+ * malformed source still reports a nonzero count.
+ */
+export const displayableCount = (
+  barValue: number | undefined,
+  count: number | undefined,
+) =>
+  barValue !== undefined &&
+  barValue > 0 &&
+  count !== undefined &&
+  Number.isInteger(count) &&
+  count > 0
+    ? count
+    : undefined;
+
+export const countChipWidth = (count: number) => {
+  const chip = marketingChartTheme.countChip;
+  return Math.max(
+    chip.height,
+    String(count).length * chip.fontSize * chip.digitWidth + chip.paddingX * 2,
+  );
+};
+
+export type ChipPlacement = "inside" | "inside-base" | "above";
+
+/**
+ * Picks where a count chip goes for one bar, without touching bar geometry.
+ * Preference: inside the upper portion of the bar; when the bar is too short
+ * for a legible internal chip, immediately above the bar's value label. Any
+ * `avoid` band (e.g. the Median Sales Price line passing through the bar's
+ * center) pushes the chip to the next candidate that does not intersect it.
+ */
+export function placeCountChip({
+  barTop,
+  barBottom,
+  labelTop,
+  minimumTop = 0.5,
+  avoid = [],
+}: {
+  barTop: number;
+  barBottom: number;
+  /** Top edge of the bar's existing value label (text drawn above the bar). */
+  labelTop: number;
+  minimumTop?: number;
+  avoid?: Array<[number, number]>;
+}): { top: number; placement: ChipPlacement } {
+  const { height, inset } = marketingChartTheme.countChip;
+  const fitsInside = barBottom - barTop >= height + inset * 2;
+  const overlaps = (top: number) =>
+    avoid.some(([a, b]) => top < Math.max(a, b) && top + height > Math.min(a, b));
+  const candidates: Array<{ top: number; placement: ChipPlacement }> = [];
+  if (fitsInside) {
+    candidates.push({ top: barTop + inset, placement: "inside" });
+    candidates.push({ top: barBottom - inset - height, placement: "inside-base" });
+  }
+  const aboveTop = labelTop - inset * 0.6 - height;
+  candidates.push({ top: aboveTop, placement: "above" });
+  for (const [a, b] of avoid) {
+    const bandTop = Math.min(a, b);
+    if (bandTop < aboveTop)
+      candidates.push({ top: bandTop - inset * 0.6 - height, placement: "above" });
+  }
+  const legal = candidates.filter((candidate) => candidate.top >= minimumTop);
+  return (
+    legal.find((candidate) => !overlaps(candidate.top)) ??
+    legal[0] ?? { top: Math.max(minimumTop, aboveTop), placement: "above" }
+  );
+}
+
+function CountChip({
+  kind,
+  index,
+  count,
+  centerX,
+  top,
+  placement,
+}: {
+  kind: "buildings" | "sales";
+  index: number;
+  count: number;
+  centerX: number;
+  top: number;
+  placement: ChipPlacement;
+}) {
+  const chip = marketingChartTheme.countChip;
+  const width = countChipWidth(count);
+  return (
+    <g
+      data-count-chip={kind}
+      data-bar-index={index}
+      data-count={count}
+      data-chip-placement={placement}
+      data-chip-top={top}
+      data-chip-bottom={top + chip.height}
+    >
+      <rect
+        x={centerX - width / 2}
+        y={top}
+        width={width}
+        height={chip.height}
+        rx={chip.radius}
+        ry={chip.radius}
+        fill={chip.fill}
+      />
+      <text
+        x={centerX}
+        y={top + chip.height / 2 + chip.fontSize * 0.35}
+        textAnchor="middle"
+        fontSize={chip.fontSize}
+        fontWeight={chip.fontWeight}
+        fill={chip.text}
+      >
+        {count.toLocaleString("en-US")}
+      </text>
+    </g>
+  );
+}
+
+/** Small legend key for the count chips: a sample chip and its meaning. */
+function CountChipKey({
+  label,
+  x,
+  y,
+  anchor = "start",
+}: {
+  label: string;
+  x: number;
+  y: number;
+  anchor?: "start" | "end";
+}) {
+  const chip = marketingChartTheme.countChip;
+  const sampleWidth = chip.height + 2;
+  const textWidth = label.length * 4.4;
+  const left = anchor === "end" ? x - sampleWidth - 4 - textWidth : x;
+  return (
+    <g data-count-chip-key={label}>
+      <rect
+        x={left}
+        y={y - 7}
+        width={sampleWidth}
+        height={chip.height - 1}
+        rx={chip.radius}
+        ry={chip.radius}
+        fill={chip.fill}
+      />
+      <text
+        x={left + sampleWidth / 2}
+        y={y - 7 + (chip.height - 1) / 2 + chip.fontSize * 0.33}
+        textAnchor="middle"
+        fontSize={chip.fontSize - 0.6}
+        fontWeight={chip.fontWeight}
+        fill={chip.text}
+      >
+        #
+      </text>
+      <PlotText
+        x={left + sampleWidth + 4}
+        y={y}
+        fontSize={marketingChartTheme.typography.legend}
+      >
+        {label}
+      </PlotText>
+    </g>
+  );
+}
+
 function GridAxis({
   ticks,
   y,
@@ -210,6 +378,7 @@ function Legend({
     gradient?: boolean;
     dashed?: boolean;
     line?: boolean;
+    chip?: boolean;
   }>;
   centerX: number;
   y?: number;
@@ -240,7 +409,29 @@ function Legend({
         cursor += widths[index]! + 8;
         return (
           <g key={item.label} transform={`translate(${x} ${y})`}>
-            {item.line ? (
+            {item.chip ? (
+              <g data-count-chip-key={item.label}>
+                <rect
+                  x="0"
+                  y="-7"
+                  width="19"
+                  height="8.5"
+                  rx={marketingChartTheme.countChip.radius}
+                  ry={marketingChartTheme.countChip.radius}
+                  fill={marketingChartTheme.countChip.fill}
+                />
+                <text
+                  x="9.5"
+                  y="-0.6"
+                  textAnchor="middle"
+                  fontSize={marketingChartTheme.countChip.fontSize - 0.6}
+                  fontWeight={marketingChartTheme.countChip.fontWeight}
+                  fill={marketingChartTheme.countChip.text}
+                >
+                  #
+                </text>
+              </g>
+            ) : item.line ? (
               <line
                 x1="0"
                 x2="19"
@@ -303,6 +494,23 @@ function AvailabilityChart({
     margin.left + ((index + 0.5) * plotWidth) / Math.max(rows.length, 1);
   const y = (value: number) => margin.top + (1 - value / maximum) * plotHeight;
   const barWidth = Math.min(38, (plotWidth / Math.max(rows.length, 1)) * 0.58);
+  const labelBaseline = (value: number) =>
+    Math.max(margin.top + 6, y(value) - 4);
+  const labelSize = marketingChartTheme.typography.barLabel;
+  // Distinct buildings contributing Available SF to each bucket.
+  const chips = values.flatMap((value, index) => {
+    const count = displayableCount(
+      value,
+      numberAt(rows[index]!, "buildingCount"),
+    );
+    if (value === undefined || count === undefined) return [];
+    const placed = placeCountChip({
+      barTop: y(value),
+      barBottom: y(0),
+      labelTop: labelBaseline(value) - labelSize * 0.8,
+    });
+    return [{ index, count, ...placed }];
+  });
   return (
     <>
       <GridAxis ticks={ticks} y={y} margin={margin} format={compactNumber} />
@@ -325,17 +533,24 @@ function AvailabilityChart({
         <PlotText
           key={`label-${index}`}
           x={x(index)}
-          y={
-            value === undefined
-              ? y(0) - 4
-              : Math.max(margin.top + 6, y(value) - 4)
-          }
+          y={value === undefined ? y(0) - 4 : labelBaseline(value)}
           textAnchor="middle"
           fontSize={marketingChartTheme.typography.barLabel}
           fontWeight={600}
         >
           {value === undefined ? "Unavailable" : compactSquareFeet(value)}
         </PlotText>
+      ))}
+      {chips.map((chip) => (
+        <CountChip
+          key={`chip-${chip.index}`}
+          kind="buildings"
+          index={chip.index}
+          count={chip.count}
+          centerX={x(chip.index)}
+          top={chip.top}
+          placement={chip.placement}
+        />
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
       <AxisTitle
@@ -344,6 +559,14 @@ function AvailabilityChart({
       >
         Size Bucket
       </AxisTitle>
+      {chips.length > 0 && (
+        <CountChipKey
+          label="Buildings"
+          x={MARKETING_CHART_BASE.width - margin.right}
+          y={205}
+          anchor="end"
+        />
+      )}
     </>
   );
 }
@@ -485,7 +708,52 @@ function CombinationChart({
   const rightY = (value: number) =>
     scale(value, [rightDomain.minimum, rightDomain.maximum]);
   const zero = barY(0);
+  // `margin` (sales or combination) now shares one plotting rectangle by
+  // construction -- see the comment on marketingChartTheme.margins.sales --
+  // so this plain formula, using this chart's own plotWidth, already
+  // produces identical bar width/position/spacing for both paired charts.
   const barWidth = Math.min(30, (plotWidth / Math.max(rows.length, 1)) * 0.48);
+  const barLabelBaseline = (value: number) =>
+    value >= 0
+      ? Math.max(margin.top + 5, barY(value) - 3)
+      : Math.min(margin.top + plotHeight - 2, barY(value) + 8);
+  // Qualifying sale transactions behind each Sales Volume bar. Rendered only
+  // from the governed count field; never inferred from volume.
+  const medianValues = sales
+    ? rows.map((row) => numberAt(row, "medianSalesPricePsf"))
+    : [];
+  const lineBand = (index: number): Array<[number, number]> => {
+    const own = medianValues[index];
+    if (own === undefined) return [];
+    const half = barWidth / 2;
+    const ys = [rightY(own)];
+    for (const neighbor of [index - 1, index + 1]) {
+      const other = medianValues[neighbor];
+      if (other === undefined) continue;
+      const share = half / Math.abs(x(neighbor) - x(index));
+      ys.push(rightY(own) + (rightY(other) - rightY(own)) * share);
+    }
+    const pad = marketingChartTheme.lineWidth + 1.2;
+    return [[Math.min(...ys) - pad, Math.max(...ys) + pad]];
+  };
+  const salesChips = sales
+    ? bars.flatMap((value, index) => {
+        const count = displayableCount(
+          value,
+          numberAt(rows[index]!, "salesTransactions"),
+        );
+        if (value === undefined || count === undefined) return [];
+        const placed = placeCountChip({
+          barTop: Math.min(barY(value), zero),
+          barBottom: Math.max(barY(value), zero),
+          labelTop:
+            barLabelBaseline(value) -
+            marketingChartTheme.typography.barLabel * 0.8,
+          avoid: lineBand(index),
+        });
+        return [{ index, count, ...placed }];
+      })
+    : [];
   const colors = sales
     ? [marketingChartTheme.palette.navy]
     : [marketingChartTheme.palette.vacancy, marketingChartTheme.palette.navy];
@@ -523,13 +791,7 @@ function CombinationChart({
         <PlotText
           key={`bar-label-${index}`}
           x={x(index)}
-          y={
-            value === undefined
-              ? zero - 3
-              : value >= 0
-                ? Math.max(margin.top + 5, barY(value) - 3)
-                : Math.min(margin.top + plotHeight - 2, barY(value) + 8)
-          }
+          y={value === undefined ? zero - 3 : barLabelBaseline(value)}
           textAnchor="middle"
           fontSize={marketingChartTheme.typography.barLabel}
         >
@@ -575,6 +837,17 @@ function CombinationChart({
           </g>
         );
       })}
+      {salesChips.map((chip) => (
+        <CountChip
+          key={`chip-${chip.index}`}
+          kind="sales"
+          index={chip.index}
+          count={chip.count}
+          centerX={x(chip.index)}
+          top={chip.top}
+          placement={chip.placement}
+        />
+      ))}
       <Categories rows={rows} element={element} x={x} y={188} />
       {sales && !lineValues.length && (
         <PlotText
@@ -598,6 +871,9 @@ function CombinationChart({
                   color: marketingChartTheme.palette.navy,
                   line: true,
                 },
+                ...(salesChips.length
+                  ? [{ label: "Sales", chip: true }]
+                  : []),
               ]
             : [
                 { label: "Net Absorption", gradient: true },

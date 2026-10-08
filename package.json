@@ -49,6 +49,7 @@
     "react-dom": "latest",
     "sharp": "^0.35.4",
     "typescript": "latest",
+    "unpdf": "^1.8.1",
     "vite": "latest",
     "yauzl": "^3.4.0",
     "zod": "^4.4.3"

@@ -338,6 +338,8 @@
   height: 32px;
 }
 .table-indicators {
+  --indicator-rule: 1px solid #9099a0;
+  --indicator-row-height: 19px;
   table-layout: fixed;
   font-size: 9px;
   color: #123f55;
@@ -352,12 +354,14 @@
   text-align: left;
 }
 .table-indicators td {
-  height: 19px;
+  height: var(--indicator-row-height);
   padding: 2px 7px;
-  border-bottom: 1px solid #9099a0;
+  vertical-align: middle;
+  line-height: 1.14;
+  border-bottom: var(--indicator-rule);
 }
 .table-indicators td:first-child {
-  font-weight: 500;
+  font-weight: 700;
 }
 .table-transactions {
   table-layout: fixed;
@@ -1343,3 +1347,80 @@
     width: 8.5in;
   }
 }
+
+/* Optional broker interview upload (Narratives step) */
+.broker-interviews {
+  display: grid;
+  gap: 8px;
+  padding: 11px 13px;
+  border: 1px dashed #c7d0d6;
+  border-radius: 7px;
+  background: #fafbfc;
+  color: #315365;
+  font-size: 12px;
+}
+.broker-interviews.state-ready { border-style: solid; border-color: #9cc5ae; background: #f3faf6; }
+.broker-interviews.state-review-needed,
+.broker-interviews.state-failed { border-style: solid; border-color: #e3b4bf; background: #fff7f8; }
+.broker-interviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.broker-interviews-header > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.broker-interviews-header > div:first-child span { color: #71818c; font-size: 11px; }
+.broker-interviews-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.broker-interviews-actions button {
+  border: 1px solid #c7d0d6;
+  border-radius: 7px;
+  padding: 6px 10px;
+  background: #fff;
+  font-weight: 750;
+}
+.broker-interviews-state {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(49, 83, 101, 0.1);
+  font-size: 11px;
+  font-weight: 750;
+}
+.broker-interviews-summary { display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; }
+.broker-interviews button.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #0b6176;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.broker-interviews-error { color: #88213c; font-weight: 650; }
+.broker-interviews-review table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.broker-interviews-review th,
+.broker-interviews-review td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #e4e7ec; vertical-align: top; }
+.broker-interviews-observations {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 320px;
+  overflow: auto;
+}
+.broker-interviews-observations li {
+  display: grid;
+  grid-template-columns: 150px 140px 1fr;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+}
+.broker-interviews-observations li.status-restricted { background: #fff1f3; color: #88213c; }
+.broker-interviews-observations li.status-uncertain,
+.broker-interviews-observations li.status-review_required { background: #fbf6ea; color: #6a5520; }
+.broker-observation-status { font-weight: 750; }
+.broker-observation-topic { color: #71818c; }
+.broker-observation-reason { grid-column: 3; color: #71818c; font-size: 10px; }
+.broker-interviews-warnings p { margin: 4px 0 0; color: #6a5520; }

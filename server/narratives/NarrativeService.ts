@@ -1,3 +1,5 @@
+import { buildBrokerInterviewSet } from "./brokerInterviewIngestion.ts";
+import { brokerRestrictedTerms } from "../../src/report-engine/narratives/brokerInterviews.ts";
 import { createHash, randomUUID } from "node:crypto";
 import type { ReportInstanceRepository } from "../report-instances/FileSystemReportInstanceRepository.ts";
 import {
@@ -5,6 +7,7 @@ import {
   editNarrative,
   narrativeReadinessIssues,
   narrativeRevision,
+  narrativeSnapshotIssues,
   restoreNarrativeRevision,
   unlockNarrative,
 } from "../../src/report-engine/narratives/workflow.ts";
@@ -17,6 +20,7 @@ import type { ReportInstance } from "../../src/report-engine/schema/generation.t
 import type { ExternalNarrativeJob } from "../../src/report-engine/schema/generation.ts";
 import {
   buildNarrativeContext,
+  narrativeReportDataFingerprint,
   publicNarrativeContext,
 } from "./contextBuilder.ts";
 import type { NarrativeModelClient } from "./modelClient.ts";
@@ -111,7 +115,10 @@ const withNarrativeReadiness = (instance: ReportInstance): ReportInstance => {
   const nonNarrativeIssues = instance.readiness.issues.filter(
     (issue) => !issue.path.startsWith("narratives."),
   );
-  const narrativeIssues = narrativeReadinessIssues(instance.narratives);
+  const narrativeIssues = [
+    ...narrativeReadinessIssues(instance.narratives),
+    ...narrativeSnapshotIssues(instance),
+  ];
   const issues = [...nonNarrativeIssues, ...narrativeIssues];
   const blockers = issues.filter(
     (issue) => issue.level === "blocking" || issue.level === "error",
@@ -127,6 +134,25 @@ const withNarrativeReadiness = (instance: ReportInstance): ReportInstance => {
     },
   };
 };
+
+/**
+ * A narrative is stale when it no longer belongs to the report data it would
+ * be exported with: its context moved (any fact, page context or editorial
+ * brief change), or the exact report data it was bound to moved (snapshot
+ * or a data-bearing manual override). Records created before snapshot
+ * binding carry no fingerprint and keep contextHash-only staleness.
+ */
+export function narrativeIsStale(
+  record: Pick<NarrativeRecord, "contextHash" | "reportDataFingerprint">,
+  current: { contextHash: string; reportDataFingerprint: string },
+) {
+  if (record.contextHash && record.contextHash !== current.contextHash)
+    return true;
+  return Boolean(
+    record.reportDataFingerprint &&
+      record.reportDataFingerprint !== current.reportDataFingerprint,
+  );
+}
 
 const replaceRecord = (instance: ReportInstance, record: NarrativeRecord) =>
   withNarrativeReadiness(
@@ -273,6 +299,7 @@ export class NarrativeService {
 
   async refreshStaleness(reportInstanceId: string) {
     return this.repository.update(reportInstanceId, (instance) => {
+      const reportDataFingerprint = narrativeReportDataFingerprint(instance);
       const narratives = instance.narratives.map((record) => {
         if (
           !record.contextHash ||
@@ -284,12 +311,48 @@ export class NarrativeService {
           reportInstance: instance,
           marketId: record.marketId,
         });
-        return current.contextHash === record.contextHash
-          ? record
-          : { ...record, status: "stale" as const, approvedAt: undefined };
+        return narrativeIsStale(record, {
+          contextHash: current.contextHash,
+          reportDataFingerprint,
+        })
+          ? { ...record, status: "stale" as const, approvedAt: undefined }
+          : record;
       });
       return withNarrativeReadiness({ ...instance, narratives });
     });
+  }
+
+  /**
+   * Attaches normalized broker interview context to a report instance. The
+   * raw file is parsed in memory and discarded; only the classified,
+   * normalized set is persisted with the instance (never to Salesforce).
+   * Markets whose broker context changed become stale through the normal
+   * contextHash binding; every other market is untouched.
+   */
+  async uploadBrokerInterviews(
+    reportInstanceId: string,
+    file: { fileName: string; bytes: Uint8Array },
+  ) {
+    const instance = await this.required(reportInstanceId);
+    const set = await buildBrokerInterviewSet({
+      fileName: file.fileName,
+      bytes: file.bytes,
+      period: instance.dataSnapshot.report.period,
+    });
+    await this.repository.update(reportInstanceId, (current) => ({
+      ...current,
+      brokerInterviews: set,
+    }));
+    return this.refreshStaleness(reportInstanceId);
+  }
+
+  /** Removes broker context; subsequent (re)generation runs without it. */
+  async removeBrokerInterviews(reportInstanceId: string) {
+    await this.repository.update(reportInstanceId, (current) => {
+      const { brokerInterviews: _removed, ...rest } = current;
+      return rest;
+    });
+    return this.refreshStaleness(reportInstanceId);
   }
 
   async edit(reportInstanceId: string, marketId: string, text: string) {
@@ -303,6 +366,7 @@ export class NarrativeService {
         ...editNarrative(current, text),
         contextHash: context.contextHash,
         reportDataHash: instance.sourceSnapshotHash ?? current.reportDataHash,
+        reportDataFingerprint: narrativeReportDataFingerprint(instance),
         overflow: false,
       });
     });
@@ -315,15 +379,27 @@ export class NarrativeService {
         reportInstance: instance,
         marketId,
       });
-      if (current.contextHash && current.contextHash !== context.contextHash)
+      const reportDataFingerprint = narrativeReportDataFingerprint(instance);
+      if (
+        narrativeIsStale(current, {
+          contextHash: context.contextHash,
+          reportDataFingerprint,
+        })
+      )
         return replaceRecord(instance, {
           ...current,
           status: "stale",
           approvedAt: undefined,
         });
+      // Approval binds the reviewed prose to the exact data it was reviewed
+      // against, including records created before snapshot binding.
       return replaceRecord(
         instance,
-        approveNarrative({ ...current, contextHash: context.contextHash }),
+        approveNarrative({
+          ...current,
+          contextHash: context.contextHash,
+          reportDataFingerprint,
+        }),
       );
     });
   }
@@ -367,6 +443,11 @@ export class NarrativeService {
       reportInstance: await this.required(reportInstanceId),
       marketId,
     });
+    // The exact report data this generation is bound to. Captured inside the
+    // same repository transaction that builds the context.
+    let generationFingerprint = "";
+    let generationSnapshotHash: string | undefined;
+    let restrictedTerms: string[] = [];
     const initial = await this.repository.update(
       reportInstanceId,
       (instance) => {
@@ -376,6 +457,9 @@ export class NarrativeService {
             "Approved narratives require explicit Unlock / Revise confirmation.",
           );
         context = buildNarrativeContext({ reportInstance: instance, marketId });
+        restrictedTerms = brokerRestrictedTerms(instance.brokerInterviews, marketId);
+        generationFingerprint = narrativeReportDataFingerprint(instance);
+        generationSnapshotHash = instance.sourceSnapshotHash;
         return replaceRecord(instance, {
           ...record,
           status: "generating",
@@ -399,7 +483,9 @@ export class NarrativeService {
         context,
         options.instruction,
       );
-      const validation = validateNarrativeResult(context, response.result);
+      const validation = validateNarrativeResult(context, response.result, {
+        restrictedBrokerTerms: restrictedTerms,
+      });
       const errors = validation.issues.filter(
         (issue) => issue.severity === "error",
       );
@@ -410,16 +496,33 @@ export class NarrativeService {
         (instance) => {
           const latest = this.find(instance, marketId);
           const now = new Date().toISOString();
+          // The model wrote against the generation-time context. If report
+          // data moved while it was writing, keep the prose for review but
+          // mark it stale so it cannot be approved or exported against the
+          // newer data.
+          const moved = narrativeIsStale(
+            {
+              contextHash: context.contextHash,
+              reportDataFingerprint: generationFingerprint,
+            },
+            {
+              contextHash: buildNarrativeContext({
+                reportInstance: instance,
+                marketId,
+              }).contextHash,
+              reportDataFingerprint: narrativeReportDataFingerprint(instance),
+            },
+          );
           const next: NarrativeRecord = {
             ...latest,
             text: response.result.narrative,
-            status: "draft",
+            status: moved ? "stale" : "draft",
             source: "ai",
             promptVersion: context.promptVersion,
             model: response.model,
             contextHash: context.contextHash,
-            reportDataHash:
-              instance.sourceSnapshotHash ?? latest.reportDataHash,
+            reportDataHash: generationSnapshotHash ?? latest.reportDataHash,
+            reportDataFingerprint: generationFingerprint,
             generatedAt: now,
             approvedAt: undefined,
             claims: response.result.claims,
@@ -431,7 +534,9 @@ export class NarrativeService {
               : latest.revisions,
             wordCount: countNarrativeWords(response.result.narrative),
             overflow: false,
-            error: undefined,
+            error: moved
+              ? "Report data changed while this narrative was being generated. Regenerate it."
+              : undefined,
             usage: response.usage,
           };
           return replaceRecord(instance, next);
@@ -607,6 +712,8 @@ export class NarrativeService {
                 context.contextHash,
               ]),
             ),
+            reportDataHash: instance.sourceSnapshotHash,
+            reportDataFingerprint: narrativeReportDataFingerprint(instance),
             instruction,
           },
         };
@@ -695,7 +802,9 @@ export class NarrativeService {
             status: "waiting_for_chatgpt",
             createdAt: created.createdAt || reservation.createdAt,
             updatedAt: now,
-            handoffPrompt: narrativeHandoffPrompt(created.jobId),
+            handoffPrompt: narrativeHandoffPrompt(created.jobId, {
+              brokerContext: contexts.some((context) => Boolean(context.brokerContext)),
+            }),
             expiresAt: created.expiresAt || undefined,
             error: undefined,
             errorCode: undefined,
@@ -864,6 +973,11 @@ export class NarrativeService {
         currentContext: (marketId) =>
           buildNarrativeContext({ reportInstance: instance, marketId }),
         reportDataHash: instance.sourceSnapshotHash ?? "",
+        jobReportDataHash: job.reportDataHash,
+        jobReportDataFingerprint: job.reportDataFingerprint,
+        currentReportDataFingerprint: narrativeReportDataFingerprint(instance),
+        restrictedBrokerTerms: (marketId) =>
+          brokerRestrictedTerms(instance.brokerInterviews, marketId),
         now,
         revision: narrativeRevision,
       });

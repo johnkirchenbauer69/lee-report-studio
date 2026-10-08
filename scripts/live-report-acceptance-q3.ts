@@ -294,9 +294,12 @@ if (
       !["up", "down", "equal"].includes(row.direction) ||
       !["favorable", "unfavorable", "neutral"].includes(row.semanticStatus) ||
       row.indicatorColor !== governedIndicatorColors[row.semanticStatus] ||
-      (row.semanticStatus === "neutral"
+      // Direction is shown for every changed metric (including neutral-
+      // preference Under Construction); only an unchanged value is flat.
+      (row.direction === "equal"
         ? row.indicatorKind !== "bar" || row.indicatorGlyph !== ""
-        : row.indicatorKind !== "arrow"),
+        : row.indicatorKind !== "arrow" ||
+          row.indicatorGlyph !== (row.direction === "up" ? "▲" : "▼")),
   )
 )
   throw new Error(
@@ -308,11 +311,13 @@ if (
     .some(
       (row) =>
         row.semanticStatus !== "neutral" ||
-        row.indicatorKind !== "bar" ||
+        row.indicatorKind !== (row.direction === "equal" ? "bar" : "arrow") ||
         row.indicatorColor !== "#4E131E",
     )
 )
-  throw new Error("Under Construction must remain semantically neutral.");
+  throw new Error(
+    "Under Construction must show its quarter-over-quarter direction in the neutral color.",
+  );
 
 const reportScopes = [
   { name: "Overall Market", report: instance.dataSnapshot },
@@ -448,7 +453,8 @@ console.log(
         currentVersusImmediatelyPrior: true,
         underConstructionNeutral: true,
         colors: governedIndicatorColors,
-        neutralIndicator: "bar",
+        unchangedIndicator: "bar",
+        underConstructionDirectional: true,
       },
       navigation: {
         browserTargets: detailNavigationRows.length,

@@ -266,10 +266,27 @@ app.post("/api/render/pdf", async (request, response) => {
     title: body.title ?? "LEE Market Report",
   });
   try {
+    let narrativeOverflow: string[] = [];
     const pdf = await pdfRenderer.render({
       url: `${appUrl}/?printJob=${encodeURIComponent(id)}`,
       title: body.title ?? "LEE Market Report",
+      onLayout: (layout) => {
+        narrativeOverflow = layout.narrativeOverflow;
+      },
     });
+    // Overflow at the minimum narrative size keeps the existing behavior:
+    // the PDF renders with the text box clipping intact, and publication
+    // blocking happens through narrative readiness (record.overflow). The
+    // renderer only reports what it measured.
+    if (narrativeOverflow.length) {
+      console.warn(
+        JSON.stringify({
+          event: "narrative_render_overflow",
+          narrativeIds: narrativeOverflow,
+        }),
+      );
+      response.setHeader("x-lee-narrative-overflow", narrativeOverflow.join(","));
+    }
     response.type("application/pdf");
     response.setHeader(
       "content-disposition",

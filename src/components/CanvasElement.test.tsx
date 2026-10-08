@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 import { CanvasElement } from "./CanvasElement";
+import { tableCellKey, withTableDisplayOverrides } from "../engine/tableValueOverrides";
 import type {
   EditorSettings,
   ReportElement,
@@ -19,6 +20,22 @@ const settings: EditorSettings = {
   marginPx: 0,
   marginsEnabled: false,
 };
+
+it("renders a whole-cell display override without altering source, style, or adjacent cells", () => {
+  const source = { rows: [{ id: "lease-1", party: "Source Tenant", type: "New", isLeeDeal: true }] };
+  const cellKey = tableCellKey(table, source.rows[0], table.columns[1]!, source)!;
+  const data = withTableDisplayOverrides(source, [{ elementId: table.id, cellKey, generatedValue: "New",
+    overrideValue: "Manual value", createdAt: "2026-10-06T12:00:00.000Z" }]);
+  const markup = renderToStaticMarkup(<CanvasElement element={{ ...table, cellStyles: { "body:0:1": { color: "#112233" } } }}
+    elements={[table]} pageSize={{ width: 816, height: 1056 }} settings={settings} data={data} mode="data"
+    selected={false} zoom={1} onSelect={() => undefined} onChange={() => undefined} onInteractionStart={() => undefined}
+    onInteractionEnd={() => undefined} onGuides={() => undefined} onContextMenu={() => undefined} />);
+  expect(markup).toContain("Manual value");
+  expect(markup).toContain("Source Tenant");
+  expect(markup).not.toContain("LEE DEAL");
+  expect(markup).toContain("#112233");
+  expect(source.rows[0]!.type).toBe("New");
+});
 
 const table: TableElement = {
   id: "top-leases-table",
@@ -1007,7 +1024,7 @@ describe("CanvasElement report semantics", () => {
     );
   });
 
-  it("renders semantic indicator color only on the direction glyph", () => {
+  it("colors vector indicators by movement without coloring metric labels", () => {
     const indicator: TableElement = {
       ...table,
       id: "indicator-table",
@@ -1030,7 +1047,7 @@ describe("CanvasElement report semantics", () => {
     expect(markup).toContain('data-direction="down"');
     expect(markup).toContain('data-semantic-status="favorable"');
     expect(markup).toContain('data-indicator-kind="arrow"');
-    expect(markup).toContain("color:#8A941E");
+    expect(markup).toContain("color:#CD1442");
     expect(markup).toContain(">Vacancy Rate</span>");
   });
 
@@ -1046,7 +1063,7 @@ describe("CanvasElement report semantics", () => {
       indicatorRows: [
         {
           metric: "Under Construction (SF)",
-          direction: "up",
+          direction: "equal",
           semanticStatus: "neutral",
           indicatorKind: "bar",
           indicatorGlyph: "",
@@ -1055,11 +1072,38 @@ describe("CanvasElement report semantics", () => {
       ],
     });
     expect(markup).toContain('data-indicator-kind="bar"');
-    expect(markup).toContain('class="metric-neutral-bar"');
+    expect(markup).toContain('<rect x="0" y="3.5"');
     expect(markup).toContain("color:#4E131E");
     expect(markup).not.toContain("▲");
     expect(markup).not.toContain("▼");
     expect(markup).not.toContain("→");
+  });
+
+  it("renders Under Construction movement with direction color", () => {
+    const indicator: TableElement = {
+      ...table,
+      id: "construction-indicator-table",
+      variant: "indicators",
+      sourcePath: "indicatorRows",
+      columns: [{ key: "metric", label: "MARKET INDICATORS", path: "metric" }],
+    };
+    const markup = renderDataElement(indicator, {
+      indicatorRows: [
+        {
+          metric: "Under Construction (SF)",
+          direction: "down",
+          semanticStatus: "neutral",
+          indicatorKind: "arrow",
+          indicatorGlyph: "▼",
+          indicatorColor: "#4E131E",
+        },
+      ],
+    });
+    expect(markup).toContain('data-indicator-kind="arrow"');
+    expect(markup).toContain('data-direction="down"');
+    expect(markup).toContain('data-testid="metric-indicator-svg"');
+    expect(markup).toContain("color:#CD1442");
+    expect(markup).not.toContain("<rect");
   });
 
   it("renders an accessible internal link from the actual page model", () => {

@@ -15,6 +15,8 @@ import {
 } from "../validation/reportValidation";
 import { expandTemplatePages } from "./repeaters";
 import { prepareTemplateForReport } from "./prepareTemplate";
+import { applyMarketHighlightLayout } from "../layout/marketHighlightLayout";
+import { normalizeReportTemplateFonts } from "../../services/templateNormalization";
 import {
   collectManagedFontReferences,
   findNonApprovedFontUsages,
@@ -221,11 +223,26 @@ export async function generateReportInstance(
     "expanding",
     "Expanding selected detail pages and repeating components",
   );
-  const pages = expandTemplatePages(
+  const expandedPages = expandTemplatePages(
     preparedTemplate,
     presentationData,
     request.pageSelection,
   );
+  // Content-aware Market Highlights layout: collapses empty property-card
+  // sections to a compact strip and reallocates the reclaimed height to
+  // populated sections, instead of padding to a fixed 3x3 placeholder grid.
+  const highlightLayoutPages = applyMarketHighlightLayout(
+    expandedPages,
+    presentationData,
+  );
+  // The layout pass above can introduce new text elements (empty-state
+  // labels) after font governance already ran in prepareTemplateForReport.
+  // Re-pin managed fonts so every text element -- original or newly added --
+  // carries the same governed fontAssetId/fontChecksum before publication.
+  const pages = normalizeReportTemplateFonts(
+    { ...preparedTemplate, pages: highlightLayoutPages },
+    preparedTemplate.assets ?? [],
+  ).pages;
 
   progress(onProgress, "creating", "Creating versioned report instance");
   const instance: ReportInstance = {

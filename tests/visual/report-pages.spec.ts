@@ -288,6 +288,7 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
         const bar = item.querySelector<HTMLElement>(".metric-neutral-bar");
         return {
           status: item.getAttribute("data-semantic-status"),
+          direction: item.getAttribute("data-direction"),
           kind: item.getAttribute("data-indicator-kind"),
           color: getComputedStyle(item).color,
           text: item.textContent,
@@ -308,7 +309,10 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
       expect(style.color).toBe(
         expectedColors[style.status as keyof typeof expectedColors],
       );
-      if (style.status === "neutral") {
+      // Only an unchanged value is flat; every movement (including the
+      // neutral-colored Under Construction metric) shows its direction.
+      if (style.direction === "equal") {
+        expect(style.status).toBe("neutral");
         expect(style).toMatchObject({
           kind: "bar",
           text: "",
@@ -317,7 +321,7 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
         });
       } else {
         expect(style.kind).toBe("arrow");
-        expect(["▲", "▼"]).toContain(style.text);
+        expect(style.text).toBe(style.direction === "up" ? "▲" : "▼");
       }
     }
     const constructionIndicators = page
@@ -326,8 +330,17 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
       .locator(".metric-direction-indicator");
     expect(await constructionIndicators.count()).toBeGreaterThan(0);
     await expect(constructionIndicators.first()).toHaveAttribute(
-      "data-indicator-kind",
-      "bar",
+      "data-semantic-status",
+      "neutral",
+    );
+    const construction = await constructionIndicators
+      .first()
+      .evaluate((item) => ({
+        direction: item.getAttribute("data-direction"),
+        kind: item.getAttribute("data-indicator-kind"),
+      }));
+    expect(construction.kind).toBe(
+      construction.direction === "equal" ? "bar" : "arrow",
     );
   }
 });

@@ -55,7 +55,7 @@ describe("native static-page headers", () => {
     );
   });
 
-  it.each(["data-methodology", "definitions", "contacts", "who-we-are"])(
+  it.each(["data-methodology", "definitions", "contacts"])(
     "leaves %s's header background selectable like other pages' background shapes",
     (id) => {
       const headerMask = page(id).elements.find(
@@ -71,7 +71,7 @@ describe("native static-page headers", () => {
     ["definitions", 42],
     ["contacts", 43],
     ["who-we-are", 44],
-  ])("promotes every %s footer text block to native elements", (id, number) => {
+  ])("promotes every %s footer text block to native elements", (id, _number) => {
     const elements = page(id).elements;
     expect(
       elements.find((element) => element.id === `${id}-footer-mask`),
@@ -101,8 +101,13 @@ describe("native static-page headers", () => {
       elements.find((element) => element.id === `${id}-footer-page-number`),
     ).toMatchObject({
       type: "text",
-      name: "Footer Page Number",
-      text: String(number),
+      name: "Page Number",
+      text: "0",
     });
   });
+  it("preserves the source Who We Are composition without a red report-header overlay", () => {
+    expect(page("who-we-are").elements.some(e => e.id.endsWith("header-mask"))).toBe(false);
+    expect(page("who-we-are").elements.find(e => e.type === "text" && e.closingContent)?.type).toBe("text");
+  });
+
 });

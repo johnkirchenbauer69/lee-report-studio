@@ -62,6 +62,12 @@ export const salesforceFieldMap = {
     period: verified("Quarter_Label__c"),
     year: verified("Year__c"),
     externalId: verified("External_Id__c"),
+    // First-class geography identity. Chicago Overall Market rows carry
+    // Geography_Level__c = 'Overall Market', Geography_Code__c =
+    // 'OVERALL_MARKET', a null Submarket__c and External_Id__c
+    // 'OVERALL_MARKET::YYYY-MM-DD'.
+    geographyLevel: verified("Geography_Level__c"),
+    geographyCode: verified("Geography_Code__c"),
     asOf: verified("As_Of__c"),
     lastCalculatedAt: verified("Last_Calculated_Timestamp__c"),
     calcVersion: verified("Calc_Version__c"),
@@ -133,12 +139,11 @@ export const salesforceFieldMap = {
     totalLandAcresSold: verified("Total_Land_Acres_Sold_AC__c"),
     averageActualCapRate: verified("Average_Actual_CAP_Rate__c"),
     medianActualCapRate: verified("Median_Actual_CAP_Rate__c"),
-    overallModeledCapRate: verified("Overall_Modeled_CAP_Rate__c"),
-    classAModeledCapRate: verified("Class_A_Modeled_CAP_Rate__c"),
-    classBModeledCapRate: verified("Class_B_Modeled_CAP_Rate__c"),
-    classCModeledCapRate: verified("Class_C_Modeled_CAP_Rate__c"),
     occupancySf: verified("Occupancy_SF__c"),
     occupancyRate: verified("Occupancy_Percent__c"),
+    actualCapRateObservationCount: verified(
+      "Actual_CAP_Rate_Observation_Count__c",
+    ),
   },
   propertyData: {
     object: verified("Property_Data__c"),
@@ -285,6 +290,16 @@ export const salesforceFieldMap = {
     isLeeDeal: verified("Is_Lee_Deal__c"),
     included: verified("Included_In_Report__c"),
     active: verified("Active_In_Run__c"),
+    narrativeEligible: verified("Narrative_Eligible__c"),
+    confidential: verified("Is_Deal_Confidential__c"),
+    calculationVersion: verified("Calculation_Version__c"),
+    // Existing Contributor fields the Market Data Engine reuses for
+    // market-explanation-v1 rows (no new schema): the ranking basis, the
+    // publication-safe explanatory sentence, and versioned JSON evidence.
+    rankBasis: verified("Rank_Basis__c"),
+    narrativeContext: verified("Narrative_Context__c"),
+    calcNotes: verified("Calc_Notes__c"),
+    runId: verified("Run_ID__c"),
     propertyId: verified("Property__c"),
     availabilityId: verified("Availability__c"),
     leaseId: verified("Lease__c"),

@@ -10,6 +10,7 @@ import type {
   ExternalNarrativeJob,
   ReportInstance,
 } from "../report-engine/schema/generation";
+import { BrokerInterviewPanel } from "./BrokerInterviewPanel";
 import {
   reportInstanceStore,
   type NarrativeConfig,
@@ -378,6 +379,11 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
           Generate All Narratives
         </button>
       </div>
+      <BrokerInterviewPanel
+        instance={instance}
+        onChange={onChange}
+        disabled={busy === "all"}
+      />
       {config && !config.configured && (
         <div className="wizard-note warning" role="status">
           <strong>{config.message}</strong>

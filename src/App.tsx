@@ -39,6 +39,7 @@ import {
   upsertManualOverride,
 } from "./engine/reportDocumentHistory";
 import { CanvasElement } from "./components/CanvasElement";
+import type { NarrativeFitListener } from "./components/useNarrativeFontFit";
 import { Inspector } from "./components/Inspector";
 import { DataBrowser } from "./components/DataBrowser";
 import { ValidationPanel } from "./components/ValidationPanel";
@@ -75,6 +76,7 @@ import type {
 } from "./report-engine/schema/generation";
 import type { IndustrialMarketReport } from "./report-engine/schema/industrialMarketReport";
 import { getByContextPath } from "./engine/bindings";
+import { isPlainDisplayValue, withTableDisplayOverrides } from "./engine/tableValueOverrides";
 import {
   elementRect,
   getRotatedAabb,
@@ -237,7 +239,11 @@ export default function App() {
   const [pendingPdfExport, setPendingPdfExport] = useState<{
     template: ReportTemplate;
     warningCount: number;
+    /** Presentation data built from the exact snapshot preflight checked. */
+    data: unknown;
   }>();
+  /** Narrative overflow writes in flight, keyed by market, to avoid repeats. */
+  const narrativeOverflowSync = useRef(new Map<string, boolean>());
   const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
@@ -1584,13 +1590,14 @@ export default function App() {
   const performPdfExport = async (
     publicationTemplate: ReportTemplate,
     warningCount: number,
+    exportData: unknown = reportData,
   ) => {
     setExportingPdf(true);
     try {
       const fileName = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
       let chromiumFailure: ReturnType<typeof classifyExportError> | undefined;
       try {
-        await exportChromiumPdf(publicationTemplate, reportData, fileName);
+        await exportChromiumPdf(publicationTemplate, exportData, fileName);
       } catch (chromiumError) {
         chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
@@ -1598,7 +1605,7 @@ export default function App() {
           chromiumFailure,
         );
         try {
-          await exportReportPdf(publicationTemplate, reportData, fileName);
+          await exportReportPdf(publicationTemplate, exportData, fileName);
         } catch (fallbackError) {
           const fallbackFailure = classifyExportError(
             "fallback",
@@ -1625,18 +1632,39 @@ export default function App() {
   const downloadPdf = async () => {
     setExportingPdf(true);
     try {
+      // Snapshot integrity: never combine narratives reviewed against one
+      // data snapshot with report data from another. Pending edits must reach
+      // the server first, then staleness is re-evaluated there and the PDF
+      // is built from that exact refreshed instance.
+      let exportInstance = latestReportInstance.current ?? reportInstance;
+      let exportData: unknown = reportData;
+      if (documentMode === "report-instance" && exportInstance) {
+        if (
+          ["dirty", "saving", "error", "conflict"].includes(
+            reportSaveStatusRef.current,
+          )
+        ) {
+          notify(
+            "Report changes have not finished saving. Export again once the report is saved.",
+          );
+          return;
+        }
+        exportInstance = await reportInstanceStore.refresh(exportInstance.id);
+        handleReportInstanceChange(exportInstance);
+        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot), exportInstance.manualOverrides);
+      }
       const publicationTemplate = prepareTemplateForPublication(template);
       const issues = await runExportPreflight(publicationTemplate);
       setPreflightIssues(issues);
       const readinessAdvisories =
-        reportInstance?.readiness.issues.map((issue) => ({
+        exportInstance?.readiness.issues.map((issue) => ({
           level: issue.level,
           category: "data" as const,
           message: issue.message,
           path: issue.path,
         })) ?? [];
       const pageAdvisories = template.pages.flatMap((reportPage) =>
-        validatePage(reportPage, reportData).map((issue) => ({
+        validatePage(reportPage, exportData).map((issue) => ({
           ...issue,
           pageId: reportPage.id,
         })),
@@ -1666,10 +1694,11 @@ export default function App() {
         setPendingPdfExport({
           template: publicationTemplate,
           warningCount: assessment.warnings.length,
+          data: exportData,
         });
         return;
       }
-      await performPdfExport(publicationTemplate, 0);
+      await performPdfExport(publicationTemplate, 0, exportData);
     } catch (error) {
       console.error("PDF preflight failed unexpectedly.", error);
       notify("The PDF preflight could not be completed.");
@@ -1703,6 +1732,31 @@ export default function App() {
     reportRecovery.clear(instance.id);
     setReportSaveState("saved");
     setReportLastSavedAt(new Date().toISOString());
+  };
+  /**
+   * Dynamic narrative sizing reports whether a narrative still overflows its
+   * text box at the authored minimum size. That measured state is persisted
+   * on the narrative record, where the existing rules already block approval
+   * and publication of overflowing narratives.
+   */
+  const handleNarrativeFit: NarrativeFitListener = (marketId, result) => {
+    const instance = latestReportInstance.current;
+    if (documentMode !== "report-instance" || mode !== "data" || !instance)
+      return;
+    const record = instance.narratives.find(
+      (item) => item.marketId === marketId,
+    );
+    if (!record || !record.text.trim() || record.overflow === result.overflow)
+      return;
+    if (narrativeOverflowSync.current.get(marketId) === result.overflow) return;
+    narrativeOverflowSync.current.set(marketId, result.overflow);
+    void reportInstanceStore
+      .overflow(instance.id, marketId, result.overflow)
+      .then(handleReportInstanceChange)
+      .catch((error) =>
+        console.warn("Narrative overflow state could not be saved.", error),
+      )
+      .finally(() => narrativeOverflowSync.current.delete(marketId));
   };
   const handleGenerate = async (
     request: ReportGenerationRequest,
@@ -2931,6 +2985,7 @@ export default function App() {
                   settings={settings}
                   data={reportData}
                   manualOverrides={reportInstance?.manualOverrides}
+                  onNarrativeFit={handleNarrativeFit}
                   mode={mode}
                   selected={selectedIds.includes(element.id)}
                   selectedIds={selectedIds}
@@ -3000,6 +3055,14 @@ export default function App() {
             tableEditingId === selected?.id ? tableSelection : undefined
           }
           generated={Boolean(reportInstance)}
+          manualOverrides={reportInstance?.manualOverrides}
+          onTableValueOverride={reportInstance ? (cellKey, bindingPath, generatedValue, value) => {
+            if (selected?.type !== "table" || (value !== null && !isPlainDisplayValue(value))) return;
+            const elementId = selected.id;
+            mutate((current) => current, true, (overrides) => value === null
+              ? overrides.filter((item) => !(item.elementId === elementId && item.cellKey === cellKey))
+              : upsertManualOverride(overrides, { elementId, cellKey, bindingPath, generatedValue, overrideValue: value }));
+          } : undefined}
           readOnly={!documentMutable}
           onToggleTableEdit={() => {
             if (tableEditingId === selected?.id) {
@@ -3045,7 +3108,7 @@ export default function App() {
             : ""}
           {reportInstance ? (
             <>
-              {reportInstance.manualOverrides.length} manual overrides · Report{" "}
+              {reportInstance.manualOverrides.length} manual override{reportInstance.manualOverrides.length === 1 ? "" : "s"} · Report{" "}
               {reportSaveStatus}
               {reportLastSavedAt && reportSaveStatus === "saved"
                 ? ` at ${new Date(reportLastSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
@@ -3201,7 +3264,11 @@ export default function App() {
                 onClick={() => {
                   const pending = pendingPdfExport;
                   setPendingPdfExport(undefined);
-                  void performPdfExport(pending.template, pending.warningCount);
+                  void performPdfExport(
+                    pending.template,
+                    pending.warningCount,
+                    pending.data,
+                  );
                 }}
               >
                 Export anyway

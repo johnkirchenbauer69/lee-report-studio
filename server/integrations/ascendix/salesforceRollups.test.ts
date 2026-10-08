@@ -4,10 +4,12 @@ import {
   aggregateAvailabilityBySize,
   aggregateQuarterlyMarketPeriod,
   calculateTrailing12MonthNetAbsorption,
+  mapOverallMarketPeriod,
   rollupPropertyData,
   verifiedMedianSalesPricePsf,
   verifiedSpeculativeShare,
 } from "./salesforceRollups.ts";
+import { normalizeSalesforceMarketDataRecord } from "./salesforceNormalization.ts";
 
 const market = (
   name: string,
@@ -172,6 +174,164 @@ describe("live-verified Salesforce rollups", () => {
       value: null,
       status: "insufficient_history",
       missingPeriods: ["2025 Q4"],
+    });
+  });
+
+  describe("Availability By Size Range distinct-building counts", () => {
+    it("counts each Property once, even with duplicate Property_Data rows", () => {
+      const buckets = aggregateAvailabilityBySize([
+        { Id: "pd-1", Property__c: "prop-A", Available_SF_Total__c: 30_000 },
+        { Id: "pd-2", Property__c: "prop-A", Available_SF_Total__c: 30_000 },
+        { Id: "pd-3", Property__c: "prop-B", Available_SF_Total__c: 50_000 },
+        { Id: "pd-4", Property__c: "prop-C", Available_SF_Total__c: 600_000 },
+      ]);
+      expect(buckets[0]).toEqual({
+        bucket: "20-75k SF",
+        availableSf: 110_000,
+        buildingCount: 2,
+      });
+      expect(buckets[4]).toMatchObject({ availableSf: 600_000, buildingCount: 1 });
+    });
+
+    it("keeps unlinked rows distinct by their own Property_Data Id", () => {
+      const [bucket] = aggregateAvailabilityBySize([
+        { Id: "pd-1", Available_SF_Total__c: 40_000 },
+        { Id: "pd-2", Available_SF_Total__c: 41_000 },
+      ]);
+      expect(bucket!.buildingCount).toBe(2);
+    });
+
+    it("reports zero buildings for every zero-SF bucket and keeps the five buckets unchanged", () => {
+      const buckets = aggregateAvailabilityBySize([
+        { Id: "pd-1", Property__c: "prop-A", Available_SF_Total__c: 0 },
+        { Id: "pd-2", Property__c: "prop-B", Available_SF_Total__c: 160_000 },
+      ]);
+      expect(buckets.map((bucket) => bucket.bucket)).toEqual([
+        "20-75k SF",
+        "75-150k SF",
+        "150-250k SF",
+        "250-500k SF",
+        "500k SF+",
+      ]);
+      expect(buckets.map((bucket) => bucket.buildingCount)).toEqual([
+        0, 0, 1, 0, 0,
+      ]);
+      expect(
+        buckets.every(
+          (bucket) => bucket.availableSf > 0 || bucket.buildingCount === 0,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe("governed Sales transaction counts", () => {
+    const period = (overrides: Record<string, unknown>[]) =>
+      aggregateQuarterlyMarketPeriod(
+        "2026 Q3",
+        overrides.map((extra, index) => ({
+          Id: `md-${index}`,
+          Inventory_SF__c: 100,
+          Sales_Volume_USD__c: 1_000,
+          ...extra,
+        })),
+      );
+
+    it("sums Sales_Transactions__c over the same rows that produce Sales Volume", () => {
+      expect(
+        period([{ Sales_Transactions__c: 10 }, { Sales_Transactions__c: 4 }]),
+      ).toMatchObject({ salesVolume: 2_000, salesTransactions: 14 });
+    });
+
+    it("is unavailable (not zero, not inferred) when any row lacks the governed count", () => {
+      const result = period([
+        { Sales_Transactions__c: 10 },
+        { Sales_Transactions__c: null },
+      ]);
+      expect(result.salesTransactions).toBeUndefined();
+      expect(result.salesVolume).toBe(2_000);
+    });
+
+    it("keeps a governed zero count as zero", () => {
+      expect(
+        period([{ Sales_Volume_USD__c: 0, Sales_Transactions__c: 0 }])
+          .salesTransactions,
+      ).toBe(0);
+    });
+  });
+
+  describe("first-class Overall Market period mapping", () => {
+    const row = (extra: Record<string, unknown> = {}) =>
+      normalizeSalesforceMarketDataRecord({
+        Id: "a1wVy000008qTKfIAM",
+        External_Id__c: "OVERALL_MARKET::2026-09-30",
+        Quarter_Label__c: "2026 Q3",
+        Total_Net_Absorption_SF__c: 6_807_627,
+        Total_Vacant_Percent__c: 5.090682,
+        Total_Available_Percent__c: 8.291963,
+        Under_Construction_SF__c: 17_530_947,
+        Delivered_SF__c: 2_077_507,
+        Sales_Volume_USD__c: 1_181_229_487.5,
+        Sales_Transactions__c: 131,
+        Median_Sales_Price_Per_Building_SF__c: 106,
+        Total_Leasing_Activity_SF__c: 16_559_754,
+        ...extra,
+      });
+
+    it("maps one row to one quarter with no aggregation and passes the median through", () => {
+      expect(mapOverallMarketPeriod("2026 Q3", row())).toEqual({
+        period: "2026 Q3",
+        quarterlyNetAbsorptionSf: 6_807_627,
+        vacancyRate: expect.closeTo(0.05090682, 12),
+        availabilityRate: expect.closeTo(0.08291963, 12),
+        underConstructionSf: 17_530_947,
+        deliveredSf: 2_077_507,
+        salesVolume: 1_181_229_487.5,
+        salesTransactions: 131,
+        medianSalesPricePsf: 106,
+        leasingActivitySf: 16_559_754,
+        source: {
+          authority: "OVERALL_MARKET_RECORD",
+          quarter: "2026 Q3",
+          externalIds: ["OVERALL_MARKET::2026-09-30"],
+          authoritativeNulls: [],
+        },
+        sourceIds: ["a1wVy000008qTKfIAM"],
+      });
+    });
+
+    it("preserves every null as an authoritative null (never zero)", () => {
+      const period = mapOverallMarketPeriod(
+        "2025 Q2",
+        row({
+          Quarter_Label__c: "2025 Q2",
+          Total_Vacant_Percent__c: null,
+          Total_Net_Absorption_SF__c: null,
+          Median_Sales_Price_Per_Building_SF__c: null,
+        }),
+      );
+      expect(period.vacancyRate).toBeNull();
+      expect(period.quarterlyNetAbsorptionSf).toBeNull();
+      expect(period.medianSalesPricePsf).toBeNull();
+      expect(period.source?.authoritativeNulls).toEqual([
+        "quarterlyNetAbsorptionSf",
+        "vacancyRate",
+        "medianSalesPricePsf",
+      ]);
+    });
+
+    it("makes trailing 12-month unavailable when a required quarter has an authoritative null", () => {
+      const periods = [
+        { period: "2025 Q3", quarterlyNetAbsorptionSf: 5_045_142 },
+        { period: "2025 Q2", quarterlyNetAbsorptionSf: 5_227_397 },
+        { period: "2025 Q1", quarterlyNetAbsorptionSf: 5_450_231 },
+        { period: "2024 Q4", quarterlyNetAbsorptionSf: null },
+      ];
+      expect(calculateTrailing12MonthNetAbsorption(periods, "2025 Q3")).toMatchObject({
+        value: null,
+        status: "authoritative_null",
+        nullPeriods: ["2024 Q4"],
+        missingPeriods: [],
+      });
     });
   });
 });

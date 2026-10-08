@@ -1,4 +1,7 @@
-const SAFE_VALUE = /^[\p{L}\p{N} .,&'()+\-/]+$/u;
+// Underscore is allowed: inside a quoted equality literal it is a literal
+// character (it is only a wildcard inside LIKE), and governed codes such as
+// Geography_Code__c = 'OVERALL_MARKET' contain it.
+const SAFE_VALUE = /^[\p{L}\p{N} .,&'()+\-/_]+$/u;
 
 export function soqlLiteral(value: string, label: string): string {
   const normalized = value.trim();

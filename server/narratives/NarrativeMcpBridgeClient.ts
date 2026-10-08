@@ -1,3 +1,5 @@
+import { BROKER_INTERVIEW_POLICY } from "../../src/report-engine/narratives/brokerInterviews.ts";
+import { NARRATIVE_PUBLICATION_STYLE } from "../../src/report-engine/narratives/publicationStyle.ts";
 import type {
   NarrativeClaim,
   NarrativeQualityFlag,
@@ -442,7 +444,10 @@ export class NarrativeMcpBridgeClient {
  * Intelligence app), so this is the one place this codebase can put it in
  * front of the model doing the writing.
  */
-export const narrativeHandoffPrompt = (jobId: string) =>
+export const narrativeHandoffPrompt = (
+  jobId: string,
+  options: { brokerContext?: boolean } = {},
+) =>
   `Use the LEE Intelligence app to complete Report Studio narrative job ${jobId}. Generate every requested narrative from the governed contexts and submit the finished batch back to the job.
 
 Editorial objective: produce publication-ready Chicago industrial research commentary comparable in analytical depth to a professionally authored institutional brokerage market report. Each narrative should communicate a market thesis, not summarize a dataset — determine what changed, why it matters (only where a governed driver fact supports it), how it compares with relevant recent or historical periods, and what governed evidence explains it.
@@ -451,6 +456,10 @@ Narrative hierarchy — use only what is meaningful for each market, in no fixed
 
 Writing style: professional CRE research tone, analytical but restrained, varied sentence structure and openings across markets, no hype, no repetitive template, no fixed metric sequence — numbers are evidence, not the outline. Do not use em dashes; use commas, semicolons, colons, or separate sentences instead (ordinary hyphens in compounds like "year-over-year" or "build-to-suit" are unaffected). Avoid repetitive rhetorical phrasing associated with formulaic generated prose, such as overusing "underscoring," "highlighting," "reflecting," or "the quarter was defined by," or repeating "while..." contrast sentences; prefer direct, specific market language over ornamental transitions.
 
+${NARRATIVE_PUBLICATION_STYLE}
+
 Safety: use only the supplied governed context; no unsupported calculations, invented numbers, or invented entities; no unsupported causal claims; no internal system, Salesforce, Ascendix, or workflow language in the output.
 
-For every required market, submit exactly: marketId, narrative, claims (each with claim, supportKeys, and evidenceClass), contextKeysUsed, qualityFlags, and promptVersion. Echo each marketId and promptVersion exactly from the job. After submitting the full batch, GET the same job again and claim completion only after status is complete and the accepted narrative count matches the required market count.`;
+For every required market, submit exactly: marketId, narrative, claims (each with claim, supportKeys, and evidenceClass), contextKeysUsed, qualityFlags, and promptVersion. Echo each marketId and promptVersion exactly from the job. After submitting the full batch, GET the same job again and claim completion only after status is complete and the accepted narrative count matches the required market count.${
+    options.brokerContext ? `\n\n${BROKER_INTERVIEW_POLICY}` : ""
+  }`;

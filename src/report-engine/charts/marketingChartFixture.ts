@@ -16,6 +16,7 @@ export const marketingChartFixture = {
       underConstructionSf: 9_300_000,
       deliveredSf: 4_100_000,
       salesVolume: 1_190_000_000,
+      salesTransactions: 142,
       medianSalesPricePsf: 132,
     },
     {
@@ -26,6 +27,7 @@ export const marketingChartFixture = {
       underConstructionSf: 8_600_000,
       deliveredSf: 2_900_000,
       salesVolume: 955_000_000,
+      salesTransactions: 118,
       medianSalesPricePsf: 126,
     },
     {
@@ -36,6 +38,7 @@ export const marketingChartFixture = {
       underConstructionSf: 7_200_000,
       deliveredSf: 3_300_000,
       salesVolume: 530_000_000,
+      salesTransactions: 61,
       medianSalesPricePsf: 121,
     },
     {
@@ -46,6 +49,7 @@ export const marketingChartFixture = {
       underConstructionSf: 6_000_000,
       deliveredSf: 2_700_000,
       salesVolume: 850_000_000,
+      salesTransactions: 97,
       medianSalesPricePsf: 118,
     },
     {
@@ -56,6 +60,7 @@ export const marketingChartFixture = {
       underConstructionSf: 5_500_000,
       deliveredSf: 2_100_000,
       salesVolume: 680_000_000,
+      salesTransactions: 83,
       medianSalesPricePsf: 112,
     },
   ],

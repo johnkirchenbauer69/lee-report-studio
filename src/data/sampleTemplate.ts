@@ -1,3 +1,4 @@
+import { closingPageContent } from "./closingPageContent";
 import type { PropertyHighlight } from "../types/marketReport";
 import type {
   ImageElement,
@@ -533,6 +534,12 @@ const transactionColumns = [
     align: "left" as const,
   },
 ];
+// Shared 4-column grid for Top Leases and Top Sales (both the Overall
+// Market and submarket-detail variants), so every table's columns start at
+// identical x-positions. Column 4 (type) is widened relative to the earlier
+// 24/24/34/18 pass so "Direct / Renewal" and similar values have room next
+// to the fixed-width LEE DEAL badge without wrapping/crowding.
+const TRANSACTION_GRID_WIDTHS = [22, 20, 32, 26] as const;
 const transactionChipStyle = {
   fontFamily: "Nunito Sans",
   fontWeight: 900,
@@ -822,11 +829,13 @@ const overviewPage: ReportPage = {
       maxRows: 3,
       variant: "transactions",
       transactionChipStyle,
+      // Shares its 4-column grid with the Top Sales table below it so both
+      // tables' columns start at the same x-position.
       columns: [
-        { ...transactionColumns[0], label: "TENANT" },
-        { ...transactionColumns[1], label: "SIZE (SF)" },
-        transactionColumns[2],
-        { ...transactionColumns[3], label: "LEASE TYPE" },
+        { ...transactionColumns[0], label: "TENANT", width: TRANSACTION_GRID_WIDTHS[0] },
+        { ...transactionColumns[1], label: "SIZE", width: TRANSACTION_GRID_WIDTHS[1] },
+        { ...transactionColumns[2], width: TRANSACTION_GRID_WIDTHS[2] },
+        { ...transactionColumns[3], label: "LEASE TYPE", width: TRANSACTION_GRID_WIDTHS[3] },
       ],
       style: {
         fontFamily: "Nunito Sans, Arial, sans-serif",
@@ -885,11 +894,19 @@ const overviewPage: ReportPage = {
       maxRows: 3,
       variant: "transactions",
       transactionChipStyle,
+      // Shares its 4-column grid with the Top Leases table above it so both
+      // tables' columns start at the same x-position.
       columns: [
-        { ...transactionColumns[0], label: "BUYER" },
-        { ...transactionColumns[1], label: "PRICE ($)" },
-        transactionColumns[2],
-        { ...transactionColumns[3], label: "SALE TYPE" },
+        { ...transactionColumns[0], label: "BUYER", width: TRANSACTION_GRID_WIDTHS[0] },
+        {
+          ...transactionColumns[1],
+          key: "sizePricePerSf",
+          label: "SIZE / PRICE",
+          path: "sizePricePerSf",
+          width: TRANSACTION_GRID_WIDTHS[1],
+        },
+        { ...transactionColumns[2], width: TRANSACTION_GRID_WIDTHS[2] },
+        { ...transactionColumns[3], label: "SALE TYPE", width: TRANSACTION_GRID_WIDTHS[3] },
       ],
       style: {
         fontFamily: "Nunito Sans, Arial, sans-serif",
@@ -919,22 +936,25 @@ function propertySection(
       : section === "deliveries"
         ? "topDeliveries"
         : "topConstruction";
-  const result: ReportElement[] = [
-    shape(`${id}-bar`, `${title} Bar`, 32, y, 752, 27, crimson, 8),
-    text(
-      `${id}-section-title`,
-      title,
-      32,
-      y + 2,
-      752,
-      23,
-      title,
-      17,
-      white,
-      800,
-      "center",
-    ),
-  ];
+  // Cards are collected separately from the bar/title and appended AFTER
+  // them below: this render engine paints later array entries on top, so
+  // the beveled section bar (and its title) must come last to always sit
+  // above the property images, never the reverse.
+  const bar = shape(`${id}-bar`, `${title} Bar`, 32, y, 752, 27, crimson, 8);
+  const sectionTitle = text(
+    `${id}-section-title`,
+    title,
+    32,
+    y + 2,
+    752,
+    23,
+    title,
+    17,
+    white,
+    800,
+    "center",
+  );
+  const result: ReportElement[] = [];
   items.forEach((item, index) => {
     const x = 32 + index * 257,
       width = index === 2 ? 238 : 239;
@@ -1003,7 +1023,7 @@ function propertySection(
       bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
     });
   });
-  return result;
+  return [...result, bar, sectionTitle];
 }
 
 const highlightsPage: ReportPage = {
@@ -1401,36 +1421,43 @@ function staticReferencePage(
   };
 }
 
-const dataMethodologyPage = staticReferencePage(
-  "data-methodology",
-  "Data Methodology",
-  "data-methodology",
-  41,
-  true,
-  "DATA METHODOLOGY",
-);
-const definitionsPage = staticReferencePage(
-  "definitions",
-  "Definitions",
-  "definitions",
-  42,
-  true,
-  "DEFINITIONS",
-);
-const contactsPage = staticReferencePage(
-  "contacts",
-  "Contacts",
-  "contacts",
-  43,
-  true,
-);
-const whoWeArePage = staticReferencePage(
-  "who-we-are",
-  "Who We Are",
-  "who-we-are",
-  44,
-  false,
-);
+/** New default pages only. Stored image-based versions remain untouched. */
+function nativeClosingPage(id: string, name: string, index: number, headerTitle?: string): ReportPage {
+  const original = staticReferencePage(id, name, id, 0, index !== 3, headerTitle);
+  const company = index === 3;
+  const elements = original.elements.filter(element => !element.id.endsWith("-artwork") && (!company || (!element.id.endsWith("-logo") && !element.id.endsWith("-header-mask"))));
+  elements.forEach(element => {
+    if (element.type === "text" && element.id.endsWith("footer-page-number")) element.name = "Page Number";
+    if (element.type === "text" && element.id.includes("-footer-")) {
+      element.style.fontSize = 10.6667;
+      element.style.fontWeight = element.id.endsWith("footer-brand") ? 700 : element.id.endsWith("footer-address") ? 200 : 400;
+      if (element.id.endsWith("footer-address")) element.width = 306;
+    }
+    if (element.type === "text" && element.id.endsWith("-period")) {
+      element.style.fontFamily = "Avenir Next LT Pro";
+      element.style.fontWeight = 700;
+      element.style.fontSize = 37.3333;
+      element.height = 48;
+    }
+    if (element.type === "image" && element.id.endsWith("-logo")) {
+      element.src = "/report-assets/closing/header-logo.svg";
+      element.x = 32; element.y = 26.6667; element.width = 221.3333; element.height = 66.6667;
+    }
+  });
+  return { ...original, elements: [...elements, {
+    id: `${id}-content`, type: "text", name: `${name} Content`, text: "",
+    x: company ? 0 : index < 2 ? 41.6 : 32,
+    y: company ? 0 : 133.3333,
+    width: company ? 816 : index < 2 ? 744 : 752,
+    height: company ? 1005.3333 : 864,
+    style: { fontFamily: company ? "Avenir Next LT Pro" : "Nunito Sans", fontSize: 14.6667, fontWeight: 400, color: "#32414b", opacity: 1 },
+    closingContent: structuredClone(closingPageContent[index]),
+  }] };
+}
+const dataMethodologyPage = nativeClosingPage("data-methodology", "Data Methodology", 0, "DATA METHODOLOGY");
+const definitionsPage = nativeClosingPage("definitions", "Definitions", 1, "DEFINITIONS");
+const contactsPage = nativeClosingPage("contacts", "Contacts", 2);
+const whoWeArePage = nativeClosingPage("who-we-are", "Who We Are", 3);
 
 export const sampleTemplate: ReportTemplate = {
   id: "industrial-market-report",

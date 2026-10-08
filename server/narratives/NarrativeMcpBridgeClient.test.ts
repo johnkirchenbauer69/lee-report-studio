@@ -7,7 +7,7 @@ import {
 } from "./NarrativeMcpBridgeClient.ts";
 import {
   NARRATIVE_OUTPUT_CONTRACT_VERSION,
-  NARRATIVE_PROMPT_PROFILES,
+  NARRATIVE_TRANSPORT_PROMPT_PROFILES,
 } from "../../src/report-engine/narratives/schema.ts";
 
 const ALL_TOOLS = [
@@ -21,10 +21,10 @@ const context = (marketId: string) => ({
   marketKind: "submarket" as const,
   period: "2026 Q2",
   promptVersion:
-    NARRATIVE_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"].version,
+    NARRATIVE_TRANSPORT_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"].version,
   outputContractVersion: NARRATIVE_OUTPUT_CONTRACT_VERSION,
   promptProfile: {
-    ...NARRATIVE_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"],
+    ...NARRATIVE_TRANSPORT_PROMPT_PROFILES[marketId === "overall-market" ? "overall" : "submarket"],
   },
   contextHash: `hash-${marketId}`,
   facts: [

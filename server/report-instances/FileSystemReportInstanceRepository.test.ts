@@ -37,6 +37,18 @@ afterEach(async () => {
 });
 
 describe("FileSystemReportInstanceRepository", () => {
+  it("persists semantic table display overrides without changing the source snapshot or pages", async () => {
+    const created = await repository.create(instance);
+    const override = { elementId: "market-indicators", cellKey: '["metric:net_absorption_t12","period:2025 Q3"]',
+      bindingPath: "indicatorRows.prior", generatedValue: null, overrideValue: "18,086,895", createdAt: "2026-10-06T12:00:00.000Z" };
+    await repository.patchDocument(created.id, { baseRevision: created.revision, pages: created.pages, manualOverrides: [override] });
+    const reopened = (await new FileSystemReportInstanceRepository(root).get(created.id))!;
+    expect(reopened.manualOverrides).toEqual([override]);
+    expect(reopened.dataSnapshot).toEqual(created.dataSnapshot);
+    expect(reopened.pages).toEqual(created.pages);
+    await repository.patchDocument(created.id, { baseRevision: reopened.revision, pages: reopened.pages, manualOverrides: [] });
+    expect((await repository.get(created.id))!.manualOverrides).toEqual([]);
+  });
   it("persists edited pages and manual overrides across a new repository process", async () => {
     const created = await repository.create(instance);
     const pages = structuredClone(created.pages);
