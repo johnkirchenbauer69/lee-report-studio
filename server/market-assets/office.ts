@@ -53,7 +53,7 @@ function table(
   start: number,
   tableId: string,
 ) {
-  sheet.mergeCells(start, 1, start, data.headers.length);
+  if (data.headers.length <= 8) sheet.mergeCells(start, 1, start, data.headers.length);
   const title = sheet.getCell(start, 1);
   title.value = data.title;
   title.font = {
@@ -163,7 +163,7 @@ export async function writeWorkbook(
       },
       properties: { defaultRowHeight: 22 },
     });
-    s.mergeCells(1, 1, 1, columns);
+    if (columns <= 8) s.mergeCells(1, 1, 1, columns);
     s.getCell("A1").value = `${asset.market} ${asset.title}`;
     s.getCell("A1").font = {
       name: "Calibri",
@@ -173,7 +173,7 @@ export async function writeWorkbook(
     };
     s.getRow(1).height = 44;
     s.getCell("A1").alignment = { vertical: "middle", wrapText: true };
-    s.mergeCells(2, 1, 2, columns);
+    if (columns <= 8) s.mergeCells(2, 1, 2, columns);
     s.getCell("A2").value =
       `${plan.period} · ${plan.status.toUpperCase()} · Saved ${plan.generatedAt.slice(0, 10)}`;
     s.getCell("A2").font = {
