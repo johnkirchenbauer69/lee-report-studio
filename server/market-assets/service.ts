@@ -388,17 +388,21 @@ export class MarketAssetService {
                 "Section PDF page-count or renderer verification failed.",
               );
           } else {
+            // Charts preserve the report's transparent plotting canvas by default.
+            // Other asset categories retain the user's explicit background option.
+            const transparent =
+              asset.category === "charts" || request.transparent;
             const page = fragmentPage(
               asset.page!,
               asset.elements!,
-              request.transparent,
+              transparent,
             );
             const frozen = await freezePresentation(
               instance,
               [
                 {
                   ...asset.page!,
-                  background: request.transparent
+                  background: transparent
                     ? "transparent"
                     : asset.page!.background,
                   elements: asset.elements!,
@@ -463,7 +467,7 @@ export class MarketAssetService {
                   images.some((i) => !(i as HTMLImageElement).naturalWidth),
                 );
               if (missing) throw new Error("A saved image failed to render.");
-              if (request.transparent)
+              if (transparent)
                 await tab.addStyleTag({
                   content:
                     "html,body,#root,.print-document { background:transparent !important; }",
@@ -486,7 +490,7 @@ export class MarketAssetService {
                   height: page.height,
                 },
                 animations: "disabled",
-                omitBackground: request.transparent,
+                omitBackground: transparent,
               });
               const meta = await sharp(bytes).metadata();
               if (!meta.width || Math.abs(meta.width - targetWidth) > 1)

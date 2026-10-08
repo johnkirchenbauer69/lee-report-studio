@@ -22,7 +22,7 @@ import { validateZip } from "../../server/market-assets/service";
 
 test.use({ launchOptions: { args: ["--font-render-hinting=none"] } });
 const evidence = "docs/evidence/market-assets";
-test("transparent chart export preserves artwork and removes page background", async ({
+test("chart export preserves artwork and defaults to a transparent plotting canvas", async ({
   request,
   page,
 }) => {
@@ -38,7 +38,7 @@ test("transparent chart export preserves artwork and removes page background", a
     markets: ["i55-corridor"],
     categories: ["charts"],
     resolution: "standard",
-    transparent: true,
+    transparent: false,
   };
   const preview = await (
     await request.post("/api/market-assets/preview", { data: body })
@@ -397,13 +397,20 @@ test("fragment PNG matches the saved page rendering and section PDF uses Chromiu
       await reference.goto("/?printJob=parity");
       await reference.locator('[data-render-ready="true"]').waitFor();
       await reference.evaluate(() => document.fonts.ready);
+      if (asset.elements!.some(element => element.type === "chart" && element.marketingChartId === "availability_by_size"))
+        await expect(reference.locator('[data-count-chip="buildings"]')).toHaveCount(5);
       const origin = await reference.locator(".print-page").boundingBox();
       const expected = PNG.sync.read(
           await reference.screenshot({
             clip: { x: origin!.x + x, y: origin!.y + y, width, height },
           }),
         ),
-        actual = PNG.sync.read(bytes);
+        actual = PNG.sync.read(
+          await sharp(bytes)
+            .flatten({ background: asset.page!.background || "#ffffff" })
+            .png()
+            .toBuffer(),
+        );
       expect(actual.width).toBe(expected.width);
       expect(actual.height).toBe(expected.height);
       expect(

@@ -76,6 +76,8 @@ export const historicalMarketPeriodSchema = z.object({
   underConstructionSf: nonNegativeNumber,
   deliveredSf: nonNegativeNumber.optional(),
   salesVolume: nonNegativeNumber.optional(),
+  /** Saved qualifying transaction count; never inferred from sales volume. */
+  salesTransactions: z.number().int().nonnegative().nullable().optional(),
   /** Verified nominal Market_Data price series; null when the source has no value. */
   medianSalesPricePsf: nonNegativeNumber.nullable().optional(),
   leasingActivitySf: nonNegativeNumber,
