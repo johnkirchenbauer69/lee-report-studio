@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "exportedAt": "2026-10-08T17:59:48.561Z",
+  "reportName": "Synthetic Market Asset QA",
+  "reportId": "report-market-assets-synthetic-qa",
+  "reportingPeriod": "Q3 2026",
+  "revision": 1,
+  "snapshotHash": "e9657ea83a31f27c97af17eece6be23032e092fd5c8d4af55a02844ca0171225",
+  "templateVersion": "1.3.0",
+  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
+  "generatedAt": "2026-10-08T17:48:57.772Z",
+  "selectedMarkets": [
+    {
+      "id": "i55-corridor",
+      "name": "I-55 Corridor"
+    }
+  ],
+  "selectedCategories": [
+    "charts",
+    "section"
+  ],
+  "files": [
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8e3a04669944b198cbb401b16372b705689f1543802eb1619577f353412b1795",
+      "bytes": 85475,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "eef9169159481827220cfbc3d494b98a2882e3cd6d0fb5e8aea28d441ef331d4",
+      "bytes": 37548,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "5d40485ed26ad83ccdd04b1e02eae9d42cc712805c473be824146fc838e9e92a",
+      "bytes": 61457,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "5bc5e61c7366ddebdcd7bc79c0c95af1a108a7acb59ec2d53c46017c98612947",
+      "bytes": 64319,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Complete Section/I-55 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-55 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c723cb372b269b3fe99e5bcd1bcb04bb7002d4a94395e75c2903cf71156427ea",
+      "bytes": 2787037,
+      "warnings": []
+    }
+  ],
+  "omissions": [],
+  "warnings": [],
+  "status": "completed"
+}

@@ -1,4 +1,7 @@
 import "dotenv/config";
+import { MarketAssetService } from "./market-assets/service.ts";
+import { capturePresentationAssets } from "./market-assets/snapshot.ts";
+import { createMarketAssetRouter } from "./api/marketAssetRoutes.ts";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
@@ -151,7 +154,9 @@ app.use("/api", createReportDataRouter(reportDataService));
 app.use("/api", createTemplateRouter(templateRepository));
 app.use(
   "/api",
-  createReportInstanceRouter(reportInstanceRepository, narrativeService),
+  createReportInstanceRouter(reportInstanceRepository, narrativeService, instance =>
+    capturePresentationAssets(instance, assetStore),
+  ),
 );
 app.get("/api/assets", async (_request, response) =>
   response.json({ assets: await assetStore.list() }),
@@ -223,9 +228,38 @@ interface RenderJob {
   data: unknown;
   title: string;
   renderMode?: "final" | "draft";
+  manualOverrides?: import("../src/report-engine/schema/generation.ts").ManualOverride[];
 }
 const renderJobs = new Map<string, RenderJob>();
 const pdfRenderer = new ChromiumPdfRenderer();
+const marketAssetRenderUrl = process.env.LEE_RENDER_APP_URL ?? "http://127.0.0.1:3000";
+const marketAssets = new MarketAssetService({
+  repository: reportInstanceRepository,
+  store: assetStore,
+  root: path.join(dataRoot, "market-asset-exports"),
+  appUrl: marketAssetRenderUrl,
+  renderJobs: renderJobs as Map<string, import("./market-assets/snapshot.ts").FrozenPresentation>,
+  renderPdf: async job => {
+    const issues = await runServerPublicationImagePreflight(job.template, {
+      baseUrl: marketAssetRenderUrl,
+    });
+    if (issues.length) throw new Error(issues.map(i => i.message).join("; "));
+    const id = randomUUID();
+    renderJobs.set(id, job);
+    try {
+      return await pdfRenderer.render({
+        url: `${marketAssetRenderUrl}/?printJob=${id}`,
+        title: job.title,
+        offline: true,
+      });
+    } finally {
+      renderJobs.delete(id);
+    }
+  },
+});
+await marketAssets.initialize();
+app.use("/api/market-assets", createMarketAssetRouter(marketAssets));
+
 app.get("/api/render-jobs/:id", (request, response) => {
   const job = renderJobs.get(request.params.id);
   return job

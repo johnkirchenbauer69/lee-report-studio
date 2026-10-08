@@ -7,7 +7,10 @@ import {
   marketingPlotCenterX,
   placeCountChip,
 } from "./MarketingChart";
-import { MARKETING_CHART_BASE, marketingChartTheme } from "./marketingChartTheme";
+import {
+  MARKETING_CHART_BASE,
+  marketingChartTheme,
+} from "./marketingChartTheme";
 
 const element = (
   marketingChartId: ChartElement["marketingChartId"],
@@ -88,6 +91,41 @@ const history = [
 ];
 
 describe("MarketingChart vector output", () => {
+  it("reports an entirely missing deliveries series once and preserves real zero SF", () => {
+    const missing = renderToStaticMarkup(
+      <MarketingChart
+        element={element("construction_uc_deliveries")}
+        source={history.map((row) => ({ ...row, deliveredSf: undefined }))}
+      />,
+    );
+    expect(missing.match(/Deliveries unavailable/g)).toHaveLength(1);
+    expect(missing).not.toContain(">Unavailable<");
+    expect(missing).not.toContain(">0 SF<");
+    const zero = renderToStaticMarkup(
+      <MarketingChart
+        element={element("construction_uc_deliveries")}
+        source={history.map((row) => ({ ...row, deliveredSf: 0 }))}
+      />,
+    );
+    expect(zero).toContain(">0 SF<");
+    expect(zero).not.toContain("Deliveries unavailable");
+  });
+  it("uses one series-level sales warning instead of repeating missing bar labels", () => {
+    const html = renderToStaticMarkup(
+      <MarketingChart
+        element={element("sales_volume_cap_rates")}
+        source={history.map((row) => ({
+          ...row,
+          salesVolume: undefined,
+          medianSalesPricePsf: null,
+        }))}
+      />,
+    );
+    expect(html.match(/Sales Volume unavailable/g)).toHaveLength(1);
+    expect(html.match(/Median Sales Price unavailable/g)).toHaveLength(1);
+    expect(html).not.toContain(">Unavailable<");
+    expect(html).not.toContain("data-bar-index=");
+  });
   it.each([
     "net_absorption_vacancy_availability",
     "sales_volume_cap_rates",
@@ -311,8 +349,8 @@ describe("MarketingChart vector output", () => {
       return match ? Number(match[1]) : undefined;
     };
     const rightAxisXPositions = (html: string) =>
-      [...html.matchAll(/data-axis-tick="left"[^>]*x="(-?[\d.]+)"/g)].map(
-        (m) => Number(m[1]),
+      [...html.matchAll(/data-axis-tick="left"[^>]*x="(-?[\d.]+)"/g)].map((m) =>
+        Number(m[1]),
       );
 
     it("gives both charts an identical plot rectangle (margins.sales === margins.combination)", () => {
@@ -322,10 +360,13 @@ describe("MarketingChart vector output", () => {
     });
 
     it("1. plot-area width is equal", () => {
-      const { left: netLeft, right: netRight } = marketingChartTheme.margins.combination;
-      const { left: salesLeft, right: salesRight } = marketingChartTheme.margins.sales;
+      const { left: netLeft, right: netRight } =
+        marketingChartTheme.margins.combination;
+      const { left: salesLeft, right: salesRight } =
+        marketingChartTheme.margins.sales;
       const netPlotWidth = MARKETING_CHART_BASE.width - netLeft - netRight;
-      const salesPlotWidth = MARKETING_CHART_BASE.width - salesLeft - salesRight;
+      const salesPlotWidth =
+        MARKETING_CHART_BASE.width - salesLeft - salesRight;
       expect(salesPlotWidth).toBeCloseTo(netPlotWidth, 5);
     });
 
@@ -367,7 +408,10 @@ describe("MarketingChart vector output", () => {
     it("6. value-axis labels stay within the chart's SVG bounds (no clipping) on both charts", () => {
       const net = netHtml();
       const sales = salesHtml();
-      for (const positions of [rightAxisXPositions(net), rightAxisXPositions(sales)]) {
+      for (const positions of [
+        rightAxisXPositions(net),
+        rightAxisXPositions(sales),
+      ]) {
         expect(positions.length).toBeGreaterThan(0);
         for (const x of positions) {
           expect(x).toBeGreaterThanOrEqual(0);
@@ -553,12 +597,8 @@ describe("count chips", () => {
 
     it("never overlaps the Median Sales Price line at the bar centre", () => {
       const markup = render(periods);
-      const axisMin = Number(
-        markup.match(/data-line-axis-min="([\d.]+)"/)![1],
-      );
-      const axisMax = Number(
-        markup.match(/data-line-axis-max="([\d.]+)"/)![1],
-      );
+      const axisMin = Number(markup.match(/data-line-axis-min="([\d.]+)"/)![1]);
+      const axisMax = Number(markup.match(/data-line-axis-max="([\d.]+)"/)![1]);
       const { top, bottom } = marketingChartTheme.margins.sales;
       const plotHeight = MARKETING_CHART_BASE.height - top - bottom;
       const chips = chipAttrs(markup, "sales");

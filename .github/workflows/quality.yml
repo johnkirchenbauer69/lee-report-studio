@@ -2,7 +2,7 @@ name: Quality
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/market-asset-export]
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -26,6 +26,16 @@ jobs:
         run: npm run build
       - name: Visual regression
         run: npm run test:visual
+      - name: Verify synthetic export packages
+        run: node scripts/verify-market-asset-samples.mjs
+      - name: Upload synthetic market export samples and evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: market-asset-export-synthetic-qa
+          path: docs/evidence/market-assets/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload test diagnostics
         uses: actions/upload-artifact@v4
         if: failure()

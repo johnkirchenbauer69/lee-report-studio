@@ -143,18 +143,26 @@ export function placeCountChip({
   const { height, inset } = marketingChartTheme.countChip;
   const fitsInside = barBottom - barTop >= height + inset * 2;
   const overlaps = (top: number) =>
-    avoid.some(([a, b]) => top < Math.max(a, b) && top + height > Math.min(a, b));
+    avoid.some(
+      ([a, b]) => top < Math.max(a, b) && top + height > Math.min(a, b),
+    );
   const candidates: Array<{ top: number; placement: ChipPlacement }> = [];
   if (fitsInside) {
     candidates.push({ top: barTop + inset, placement: "inside" });
-    candidates.push({ top: barBottom - inset - height, placement: "inside-base" });
+    candidates.push({
+      top: barBottom - inset - height,
+      placement: "inside-base",
+    });
   }
   const aboveTop = labelTop - inset * 0.6 - height;
   candidates.push({ top: aboveTop, placement: "above" });
   for (const [a, b] of avoid) {
     const bandTop = Math.min(a, b);
     if (bandTop < aboveTop)
-      candidates.push({ top: bandTop - inset * 0.6 - height, placement: "above" });
+      candidates.push({
+        top: bandTop - inset * 0.6 - height,
+        placement: "above",
+      });
   }
   const legal = candidates.filter((candidate) => candidate.top >= minimumTop);
   return (
@@ -607,6 +615,15 @@ function ConstructionChart({
     <>
       <GridAxis ticks={ticks} y={y} margin={margin} format={compactNumber} />
       {bars.flatMap((series, seriesIndex) =>
+        series.values.map((value, index) =>
+          value === undefined ? (
+            <title
+              key={`missing-${seriesIndex}-${index}`}
+            >{`${String(getByPath(rows[index]!, element.categoryPath))}: ${seriesIndex === 0 ? "Under Construction" : "Deliveries"} Unavailable`}</title>
+          ) : null,
+        ),
+      )}
+      {bars.flatMap((series, seriesIndex) =>
         series.values.flatMap((value, index) =>
           value === undefined ? (
             []
@@ -624,22 +641,44 @@ function ConstructionChart({
         ),
       )}
       {bars.flatMap((series, seriesIndex) =>
-        series.values.map((value, index) => (
+        series.values.flatMap((value, index) =>
+          value === undefined ? (
+            []
+          ) : (
+            <PlotText
+              key={`label-${seriesIndex}-${index}`}
+              x={x(index) + series.offset}
+              y={
+                value === undefined
+                  ? y(0) - 3
+                  : Math.max(margin.top + 5, y(value) - 3)
+              }
+              textAnchor="middle"
+              fontSize={marketingChartTheme.typography.barLabel}
+            >
+              {compactSquareFeet(value)}
+            </PlotText>
+          ),
+        ),
+      )}
+      {bars
+        .filter((series) => series.values.every((value) => value === undefined))
+        .map((series, index) => (
           <PlotText
-            key={`label-${seriesIndex}-${index}`}
-            x={x(index) + series.offset}
-            y={
-              value === undefined
-                ? y(0) - 3
-                : Math.max(margin.top + 5, y(value) - 3)
+            key={`unavailable-series-${index}`}
+            data-unavailable-series={
+              series === bars[0] ? "underConstructionSf" : "deliveredSf"
             }
-            textAnchor="middle"
+            x={MARKETING_CHART_BASE.width - margin.right}
+            y={margin.top + 8 + index * 10}
+            textAnchor="end"
             fontSize={marketingChartTheme.typography.barLabel}
           >
-            {value === undefined ? "Unavailable" : compactSquareFeet(value)}
+            {series === bars[0]
+              ? "Under Construction unavailable"
+              : "Deliveries unavailable"}
           </PlotText>
-        )),
-      )}
+        ))}
       <Categories rows={rows} element={element} x={x} y={188} />
       <Legend
         centerX={marketingPlotCenterX(margin)}
@@ -796,7 +835,9 @@ function CombinationChart({
           fontSize={marketingChartTheme.typography.barLabel}
         >
           {value === undefined
-            ? "Unavailable"
+            ? bars.every((item) => item === undefined)
+              ? ""
+              : "Unavailable"
             : sales
               ? compactCurrency(value)
               : compactSquareFeet(value)}
@@ -849,6 +890,17 @@ function CombinationChart({
         />
       ))}
       <Categories rows={rows} element={element} x={x} y={188} />
+      {sales && bars.every((value) => value === undefined) && (
+        <PlotText
+          x={MARKETING_CHART_BASE.width - margin.right}
+          y={margin.top + 18}
+          textAnchor="end"
+          data-unavailable-series="salesVolume"
+          fontSize={marketingChartTheme.typography.barLabel}
+        >
+          Sales Volume unavailable
+        </PlotText>
+      )}
       {sales && !lineValues.length && (
         <PlotText
           x={MARKETING_CHART_BASE.width - margin.right}
@@ -871,9 +923,7 @@ function CombinationChart({
                   color: marketingChartTheme.palette.navy,
                   line: true,
                 },
-                ...(salesChips.length
-                  ? [{ label: "Sales", chip: true }]
-                  : []),
+                ...(salesChips.length ? [{ label: "Sales", chip: true }] : []),
               ]
             : [
                 { label: "Net Absorption", gradient: true },

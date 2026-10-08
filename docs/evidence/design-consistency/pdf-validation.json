@@ -1,0 +1,192 @@
+{
+  "pages": 44,
+  "uncompressed_bytes": 24851601,
+  "compressed_bytes": 23086938,
+  "closing_pages": [
+    {
+      "page": "data-methodology",
+      "text_characters": 2902,
+      "mailto_links": 0,
+      "images": 3,
+      "fonts": [
+        {
+          "name": "AAAAAA+NunitoSans-NormalLight",
+          "type": "Type0",
+          "embedded_bytes": 11252
+        },
+        {
+          "name": "FAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12068
+        },
+        {
+          "name": "HAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11944
+        },
+        {
+          "name": "IAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12968
+        },
+        {
+          "name": "KAAAAA+AvenirNextLTPro-Bold",
+          "type": "Type0",
+          "embedded_bytes": 5024
+        },
+        {
+          "name": "LAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11768
+        },
+        {
+          "name": "MAAAAA+NunitoSansItalic-NormalItalic",
+          "type": "Type0",
+          "embedded_bytes": 10488
+        },
+        {
+          "name": "NAAAAA+NunitoSans-NormalSemiBold",
+          "type": "Type0",
+          "embedded_bytes": 12468
+        }
+      ],
+      "compression_text_and_links_unchanged": true,
+      "compressed_pixels_identical": true
+    },
+    {
+      "page": "definitions",
+      "text_characters": 3517,
+      "mailto_links": 0,
+      "images": 3,
+      "fonts": [
+        {
+          "name": "AAAAAA+NunitoSans-NormalLight",
+          "type": "Type0",
+          "embedded_bytes": 11252
+        },
+        {
+          "name": "FAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12068
+        },
+        {
+          "name": "HAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11944
+        },
+        {
+          "name": "KAAAAA+AvenirNextLTPro-Bold",
+          "type": "Type0",
+          "embedded_bytes": 5024
+        },
+        {
+          "name": "LAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11768
+        },
+        {
+          "name": "NAAAAA+NunitoSans-NormalSemiBold",
+          "type": "Type0",
+          "embedded_bytes": 12468
+        }
+      ],
+      "compression_text_and_links_unchanged": true,
+      "compressed_pixels_identical": true
+    },
+    {
+      "page": "contacts",
+      "text_characters": 2752,
+      "mailto_links": 45,
+      "images": 3,
+      "fonts": [
+        {
+          "name": "AAAAAA+NunitoSans-NormalLight",
+          "type": "Type0",
+          "embedded_bytes": 11252
+        },
+        {
+          "name": "FAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12068
+        },
+        {
+          "name": "HAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11944
+        },
+        {
+          "name": "IAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12968
+        },
+        {
+          "name": "KAAAAA+AvenirNextLTPro-Bold",
+          "type": "Type0",
+          "embedded_bytes": 5024
+        },
+        {
+          "name": "LAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11768
+        }
+      ],
+      "compression_text_and_links_unchanged": true,
+      "compressed_pixels_identical": true
+    },
+    {
+      "page": "who-we-are",
+      "text_characters": 2944,
+      "mailto_links": 0,
+      "images": 4,
+      "fonts": [
+        {
+          "name": "AAAAAA+NunitoSans-NormalLight",
+          "type": "Type0",
+          "embedded_bytes": 11252
+        },
+        {
+          "name": "FAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12068
+        },
+        {
+          "name": "HAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11944
+        },
+        {
+          "name": "IAAAAA+NunitoSans-Normal",
+          "type": "Type0",
+          "embedded_bytes": 12968
+        },
+        {
+          "name": "LAAAAA+NunitoSans-NormalBold",
+          "type": "Type0",
+          "embedded_bytes": 11768
+        },
+        {
+          "name": "OAAAAA+AvenirNextLTPro-Demi",
+          "type": "Type0",
+          "embedded_bytes": 7872
+        },
+        {
+          "name": "PAAAAA+AvenirNextLTPro-Medium",
+          "type": "Type0",
+          "embedded_bytes": 5272
+        },
+        {
+          "name": "QAAAAA+NunitoSansItalic-NormalSemiBoldItalic",
+          "type": "Type0",
+          "embedded_bytes": 9428
+        },
+        {
+          "name": "RAAAAA+AvenirNextLTPro-Regular",
+          "type": "Type0",
+          "embedded_bytes": 13136
+        }
+      ],
+      "compression_text_and_links_unchanged": true,
+      "compressed_pixels_identical": true
+    }
+  ]
+}

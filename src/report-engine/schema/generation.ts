@@ -127,6 +127,8 @@ export interface ReportInstance {
   generatedAt: string;
   dataSnapshot: IndustrialMarketReport;
   pages: ReportPage[];
+  /** Local presentation bytes captured when this instance was first saved. */
+  presentationAssets?: { source: string; checksum: string; mimeType: string; storageKey: string }[];
   fontReferences: FontReference[];
   manualOverrides: ManualOverride[];
   /** Quarter-specific editorial content. Master templates remain layout-only. */

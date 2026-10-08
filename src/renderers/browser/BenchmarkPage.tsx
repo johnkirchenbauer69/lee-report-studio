@@ -3,6 +3,7 @@ import { sampleTemplate } from "../../data/sampleTemplate";
 import { sampleData } from "../../data/sampleData";
 import type { EditorSettings } from "../../types/report";
 import { marketingChartFixture } from "../../report-engine/charts/marketingChartFixture";
+import { expandTemplatePages } from "../../report-engine/generation/repeaters";
 
 const settings: EditorSettings = {
   unit: "px",
@@ -26,10 +27,18 @@ export function BenchmarkPage({
   pageIndex: number;
   highlightStates?: boolean;
 }) {
-  const page =
+  const definition =
     sampleTemplate.pages[
       Math.max(0, Math.min(sampleTemplate.pages.length - 1, pageIndex))
     ];
+  // Native page-number placeholders are resolved by generation, just as in export.
+  const page = definition.elements.some(
+    (e) => e.type === "text" && e.closingContent,
+  )
+    ? expandTemplatePages(sampleTemplate, sampleData).find(
+        (p) => p.id === definition.id,
+      )!
+    : definition;
   const fixtureData = {
     ...sampleData,
     availabilityBySize: marketingChartFixture.availabilityBySize,

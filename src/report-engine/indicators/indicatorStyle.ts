@@ -12,7 +12,11 @@ export const INDICATOR_STYLE = Object.freeze({
 });
 
 export function indicatorColor(direction: string) {
-  return direction === "up" ? INDICATOR_STYLE.up
-    : direction === "down" ? INDICATOR_STYLE.down
-    : direction === "unavailable" ? INDICATOR_STYLE.unavailable : INDICATOR_STYLE.neutral;
+  return direction === "up"
+    ? INDICATOR_STYLE.up
+    : direction === "down"
+      ? INDICATOR_STYLE.down
+      : direction === "unavailable"
+        ? INDICATOR_STYLE.unavailable
+        : INDICATOR_STYLE.neutral;
 }

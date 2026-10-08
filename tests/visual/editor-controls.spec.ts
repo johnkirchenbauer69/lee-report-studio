@@ -3,7 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 test("text vertical alignment and color controls update the canvas", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  // The initial template/API load can reset selection; interact after it settles.
+  await page.goto("/", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("button", { name: "Elements" }).click();

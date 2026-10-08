@@ -2804,6 +2804,7 @@ export default function App() {
       </header>
       <div className="workspace">
         <nav className="rail">
+          <a href="/?marketAssets=1" className="market-assets-nav" title="Market Assets"><span>↧</span>Market Assets</a>
           {(
             [
               ["templates", "▤", "Templates"],
