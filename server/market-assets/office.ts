@@ -10,7 +10,12 @@ type Cell = {
   format: string;
   current?: boolean;
 };
-type Table = { title: string; headers: string[]; rows: Cell[][] };
+type Table = {
+  title: string;
+  headers: string[];
+  rows: Cell[][];
+  emptyMessage?: string;
+};
 const numberFormat = (format: string) =>
   ({
     percentage: "0.00%;[Red]-0.00%;0.00%",
@@ -66,7 +71,7 @@ function table(
   if (!data.rows.length) {
     sheet.mergeCells(start + 1, 1, start + 1, data.headers.length);
     sheet.getCell(start + 1, 1).value =
-      "No qualifying records in this saved report.";
+      data.emptyMessage ?? "No qualifying records in this saved report.";
     sheet.getRow(start + 1).height = 26;
     return start + 4;
   }
@@ -153,7 +158,7 @@ export async function writeWorkbook(
         paperSize: 9,
         orientation: "landscape",
         fitToPage: true,
-        fitToWidth: 1,
+        fitToWidth: Math.max(1, Math.ceil((columns - 1) / 7)),
         fitToHeight: 0,
       },
       properties: { defaultRowHeight: 22 },
@@ -181,6 +186,7 @@ export async function writeWorkbook(
     s.views[0].showGridLines = false;
     s.headerFooter.oddFooter = `${plan.reportName.replace(/&/g, "&&")} | ${plan.period} &RPage &P`;
     s.pageSetup.printTitlesRow = "1:2";
+    if (columns > 8) s.pageSetup.printTitlesColumn = "A:A";
     return s;
   };
   if (asset.category === "indicators")
@@ -215,6 +221,7 @@ export async function writeWorkbook(
     for (const [index, group] of (
       asset.payload as {
         title: string;
+        emptyMessage?: string;
         rows: { address: string; sizeSf: number; detail: string }[];
       }[]
     ).entries()) {
@@ -222,6 +229,7 @@ export async function writeWorkbook(
         s,
         {
           title: group.title,
+          emptyMessage: group.emptyMessage,
           headers: ["Property", "Size (SF)", "Details"],
           rows: group.rows.map((r) => [
             { value: r.address, format: "text" },
