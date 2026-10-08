@@ -70,9 +70,7 @@ describe("saved market asset exports", () => {
         (element) => !JSON.stringify(element).includes("topDeliveries["),
       );
     });
-    instance.dataSnapshot.submarketDetails.find(
-      (detail) => detail.id === "i55-corridor",
-    )!.deliveries = [];
+    instance.dataSnapshot.submarketDetails.forEach(detail => { detail.deliveries = []; });
     const plan = buildExportPlan(
       instance,
       { ...request(instance.id), categories: ["properties"] },
