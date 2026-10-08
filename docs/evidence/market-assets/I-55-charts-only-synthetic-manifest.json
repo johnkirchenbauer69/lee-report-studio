@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0",
+  "exportedAt": "2026-10-08T17:49:37.138Z",
+  "reportName": "Synthetic Market Asset QA",
+  "reportId": "report-market-assets-synthetic-qa",
+  "reportingPeriod": "Q3 2026",
+  "revision": 1,
+  "snapshotHash": "e9657ea83a31f27c97af17eece6be23032e092fd5c8d4af55a02844ca0171225",
+  "templateVersion": "1.3.0",
+  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
+  "generatedAt": "2026-10-08T17:48:57.772Z",
+  "selectedMarkets": [
+    {
+      "id": "i55-corridor",
+      "name": "I-55 Corridor"
+    }
+  ],
+  "selectedCategories": [
+    "charts"
+  ],
+  "files": [
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "265950644ad2281071746e57af933de455590ed24e0bdc9e6cf242f3a29ec8c0",
+      "bytes": 200191,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "041f786f541363ad92c94d4927aee7f750f4247458320e3765cda5ec2fe7e0f4",
+      "bytes": 89459,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "4549ed8f1a03acc9f22254f41408d356a0753fd06e16bdb17a7904d829a34643",
+      "bytes": 138668,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "1a138beddfe695d4f1c2f36bf999cc9b5775eaa6408c02a4eca5cd77e8e1bec8",
+      "bytes": 150746,
+      "warnings": []
+    }
+  ],
+  "omissions": [],
+  "warnings": [],
+  "status": "completed"
+}

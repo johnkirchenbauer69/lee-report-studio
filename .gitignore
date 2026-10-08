@@ -22,6 +22,14 @@ output/
 .env.*
 !.env.example
 *.local
+server/data/market-asset-exports/
+docs/evidence/market-assets/*.zip
+docs/evidence/market-assets/*.pdf
+docs/evidence/market-assets/extracted/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+docs/evidence/market-assets/office-qa/*.pdf
+
+server/data/report-instance-assets/

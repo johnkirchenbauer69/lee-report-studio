@@ -280,7 +280,12 @@ const chartStyleSchema = z
 
 export const reportElementSchema = z.discriminatedUnion("type", [
   z
-    .object({ ...baseElementShape, type: z.literal("text"), text: z.string(), closingContent: closingContentSchema.optional() })
+    .object({
+      ...baseElementShape,
+      type: z.literal("text"),
+      text: z.string(),
+      closingContent: closingContentSchema.optional(),
+    })
     .strict(),
   z
     .object({
@@ -586,6 +591,19 @@ export const reportInstanceSchema = z
     generatedAt: timestamp,
     dataSnapshot: industrialMarketReportSchema,
     pages: z.array(reportPageSchema).min(1),
+    presentationAssets: z
+      .array(
+        z
+          .object({
+            source: nonEmpty,
+            checksum: z.string().regex(/^[a-f0-9]{64}$/),
+            mimeType: nonEmpty,
+            storageKey: z.string().regex(/^[a-f0-9]{64}$/),
+          })
+          .strict(),
+      )
+      .max(250)
+      .optional(),
     fontReferences: z.array(
       z
         .object({

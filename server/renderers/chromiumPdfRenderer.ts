@@ -8,13 +8,16 @@ export interface ServerReportRenderer<T> {
 export class ChromiumPdfRenderer implements ServerReportRenderer<{
   url: string;
   title: string;
+  offline?: boolean;
 }> {
   async render({
     url,
     title,
+    offline,
   }: {
     url: string;
     title: string;
+    offline?: boolean;
   }): Promise<Uint8Array> {
     const browser = await chromium.launch({
       headless: true,
@@ -25,6 +28,10 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
         viewport: { width: 816, height: 1056 },
         deviceScaleFactor: 1,
         colorScheme: "light",
+      });
+      if (offline) await page.route("**/*", route => {
+        const requested = new URL(route.request().url());
+        return requested.origin === new URL(url).origin || ["data:", "blob:"].includes(requested.protocol) ? route.continue() : route.abort();
       });
       await page.emulateMedia({ media: "screen" });
       await page.goto(url, { waitUntil: "networkidle" });
