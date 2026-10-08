@@ -1,0 +1,3070 @@
+{
+  "schemaVersion": "1.0",
+  "exportedAt": "2026-10-08T17:25:56.418Z",
+  "reportName": "Synthetic Market Asset QA",
+  "reportId": "report-market-assets-synthetic-qa",
+  "reportingPeriod": "Q3 2026",
+  "revision": 1,
+  "snapshotHash": "58d845c10eb1b7d6ba0254537912d925e365255e98c9740e4a133ca32aafd695",
+  "templateVersion": "1.3.0",
+  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
+  "generatedAt": "2026-10-08T17:23:04.136Z",
+  "selectedMarkets": [
+    {
+      "id": "overall-market",
+      "name": "Overall Market"
+    },
+    {
+      "id": "central-dupage",
+      "name": "Central DuPage"
+    },
+    {
+      "id": "chicago-south",
+      "name": "Chicago South"
+    },
+    {
+      "id": "fox-valley",
+      "name": "Fox Valley"
+    },
+    {
+      "id": "i55-corridor",
+      "name": "I-55 Corridor"
+    },
+    {
+      "id": "i57-corridor",
+      "name": "I-57 Corridor"
+    },
+    {
+      "id": "i80-joliet",
+      "name": "I-80/Joliet Area"
+    },
+    {
+      "id": "i88-corridor",
+      "name": "I-88 Corridor"
+    },
+    {
+      "id": "lake-county",
+      "name": "Lake County"
+    },
+    {
+      "id": "north-cook",
+      "name": "North Cook"
+    },
+    {
+      "id": "north-dupage",
+      "name": "North DuPage"
+    },
+    {
+      "id": "north-kane",
+      "name": "North Kane"
+    },
+    {
+      "id": "northwest-cook",
+      "name": "Northwest Cook"
+    },
+    {
+      "id": "northwest-indiana",
+      "name": "Northwest Indiana"
+    },
+    {
+      "id": "ohare",
+      "name": "O'Hare"
+    },
+    {
+      "id": "south-cook",
+      "name": "South Cook"
+    },
+    {
+      "id": "southeast-wisconsin",
+      "name": "Southeast Wisconsin"
+    },
+    {
+      "id": "southwest-cook",
+      "name": "Southwest Cook"
+    },
+    {
+      "id": "west-cook",
+      "name": "West Cook"
+    }
+  ],
+  "selectedCategories": [
+    "charts",
+    "indicators",
+    "transactions",
+    "statistics",
+    "narrative",
+    "section",
+    "properties",
+    "map"
+  ],
+  "files": [
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Charts/Overall Market Net Absorption Chart - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Charts/Overall Market Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Charts/Overall Market Availability by Size - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Charts/Overall Market Under Construction and Deliveries - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Market Indicators/Overall Market Market Indicators - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Market Indicators/Overall Market Market Indicators - Q3 2026.xlsx",
+      "market": "Overall Market",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "1a40a329195232baa65266a211dc1c009fe7730c7ca42633bf082ae8825d4524",
+      "bytes": 8799,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Top Leases and Sales/Overall Market Top Leases - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Top Leases and Sales/Overall Market Top Sales - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Top Leases and Sales/Overall Market Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Overall Market",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "7185fad27a1e6a386ffbf5b02abf79584840e271ba3cf04af6e0bda0404a1963",
+      "bytes": 10779,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Market Statistics/Overall Market Market Statistics - Q3 2026.xlsx",
+      "market": "Overall Market",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "aeee60cca7357d54ebbafa477378e5ca827d7555da44dcafdc8e64a5e465c6e2",
+      "bytes": 11204,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Narrative/Overall Market Industrial Market Narrative - Q3 2026.docx",
+      "market": "Overall Market",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "25b20097314bc1c7a5909809ccc14bf502776a3ac7e22a4450fdb017c91e826c",
+      "bytes": 1838,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Complete Section/Overall Market Industrial Market Section - Q3 2026.pdf",
+      "market": "Overall Market",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "ae0bbc5684e6d98bdf16da27b24553490c3bf29318c4b8cfbd447b430e9ddd96",
+      "bytes": 4265806,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Property Highlights/Overall Market Top Availabilities - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "properties",
+      "format": "png",
+      "checksum": "27a917d3d0dd032d79d657c3742f3b28c55473ed5e5068646ec3822b7fc21a68",
+      "bytes": 970003,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Property Highlights/Overall Market Deliveries - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "properties",
+      "format": "png",
+      "checksum": "6d888798e68021ba0761b1a902f6373ce8114b1d9eae6740a89a1fc1cbd7efd0",
+      "bytes": 1142595,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Property Highlights/Overall Market Under Construction - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "properties",
+      "format": "png",
+      "checksum": "5a82782f8b59650011140d2d19c18debf72a8c83d00f93ff7f7aa7dccd9cf0c0",
+      "bytes": 1095257,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Property Highlights/Overall Market Property Highlights - Q3 2026.xlsx",
+      "market": "Overall Market",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "2a9ab78b02accf683dc38f7ecb426b93ce864d36ebac4db2cf252c56564cee0d",
+      "bytes": 10214,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Overall Market/Map/Overall Market Industrial Submarket Map - Q3 2026.png",
+      "market": "Overall Market",
+      "category": "map",
+      "format": "png",
+      "checksum": "8e6f0b5f3059fec597dfdeba5028b8f926d9e10f21c4a88de8d4315b900ee0c5",
+      "bytes": 1443973,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Charts/Central DuPage Net Absorption Chart - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Charts/Central DuPage Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Charts/Central DuPage Availability by Size - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Charts/Central DuPage Under Construction and Deliveries - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Market Indicators/Central DuPage Market Indicators - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Market Indicators/Central DuPage Market Indicators - Q3 2026.xlsx",
+      "market": "Central DuPage",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "f818424d7d945f75fa180a31a4cdd74e4bf5286b1089a83799106772229b669e",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Top Leases and Sales/Central DuPage Top Leases - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Top Leases and Sales/Central DuPage Top Sales - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Top Leases and Sales/Central DuPage Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Central DuPage",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "6622bdd24ce4234a2ac444b59f3c5f9cb94e4dd977f7ee9c1485a95469f723f3",
+      "bytes": 10777,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Market Statistics/Central DuPage Market Statistics - Q3 2026.xlsx",
+      "market": "Central DuPage",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "8a0510ab56ccf80305afc3820b6b2f6dee4d5f1c953d0b4c6341c362f002e4a3",
+      "bytes": 11160,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Narrative/Central DuPage Industrial Market Narrative - Q3 2026.docx",
+      "market": "Central DuPage",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "2d4627b4385fe94ce59b0e3194e58240a3c4de9ceac4ab821290d7ef7327f49b",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Complete Section/Central DuPage Industrial Market Section - Q3 2026.pdf",
+      "market": "Central DuPage",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "9b1bc5b71435f1e99883c17258dad2866ccfd57571fe961313db0d45b41f803a",
+      "bytes": 2814325,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Property Highlights/Central DuPage Top Availabilities - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Property Highlights/Central DuPage Deliveries - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Property Highlights/Central DuPage Under Construction - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Property Highlights/Central DuPage Property Highlights - Q3 2026.xlsx",
+      "market": "Central DuPage",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "b493d2334d79d03e57581ca8778626337365248ebe1cae9200af16141ebd3c3a",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Central DuPage/Map/Central DuPage Industrial Submarket Map - Q3 2026.png",
+      "market": "Central DuPage",
+      "category": "map",
+      "format": "png",
+      "checksum": "6d9691e0599729bd75191fdbbc523bbd9f0fb076e05f3427bb8c5f886cf6f67e",
+      "bytes": 3779412,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Charts/Chicago South Net Absorption Chart - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Charts/Chicago South Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Charts/Chicago South Availability by Size - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Charts/Chicago South Under Construction and Deliveries - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Market Indicators/Chicago South Market Indicators - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Market Indicators/Chicago South Market Indicators - Q3 2026.xlsx",
+      "market": "Chicago South",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "5f7799b59168227ad3b9ab36363e79ed465d449856591a5e737368cf0a7bcdee",
+      "bytes": 8801,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Top Leases and Sales/Chicago South Top Leases - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Top Leases and Sales/Chicago South Top Sales - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Top Leases and Sales/Chicago South Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Chicago South",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "3185cbfb751c14c15117edb62601cadaccc16d565eca148f56ff3630b00d1b49",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Market Statistics/Chicago South Market Statistics - Q3 2026.xlsx",
+      "market": "Chicago South",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "a66107fbe84d85611f218d630e02ec492d97162a54020ada9633650e9efb16e8",
+      "bytes": 11171,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Narrative/Chicago South Industrial Market Narrative - Q3 2026.docx",
+      "market": "Chicago South",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "c6dcdf8d819c3770f9b18b463b3b997c1221a101e759bc00a551d72c74b636d1",
+      "bytes": 1842,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Complete Section/Chicago South Industrial Market Section - Q3 2026.pdf",
+      "market": "Chicago South",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c2571451882002daf4527e394ecfddd8df49380e4d76ec47e718bff7a8114e4d",
+      "bytes": 2738424,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Property Highlights/Chicago South Top Availabilities - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Property Highlights/Chicago South Deliveries - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Property Highlights/Chicago South Under Construction - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Property Highlights/Chicago South Property Highlights - Q3 2026.xlsx",
+      "market": "Chicago South",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "4b3f68f4405f1912de02279c4195f0b814f2a42025afe7497725cf6932fe8498",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Chicago South/Map/Chicago South Industrial Submarket Map - Q3 2026.png",
+      "market": "Chicago South",
+      "category": "map",
+      "format": "png",
+      "checksum": "81defb94ab3b1bd8e8209254a4e49e3957db40c2afabb33060d92dbe249770f5",
+      "bytes": 3308751,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Charts/Fox Valley Net Absorption Chart - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Charts/Fox Valley Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Charts/Fox Valley Availability by Size - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Charts/Fox Valley Under Construction and Deliveries - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Market Indicators/Fox Valley Market Indicators - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Market Indicators/Fox Valley Market Indicators - Q3 2026.xlsx",
+      "market": "Fox Valley",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "def1083d7a27ffec430fa9472b3a96fe490618cabd7a34cbe757395118cefa65",
+      "bytes": 8799,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Top Leases and Sales/Fox Valley Top Leases - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Top Leases and Sales/Fox Valley Top Sales - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Top Leases and Sales/Fox Valley Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Fox Valley",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "66769c59f9ec6a41cfb7abaa664da4688158079aad23c534d2cd7147d27b95e7",
+      "bytes": 10777,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Market Statistics/Fox Valley Market Statistics - Q3 2026.xlsx",
+      "market": "Fox Valley",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "7c70483f58b150e24205e25f90f896b552536189cbc0f9730e11edfccedf2bd8",
+      "bytes": 11166,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Narrative/Fox Valley Industrial Market Narrative - Q3 2026.docx",
+      "market": "Fox Valley",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "96526429bc99058376f410a8ee439f999843becb1253de7c33ecb5e042ace9ce",
+      "bytes": 1839,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Complete Section/Fox Valley Industrial Market Section - Q3 2026.pdf",
+      "market": "Fox Valley",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "619f16d596ae42b16c96db42a327a9d4549f6d658f8faa8df668ffb31a74fbaa",
+      "bytes": 2697882,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Property Highlights/Fox Valley Top Availabilities - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Property Highlights/Fox Valley Deliveries - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Property Highlights/Fox Valley Under Construction - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Property Highlights/Fox Valley Property Highlights - Q3 2026.xlsx",
+      "market": "Fox Valley",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "e6001cf3b11d7eb9d2077416b6b8c2f829e2176d6c2329a04449752f19a2d44b",
+      "bytes": 10213,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Fox Valley/Map/Fox Valley Industrial Submarket Map - Q3 2026.png",
+      "market": "Fox Valley",
+      "category": "map",
+      "format": "png",
+      "checksum": "934bf72049122eed70db752cd01b9025793d53033f8a6f065fdec313223fa1bc",
+      "bytes": 3182138,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "0635abb195e3da75200712cd0516b316e49c7e50a7dd1a7c1ef4e547cf62b1ef",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Sales - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "9360ebfc9f11f2ca5fb5e33094b6f39e3e7c7b6c02b931202f065d9b364cc34e",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Statistics/I-55 Corridor Market Statistics - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "b629cfc33774c1fd4fe8329513760458b7df801cc849bb8f6add393f9f9a57b9",
+      "bytes": 11170,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Narrative/I-55 Corridor Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-55 Corridor",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "13ea4d638fa7250299032326b074caeb639a4fcfc8c495fd985d7fbaf497e408",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Complete Section/I-55 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-55 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c723cb372b269b3fe99e5bcd1bcb04bb7002d4a94395e75c2903cf71156427ea",
+      "bytes": 2787037,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Top Availabilities - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Under Construction - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Property Highlights - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "650f4df32d52806a844c838b67205ce3d663e63787baf4041b44cebf8f37f8a9",
+      "bytes": 10215,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Map/I-55 Corridor Industrial Submarket Map - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "map",
+      "format": "png",
+      "checksum": "6c789f265cc916c82ae451b618e9a6d1fa432e7e2ee6f895e4dfc660640b4283",
+      "bytes": 3579455,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Charts/I-57 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Charts/I-57 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Charts/I-57 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Charts/I-57 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Market Indicators/I-57 Corridor Market Indicators - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Market Indicators/I-57 Corridor Market Indicators - Q3 2026.xlsx",
+      "market": "I-57 Corridor",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "683b2fbfe73228e1053610282649ab72f1e07915fff67fb2ebb07b7de4518f44",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Top Leases and Sales/I-57 Corridor Top Leases - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Top Leases and Sales/I-57 Corridor Top Sales - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Top Leases and Sales/I-57 Corridor Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-57 Corridor",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "2d2f922416e22d5f30fa98e16fa7019f1e009170843e374a0c5be7644f5ed470",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Market Statistics/I-57 Corridor Market Statistics - Q3 2026.xlsx",
+      "market": "I-57 Corridor",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "6e53eba841c1bc4ebc762dce267c2fb995a29f74c0791bb3fd37a94d5d5e672b",
+      "bytes": 11157,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Narrative/I-57 Corridor Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-57 Corridor",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "609d6a3ec3f52959d0f9f60023cac9652ae6d7b98b56aeb981d65e031284f924",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Complete Section/I-57 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-57 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "3c09815f12d1e10b8c7fe7121b1ccce38be6e9bb9a061582e2d25fff31b3d6bd",
+      "bytes": 2574024,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Property Highlights/I-57 Corridor Top Availabilities - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Property Highlights/I-57 Corridor Deliveries - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Property Highlights/I-57 Corridor Under Construction - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Property Highlights/I-57 Corridor Property Highlights - Q3 2026.xlsx",
+      "market": "I-57 Corridor",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "e6b4f5b39607c64cb66952257ec0c8e90934403eb3e389f54b00a9e6a46aa7c6",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-57 Corridor/Map/I-57 Corridor Industrial Submarket Map - Q3 2026.png",
+      "market": "I-57 Corridor",
+      "category": "map",
+      "format": "png",
+      "checksum": "37efc70e3e195b0cad2756c86f1afcad6155d32dc98ef66d8601d51a48146b39",
+      "bytes": 2487676,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Net Absorption Chart - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Availability by Size - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Indicators/I-80 - Joliet Area Market Indicators - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Indicators/I-80 - Joliet Area Market Indicators - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "aeec36c8f406cbbac13290090151c40fbb44ba974a9d1193efe5d23ced47d06f",
+      "bytes": 8803,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Leases - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Sales - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "f720b934bcd812fc9401b064bc319129a89820fa83595df9d097bc365b3326ef",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Statistics/I-80 - Joliet Area Market Statistics - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "ad75767642406b425395ea18843788aaa9446a5b7a34ab71940e282443407525",
+      "bytes": 11171,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Narrative/I-80 - Joliet Area Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-80/Joliet Area",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "d2aa8c2bb050d67fbca76183732f9efb8a4f677e6b1a01e10c895ebc9d5ff6a5",
+      "bytes": 1844,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Complete Section/I-80 - Joliet Area Industrial Market Section - Q3 2026.pdf",
+      "market": "I-80/Joliet Area",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "e0c75514c9a96e64489e6a847e0a34e8b39bbcbd37df14f8caeb2bd7adf975f5",
+      "bytes": 2668444,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Top Availabilities - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Deliveries - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Under Construction - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Property Highlights - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "e4707fac98c6ed263e0685ea10e142104c63fa10eb3dabd197d79b171f7e4e06",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Map/I-80 - Joliet Area Industrial Submarket Map - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "map",
+      "format": "png",
+      "checksum": "3c479cfcbaedd1d5b48da71d1cafb9432c93e6a22eb19156191c9808ca95713f",
+      "bytes": 2719144,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Charts/I-88 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Charts/I-88 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Charts/I-88 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Charts/I-88 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Market Indicators/I-88 Corridor Market Indicators - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Market Indicators/I-88 Corridor Market Indicators - Q3 2026.xlsx",
+      "market": "I-88 Corridor",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "23d2b3de283b9c93892fd67a9ad4c2573c3a02236373585424acc06e75137aaa",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Top Leases and Sales/I-88 Corridor Top Leases - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Top Leases and Sales/I-88 Corridor Top Sales - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Top Leases and Sales/I-88 Corridor Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-88 Corridor",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "bf6b975ac331fb550b8363dda5f61913997df295e3d8f20905f5662a8d4450b8",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Market Statistics/I-88 Corridor Market Statistics - Q3 2026.xlsx",
+      "market": "I-88 Corridor",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "56d6e2f2013e0fafd143132359b50ca126a8bf9a1264ea494b7281a8d7076587",
+      "bytes": 11168,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Narrative/I-88 Corridor Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-88 Corridor",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "69a3f73142b4434ff9edf174ef0b8362b91eedaf96b0d8edd9ff6019e8b705a9",
+      "bytes": 1842,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Complete Section/I-88 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-88 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "9a58486a993f28821324cef9ceeee96d863d59436ae0f518cfdfff2d00412542",
+      "bytes": 2703361,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Property Highlights/I-88 Corridor Top Availabilities - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Property Highlights/I-88 Corridor Deliveries - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Property Highlights/I-88 Corridor Under Construction - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Property Highlights/I-88 Corridor Property Highlights - Q3 2026.xlsx",
+      "market": "I-88 Corridor",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "6a0934cd089021ad455a90e47d1478dcd045fc619005646569a24fee3876a4f5",
+      "bytes": 10215,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-88 Corridor/Map/I-88 Corridor Industrial Submarket Map - Q3 2026.png",
+      "market": "I-88 Corridor",
+      "category": "map",
+      "format": "png",
+      "checksum": "7c25b1ca95859e8ccb0db01716f99f128a8ea26bcede7eb329ee748735c86554",
+      "bytes": 3202105,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Charts/Lake County Net Absorption Chart - Q3 2026.png",
+      "market": "Lake County",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Charts/Lake County Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Lake County",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Charts/Lake County Availability by Size - Q3 2026.png",
+      "market": "Lake County",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Charts/Lake County Under Construction and Deliveries - Q3 2026.png",
+      "market": "Lake County",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Market Indicators/Lake County Market Indicators - Q3 2026.png",
+      "market": "Lake County",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Market Indicators/Lake County Market Indicators - Q3 2026.xlsx",
+      "market": "Lake County",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "ae12434d0e4fd3fab0a6ec1ceadfbb5dd0ee0ea94d8416cdc24ebda7aef16cf1",
+      "bytes": 8799,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Top Leases and Sales/Lake County Top Leases - Q3 2026.png",
+      "market": "Lake County",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Top Leases and Sales/Lake County Top Sales - Q3 2026.png",
+      "market": "Lake County",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Top Leases and Sales/Lake County Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Lake County",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "9b52754b0a347a34c658a708faf23d22dc7cde115bb178d3071e58bddf7fe1b3",
+      "bytes": 10775,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Market Statistics/Lake County Market Statistics - Q3 2026.xlsx",
+      "market": "Lake County",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "d3de08793e80a0a8d1426b1d1e40685113036b9edfa10e57f47a2486e7269c6d",
+      "bytes": 11149,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Narrative/Lake County Industrial Market Narrative - Q3 2026.docx",
+      "market": "Lake County",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "d547cba2f3d5f78d2f14a85e898cd451ca1524475ef81c1ad5748a0c5ed0fc01",
+      "bytes": 1841,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Complete Section/Lake County Industrial Market Section - Q3 2026.pdf",
+      "market": "Lake County",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "b819c0c2c47ee30a35858636dbd2e26304a2cdccd21ad23b038ae28990111829",
+      "bytes": 2641120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Property Highlights/Lake County Top Availabilities - Q3 2026.png",
+      "market": "Lake County",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Property Highlights/Lake County Deliveries - Q3 2026.png",
+      "market": "Lake County",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Property Highlights/Lake County Under Construction - Q3 2026.png",
+      "market": "Lake County",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Property Highlights/Lake County Property Highlights - Q3 2026.xlsx",
+      "market": "Lake County",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "b821a1973d77c9ae87709d49020195e739ec14694ffe07aca29e727db497dfd8",
+      "bytes": 10212,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Lake County/Map/Lake County Industrial Submarket Map - Q3 2026.png",
+      "market": "Lake County",
+      "category": "map",
+      "format": "png",
+      "checksum": "f41982b8fea50af95a4f93af5ce49f20625873174dcf8278f9b0ef44b14358cf",
+      "bytes": 2928709,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Charts/North Cook Net Absorption Chart - Q3 2026.png",
+      "market": "North Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Charts/North Cook Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "North Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Charts/North Cook Availability by Size - Q3 2026.png",
+      "market": "North Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Charts/North Cook Under Construction and Deliveries - Q3 2026.png",
+      "market": "North Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Market Indicators/North Cook Market Indicators - Q3 2026.png",
+      "market": "North Cook",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Market Indicators/North Cook Market Indicators - Q3 2026.xlsx",
+      "market": "North Cook",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "c967d0a48a65fd2ef7825c8f5efc913f7453974ebf15b979fbe6dd5fb4803313",
+      "bytes": 8800,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Top Leases and Sales/North Cook Top Leases - Q3 2026.png",
+      "market": "North Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Top Leases and Sales/North Cook Top Sales - Q3 2026.png",
+      "market": "North Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Top Leases and Sales/North Cook Top Leases and Sales - Q3 2026.xlsx",
+      "market": "North Cook",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "6ac01cace4e489efadc22e9efc97e260b0538c5d6ae191d9d66c95bcdd34a886",
+      "bytes": 10776,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Market Statistics/North Cook Market Statistics - Q3 2026.xlsx",
+      "market": "North Cook",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "8dd03c1882210a27d8b679def0dc0cb759a1c4e5fdf0e473b4a6ab029d0586b2",
+      "bytes": 11147,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Narrative/North Cook Industrial Market Narrative - Q3 2026.docx",
+      "market": "North Cook",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "eb32369670af6d2b68dce1f019a9d46a9c3c2754f0f3b4171888e2647fa10baf",
+      "bytes": 1840,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Complete Section/North Cook Industrial Market Section - Q3 2026.pdf",
+      "market": "North Cook",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "aadfe4296da43d6fc43f32dd059152f2335df96a2caa8a99bd5f7a0e85bb11c6",
+      "bytes": 2666641,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Property Highlights/North Cook Top Availabilities - Q3 2026.png",
+      "market": "North Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Property Highlights/North Cook Deliveries - Q3 2026.png",
+      "market": "North Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Property Highlights/North Cook Under Construction - Q3 2026.png",
+      "market": "North Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Property Highlights/North Cook Property Highlights - Q3 2026.xlsx",
+      "market": "North Cook",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "19766451aa876d3ded41cba544da2441edbcf36f18d1b4f2c8a53cf8b1ccef64",
+      "bytes": 10214,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Cook/Map/North Cook Industrial Submarket Map - Q3 2026.png",
+      "market": "North Cook",
+      "category": "map",
+      "format": "png",
+      "checksum": "e4eeb0114ba6ccdd678c7a9f86f36d394fa4f7764ed58c942b461deb8bef0de5",
+      "bytes": 3068954,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Charts/North DuPage Net Absorption Chart - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Charts/North DuPage Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Charts/North DuPage Availability by Size - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Charts/North DuPage Under Construction and Deliveries - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Market Indicators/North DuPage Market Indicators - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Market Indicators/North DuPage Market Indicators - Q3 2026.xlsx",
+      "market": "North DuPage",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "c909c551f583ddecaa1dcc417a046926190ab1bcb8b37839d1adab7377166dcb",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Top Leases and Sales/North DuPage Top Leases - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Top Leases and Sales/North DuPage Top Sales - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Top Leases and Sales/North DuPage Top Leases and Sales - Q3 2026.xlsx",
+      "market": "North DuPage",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "44fe7bcf08ab6f6bf4a74a7826015ad1e9a3f7735d3e7fd88e13b31786a6a9f9",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Market Statistics/North DuPage Market Statistics - Q3 2026.xlsx",
+      "market": "North DuPage",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "7dcb1e9ce85ef9d6b077c34006cdc8fc2aea57b487fe90bdd2728c5f077453ee",
+      "bytes": 11165,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Narrative/North DuPage Industrial Market Narrative - Q3 2026.docx",
+      "market": "North DuPage",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "d06f1295ec65c29b86951a9b61be0e2ea8c05e71fd2fac0baec872205d996365",
+      "bytes": 1842,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Complete Section/North DuPage Industrial Market Section - Q3 2026.pdf",
+      "market": "North DuPage",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "ce642bfcc3e2a2afdde734dc89217fcc4b13f32ce3d24d39366158198022c0db",
+      "bytes": 2792979,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Property Highlights/North DuPage Top Availabilities - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Property Highlights/North DuPage Deliveries - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Property Highlights/North DuPage Under Construction - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Property Highlights/North DuPage Property Highlights - Q3 2026.xlsx",
+      "market": "North DuPage",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "81b2b0f44828f581de92dff1dcee3baa44e578271736d2fe8a9632d713c7cce5",
+      "bytes": 10215,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North DuPage/Map/North DuPage Industrial Submarket Map - Q3 2026.png",
+      "market": "North DuPage",
+      "category": "map",
+      "format": "png",
+      "checksum": "6e4185420e261f458b31a164e79645073910945f2cd80998167c62164018145d",
+      "bytes": 3659166,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Charts/North Kane Net Absorption Chart - Q3 2026.png",
+      "market": "North Kane",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Charts/North Kane Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "North Kane",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Charts/North Kane Availability by Size - Q3 2026.png",
+      "market": "North Kane",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Charts/North Kane Under Construction and Deliveries - Q3 2026.png",
+      "market": "North Kane",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Market Indicators/North Kane Market Indicators - Q3 2026.png",
+      "market": "North Kane",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Market Indicators/North Kane Market Indicators - Q3 2026.xlsx",
+      "market": "North Kane",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "f5dbce80cc7cf2c6e74aa466a94c98c685cfa0ed42a71dfa63298242459c924e",
+      "bytes": 8800,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Top Leases and Sales/North Kane Top Leases - Q3 2026.png",
+      "market": "North Kane",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Top Leases and Sales/North Kane Top Sales - Q3 2026.png",
+      "market": "North Kane",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Top Leases and Sales/North Kane Top Leases and Sales - Q3 2026.xlsx",
+      "market": "North Kane",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "1e3e1db52b9a995358e826503b8371fb237954fbaa4cd50593df750a452e32a8",
+      "bytes": 10776,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Market Statistics/North Kane Market Statistics - Q3 2026.xlsx",
+      "market": "North Kane",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "8073788bd6b8c84cb955984abe73ac7da26714e5f0a8f0473e7b1053475897f9",
+      "bytes": 11165,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Narrative/North Kane Industrial Market Narrative - Q3 2026.docx",
+      "market": "North Kane",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "52d0e8cca99ee62def99aab23ea6b3c290698319496a7453526633ff5e68a417",
+      "bytes": 1839,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Complete Section/North Kane Industrial Market Section - Q3 2026.pdf",
+      "market": "North Kane",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c733ecabcc193a89e0bac2a6b2f4e06fa63bf4b73660d9e7461f827ddf49e8c4",
+      "bytes": 2585363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Property Highlights/North Kane Top Availabilities - Q3 2026.png",
+      "market": "North Kane",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Property Highlights/North Kane Deliveries - Q3 2026.png",
+      "market": "North Kane",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Property Highlights/North Kane Under Construction - Q3 2026.png",
+      "market": "North Kane",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Property Highlights/North Kane Property Highlights - Q3 2026.xlsx",
+      "market": "North Kane",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "fbfd81bb80b79e8ec894ad3097116711d65849e23a2bba0ed12208e37a794122",
+      "bytes": 10214,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/North Kane/Map/North Kane Industrial Submarket Map - Q3 2026.png",
+      "market": "North Kane",
+      "category": "map",
+      "format": "png",
+      "checksum": "f7ea7bc459d46bf1564aa8c924c76ba6e19ecb9cb8da69a4309afb5e5157222e",
+      "bytes": 2762844,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Charts/Northwest Cook Net Absorption Chart - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Charts/Northwest Cook Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Charts/Northwest Cook Availability by Size - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Charts/Northwest Cook Under Construction and Deliveries - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Market Indicators/Northwest Cook Market Indicators - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Market Indicators/Northwest Cook Market Indicators - Q3 2026.xlsx",
+      "market": "Northwest Cook",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "1068eb1f5b479706015346dc7b02c2e1add061576806ed412f5e3b4830b43a9c",
+      "bytes": 8803,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Top Leases and Sales/Northwest Cook Top Leases - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Top Leases and Sales/Northwest Cook Top Sales - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Top Leases and Sales/Northwest Cook Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Northwest Cook",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "0ab2119893c539bdeb291b8af4e64c51f504317bea617489434395ca5cafb963",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Market Statistics/Northwest Cook Market Statistics - Q3 2026.xlsx",
+      "market": "Northwest Cook",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "789c33053e3d014e971ba9b40169d509ba3674d9afd85a409b2b562eaa45f24b",
+      "bytes": 11152,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Narrative/Northwest Cook Industrial Market Narrative - Q3 2026.docx",
+      "market": "Northwest Cook",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "0339fb43aa6aefd7bbd9a6347a3fec9f7ea5032028d619b4e97c47a89f52fa9b",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Complete Section/Northwest Cook Industrial Market Section - Q3 2026.pdf",
+      "market": "Northwest Cook",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "233aa4198ec79d8a5f86c38563ff2849ef0d89afe3da13ef73f94573cde5547f",
+      "bytes": 2887913,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Property Highlights/Northwest Cook Top Availabilities - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Property Highlights/Northwest Cook Deliveries - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Property Highlights/Northwest Cook Under Construction - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Property Highlights/Northwest Cook Property Highlights - Q3 2026.xlsx",
+      "market": "Northwest Cook",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "2a5adc816b64d5da6298469af3bac14ac07bea3123ece5651841871789a394d7",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Cook/Map/Northwest Cook Industrial Submarket Map - Q3 2026.png",
+      "market": "Northwest Cook",
+      "category": "map",
+      "format": "png",
+      "checksum": "59b20a58773482632fa1867ce6258fc878b6c73d4bcb1f6bf29004602c2aa365",
+      "bytes": 4056996,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Charts/Northwest Indiana Net Absorption Chart - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Charts/Northwest Indiana Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Charts/Northwest Indiana Availability by Size - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Charts/Northwest Indiana Under Construction and Deliveries - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Market Indicators/Northwest Indiana Market Indicators - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Market Indicators/Northwest Indiana Market Indicators - Q3 2026.xlsx",
+      "market": "Northwest Indiana",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "a44a66e6c9efb8655cc34bd5b4f0d5e2c3156ec5689d5a0feed435fae41e9b6f",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Top Leases and Sales/Northwest Indiana Top Leases - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Top Leases and Sales/Northwest Indiana Top Sales - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Top Leases and Sales/Northwest Indiana Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Northwest Indiana",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "b2e047ffaba906a26b4968482c02a04da41b45894e1a9e979dad8112a784a57d",
+      "bytes": 10780,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Market Statistics/Northwest Indiana Market Statistics - Q3 2026.xlsx",
+      "market": "Northwest Indiana",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "282ad69e4420e0dca7c2ae2cd2b950d9a39d4ceafa394b4cf82ab5ad6203724d",
+      "bytes": 11162,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Narrative/Northwest Indiana Industrial Market Narrative - Q3 2026.docx",
+      "market": "Northwest Indiana",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "ac49d297e0f31aa8065f4b521970a3f5321d780c4f96a3e3677ccfe94e1c566b",
+      "bytes": 1842,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Complete Section/Northwest Indiana Industrial Market Section - Q3 2026.pdf",
+      "market": "Northwest Indiana",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "24c9420a60d4699fb675f9ba11a522baed69fc2e97f5b4bbabc2f12b6f2a9caa",
+      "bytes": 2568170,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Property Highlights/Northwest Indiana Top Availabilities - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Property Highlights/Northwest Indiana Deliveries - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Property Highlights/Northwest Indiana Under Construction - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Property Highlights/Northwest Indiana Property Highlights - Q3 2026.xlsx",
+      "market": "Northwest Indiana",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "b65bd1483d2aaf33846d7bd0ce7dcc44bd40347083788935ffe568f8935fe274",
+      "bytes": 10217,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Northwest Indiana/Map/Northwest Indiana Industrial Submarket Map - Q3 2026.png",
+      "market": "Northwest Indiana",
+      "category": "map",
+      "format": "png",
+      "checksum": "a84b6b26382c2775d4263a46d6f9e04c9a2cd9da3107e5e290d0f96b2528b729",
+      "bytes": 2374785,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Net Absorption Chart - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Availability by Size - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Under Construction and Deliveries - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Indicators/O'Hare Market Indicators - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Indicators/O'Hare Market Indicators - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "eecf177c346ce0127c2bee2e2df13e3c5bb6b5e01369e87d60f42edf9f1e7d1a",
+      "bytes": 8801,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Leases - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Sales - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Leases and Sales - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "62fabe216bf2becdd64c6f885799b9153927d1b5fd20d28f7cd3a159676f857f",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Statistics/O'Hare Market Statistics - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "8615316d914979afe4e3bfd4816c7edd88fd886b80eab98ea74672505e0d4a33",
+      "bytes": 11169,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Narrative/O'Hare Industrial Market Narrative - Q3 2026.docx",
+      "market": "O'Hare",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "85558f9e1f8d73c308aa999c438ca6eab9cd5653eab0943868950f32a1b429ff",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Complete Section/O'Hare Industrial Market Section - Q3 2026.pdf",
+      "market": "O'Hare",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "3c18aeb8d95539f4009f7037bf862c2d4e3196758305cfd2679d87113a862c39",
+      "bytes": 2883228,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Top Availabilities - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Deliveries - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Under Construction - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Property Highlights - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "e3a9673c63f8551d0651afcc3bb0f9423ef2533cc114f28afa2ae06a1b9c35dd",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Map/O'Hare Industrial Submarket Map - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "map",
+      "format": "png",
+      "checksum": "2dac06b86c0ed01e178e2404e7b76e5c43d7c6333f7a659f44a6ed48c431978a",
+      "bytes": 3986478,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Charts/South Cook Net Absorption Chart - Q3 2026.png",
+      "market": "South Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Charts/South Cook Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "South Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Charts/South Cook Availability by Size - Q3 2026.png",
+      "market": "South Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Charts/South Cook Under Construction and Deliveries - Q3 2026.png",
+      "market": "South Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Market Indicators/South Cook Market Indicators - Q3 2026.png",
+      "market": "South Cook",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Market Indicators/South Cook Market Indicators - Q3 2026.xlsx",
+      "market": "South Cook",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "d51dd9d5cd0d8e1a0d6e702c615c67d6904eab19f0dd49e632befb8e2499d85c",
+      "bytes": 8800,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Top Leases and Sales/South Cook Top Leases - Q3 2026.png",
+      "market": "South Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Top Leases and Sales/South Cook Top Sales - Q3 2026.png",
+      "market": "South Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Top Leases and Sales/South Cook Top Leases and Sales - Q3 2026.xlsx",
+      "market": "South Cook",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "0764851730b9f7438405ea37b876ec95f2f286f0b83e01fb5a2b4ed4a5913598",
+      "bytes": 10776,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Market Statistics/South Cook Market Statistics - Q3 2026.xlsx",
+      "market": "South Cook",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "ecebe8b08bd28af2e22ed29031135bce4fab959bb693f32a798391104f1e2d70",
+      "bytes": 11160,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Narrative/South Cook Industrial Market Narrative - Q3 2026.docx",
+      "market": "South Cook",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "3cf3bb5c4bd231212157d654a9cc865e81dbeb90b7b5ae65a70191112327293c",
+      "bytes": 1841,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Complete Section/South Cook Industrial Market Section - Q3 2026.pdf",
+      "market": "South Cook",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "3357daa899e967b03ecdaf56f7f05b959f20580262484e555e4dd1622c5ad8b2",
+      "bytes": 2816592,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Property Highlights/South Cook Top Availabilities - Q3 2026.png",
+      "market": "South Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Property Highlights/South Cook Deliveries - Q3 2026.png",
+      "market": "South Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Property Highlights/South Cook Under Construction - Q3 2026.png",
+      "market": "South Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Property Highlights/South Cook Property Highlights - Q3 2026.xlsx",
+      "market": "South Cook",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "d6d43d1ee47b789886857f1eeba124dccc63b797ac70e466f85034914d049ae4",
+      "bytes": 10214,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/South Cook/Map/South Cook Industrial Submarket Map - Q3 2026.png",
+      "market": "South Cook",
+      "category": "map",
+      "format": "png",
+      "checksum": "1eb7f670e241639565f03bace6fd50a35eb88a35100102fd7a10ae80b1a84034",
+      "bytes": 3586675,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Charts/Southeast Wisconsin Net Absorption Chart - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Charts/Southeast Wisconsin Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Charts/Southeast Wisconsin Availability by Size - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Charts/Southeast Wisconsin Under Construction and Deliveries - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Market Indicators/Southeast Wisconsin Market Indicators - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Market Indicators/Southeast Wisconsin Market Indicators - Q3 2026.xlsx",
+      "market": "Southeast Wisconsin",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "3b2caa886fc012ea3807efdebfe2750c6451c7c6c5485db3cbdb29c86c8423b0",
+      "bytes": 8806,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Top Leases and Sales/Southeast Wisconsin Top Leases - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Top Leases and Sales/Southeast Wisconsin Top Sales - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Top Leases and Sales/Southeast Wisconsin Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Southeast Wisconsin",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "9f2d895dc94d158a96d10c6be50f568754bd7e2e8c537fdf7b37173990287666",
+      "bytes": 10781,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Market Statistics/Southeast Wisconsin Market Statistics - Q3 2026.xlsx",
+      "market": "Southeast Wisconsin",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "2cfab3d231a18b0a75d8b8f425309d28ce4e699e3e93238b90c4228e46ae68d6",
+      "bytes": 11159,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Narrative/Southeast Wisconsin Industrial Market Narrative - Q3 2026.docx",
+      "market": "Southeast Wisconsin",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "0c2a3edd51f4e04b64311d658e2669d95d8e293ade3fb6e626958835f46a7a50",
+      "bytes": 1845,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Complete Section/Southeast Wisconsin Industrial Market Section - Q3 2026.pdf",
+      "market": "Southeast Wisconsin",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "9ab15aff0f3990ba34d6df8de55dc4d0b7d0558e885bb8576f64dc0600d5003f",
+      "bytes": 2619505,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Property Highlights/Southeast Wisconsin Top Availabilities - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Property Highlights/Southeast Wisconsin Deliveries - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Property Highlights/Southeast Wisconsin Under Construction - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Property Highlights/Southeast Wisconsin Property Highlights - Q3 2026.xlsx",
+      "market": "Southeast Wisconsin",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "89af54acbd9378c1772d565ba98437e7290f2021ab003240c7fbf644ae49a689",
+      "bytes": 10218,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southeast Wisconsin/Map/Southeast Wisconsin Industrial Submarket Map - Q3 2026.png",
+      "market": "Southeast Wisconsin",
+      "category": "map",
+      "format": "png",
+      "checksum": "2e58cb86ecc30cf16fe0ee68d50acb820c50a256e70b209aaa06b2aac52f13e1",
+      "bytes": 2818417,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Charts/Southwest Cook Net Absorption Chart - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Charts/Southwest Cook Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Charts/Southwest Cook Availability by Size - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Charts/Southwest Cook Under Construction and Deliveries - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Market Indicators/Southwest Cook Market Indicators - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Market Indicators/Southwest Cook Market Indicators - Q3 2026.xlsx",
+      "market": "Southwest Cook",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "aa95d42e008e4cdd8deee60c448eb3f53e8c6854c25e08af3c634e88ac065ba2",
+      "bytes": 8803,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Top Leases and Sales/Southwest Cook Top Leases - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Top Leases and Sales/Southwest Cook Top Sales - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Top Leases and Sales/Southwest Cook Top Leases and Sales - Q3 2026.xlsx",
+      "market": "Southwest Cook",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "1e73bc8aa5e77803dcbad1cfac000f92e195296c0f71cf01e0967a343f2c9443",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Market Statistics/Southwest Cook Market Statistics - Q3 2026.xlsx",
+      "market": "Southwest Cook",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "48fff665d48558bcf42815f457b21dbddbcec3fb80e927d707aba297e32bde6b",
+      "bytes": 11149,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Narrative/Southwest Cook Industrial Market Narrative - Q3 2026.docx",
+      "market": "Southwest Cook",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "3a8b7bc655c46ffaf997d20eb8aad613c3111dee59a8cb37141986cb1c7233d4",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Complete Section/Southwest Cook Industrial Market Section - Q3 2026.pdf",
+      "market": "Southwest Cook",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "130fa000e1ba23869961f5a398f485b2e6453c9cbbaf35089c0e35d1fd4c31a7",
+      "bytes": 2859087,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Property Highlights/Southwest Cook Top Availabilities - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Property Highlights/Southwest Cook Deliveries - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Property Highlights/Southwest Cook Under Construction - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Property Highlights/Southwest Cook Property Highlights - Q3 2026.xlsx",
+      "market": "Southwest Cook",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "23c7c679e8c07a503d28c0c007bb8a2fdba88ed7fe7191671a121753cd19670b",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/Southwest Cook/Map/Southwest Cook Industrial Submarket Map - Q3 2026.png",
+      "market": "Southwest Cook",
+      "category": "map",
+      "format": "png",
+      "checksum": "ecb69aa863d0a0061b77392dbdfc5178775837940ce0bc7736e49d938e1ec29d",
+      "bytes": 3845245,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Charts/West Cook Net Absorption Chart - Q3 2026.png",
+      "market": "West Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Charts/West Cook Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "West Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Charts/West Cook Availability by Size - Q3 2026.png",
+      "market": "West Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Charts/West Cook Under Construction and Deliveries - Q3 2026.png",
+      "market": "West Cook",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Market Indicators/West Cook Market Indicators - Q3 2026.png",
+      "market": "West Cook",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Market Indicators/West Cook Market Indicators - Q3 2026.xlsx",
+      "market": "West Cook",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "27ffb644c016217e7e2968d840126f40b4b5f00ece44f5eba2c54ff0c04dc800",
+      "bytes": 8800,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Top Leases and Sales/West Cook Top Leases - Q3 2026.png",
+      "market": "West Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Top Leases and Sales/West Cook Top Sales - Q3 2026.png",
+      "market": "West Cook",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Top Leases and Sales/West Cook Top Leases and Sales - Q3 2026.xlsx",
+      "market": "West Cook",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "baa18a8153d67b6d5631c3488e4b156c5416760d6f5877ae06f4e265a9833bf0",
+      "bytes": 10776,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Market Statistics/West Cook Market Statistics - Q3 2026.xlsx",
+      "market": "West Cook",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "1051261b580d20b75ce4a10f4ab929f5293e2a149cf14bb093c4a81a86927365",
+      "bytes": 11162,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Narrative/West Cook Industrial Market Narrative - Q3 2026.docx",
+      "market": "West Cook",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "71b909e7e7ba210f8bbeb6162fac3a58aa42f2d17088ce4f3cdbd67ee5c2b886",
+      "bytes": 1840,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Complete Section/West Cook Industrial Market Section - Q3 2026.pdf",
+      "market": "West Cook",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "bf11bc7f239e74fac2b09d1b501724fea754bed740c588fade7aecdcb8a66d4c",
+      "bytes": 2854796,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Property Highlights/West Cook Top Availabilities - Q3 2026.png",
+      "market": "West Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Property Highlights/West Cook Deliveries - Q3 2026.png",
+      "market": "West Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Property Highlights/West Cook Under Construction - Q3 2026.png",
+      "market": "West Cook",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Property Highlights/West Cook Property Highlights - Q3 2026.xlsx",
+      "market": "West Cook",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "856d571f179541ab9e98d7a983b51825ec3b8cafd72eaaf2530c6d70e66ef957",
+      "bytes": 10211,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/West Cook/Map/West Cook Industrial Submarket Map - Q3 2026.png",
+      "market": "West Cook",
+      "category": "map",
+      "format": "png",
+      "checksum": "4ee5943bfd029647cf88d4546369302d399f6d5e155ac864d6ba057cd82cfc81",
+      "bytes": 3893667,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    }
+  ],
+  "omissions": [],
+  "warnings": [
+    "Overall Market: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Central DuPage: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Chicago South: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Fox Valley: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "I-55 Corridor: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "I-57 Corridor: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "I-80/Joliet Area: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "I-88 Corridor: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Lake County: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "North Cook: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "North DuPage: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "North Kane: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Northwest Cook: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Northwest Indiana: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "O'Hare: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "South Cook: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Southeast Wisconsin: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "Southwest Cook: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "West Cook: Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+  ],
+  "status": "completed_with_warnings"
+}

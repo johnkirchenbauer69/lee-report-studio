@@ -1,3 +1,4 @@
+import type { ManualOverride } from "../../report-engine/schema/generation";
 import { useEffect, useState } from "react";
 import { CanvasElement } from "../../components/CanvasElement";
 import type { EditorSettings, ReportTemplate } from "../../types/report";
@@ -23,6 +24,7 @@ interface Job {
   template: ReportTemplate;
   data: unknown;
   title: string;
+  manualOverrides?: ManualOverride[];
 }
 
 export function PrintReport({ jobId }: { jobId: string }) {
@@ -40,19 +42,21 @@ export function PrintReport({ jobId }: { jobId: string }) {
   }, [jobId]);
   if (error) return <main className="print-error">{error}</main>;
   if (!job) return <main className="print-loading">Preparing report…</main>;
-  return <PrintPages template={job.template} data={job.data} />;
+  return <PrintPages template={job.template} data={job.data} manualOverrides={job.manualOverrides} />;
 }
 
 export function BenchmarkPrintReport() {
   return <PrintPages template={sampleTemplate} data={sampleData} />;
 }
 
-function PrintPages({
+export function PrintPages({
   template,
   data,
+  manualOverrides,
 }: {
   template: ReportTemplate;
   data: unknown;
+  manualOverrides?: ManualOverride[];
 }) {
   const [fontsReady, setFontsReady] = useState(false);
   const [fontError, setFontError] = useState<string>();
@@ -104,6 +108,7 @@ function PrintPages({
                 pageSize={page}
                 settings={settings}
                 data={data}
+                manualOverrides={manualOverrides}
                 mode="data"
                 selected={false}
                 pages={template.pages}

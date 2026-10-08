@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "1.0",
+  "exportedAt": "2026-10-08T17:12:28.885Z",
+  "reportName": "Synthetic Market Asset QA",
+  "reportId": "report-market-assets-synthetic-qa",
+  "reportingPeriod": "Q3 2026",
+  "revision": 1,
+  "snapshotHash": "0c7b8db2556f57bfe24cf04e6c17f1767534c74e3c951672aa9407f876568ca2",
+  "templateVersion": "1.3.0",
+  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
+  "generatedAt": "2026-10-08T17:12:19.929Z",
+  "selectedMarkets": [
+    {
+      "id": "i55-corridor",
+      "name": "I-55 Corridor"
+    }
+  ],
+  "selectedCategories": [
+    "charts",
+    "indicators",
+    "transactions",
+    "statistics",
+    "narrative",
+    "section",
+    "properties",
+    "map"
+  ],
+  "files": [
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Charts/I-55 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "fa37f1a46b3e255b8841e8de0b132b3ff3aad56e3eb3334099ce17790796eb2b",
+      "bytes": 8725,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Sales - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "be1a152a9385f27843ce990832d7d1e60d2f839e8b8d3d1214a3696db0e9d6d6",
+      "bytes": 10714,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Market Statistics/I-55 Corridor Market Statistics - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "48a350f1cfd45bc54f072aee138fcaf20ce0c7f614ce444df81310460b6444cf",
+      "bytes": 11088,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Narrative/I-55 Corridor Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-55 Corridor",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "5e8c6ac7503ed68162df9395fdbd4ed9d3097efb9f6852c36a9c87c2b3c6e289",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Complete Section/I-55 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-55 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c723cb372b269b3fe99e5bcd1bcb04bb7002d4a94395e75c2903cf71156427ea",
+      "bytes": 2787037,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Property Highlights/I-55 Corridor Top Availabilities - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Property Highlights/I-55 Corridor Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Property Highlights/I-55 Corridor Under Construction - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Property Highlights/I-55 Corridor Property Highlights - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "ceed8fd9711c0e094d483d960940a231b6ba5f66042baefadc68a6abc20bfb91",
+      "bytes": 10164,
+      "warnings": []
+    },
+    {
+      "filename": "I-55 Corridor/Map/I-55 Corridor Industrial Submarket Map - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "map",
+      "format": "png",
+      "checksum": "6c789f265cc916c82ae451b618e9a6d1fa432e7e2ee6f895e4dfc660640b4283",
+      "bytes": 3579455,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    }
+  ],
+  "omissions": [],
+  "warnings": [
+    "I-55 Corridor: Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+  ],
+  "status": "completed_with_warnings"
+}

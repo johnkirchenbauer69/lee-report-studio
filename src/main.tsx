@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { MarketAssetWorkspace } from "./components/MarketAssetWorkspace";
 import { BenchmarkPage } from "./renderers/browser/BenchmarkPage";
 import {
   BenchmarkPrintReport,
@@ -18,7 +19,7 @@ const printBenchmark = params.get("printBenchmark") === "1";
 const rotationBenchmark = params.get("rotationBenchmark") === "1";
 const highlightStates = params.get("highlightStates") === "1";
 const narrativeReview = params.get("narrativeReview");
-const content = printJob ? (
+const content = params.get("marketAssets") === "1" ? <MarketAssetWorkspace /> : printJob ? (
   <PrintReport jobId={printJob} />
 ) : printBenchmark ? (
   <BenchmarkPrintReport />

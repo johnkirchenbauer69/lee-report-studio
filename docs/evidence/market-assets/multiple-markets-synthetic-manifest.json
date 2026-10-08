@@ -1,0 +1,510 @@
+{
+  "schemaVersion": "1.0",
+  "exportedAt": "2026-10-08T17:23:58.470Z",
+  "reportName": "Synthetic Market Asset QA",
+  "reportId": "report-market-assets-synthetic-qa",
+  "reportingPeriod": "Q3 2026",
+  "revision": 1,
+  "snapshotHash": "58d845c10eb1b7d6ba0254537912d925e365255e98c9740e4a133ca32aafd695",
+  "templateVersion": "1.3.0",
+  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
+  "generatedAt": "2026-10-08T17:23:04.136Z",
+  "selectedMarkets": [
+    {
+      "id": "i55-corridor",
+      "name": "I-55 Corridor"
+    },
+    {
+      "id": "ohare",
+      "name": "O'Hare"
+    },
+    {
+      "id": "i80-joliet",
+      "name": "I-80/Joliet Area"
+    }
+  ],
+  "selectedCategories": [
+    "charts",
+    "indicators",
+    "transactions",
+    "statistics",
+    "narrative",
+    "section",
+    "properties",
+    "map"
+  ],
+  "files": [
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Net Absorption Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Availability by Size - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Charts/I-55 Corridor Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Indicators/I-55 Corridor Market Indicators - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "2b24bb0f3429c0e0c22e44908cd9b731f6ccd051192823ca5c45d346b3443878",
+      "bytes": 8802,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Sales - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Top Leases and Sales/I-55 Corridor Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "824defa5c875d0c94f4367858f9eded7849e71661b0355b8a813d6be60d7a48b",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Market Statistics/I-55 Corridor Market Statistics - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "4c49b51125f39799adedb97909a2f8f533048e0260f2a12242f3c9f1a8ecf8d7",
+      "bytes": 11170,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Narrative/I-55 Corridor Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-55 Corridor",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "7a593c8b54fcf4798b9ef0ac611b3337b845439bbd43d9ad1f05672aaed23de1",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Complete Section/I-55 Corridor Industrial Market Section - Q3 2026.pdf",
+      "market": "I-55 Corridor",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "c723cb372b269b3fe99e5bcd1bcb04bb7002d4a94395e75c2903cf71156427ea",
+      "bytes": 2787037,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Top Availabilities - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Deliveries - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Under Construction - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Property Highlights/I-55 Corridor Property Highlights - Q3 2026.xlsx",
+      "market": "I-55 Corridor",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "b65e8d6b5a26a9ff8cb32fe511cb137d244880be5075faeaf34a8cabdab2983e",
+      "bytes": 10215,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-55 Corridor/Map/I-55 Corridor Industrial Submarket Map - Q3 2026.png",
+      "market": "I-55 Corridor",
+      "category": "map",
+      "format": "png",
+      "checksum": "6c789f265cc916c82ae451b618e9a6d1fa432e7e2ee6f895e4dfc660640b4283",
+      "bytes": 3579455,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Net Absorption Chart - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Availability by Size - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Charts/O'Hare Under Construction and Deliveries - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Indicators/O'Hare Market Indicators - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Indicators/O'Hare Market Indicators - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "4410770e071218282f7209228dcd56c7a42f8693fbdb55febf135df504c09b08",
+      "bytes": 8801,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Leases - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Sales - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Top Leases and Sales/O'Hare Top Leases and Sales - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "038277ef54922a0bc72f4d5bf09341ddfff8e30f40ed4615201b386c5d3cf23e",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Market Statistics/O'Hare Market Statistics - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "a4e1199f140c46b7ad47efbde781940c88b6c0c0f120bb481b8df605cdfd29bd",
+      "bytes": 11169,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Narrative/O'Hare Industrial Market Narrative - Q3 2026.docx",
+      "market": "O'Hare",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "19c62bf5f742ed98168670b693c508d76e095068366a3a0694686e502348dd9e",
+      "bytes": 1843,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Complete Section/O'Hare Industrial Market Section - Q3 2026.pdf",
+      "market": "O'Hare",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "3c18aeb8d95539f4009f7037bf862c2d4e3196758305cfd2679d87113a862c39",
+      "bytes": 2883228,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Top Availabilities - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Deliveries - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Under Construction - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Property Highlights/O'Hare Property Highlights - Q3 2026.xlsx",
+      "market": "O'Hare",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "577740b7e7c98dc7fdca4d3e2317fe98e13f803168b519239e840d9a42208c4b",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/O'Hare/Map/O'Hare Industrial Submarket Map - Q3 2026.png",
+      "market": "O'Hare",
+      "category": "map",
+      "format": "png",
+      "checksum": "2dac06b86c0ed01e178e2404e7b76e5c43d7c6333f7a659f44a6ed48c431978a",
+      "bytes": 3986478,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Net Absorption Chart - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "92e4ea362ae268d9709a17fb7017bc3672f6e9907e7faabb2f4142bf1bcb2130",
+      "bytes": 198203,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Sales Volume and Median Sales Price Chart - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "6e21b7e37d6e9512f905924bd093bea93d9e8ea498d41fb081cbfdba140d1027",
+      "bytes": 89460,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Availability by Size - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "8dd9274712f2d586598baf21f26cdb891a8385839778b0720ce13633609ab439",
+      "bytes": 146793,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Charts/I-80 - Joliet Area Under Construction and Deliveries - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "charts",
+      "format": "png",
+      "checksum": "25899e97bd5d4c6cc69ed2ba37e4da3348dc4e5765a505113eddf9eafc451e1a",
+      "bytes": 149906,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Indicators/I-80 - Joliet Area Market Indicators - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "indicators",
+      "format": "png",
+      "checksum": "0b0e3051bd78317dfe4e27e2df90acb35c30794d1dddcffb582bfe9196aafc17",
+      "bytes": 97968,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Indicators/I-80 - Joliet Area Market Indicators - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "indicators",
+      "format": "xlsx",
+      "checksum": "4859bc775bbd48341e2b5e5d3305e5ee5c4bd2ff22ad4278e0b59b84a1635f7f",
+      "bytes": 8803,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Leases - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "c6bfc7e69fcbeeeb9ccd6df4bd9d6accab62ffcd82a1ce8a0c6512ddd8066422",
+      "bytes": 60715,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Sales - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "png",
+      "checksum": "fecdc744872416c373d94ebf790caf287afd3dd3e0f9c16fc45aff3c26396512",
+      "bytes": 63120,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Top Leases and Sales/I-80 - Joliet Area Top Leases and Sales - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "transactions",
+      "format": "xlsx",
+      "checksum": "291b73cf6590ca90c0e3591c7b0fd42d7027b5b36ccd018529c3718d3e9350e2",
+      "bytes": 10778,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Market Statistics/I-80 - Joliet Area Market Statistics - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "statistics",
+      "format": "xlsx",
+      "checksum": "6d5e78e47ba28e1d4df7b28ac1d8e7269bdf46f350af27d4b87c90ab34aeaa73",
+      "bytes": 11171,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Narrative/I-80 - Joliet Area Industrial Market Narrative - Q3 2026.docx",
+      "market": "I-80/Joliet Area",
+      "category": "narrative",
+      "format": "docx",
+      "checksum": "041ed5ed3eb117350d15c9137d9f0acd35e39c3e2cf9f68d0639ecfc7a35ff47",
+      "bytes": 1844,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Complete Section/I-80 - Joliet Area Industrial Market Section - Q3 2026.pdf",
+      "market": "I-80/Joliet Area",
+      "category": "section",
+      "format": "pdf",
+      "checksum": "e0c75514c9a96e64489e6a847e0a34e8b39bbcbd37df14f8caeb2bd7adf975f5",
+      "bytes": 2668444,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Top Availabilities - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "18e911d3a3729015e3d4cb28a965388c9a3f2fba6ac0c79296fa0df0858f7379",
+      "bytes": 998700,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Deliveries - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "4c37fc4aecd9f323db1fbc59946b5388574d1a1c25bc9be5a5e973f82550436f",
+      "bytes": 1174175,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Under Construction - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "png",
+      "checksum": "20dc1b30e885081c4796b6f21a707041155b5cb20b1981c54178ba6da42a320f",
+      "bytes": 1126363,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Property Highlights/I-80 - Joliet Area Property Highlights - Q3 2026.xlsx",
+      "market": "I-80/Joliet Area",
+      "category": "properties",
+      "format": "xlsx",
+      "checksum": "b492a55d9b689a70f4087a4f2346917fb63510fe9acedf4cce9f9bef3c903988",
+      "bytes": 10216,
+      "warnings": []
+    },
+    {
+      "filename": "Q3 2026 Industrial Market Asset Export/I-80 - Joliet Area/Map/I-80 - Joliet Area Industrial Submarket Map - Q3 2026.png",
+      "market": "I-80/Joliet Area",
+      "category": "map",
+      "format": "png",
+      "checksum": "3c479cfcbaedd1d5b48da71d1cafb9432c93e6a22eb19156191c9808ca95713f",
+      "bytes": 2719144,
+      "warnings": [
+        "Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+      ]
+    }
+  ],
+  "omissions": [],
+  "warnings": [
+    "I-55 Corridor: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "O'Hare: Raster maps retain their original source detail; a larger PNG does not add geographic detail.",
+    "I-80/Joliet Area: Raster maps retain their original source detail; a larger PNG does not add geographic detail."
+  ],
+  "status": "completed_with_warnings"
+}

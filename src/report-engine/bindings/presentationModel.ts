@@ -56,7 +56,7 @@ const metricKeys: (keyof MarketMetrics)[] = [
   "salesVolume",
 ];
 
-export function buildPresentationModel(report: IndustrialMarketReport) {
+export function buildPresentationModel(report: IndustrialMarketReport, options?: { savedMetricsOnly?: boolean }) {
   const periodMatch = report.report.period.match(/^(\d{4})\s+(Q[1-4])$/i);
   const reportDisplay = {
     period: periodMatch
@@ -65,11 +65,11 @@ export function buildPresentationModel(report: IndustrialMarketReport) {
     year: periodMatch?.[1] ?? report.report.period,
     quarter: periodMatch?.[2].toUpperCase() ?? report.report.period,
   };
-  const totals = calculateMarketTotals(report.submarkets);
+  const totals = options?.savedMetricsOnly ? report.overallMarket : calculateMarketTotals(report.submarkets);
   const extremes = Object.fromEntries(
     metricKeys.map((key) => [
       key,
-      calculateMetricExtremes(report.submarkets, key),
+      options?.savedMetricsOnly ? {} : calculateMetricExtremes(report.submarkets, key),
     ]),
   ) as Record<keyof MarketMetrics, ReturnType<typeof calculateMetricExtremes>>;
   const detailRows = report.submarkets.map((item) => ({

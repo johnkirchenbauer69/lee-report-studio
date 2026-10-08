@@ -34,6 +34,10 @@ export const sanitizeSalesforceDisplayValue = (
  * authoritative server-side source snapshot untouched.
  */
 export function sanitizeSalesforceClientPayload<T>(value: T): T {
+  // Encoded image/font bytes are not display text. Applying the identifier
+  // regex to random base64 segments corrupts otherwise valid pinned assets.
+  if (typeof value === "string" && /^data:(?:image\/(?:png|jpeg|webp|svg\+xml)|font\/[a-z0-9.+-]+|application\/(?:font|x-font|octet-stream));base64,[a-zA-Z0-9+/=]+$/i.test(value))
+    return value;
   if (typeof value === "string")
     return (
       containsSalesforceIdToken(value)

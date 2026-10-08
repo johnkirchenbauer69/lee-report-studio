@@ -1,0 +1,57 @@
+[
+  {
+    "package": "all-19-markets-synthetic.zip",
+    "files": 323,
+    "markets": 19,
+    "pngs": 209,
+    "worksheets": 114,
+    "nativeDocuments": 19,
+    "pdfPages": 38,
+    "checksums": "passed",
+    "omissions": 0
+  },
+  {
+    "package": "I-55-all-assets-synthetic.zip",
+    "files": 17,
+    "markets": 1,
+    "pngs": 11,
+    "worksheets": 6,
+    "nativeDocuments": 1,
+    "pdfPages": 2,
+    "checksums": "passed",
+    "omissions": 0
+  },
+  {
+    "package": "I-55-charts-and-section-synthetic.zip",
+    "files": 5,
+    "markets": 1,
+    "pngs": 4,
+    "worksheets": 0,
+    "nativeDocuments": 0,
+    "pdfPages": 2,
+    "checksums": "passed",
+    "omissions": 0
+  },
+  {
+    "package": "I-55-charts-only-synthetic.zip",
+    "files": 4,
+    "markets": 1,
+    "pngs": 4,
+    "worksheets": 0,
+    "nativeDocuments": 0,
+    "pdfPages": 0,
+    "checksums": "passed",
+    "omissions": 0
+  },
+  {
+    "package": "multiple-markets-synthetic.zip",
+    "files": 51,
+    "markets": 3,
+    "pngs": 33,
+    "worksheets": 18,
+    "nativeDocuments": 3,
+    "pdfPages": 6,
+    "checksums": "passed",
+    "omissions": 0
+  }
+]

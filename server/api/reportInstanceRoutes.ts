@@ -23,6 +23,7 @@ const textBody = (body: unknown) => {
 export function createReportInstanceRouter(
   repository: FileSystemReportInstanceRepository,
   narratives: NarrativeService,
+  capture?: (instance: ReportInstance) => Promise<ReportInstance>,
 ) {
   const router = Router();
   const conflict = (error: unknown, response: Response) => {
@@ -85,7 +86,7 @@ export function createReportInstanceRouter(
   router.post("/report-instances", async (request, response, next) => {
     try {
       const instance = normalizeReportInstance(request.body);
-      response.status(201).json(await repository.create(instance));
+      response.status(201).json(await repository.create(capture ? await capture(instance) : instance));
     } catch (error) {
       if (
         !conflict(error, response) &&
