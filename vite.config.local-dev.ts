@@ -13,7 +13,7 @@ export default defineConfig({
     strictPort: true,
     proxy: { "/api": process.env.LEE_API_URL ?? "http://127.0.0.1:8787" },
     watch: {
-      ignored: ["**/ROADMAP.zip"],
+      ignored: ["**/ROADMAP.zip", "**/docs/evidence/**", "**/output/**", "**/test-results/**", "**/visual-report/**"],
     },
   },
 });
