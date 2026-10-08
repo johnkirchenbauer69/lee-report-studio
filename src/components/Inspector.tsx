@@ -1,3 +1,4 @@
+import { ClosingContentEditor } from "./ClosingContentEditor";
 import type {
   Asset,
   BevelStyle,
@@ -1721,7 +1722,10 @@ export function Inspector({
           )}
         </Section>
       )}
-      {element.type === "text" && (
+      {element.type === "text" && element.closingContent && (
+        <Section title="Closing page content" open><ClosingContentEditor content={element.closingContent} onChange={closingContent => onChange({ closingContent } as Partial<ReportElement>)} /></Section>
+      )}
+      {element.type === "text" && !element.closingContent && (
         <Section title="Typography">
           <label>
             Text

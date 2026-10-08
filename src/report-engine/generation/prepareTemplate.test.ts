@@ -48,7 +48,7 @@ describe("production template preparation", () => {
     });
   });
 
-  it("retains the managed static page artwork for every provider", () => {
+  it("retains native methodology content for every provider", () => {
     const prepared = prepareTemplateForReport(
       sampleTemplate,
       q2SampleReport,
@@ -60,8 +60,8 @@ describe("production template preparation", () => {
         .flatMap((page) => page.elements)
         .some(
           (element) =>
-            element.type === "image" &&
-            element.src === "/report-assets/static-pages/data-methodology.png",
+            element.type === "text" &&
+            element.closingContent?.kind === "sections",
         ),
     ).toBe(true);
   });

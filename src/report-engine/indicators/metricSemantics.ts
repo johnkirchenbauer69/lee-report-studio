@@ -1,3 +1,4 @@
+import { indicatorColor } from "./indicatorStyle";
 import type { IndustrialMarketReport } from "../schema/industrialMarketReport";
 
 export type IndicatorMetricKey =
@@ -9,9 +10,9 @@ export type IndicatorMetricKey =
 
 export type DirectionPreference =
   "higher_is_better" | "lower_is_better" | "neutral";
-export type MetricDirection = "up" | "down" | "equal";
+export type MetricDirection = "up" | "down" | "equal" | "unavailable";
 export type MetricSemanticStatus = "favorable" | "unfavorable" | "neutral";
-export type MetricIndicatorKind = "arrow" | "bar";
+export type MetricIndicatorKind = "arrow" | "bar" | "unavailable";
 
 export interface MetricSemanticDefinition {
   metricKey: IndicatorMetricKey;
@@ -78,7 +79,7 @@ export function deriveMetricDirection(
   prior: number | null | undefined,
   definition: MetricSemanticDefinition,
 ): MetricDirection {
-  if (typeof current !== "number" || typeof prior !== "number") return "equal";
+  if (typeof current !== "number" || typeof prior !== "number" || !Number.isFinite(current) || !Number.isFinite(prior)) return "unavailable";
   const currentDisplay = displayedInteger(current, definition);
   const priorDisplay = displayedInteger(prior, definition);
   return currentDisplay === priorDisplay
@@ -92,7 +93,7 @@ export function deriveMetricSemanticStatus(
   direction: MetricDirection,
   preference: DirectionPreference,
 ): MetricSemanticStatus {
-  if (direction === "equal" || preference === "neutral") return "neutral";
+  if ((direction === "equal" || direction === "unavailable") || preference === "neutral") return "neutral";
   const favorable =
     (preference === "higher_is_better" && direction === "up") ||
     (preference === "lower_is_better" && direction === "down");
@@ -134,10 +135,9 @@ export function buildMetricSemanticFields(
     direction,
     definition.directionPreference,
   );
+  // Color encodes movement, independently of the retained analytical judgement.
   const indicatorKind: MetricIndicatorKind =
-    definition.directionPreference === "neutral" || direction === "equal"
-      ? "bar"
-      : "arrow";
+    direction === "unavailable" ? "unavailable" : direction === "equal" ? "bar" : "arrow";
   return {
     metricKey: definition.metricKey,
     metric: definition.label,
@@ -146,6 +146,6 @@ export function buildMetricSemanticFields(
     indicatorKind,
     indicatorGlyph:
       indicatorKind === "arrow" ? metricDirectionGlyph(direction) : "",
-    indicatorColor: METRIC_SEMANTIC_COLORS[semanticStatus],
+    indicatorColor: indicatorColor(direction),
   };
 }

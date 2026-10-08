@@ -1,3 +1,4 @@
+import { closingPageContent } from "./closingPageContent";
 import type { PropertyHighlight } from "../types/marketReport";
 import type {
   ImageElement,
@@ -1401,36 +1402,43 @@ function staticReferencePage(
   };
 }
 
-const dataMethodologyPage = staticReferencePage(
-  "data-methodology",
-  "Data Methodology",
-  "data-methodology",
-  41,
-  true,
-  "DATA METHODOLOGY",
-);
-const definitionsPage = staticReferencePage(
-  "definitions",
-  "Definitions",
-  "definitions",
-  42,
-  true,
-  "DEFINITIONS",
-);
-const contactsPage = staticReferencePage(
-  "contacts",
-  "Contacts",
-  "contacts",
-  43,
-  true,
-);
-const whoWeArePage = staticReferencePage(
-  "who-we-are",
-  "Who We Are",
-  "who-we-are",
-  44,
-  false,
-);
+/** New default pages only. Stored image-based versions remain untouched. */
+function nativeClosingPage(id: string, name: string, index: number, headerTitle?: string): ReportPage {
+  const original = staticReferencePage(id, name, id, 0, index !== 3, headerTitle);
+  const company = index === 3;
+  const elements = original.elements.filter(element => !element.id.endsWith("-artwork") && (!company || (!element.id.endsWith("-logo") && !element.id.endsWith("-header-mask"))));
+  elements.forEach(element => {
+    if (element.type === "text" && element.id.endsWith("footer-page-number")) element.name = "Page Number";
+    if (element.type === "text" && element.id.includes("-footer-")) {
+      element.style.fontSize = 10.6667;
+      element.style.fontWeight = element.id.endsWith("footer-brand") ? 700 : element.id.endsWith("footer-address") ? 200 : 400;
+      if (element.id.endsWith("footer-address")) element.width = 306;
+    }
+    if (element.type === "text" && element.id.endsWith("-period")) {
+      element.style.fontFamily = "Avenir Next LT Pro";
+      element.style.fontWeight = 700;
+      element.style.fontSize = 37.3333;
+      element.height = 48;
+    }
+    if (element.type === "image" && element.id.endsWith("-logo")) {
+      element.src = "/report-assets/closing/header-logo.svg";
+      element.x = 32; element.y = 26.6667; element.width = 221.3333; element.height = 66.6667;
+    }
+  });
+  return { ...original, elements: [...elements, {
+    id: `${id}-content`, type: "text", name: `${name} Content`, text: "",
+    x: company ? 0 : index < 2 ? 41.6 : 32,
+    y: company ? 0 : 133.3333,
+    width: company ? 816 : index < 2 ? 744 : 752,
+    height: company ? 1005.3333 : 864,
+    style: { fontFamily: company ? "Avenir Next LT Pro" : "Nunito Sans", fontSize: 14.6667, fontWeight: 400, color: "#32414b", opacity: 1 },
+    closingContent: structuredClone(closingPageContent[index]),
+  }] };
+}
+const dataMethodologyPage = nativeClosingPage("data-methodology", "Data Methodology", 0, "DATA METHODOLOGY");
+const definitionsPage = nativeClosingPage("definitions", "Definitions", 1, "DEFINITIONS");
+const contactsPage = nativeClosingPage("contacts", "Contacts", 2);
+const whoWeArePage = nativeClosingPage("who-we-are", "Who We Are", 3);
 
 export const sampleTemplate: ReportTemplate = {
   id: "industrial-market-report",

@@ -285,39 +285,47 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
     await expect(indicators.first()).toBeVisible();
     const styles = await indicators.evaluateAll((items) =>
       items.map((item) => {
-        const bar = item.querySelector<HTMLElement>(".metric-neutral-bar");
+        const svg = item.querySelector("svg");
+        const rect = svg?.querySelector("rect");
         return {
           status: item.getAttribute("data-semantic-status"),
+          direction: item.getAttribute("data-direction"),
           kind: item.getAttribute("data-indicator-kind"),
           color: getComputedStyle(item).color,
           text: item.textContent,
-          barWidth: bar ? getComputedStyle(bar).width : null,
-          barHeight: bar ? getComputedStyle(bar).height : null,
+          viewBox: svg?.getAttribute("viewBox"),
+          geometry: svg?.querySelector("path")?.getAttribute("d") ?? null,
+          barWidth: rect?.getAttribute("width") ?? null,
+          barHeight: rect?.getAttribute("height") ?? null,
         };
       }),
     );
     const expectedColors = {
-      favorable: "rgb(138, 148, 30)",
-      unfavorable: "rgb(205, 20, 66)",
-      neutral: "rgb(78, 19, 30)",
+      up: "rgb(138, 148, 30)",
+      down: "rgb(205, 20, 66)",
+      equal: "rgb(78, 19, 30)",
+      unavailable: "rgb(107, 114, 128)",
     } as const;
     expect(new Set(styles.map((item) => item.status))).toEqual(
       new Set(["favorable", "unfavorable", "neutral"]),
     );
     for (const style of styles) {
       expect(style.color).toBe(
-        expectedColors[style.status as keyof typeof expectedColors],
+        expectedColors[style.direction as keyof typeof expectedColors],
       );
-      if (style.status === "neutral") {
+      expect(style.viewBox).toBe("0 0 10 10");
+      if (style.direction === "equal") {
         expect(style).toMatchObject({
           kind: "bar",
           text: "",
-          barWidth: "10px",
-          barHeight: "3px",
+          barWidth: "10",
+          barHeight: "3",
         });
+      } else if (style.direction === "unavailable") {
+        expect(style).toMatchObject({ kind: "unavailable", barWidth: "8", barHeight: "1" });
       } else {
         expect(style.kind).toBe("arrow");
-        expect(["▲", "▼"]).toContain(style.text);
+        expect(style.geometry).toBe(style.direction === "up" ? "M5 1L10 9H0Z" : "M0 1H10L5 9Z");
       }
     }
     const constructionIndicators = page
@@ -327,7 +335,7 @@ test("Market Indicator tokens are identical in browser and PDF print DOM", async
     expect(await constructionIndicators.count()).toBeGreaterThan(0);
     await expect(constructionIndicators.first()).toHaveAttribute(
       "data-indicator-kind",
-      "bar",
+      "arrow",
     );
   }
 });

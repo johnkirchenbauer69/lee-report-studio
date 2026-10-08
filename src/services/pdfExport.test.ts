@@ -8,9 +8,17 @@ import { generateReportInstance } from "../report-engine/generation/generateRepo
 import { buildPresentationModel } from "../report-engine/bindings/presentationModel";
 import { q2SampleReport } from "../data-providers/sample/q2SampleReport";
 
+// Compatibility fixture: legacy stored templates still use the existing fallback path.
+const legacyTemplate: ReportTemplate = { ...sampleTemplate, pages: sampleTemplate.pages.map(page => ({ ...page, elements: page.elements.map(element => element.type === "text" && element.closingContent ? {
+  id: `${page.id}-artwork`, type: "image" as const, name: "Legacy artwork", x: 0, y: 0, width: 816, height: 1056, src: `/report-assets/static-pages/${page.id}.png`, style: {},
+} : element) })) };
+
 describe("deterministic PDF export", () => {
+  it("requires Chromium for native content rather than silently omitting it", async () => {
+    await expect(createReportPdfBytes(sampleTemplate, sampleData)).rejects.toThrow(/Native closing pages require the Chromium/);
+  });
   it("renders every visible page in template order", async () => {
-    const bytes = await createReportPdfBytes(sampleTemplate, sampleData);
+    const bytes = await createReportPdfBytes(legacyTemplate, sampleData);
     const document = await PDFDocument.load(bytes);
     expect(document.getPageCount()).toBe(
       sampleTemplate.pages.filter((page) => !page.hidden).length,
@@ -22,8 +30,8 @@ describe("deterministic PDF export", () => {
   });
 
   it("produces identical bytes for identical input (successful export path)", async () => {
-    const first = await createReportPdfBytes(sampleTemplate, sampleData);
-    const second = await createReportPdfBytes(sampleTemplate, sampleData);
+    const first = await createReportPdfBytes(legacyTemplate, sampleData);
+    const second = await createReportPdfBytes(legacyTemplate, sampleData);
     expect(Array.from(first)).toEqual(Array.from(second));
   });
 
@@ -56,7 +64,7 @@ describe("deterministic PDF export", () => {
   });
 
   it("requires Chromium instead of silently degrading advanced editor effects", async () => {
-    const template = structuredClone(sampleTemplate);
+    const template = structuredClone(legacyTemplate);
     const image = template.pages[0].elements.find(
       (element) => element.type === "image",
     )!;
@@ -75,7 +83,7 @@ describe("deterministic PDF export", () => {
 
   it("exports 44 pages for all 18 selected detailed submarkets", async () => {
     const selected = q2SampleReport.submarkets.map((item) => item.name);
-    const instance = await generateReportInstance(sampleTemplate, {
+    const instance = await generateReportInstance(legacyTemplate, {
       templateId: sampleTemplate.id,
       templateVersion: sampleTemplate.version,
       market: "Chicago",
