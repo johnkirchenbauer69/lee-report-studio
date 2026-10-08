@@ -112,3 +112,7 @@ Additional changed files:
 - `tests/visual/baselines/definitions.png`
 - `tests/visual/baselines/contacts.png`
 - `tests/visual/baselines/who-we-are.png`
+
+The first editor-controls test now waits for network idle before selecting its page/layer. A local failure showed the initial asynchronous template load resetting selection to Cover; the readiness wait fixes the test setup race without changing its assertions or timeout.
+
+- `tests/visual/editor-controls.spec.ts`
