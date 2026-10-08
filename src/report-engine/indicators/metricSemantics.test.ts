@@ -61,26 +61,77 @@ describe("market indicator semantics", () => {
     });
   });
 
-  it("uses a bar for equal values and every Under Construction movement", () => {
+  it("uses a bar for equal values", () => {
     const equal = buildMetricSemanticFields(
       [{ vacancyRate: 0.05 }, { vacancyRate: 0.05 }] as never,
       definition("vacancyRate"),
-    );
-    const construction = buildMetricSemanticFields(
-      [{ underConstructionSf: 200 }, { underConstructionSf: 100 }] as never,
-      definition("underConstructionSf"),
     );
     expect(equal).toMatchObject({
       indicatorKind: "bar",
       indicatorGlyph: "",
       indicatorColor: "#4E131E",
     });
-    expect(construction).toMatchObject({
-      direction: "up",
-      semanticStatus: "neutral",
-      indicatorKind: "bar",
-      indicatorGlyph: "",
-      indicatorColor: "#4E131E",
+  });
+
+  describe("Under Construction direction (quarter over quarter)", () => {
+    const construction = (current: unknown, prior?: unknown) =>
+      buildMetricSemanticFields(
+        (prior === undefined
+          ? [{ underConstructionSf: current }]
+          : [
+              { underConstructionSf: current },
+              { underConstructionSf: prior },
+            ]) as never,
+        definition("underConstructionSf"),
+      );
+
+    it("shows an up arrow when construction increased (I-55: 1,535,471 -> 2,545,030)", () => {
+      expect(construction(2_545_030, 1_535_471)).toMatchObject({
+        direction: "up",
+        semanticStatus: "neutral",
+        indicatorKind: "arrow",
+        indicatorGlyph: "▲",
+        indicatorColor: METRIC_SEMANTIC_COLORS.favorable,
+      });
+    });
+
+    it("shows a down arrow when construction decreased (Chicago South: 1,035,188 -> 671,668)", () => {
+      expect(construction(671_668, 1_035_188)).toMatchObject({
+        direction: "down",
+        semanticStatus: "neutral",
+        indicatorKind: "arrow",
+        indicatorGlyph: "▼",
+        indicatorColor: METRIC_SEMANTIC_COLORS.unfavorable,
+      });
+    });
+
+    it("shows the flat bar when unchanged (Central DuPage: 367,842 -> 367,842)", () => {
+      expect(construction(367_842, 367_842)).toMatchObject({
+        direction: "equal",
+        indicatorKind: "bar",
+        indicatorGlyph: "",
+      });
+    });
+
+    it.each([
+      ["missing prior quarter", 500_000, undefined],
+      ["null prior quarter", 500_000, null],
+      ["null current quarter", null, 500_000],
+    ])("distinguishes unavailable comparison for %s", (_label, current, prior) => {
+      expect(construction(current, prior)).toMatchObject({
+        direction: "unavailable",
+        semanticStatus: "neutral",
+        indicatorKind: "unavailable",
+        indicatorGlyph: "",
+      });
+    });
+
+    it("never colors construction movement as favorable or unfavorable", () => {
+      for (const [current, prior] of [
+        [200, 100],
+        [100, 200],
+      ])
+        expect(construction(current, prior).semanticStatus).toBe("neutral");
     });
   });
 });

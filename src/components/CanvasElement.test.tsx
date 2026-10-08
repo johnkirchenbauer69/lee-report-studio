@@ -1007,7 +1007,7 @@ describe("CanvasElement report semantics", () => {
     );
   });
 
-  it("renders semantic indicator color only on the direction glyph", () => {
+  it("colors vector indicators by movement without coloring metric labels", () => {
     const indicator: TableElement = {
       ...table,
       id: "indicator-table",
@@ -1030,7 +1030,7 @@ describe("CanvasElement report semantics", () => {
     expect(markup).toContain('data-direction="down"');
     expect(markup).toContain('data-semantic-status="favorable"');
     expect(markup).toContain('data-indicator-kind="arrow"');
-    expect(markup).toContain("color:#8A941E");
+    expect(markup).toContain("color:#CD1442");
     expect(markup).toContain(">Vacancy Rate</span>");
   });
 
@@ -1046,7 +1046,7 @@ describe("CanvasElement report semantics", () => {
       indicatorRows: [
         {
           metric: "Under Construction (SF)",
-          direction: "up",
+          direction: "equal",
           semanticStatus: "neutral",
           indicatorKind: "bar",
           indicatorGlyph: "",
@@ -1055,7 +1055,7 @@ describe("CanvasElement report semantics", () => {
       ],
     });
     expect(markup).toContain('data-indicator-kind="bar"');
-    expect(markup).toContain('class="metric-neutral-bar"');
+    expect(markup).toContain('<rect x="0" y="3.5"');
     expect(markup).toContain("color:#4E131E");
     expect(markup).not.toContain("▲");
     expect(markup).not.toContain("▼");

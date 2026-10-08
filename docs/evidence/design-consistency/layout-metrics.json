@@ -1,0 +1,247 @@
+{
+  "pageCount": 44,
+  "metrics": [
+    {
+      "className": "closing-content closing-sections closing-methodology",
+      "height": 864,
+      "contentHeight": 864,
+      "width": 744,
+      "contentWidth": 744
+    },
+    {
+      "className": "closing-content closing-sections closing-definitions",
+      "height": 864,
+      "contentHeight": 864,
+      "width": 744,
+      "contentWidth": 744
+    },
+    {
+      "className": "closing-content closing-contacts ",
+      "height": 864,
+      "contentHeight": 864,
+      "width": 752,
+      "contentWidth": 752
+    },
+    {
+      "className": "closing-content closing-company ",
+      "height": 1005,
+      "contentHeight": 1005,
+      "width": 816,
+      "contentWidth": 816,
+      "companyCopyBottom": 46024.3125,
+      "growthTop": 46073.328125
+    }
+  ],
+  "indicators": [
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700",
+        "700",
+        "400",
+        "400",
+        "400",
+        "400"
+      ],
+      "borders": [
+        "1px",
+        "1px",
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    },
+    {
+      "font": "\"Nunito Sans\", Arial, sans-serif",
+      "size": "9px",
+      "weights": [
+        "700"
+      ],
+      "borders": [
+        "1px"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "src": "http://127.0.0.1:3108/report-assets/closing/corporate-logo.svg",
+      "loaded": true
+    },
+    {
+      "src": "http://127.0.0.1:3108/report-assets/closing/office-map.png",
+      "loaded": true
+    }
+  ]
+}

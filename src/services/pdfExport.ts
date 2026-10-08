@@ -541,6 +541,8 @@ export async function createReportPdfBytes(
   template: ReportTemplate,
   data: unknown,
 ) {
+  if (template.pages.some(page => page.elements.some(element => element.type === "text" && element.closingContent)))
+    throw new Error("Native closing pages require the Chromium PDF renderer to preserve structured text, graphics, and email hyperlinks.");
   if ((template.assets ?? []).some((asset) => asset.type === "font"))
     throw new Error(
       "Managed-font reports require the Chromium PDF renderer so editor and PDF typography remain identical.",

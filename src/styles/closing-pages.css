@@ -1,0 +1,262 @@
+/* Source PDF uses Nunito Sans and Avenir. Both reuse approved organization font assets. */
+.closing-content {
+  width: 100%;
+  height: 100%;
+  color: #32414b;
+  font-family: "Nunito Sans", Arial, sans-serif;
+  font-weight: 400;
+  box-sizing: border-box;
+}
+.closing-content * {
+  box-sizing: border-box;
+}
+.closing-content h1,
+.closing-content h2,
+.closing-content p {
+  margin: 0;
+}
+.closing-sections {
+  font-size: 14.6667px;
+  line-height: 17.6px;
+  color: #4d525a;
+}
+.closing-sections section + section {
+  margin-top: 14px;
+}
+.closing-sections h2 {
+  font-size: 15.3333px;
+  line-height: 20.667px;
+  font-weight: 700;
+  color: #009ada;
+  margin-bottom: 3.6px;
+}
+.closing-sections strong {
+  font-weight: 600;
+}
+.closing-sections .closing-item {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+}
+.closing-sections .closing-bullet {
+  margin-left: 48px;
+  position: relative;
+}
+.closing-sections .closing-bullet::before {
+  content: "•";
+  position: absolute;
+  left: -17px;
+}
+.closing-sections .closing-footnote {
+  font-style: italic;
+}
+.closing-definitions {
+  font-weight: 600;
+}
+.closing-definitions h2 {
+  font-size: 14.6667px;
+  font-weight: 700;
+  line-height: 17.6px;
+}
+.closing-definitions section + section {
+  margin-top: 4px;
+}
+.closing-directory {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: #eff0f1;
+}
+.closing-directory h2 {
+  background: #003c50;
+  color: white;
+  font-weight: 700;
+  font-size: 13.3333px;
+  line-height: 20px;
+  text-align: center;
+  padding: 6px 4px;
+  overflow-wrap: anywhere;
+}
+.closing-directory section:first-child h2 {
+  font-size: 17.3333px;
+  line-height: 22px;
+  padding: 5px 4px;
+}
+.closing-contact-grid {
+  display: grid;
+}
+.closing-contact {
+  min-height: 58.6667px;
+  padding: 10px 5.3333px 8px;
+  font-size: 12.6667px;
+  line-height: 14px;
+  overflow-wrap: anywhere;
+}
+.closing-contact strong {
+  display: block;
+  font-weight: 700;
+}
+.closing-contact a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  font-size: 10.4px;
+  line-height: 12px;
+}
+.closing-directory section[style*="span 3"] .closing-contact,
+.closing-directory section[style*="span 2"] .closing-contact,
+.closing-directory section[style*="span 1"] .closing-contact {
+  min-height: 64px;
+}
+.closing-company {
+  font-family: "Avenir Next LT Pro", "Nunito Sans", Arial, sans-serif;
+  position: relative;
+  font-size: 14px;
+  line-height: 18.4px;
+}
+.closing-corporate-logo {
+  position: absolute;
+  left: 32px;
+  top: 26.6667px;
+  width: 221.3333px;
+  height: 66.6667px;
+  object-fit: contain;
+}
+.closing-office-map {
+  position: absolute;
+  left: 310.25px;
+  top: 0;
+  width: 505.75px;
+  height: 356px;
+  object-fit: contain;
+}
+.closing-company-copy {
+  position: absolute;
+  left: 32px;
+  top: 134px;
+  width: 452px;
+}
+.closing-company-copy h1 {
+  color: #98002e;
+  font-size: 29.3333px;
+  line-height: 37px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.closing-company-copy h2 {
+  color: #98002e;
+  font-size: 17.3333px;
+  line-height: 23px;
+  font-weight: 500;
+  margin-bottom: 9px;
+}
+.closing-company-copy p {
+  font-family: "Nunito Sans", Arial, sans-serif;
+  color: #3f4b51;
+  margin-bottom: 10px;
+  text-align: justify;
+}
+.closing-company-copy p:first-of-type {
+  width: 318px;
+}
+.closing-company-copy .closing-company-emphasis {
+  color: #98002e;
+  font-size: 14.6667px;
+  font-style: italic;
+  font-weight: 600;
+  margin-top: 28px;
+  text-align: left;
+}
+.closing-statistics {
+  position: absolute;
+  left: 529.3333px;
+  top: 333px;
+  width: 286.6667px;
+  min-height: 332px;
+  background: #e7e8e9;
+  text-align: center;
+  padding: 0 16px 16px;
+}
+.closing-statistics > div {
+  margin-bottom: 21px;
+}
+.closing-stat-value {
+  color: #98002e;
+  font-size: 46.6667px;
+  line-height: 51px;
+  font-weight: 600;
+}
+.closing-statistics strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 18px;
+  color: #303c42;
+}
+.closing-stat-description {
+  white-space: pre-line;
+  font-size: 10.6667px;
+  font-weight: 600;
+  line-height: 13px;
+  color: #303c42;
+}
+.closing-growth {
+  position: absolute;
+  left: 32px;
+  top: 665.3333px;
+  width: 752px;
+  min-height: 334.6667px;
+  background: #003c50;
+  color: white;
+  padding: 12px 14.6667px;
+}
+.closing-growth h2 {
+  font-family: "Nunito Sans", Arial, sans-serif;
+  color: #cd1442;
+  font-size: 24px;
+  line-height: 27px;
+  text-align: center;
+  font-weight: 700;
+}
+.closing-growth > p {
+  font-family: "Nunito Sans", Arial, sans-serif;
+  font-weight: 700;
+  text-align: center;
+  font-size: 13.3333px;
+  line-height: 18px;
+  margin-bottom: 10px;
+}
+.closing-timeline {
+  column-count: 4;
+  column-gap: 20px;
+  font-size: 10.6667px;
+  line-height: 13.3333px;
+}
+.closing-timeline > div {
+  break-inside: avoid;
+  overflow-wrap: anywhere;
+}
+.closing-editor label {
+  display: block;
+  margin-bottom: 7px;
+}
+.closing-editor fieldset {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #ccd5da;
+  margin: 8px 0;
+}
+.closing-editor textarea,
+.closing-editor input,
+.closing-editor select {
+  width: 100%;
+}
+.closing-editor .closing-record-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.closing-editor .closing-record-actions button {
+  padding: 4px 6px;
+}
+.closing-editor [role="alert"] {
+  color: #98002e;
+}

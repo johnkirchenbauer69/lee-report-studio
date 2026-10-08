@@ -170,6 +170,7 @@ describe("generateReportInstance", () => {
         storage: "backend",
       },
     ];
+    template.assets.push({ ...template.assets[0], id: "avenir-semibold", name: "Avenir Next LT Pro SemiBold", fontFamily: "Avenir Next LT Pro", checksum: "avenir-checksum", source: "/api/assets/avenir-semibold/content" });
     const report = await generateReportInstance(template, {
       templateId: template.id,
       templateVersion: template.version,
@@ -190,9 +191,11 @@ describe("generateReportInstance", () => {
     ).toBe(true);
     expect(
       textElements.every(
-        (element) =>
-          element.style.typography?.fontAssetId === "nunito-semibold" &&
-          element.style.typography?.fontChecksum === "semibold-checksum",
+        (element) => {
+          const avenir = element.style.typography?.fontFamily === "Avenir Next LT Pro";
+          return element.style.typography?.fontAssetId === (avenir ? "avenir-semibold" : "nunito-semibold") &&
+            element.style.typography?.fontChecksum === (avenir ? "avenir-checksum" : "semibold-checksum");
+        },
       ),
     ).toBe(true);
   });

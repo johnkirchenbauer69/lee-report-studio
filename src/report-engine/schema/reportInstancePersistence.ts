@@ -1,3 +1,4 @@
+import { closingContentSchema } from "../closing/closingContent";
 import { z } from "zod";
 import { normalizeElementCorners } from "../../engine/corners";
 import type { ReportElement } from "../../types/report";
@@ -279,7 +280,7 @@ const chartStyleSchema = z
 
 export const reportElementSchema = z.discriminatedUnion("type", [
   z
-    .object({ ...baseElementShape, type: z.literal("text"), text: z.string() })
+    .object({ ...baseElementShape, type: z.literal("text"), text: z.string(), closingContent: closingContentSchema.optional() })
     .strict(),
   z
     .object({

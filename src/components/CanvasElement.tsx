@@ -1,3 +1,5 @@
+import { ClosingContent } from "./ClosingContent";
+import { INDICATOR_STYLE, indicatorColor } from "../report-engine/indicators/indicatorStyle";
 import React, { useEffect, useRef, useState } from "react";
 import type {
   EditorSettings,
@@ -790,7 +792,7 @@ export function CanvasElement(props: Props) {
                 element.binding,
               )
             : element.text;
-    content = (
+    content = element.closingContent ? <ClosingContent content={element.closingContent} /> : (
       <div
         className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}
       >
@@ -890,14 +892,11 @@ export function CanvasElement(props: Props) {
         const semanticStatus = String(
           getByPath(row, "semanticStatus") ?? "neutral",
         );
-        const indicatorKind = String(
-          getByPath(row, "indicatorKind") ??
-            (direction === "equal" ? "bar" : "arrow"),
-        );
+        const indicatorKind = direction === "unavailable" ? "unavailable" : direction === "equal" ? "bar" : "arrow";
         return (
           <span
             className="metric-direction-label"
-            aria-label={`${formatted}: ${indicatorKind === "bar" ? "neutral" : direction}, ${semanticStatus}`}
+            aria-label={`${formatted}: ${indicatorKind === "bar" ? "unchanged" : direction}, ${semanticStatus}`}
           >
             <span
               aria-hidden="true"
@@ -906,14 +905,15 @@ export function CanvasElement(props: Props) {
               data-indicator-kind={indicatorKind}
               data-semantic-status={semanticStatus}
               style={{
-                color: String(getByPath(row, "indicatorColor") ?? "#4E131E"),
+                color: indicatorColor(direction),
               }}
             >
-              {indicatorKind === "bar" ? (
-                <span className="metric-neutral-bar" />
-              ) : (
-                String(getByPath(row, "indicatorGlyph") ?? "")
-              )}
+              <svg width="10" height="10" viewBox="0 0 10 10" focusable="false" data-testid="metric-indicator-svg">
+                {direction === "unavailable" ? <rect x="1" y="4.5" width="8" height="1" fill="currentColor" />
+                  : direction === "up" ? <path d="M5 1L10 9H0Z" fill="currentColor" />
+                  : direction === "down" ? <path d="M0 1H10L5 9Z" fill="currentColor" />
+                  : <rect x="0" y="3.5" width="10" height="3" rx="1" fill="currentColor" />}
+              </svg>
             </span>
             <span>{formatted}</span>
           </span>
@@ -987,7 +987,8 @@ export function CanvasElement(props: Props) {
     const table = (
       <table
         className={`report-table table-${element.variant ?? "default"}`}
-        style={headerWrapperRadii ? { background: "transparent" } : undefined}
+        style={{ ...(headerWrapperRadii ? { background: "transparent" } : {}),
+          ...(element.variant === "indicators" ? { fontFamily: INDICATOR_STYLE.fontFamily, fontSize: INDICATOR_STYLE.fontSize, color: INDICATOR_STYLE.color } : {}) }}
       >
         <colgroup>
           {element.columns.map((c) => (
@@ -1096,6 +1097,7 @@ export function CanvasElement(props: Props) {
                         resolveCellBackdrop(element.variant, "body", rowKind, i),
                       ),
                       textAlign: c.align,
+                      ...(element.variant === "indicators" ? { fontWeight: column <= 1 ? INDICATOR_STYLE.bold : INDICATOR_STYLE.regular } : {}),
                       height: element.rowHeight,
                       boxShadow: rowShadow,
                     }}

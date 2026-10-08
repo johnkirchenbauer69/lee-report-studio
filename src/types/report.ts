@@ -1,3 +1,4 @@
+import type { ClosingContent } from "../report-engine/closing/closingContent";
 export type ElementType = "text" | "shape" | "image" | "table" | "chart";
 export type PreviewMode = "design" | "data";
 export type Unit = "px" | "in";
@@ -179,6 +180,8 @@ export interface BaseElement {
 export interface TextElement extends BaseElement {
   type: "text";
   text: string;
+  /** Structured editorial content, serialized with the template draft. */
+  closingContent?: ClosingContent;
 }
 
 export interface ShapeElement extends BaseElement {

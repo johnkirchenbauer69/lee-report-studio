@@ -48,6 +48,25 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
           ),
         );
       });
+      // Fixed publication page bounds: never silently clip editorial additions.
+      const closingProblems = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>(".closing-content")).flatMap(node => {
+          const errors: string[] = [];
+          if (node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1)
+            errors.push("Closing page content exceeds its page bounds. Shorten it or split it into an additional template page.");
+          for (const image of node.querySelectorAll<HTMLImageElement>("img"))
+            if (!image.complete || image.naturalWidth === 0) errors.push(`Closing page asset unavailable: ${image.alt}`);
+          const copy = node.querySelector<HTMLElement>(".closing-company-copy");
+          const growth = node.querySelector<HTMLElement>(".closing-growth");
+          if (copy && growth && copy.getBoundingClientRect().bottom > growth.getBoundingClientRect().top)
+            errors.push("Company narrative overlaps the growth timeline. Shorten the narrative or add a page.");
+          const lastStatistic = node.querySelector<HTMLElement>(".closing-statistics > div:last-child");
+          if (lastStatistic && growth && lastStatistic.getBoundingClientRect().bottom > growth.getBoundingClientRect().top)
+            errors.push("Corporate statistics overlap the growth timeline. Shorten them or add a page.");
+          return errors;
+        }),
+      );
+      if (closingProblems.length) throw new Error(closingProblems.join("\n"));
       const chromiumBytes = await page.pdf({
         format: "Letter",
         printBackground: true,
