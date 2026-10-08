@@ -95,6 +95,12 @@ test("chart export preserves artwork and defaults to a transparent plotting canv
       .raw()
       .toBuffer({ resolveWithObject: true });
     expect(data[info.channels - 1]).toBe(0);
+    let transparentPlotPixels = 0;
+    for (let y = Math.floor(info.height * 0.2); y < info.height * 0.65; y++)
+      for (let x = Math.floor(info.width * 0.2); x < info.width * 0.8; x++)
+        if (data[(y * info.width + x) * info.channels + 3] === 0)
+          transparentPlotPixels++;
+    expect(transparentPlotPixels).toBeGreaterThan(info.width * info.height * 0.1);
     expect((await sharp(png).stats()).channels[3].max).toBe(255);
   }
 });
