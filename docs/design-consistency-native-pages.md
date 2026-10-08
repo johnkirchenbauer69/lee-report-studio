@@ -35,7 +35,7 @@ Remaining visual differences: native font metrics and line flow produce modest v
 - `python -X utf8 scripts/validate-native-closing-pdf.py <source-pdf>` and `npx tsx scripts/compare-native-closing-pages.ts`: PDF structural, hyperlink, font, compression, and visual evidence checks pass.
 - `git diff --check`: passes. No standalone lint script is configured; new TypeScript/CSS files were formatted with Prettier.
 
-The full established visual suite did not run: its isolation guard rejected the existing non-test API/data store before tests. Starting a separate isolated API was rejected by automatic approval review with “blocked by policy.” The guard was preserved. Targeted browser tests use a separate read-only mocked configuration. Full existing visual coverage remains outstanding; no clean full-suite or remote CI claim is made.
+The initial delivery could not run the full established visual suite because its isolation guard rejected the non-test API and isolated startup was blocked. In the PR #39 follow-up, the established suite runs on separate web/API/MCP ports with disposable storage and the original global isolation guard. No skip conditions, visual thresholds, or production styling were weakened. Existing fixture-dependent guards still require the historical v1.8.0 template, a published template, and the approved 113-face local font store; these assets are absent from the clean CI test store. Full-run and GitHub results are reported in the PR handoff.
 
 ## Local review and delivery
 
@@ -92,3 +92,23 @@ The following inventory lists every implementation and evidence file in this cha
 
 - `docs/evidence/design-consistency/indicator-overall-fixture.png`
 - `docs/evidence/design-consistency/indicator-submarket-fixture.png`
+
+## PR #39 CI follow-up
+
+The visual loader used locally installed but undeclared `unpdf`. It is now pinned as development-only dependency `1.8.1` with its lockfile entry. The existing `pdf-lib` remains responsible for PDF structure/annotations; it is not a text extractor. A fresh `npm ci --ignore-scripts` in a separate dependency-check directory resolves the declared parser without relying on the original shared node_modules. CI continues to use normal `npm ci` on Node 22.
+
+New HTTP/UI lifecycle coverage verifies publication-mode `/api/render/pdf` (no draft preflight bypass), exact Chromium producer metadata, four pages, searchable reference terms, and all 45 email links. Two further tests create disposable drafts through the isolated API, edit and reorder contacts/office openings in the Inspector, Save with a successful PUT, read back content/order from the API, reopen the version, verify rendered order and contact links, and delete their drafts. All three focused tests pass.
+
+The benchmark fixture now resolves native page-number placeholders with the same `expandTemplatePages` function used during report generation. Four legacy image-page baselines were replaced with the already-approved native compositions; other baselines and all pixel thresholds remain unchanged. The indicator browser/print test now asserts direction colors, vector path geometry, neutral/missing dash dimensions, and an arrow for changing Under Construction, rather than obsolete text glyphs and favorable/unfavorable colors.
+
+Additional changed files:
+
+- `package.json`
+- `package-lock.json`
+- `src/renderers/browser/BenchmarkPage.tsx`
+- `tests/visual/report-pages.spec.ts`
+- `tests/visual/native-closing-lifecycle.spec.ts`
+- `tests/visual/baselines/data-methodology.png`
+- `tests/visual/baselines/definitions.png`
+- `tests/visual/baselines/contacts.png`
+- `tests/visual/baselines/who-we-are.png`
