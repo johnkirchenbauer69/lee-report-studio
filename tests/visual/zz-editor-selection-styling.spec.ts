@@ -30,7 +30,7 @@ async function ensureDraft(page: Page) {
 test("save, save-as and publish preserve the active page while open starts at page zero", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await openPages(page);
   await ensureDraft(page);
 
@@ -109,7 +109,7 @@ test("save, save-as and publish preserve the active page while open starts at pa
 test("image shadow and independent corners persist, with a live radius handle", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await ensureDraft(page);
   await page.getByRole("button", { name: "Elements" }).click();
   await page
@@ -193,7 +193,7 @@ test("image shadow and independent corners persist, with a live radius handle", 
 test("bevel, shift multi-select, rigid drag, union and undo work together", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await ensureDraft(page);
   await page.getByRole("button", { name: "px", exact: true }).click();
   await page.getByRole("button", { name: "Elements" }).click();
@@ -305,7 +305,7 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
 test("table edit mode applies a text shadow only to the targeted header cell", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await ensureDraft(page);
   await openPages(page);
   await page.getByRole("button", { name: "Overall Market Table" }).click();
@@ -328,7 +328,7 @@ test("Chromium PDF renders bevel, image shadow, per-corner clipping, table shado
   page,
 }, testInfo) => {
   test.setTimeout(60_000);
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await ensureDraft(page);
   const shadow = {
     enabled: true,

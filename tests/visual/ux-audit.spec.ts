@@ -10,7 +10,7 @@ test('audit every editor panel, creation steps and desktop sizes', async ({ page
   await mkdir(evidence, { recursive: true });
   const capture = async (name: string) => page.screenshot({ path: path.join(evidence, `${name}.png`) });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.goto('/?editor=1', { waitUntil: 'networkidle' });
   await capture('editor');
   for (const title of ['Templates', 'Pages', 'Elements', 'Text', 'Images', 'Uploads', 'Fonts', 'Data', 'QA']) {
     await page.locator('.rail').getByTitle(title, { exact: true }).click();
@@ -62,7 +62,7 @@ test('audit saved 44-page report navigation and I-55 export inventory', async ({
   expect(saved.ok()).toBeTruthy();
   await page.addInitScript(id => localStorage.setItem('lee-report-studio.report-instance.v1',id),instance.id);
   await page.setViewportSize({width:1440,height:900});
-  await page.goto('/',{waitUntil:'networkidle'});
+  await page.goto('/?editor=1',{waitUntil:'networkidle'});
   await page.locator('.rail').getByTitle('Pages',{exact:true}).click();
   await expect(page.locator('.page-list > button')).toHaveCount(44);
   const target=page.locator('.page-list > button').filter({hasText:'I-55'}).first();
@@ -90,7 +90,7 @@ test('inspect contextual controls and constrained desktop layouts', async ({page
   expect((await request.post('/api/report-instances',{data:instance})).ok()).toBeTruthy();
   await page.addInitScript(id=>localStorage.setItem('lee-report-studio.report-instance.v1',id),instance.id);
   await page.setViewportSize({width:1440,height:900});
-  await page.goto('/',{waitUntil:'networkidle'});
+  await page.goto('/?editor=1',{waitUntil:'networkidle'});
   await page.locator('.rail').getByTitle('Elements',{exact:true}).click();
   const layer=(type:string)=>page.locator('.layer-list > button').filter({has:page.locator('small').filter({hasText:new RegExp(`^${type}$`)})}).first();
   await layer('text').click();

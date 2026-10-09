@@ -4,7 +4,7 @@ test("text vertical alignment and color controls update the canvas", async ({
   page,
 }) => {
   // The initial template/API load can reset selection; interact after it settles.
-  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/?editor=1", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("button", { name: "Elements" }).click();
@@ -40,7 +40,7 @@ test("text vertical alignment and color controls update the canvas", async ({
 test("wide text visibly honors left, center, right, resize, rotation, and undo", async ({
   page,
 }, testInfo) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.locator(".rail").getByTitle("Text").click();
   await page.getByRole("button", { name: "Add body text" }).click();
   await page
@@ -108,7 +108,7 @@ const readRotation = (locator: import("@playwright/test").Locator) =>
   });
 
 async function selectTopAvailabilities(page: Page) {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Highlights" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
@@ -220,7 +220,7 @@ test("drag rotation handle snaps to 45 and free rotation bypasses snapping with 
 test("structured tables support real-mouse selection, edit mode, cell and column controls, undo and Escape", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Overall Market Table" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
@@ -268,7 +268,7 @@ test("structured tables support real-mouse selection, edit mode, cell and column
 test("Market Indicators, Top Leases, and Top Sales are real-mouse selectable structured tables", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.getByRole("button", { name: /Pages/ }).click();
   await page.getByRole("button", { name: "Market Overview" }).click();
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");

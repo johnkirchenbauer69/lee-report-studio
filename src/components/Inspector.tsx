@@ -1,4 +1,5 @@
 import { ClosingContentEditor } from "./ClosingContentEditor";
+import { displayAssetName } from "../shared/assetNames";
 import type {
   Asset,
   BevelStyle,
@@ -80,14 +81,14 @@ interface Props {
 function Section({
   title,
   children,
-  open = true,
+  open,
 }: {
   title: string;
   children: React.ReactNode;
   open?: boolean;
 }) {
   return (
-    <details className="inspector-section" open={open}>
+    <details className={`inspector-section ${/Typography|Image|Chart Type|Legend|Series|Table$|Closing page content/.test(title) ? "content-section" : /Fill|Appearance/.test(title) ? "style-section" : /Position|Arrange/.test(title) ? "layout-section" : /Binding|Chart Data/.test(title) ? "data-section" : "effects-section"}`} open={open ?? /Typography|Image|Chart Type|Legend|Series|Table$|Closing page content|Fill|Arrange/.test(title)}>
       <summary>
         {title}
         <span>⌄</span>
@@ -746,12 +747,13 @@ export function Inspector({
       <div className="inspector-header">
         <div>
           <strong>
-            {selectionCount > 1 ? `${selectionCount} elements` : element.name}
+            {selectionCount > 1 ? `${selectionCount} elements` : displayAssetName(element.name)}
           </strong>
           <span>{selectionCount > 1 ? "Multi-selection" : element.type}</span>
         </div>
         <span className="type-chip">{element.type}</span>
       </div>
+      <div className="inspector-layout">
       <Section title="Position & Size">
         {selectionCount === 1 && (
           <label>
@@ -2467,6 +2469,7 @@ export function Inspector({
           </>
         )}
       </Section>
+      </div>
     </aside>
   );
 }

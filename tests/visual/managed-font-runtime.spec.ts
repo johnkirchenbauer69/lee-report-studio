@@ -45,7 +45,7 @@ test("managed Nunito Sans resolves, loads, and never exposes a raw CSS family te
   test.skip(!faces.length, "The local managed font store is not installed.");
   expect(faces).toHaveLength(14);
 
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.locator(".rail").getByTitle("Fonts").click();
   const nunitoCard = page.locator(".font-family-card").filter({
     has: page.locator("header strong", { hasText: "Nunito Sans" }),
@@ -108,7 +108,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
   for (const family of DISALLOWED_FAMILIES)
     expect(families).not.toContain(family);
 
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.locator(".rail").getByTitle("Fonts").click();
   await expect(page.locator(".font-family-card")).toHaveCount(12);
   for (const family of APPROVED_FAMILIES)

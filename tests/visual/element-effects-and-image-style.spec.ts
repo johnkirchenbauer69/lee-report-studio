@@ -85,7 +85,7 @@ test("text and shape shadows plus image stroke and clipping persist through save
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/?editor=1", { waitUntil: "load" });
     await openTemplatePage(page, created.version, fixturePage!.name);
 
     const textNode = page.getByTestId(text.id);

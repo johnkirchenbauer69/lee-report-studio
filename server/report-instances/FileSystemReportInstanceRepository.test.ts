@@ -283,3 +283,23 @@ describe("FileSystemReportInstanceRepository", () => {
     );
   });
 });
+
+
+describe("finalized report publication", () => {
+  it("freezes the exact saved snapshot and rejects all subsequent document writes", async () => {
+    instance.manualOverrides = [{ elementId: "indicator-table", cellKey: '["metricKey:trailing12MonthNetAbsorptionSf","period:2025 Q3"]', bindingPath: "indicatorRows.prior", generatedValue: "—", overrideValue: "12,657,528", createdAt: new Date().toISOString() }];
+    const saved = await repository.create(instance);
+    await expect(repository.publish(saved.id, saved.revision - 1)).rejects.toBeInstanceOf(ReportInstanceConflictError);
+    const published = await repository.publish(saved.id, saved.revision);
+    expect(published.status).toBe("published");
+    expect(published.publishedAt).toBeTruthy();
+    expect(published.pages).toEqual(saved.pages);
+    expect(published.manualOverrides).toEqual(saved.manualOverrides);
+    expect(published.dataSnapshot).toEqual(saved.dataSnapshot);
+    expect(published.narratives).toEqual(saved.narratives);
+    await expect(repository.patchDocument(saved.id, { baseRevision: published.revision, pages: [], manualOverrides: [] })).rejects.toThrow("read-only");
+    await expect(repository.save({ ...saved, status: "draft" })).rejects.toThrow("read-only");
+    await expect(repository.update(saved.id, current => ({ ...current, status: "draft" }))).rejects.toThrow("read-only");
+    expect(await new FileSystemReportInstanceRepository(root).get(saved.id)).toEqual(published);
+  });
+});

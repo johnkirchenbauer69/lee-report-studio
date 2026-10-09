@@ -31,6 +31,10 @@ export function createReportInstanceRouter(
   capture?: (instance: ReportInstance) => Promise<ReportInstance>,
 ) {
   const router = Router();
+  router.post("/report-instances/:id/publish", async (request, response, next) => {
+    try { response.json(await repository.publish(request.params.id, request.body?.baseRevision)); }
+    catch (error) { if (conflict(error, response)) return; next(error); }
+  });
   const conflict = (error: unknown, response: Response) => {
     if (!(error instanceof ReportInstanceConflictError)) return false;
     response.status(409).json({

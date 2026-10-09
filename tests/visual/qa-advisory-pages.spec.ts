@@ -4,7 +4,7 @@ import { sampleTemplate } from "../../src/data/sampleTemplate";
 test("Pages is a dedicated, independently scrollable navigation panel", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
 
   const navTitles = await page
     .locator(".rail > button")
@@ -56,7 +56,7 @@ test("warnings can be reviewed or explicitly accepted without individual dismiss
   page,
 }) => {
   test.setTimeout(120_000);
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
 
   await page.getByRole("button", { name: "Export PDF" }).click();
   const dialog = page.getByRole("dialog", {

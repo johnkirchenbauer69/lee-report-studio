@@ -27,7 +27,7 @@ test("table display override survives save/reopen, prints in PDF, and clears to 
     localStorage.setItem("lee-report-studio.report-instance.v1", id);
     localStorage.removeItem("lee-report-studio.template.v1");
   }, instance.id);
-  await page.goto("/");
+  await page.goto("/?editor=1");
   const node = page.getByTestId(table.id);
   const cell = node.locator("tbody tr").first().locator("td").last();
   await expect(cell).toHaveText("—");

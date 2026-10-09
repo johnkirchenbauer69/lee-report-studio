@@ -47,7 +47,7 @@ test("Overall Market links navigate to stable overview pages without saving", as
     key: reportKey,
     id: persisted.id,
   });
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await expect(page.locator(".statusbar")).toContainText("Report saved at");
   await page.waitForTimeout(300);
   await page.locator(".rail").getByTitle("Pages").click();

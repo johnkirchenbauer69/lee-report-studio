@@ -6,6 +6,8 @@ import {
   type ExportPlan,
 } from "../report-engine/market-assets/contracts";
 import "../styles/market-assets.css";
+import { GlobalNavigation } from "./ApplicationHub";
+import "../styles/workspace.css";
 
 type SavedReport = {
   id: string;
@@ -50,14 +52,22 @@ export function MarketAssetWorkspace() {
     [job, setJob] = useState<ExportJob>(),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportsError, setReportsError] = useState("");
+  const [catalogRetry, setCatalogRetry] = useState(0);
+  const [downloadStarted, setDownloadStarted] = useState(false);
   const active =
     !!job &&
     ["queued", "validating", "rendering", "packaging"].includes(job.state);
   useEffect(() => {
+    let current = true;
+    setReportsLoading(true); setReportsError("");
     api<SavedReport[]>("/reports")
-      .then(setReports)
-      .catch((e) => setError(e.message));
-  }, []);
+      .then(items => { if (!current) return; setReports(items); const id = new URLSearchParams(window.location.search).get("report"); if(id) void loadReport(id); })
+      .catch((e) => { if(current) setReportsError(e.message); })
+      .finally(() => { if(current) setReportsLoading(false); });
+    return () => { current = false; };
+  }, [catalogRetry]);
   useEffect(() => {
     if (!active || !job) return;
     const timer = window.setInterval(
@@ -99,6 +109,8 @@ export function MarketAssetWorkspace() {
     invalidate();
     setReport(undefined);
     setMarkets([]);
+    setDownloadStarted(false);
+    if (!active) setJob(undefined);
     if (!id) return;
     setLoading(true);
     try {
@@ -107,6 +119,7 @@ export function MarketAssetWorkspace() {
       );
       setReport(details);
       setMarkets(details.markets.map((m) => m.id));
+      const url = new URL(window.location.href); url.searchParams.set("report", id); window.history.replaceState({}, "", url);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -146,15 +159,7 @@ export function MarketAssetWorkspace() {
     job && ["completed", "completed_with_warnings"].includes(job.state);
   return (
     <div className="asset-workspace">
-      <header className="asset-header">
-        <a href="/">LEE Report Studio</a>
-        <nav aria-label="Primary navigation">
-          <a href="/">Report Editor</a>
-          <a href="/?marketAssets=1" aria-current="page">
-            Market Assets
-          </a>
-        </nav>
-      </header>
+      <GlobalNavigation destination="market-assets" />
       <main>
         <div className="asset-intro">
           <p className="asset-eyebrow">LEE &amp; ASSOCIATES</p>
@@ -172,7 +177,7 @@ export function MarketAssetWorkspace() {
             Report
             <select
               aria-label="Saved report"
-              disabled={loading || active}
+              disabled={reportsLoading || loading || active}
               value={report?.id ?? ""}
               onChange={(e) => void loadReport(e.target.value)}
             >
@@ -184,14 +189,17 @@ export function MarketAssetWorkspace() {
               ))}
             </select>
           </label>
-          {!reports.length && (
+          {reportsLoading && <p role="status">Loading saved reports…</p>}
+          {reportsError && <div role="alert"><p>{reportsError}</p><button onClick={() => setCatalogRetry(n=>n+1)}>Retry loading reports</button></div>}
+          {!reportsLoading && !reportsError && !reports.length && (
             <p>
               No saved reports are available. Save a generated report in the
-              editor first.
+              editor first. <a href="/?workspace=reports">Create a report</a>
             </p>
           )}
           {report && (
             <>
+              <p><a href={`/?editor=1&report=${encodeURIComponent(report.id)}`}>Open this report</a> · Saved snapshot revision {report.revision} · <code title={report.snapshotHash}>{report.snapshotHash.slice(0,12)}</code></p>
               <dl className="asset-metadata">
                 <div>
                   <dt>Reporting period</dt>
@@ -216,6 +224,7 @@ export function MarketAssetWorkspace() {
             </>
           )}
         </section>
+        {loading && <p role="status">{report ? "Preparing export…" : "Opening saved report…"}</p>}
         {report && (
           <>
             <div className="asset-columns">
@@ -433,6 +442,7 @@ export function MarketAssetWorkspace() {
           <section className="asset-card asset-job" aria-live="polite">
             <h2>Export {job.state.replaceAll("_", " ")}</h2>
             <p>{job.reportName}</p>
+            <small>Export job {job.id}{job.manifest ? ` · Snapshot revision ${job.manifest.revision}` : ""}</small>
             <progress value={job.completed} max={job.total} />
             <p>
               {job.completed} of {job.total} assets processed
@@ -459,9 +469,11 @@ export function MarketAssetWorkspace() {
                 <a
                   className="asset-primary"
                   href={`/api/market-assets/jobs/${job.id}/download`}
+                  onClick={() => setDownloadStarted(true)}
                 >
                   Download {job.zipName}
                 </a>
+                {downloadStarted && <p role="status">Download requested. Check your browser downloads for {job.zipName}.</p>}
                 <p>
                   Available until {new Date(job.expiresAt).toLocaleString()}.
                   The ZIP includes ExportManifest.json.

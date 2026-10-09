@@ -117,22 +117,7 @@ export class MarketAssetService {
     }
   }
   async reports() {
-    const priority = { published: 0, approved: 1, draft: 2 };
-    return (await this.options.repository.list())
-      .sort(
-        (a, b) =>
-          priority[a.status] - priority[b.status] ||
-          b.generatedAt.localeCompare(a.generatedAt),
-      )
-      .map((i) => ({
-        id: i.id,
-        name: i.dataSnapshot.report.title,
-        period: i.dataSnapshot.report.period,
-        status: i.status,
-        generatedAt: i.generatedAt,
-        templateVersion: i.templateVersion,
-        revision: i.revision,
-      }));
+    return this.options.repository.summaries();
   }
   async report(id: string) {
     const instance = await this.getInstance(id),

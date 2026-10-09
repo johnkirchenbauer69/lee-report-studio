@@ -5,6 +5,9 @@ import { TemplateVersionConflictError } from "../templates/FileSystemTemplateRep
 
 export function createTemplateRouter(repository: TemplateRepository) {
   const router = Router();
+  router.post("/templates/:id/versions/:version/archive-older", async (request, response, next) => {
+    try { if (!repository.archiveOlderVersions) throw new Error("Template archive is unavailable."); response.json({ archived: await repository.archiveOlderVersions(request.params.id, request.params.version) }); } catch (error) { next(error); }
+  });
   const conflict = (error: unknown, response: Response) => {
     if (!(error instanceof TemplateVersionConflictError)) return false;
     response.status(409).json({

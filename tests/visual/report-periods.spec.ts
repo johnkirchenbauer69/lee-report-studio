@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 async function openPeriodStep(page: import("@playwright/test").Page) {
-  await page.goto("/");
+  await page.goto("/?editor=1");
   await expect(
     page.locator(".topbar .brand > div:last-child > span"),
   ).not.toContainText("local recovery");

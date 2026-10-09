@@ -631,6 +631,7 @@ export const reportInstanceSchema = z
         issues: z.array(validationIssueSchema),
       })
       .strict(),
+    publishedAt: timestamp.optional(),
     status: z.enum(["draft", "approved", "published"]),
   })
   .strict();

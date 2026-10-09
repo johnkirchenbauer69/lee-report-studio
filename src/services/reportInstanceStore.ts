@@ -135,6 +135,7 @@ export const reportInstanceStore = {
       input,
       15_000,
     ),
+  publish: (id: string, baseRevision: number) => send<ReportInstance>(`/api/report-instances/${encodeURIComponent(id)}/publish`, "POST", { baseRevision }),
   refresh: (id: string) =>
     send<ReportInstance>(
       `/api/report-instances/${encodeURIComponent(id)}/narratives/refresh`,

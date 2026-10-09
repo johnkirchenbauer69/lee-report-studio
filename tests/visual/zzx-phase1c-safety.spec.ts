@@ -38,7 +38,7 @@ test("crop and table edit modes reset across page navigation and Escape", async 
   // Earlier editor suites can leave several template versions for the initial
   // repository hydration to resolve. Wait for that load to finish before
   // selecting an element so it cannot be replaced by the hydrated document.
-  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/?editor=1", { waitUntil: "networkidle" });
   await ensureDraft(page);
 
   await selectCoverImage(page);

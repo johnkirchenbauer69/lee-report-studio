@@ -24,7 +24,7 @@ test("draft cards expose a red Delete Draft action with cancel and confirmed per
   const createdUrl = `/api/templates/${encodeURIComponent(created.id)}/versions/${encodeURIComponent(created.version)}`;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/?editor=1", { waitUntil: "load" });
     await page.getByRole("button", { name: /Templates/ }).click();
     const publishedCard = page
       .locator(".template-version-list section")

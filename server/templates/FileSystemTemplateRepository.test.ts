@@ -364,3 +364,22 @@ describe("FileSystemTemplateRepository", () => {
     expect(next.label).toBe("Q3 2026 working draft");
   });
 });
+
+
+it("archives only older versions while retaining all template content and newer drafts", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "lee-template-archive-")); roots.push(root);
+  const repository = new FileSystemTemplateRepository(root);
+  await repository.initialize(sampleTemplate);
+  const [first] = await repository.list();
+  const retained = await repository.createVersion(first.id, first.version);
+  const newer = await repository.createVersion(retained.id, retained.version);
+  const before = await repository.get(first.id, first.version);
+  expect(await repository.archiveOlderVersions(first.id, retained.version)).toBe(1);
+  const archived = await repository.get(first.id, first.version);
+  expect(archived?.status).toBe("archived");
+  expect(archived?.template).toEqual(before?.template);
+  expect(archived?.checksum).toEqual(before?.checksum);
+  expect((await repository.get(retained.id, retained.version))?.status).toBe("draft");
+  expect((await repository.get(newer.id, newer.version))?.status).toBe("draft");
+  expect(await repository.archiveOlderVersions(first.id, retained.version)).toBe(0);
+});

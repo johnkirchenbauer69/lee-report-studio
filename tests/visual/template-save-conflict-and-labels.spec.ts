@@ -26,7 +26,7 @@ async function createDraft(page: Page) {
 }
 
 async function openDraft(page: Page, version: string) {
-  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/?editor=1", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Templates/ }).click();
   const card = page
     .locator(".template-version-list section")
@@ -120,7 +120,7 @@ test("a draft version can be given a custom label that persists and survives rel
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "networkidle" });
+    await page.goto("/?editor=1", { waitUntil: "networkidle" });
     await page.getByRole("button", { name: /Templates/ }).click();
     const card = page
       .locator(".template-version-list section")

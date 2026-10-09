@@ -201,7 +201,7 @@ function editorFixture(
 }
 
 async function openVersion(page: Page, version: string, status: string) {
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await page.getByRole("button", { name: /Templates/ }).click();
   const card = page
     .locator(".template-version-list section")
@@ -517,7 +517,7 @@ test("a generated 44-page report reopens and exports after its source draft is d
     id: saved.id,
   });
   const page = await context.newPage();
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await expect(page.locator(".topbar")).toContainText("Report Instance");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   await page.getByRole("button", { name: "Validate", exact: true }).click();
@@ -598,7 +598,7 @@ test("a legacy report without snapshot metadata is not forgotten when its source
   page.on("console", (message) => {
     if (message.type() === "warning") warnings.push(message.text());
   });
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await expect(page.locator(".topbar")).toContainText("Report Instance");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   expect(warnings.join("\n")).toContain(

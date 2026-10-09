@@ -20,6 +20,7 @@ import {
 interface Props {
   instance: ReportInstance;
   onChange: (instance: ReportInstance) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const labels: Record<NarrativeContextCategory, string> = {
@@ -177,7 +178,7 @@ const displayErrorDetail = (error: string, errorCode?: string) =>
     ? error.slice(errorCode.length + 2)
     : error;
 
-export function NarrativeWorkspace({ instance, onChange }: Props) {
+export function NarrativeWorkspace({ instance, onChange, onDirtyChange }: Props) {
   const [selectedMarketId, setSelectedMarketId] = useState(
     instance.narratives[0]?.marketId ?? "overall-market",
   );
@@ -185,6 +186,13 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
     instance.narratives.find((item) => item.marketId === selectedMarketId) ??
     instance.narratives[0]!;
   const [draftText, setDraftText] = useState(selected.text);
+  useEffect(() => { onDirtyChange?.(draftText !== selected.text); }, [draftText, selected.text, onDirtyChange]);
+  useEffect(() => {
+    if(draftText === selected.text) return;
+    const warn = (event: BeforeUnloadEvent) => {event.preventDefault();};
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draftText, selected.text]);
   const [instruction, setInstruction] = useState("");
   const [context, setContext] = useState<PublicNarrativeContext>();
   const [config, setConfig] = useState<NarrativeConfig>();
@@ -423,7 +431,7 @@ export function NarrativeWorkspace({ instance, onChange }: Props) {
               key={record.marketId}
               role="listitem"
               className={record.marketId === selected.marketId ? "selected" : ""}
-              onClick={() => setSelectedMarketId(record.marketId)}
+              onClick={() => { if(draftText !== selected.text) {setError("Save your narrative edit before selecting another market."); return;} setSelectedMarketId(record.marketId); }}
             >
               <strong>{record.marketName}</strong>
               <span className={`narrative-status status-${record.status}`}>

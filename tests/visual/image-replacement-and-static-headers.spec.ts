@@ -79,7 +79,7 @@ test("static headers are editable and Replace Image preserves the selected image
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "networkidle" });
+    await page.goto("/?editor=1", { waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Data Methodology");
 
     await selectLayer(page, /DATA METHODOLOGY.*text/i);
@@ -286,7 +286,7 @@ test("static page header backgrounds are directly selectable, editable, and pers
   ] as const;
 
   try {
-    await page.goto("/", { waitUntil: "networkidle" });
+    await page.goto("/?editor=1", { waitUntil: "networkidle" });
     // Open the draft once; re-invoking "Open Draft" per page (as
     // openTemplatePage does) would re-fetch it from the server on every
     // iteration and discard the previous iteration's unsaved in-memory edit.
@@ -414,7 +414,7 @@ test("static page footers are directly selectable, editable, and persist", async
   ] as const;
 
   try {
-    await page.goto("/", { waitUntil: "networkidle" });
+    await page.goto("/?editor=1", { waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Market Overview");
     const chips = page.getByTestId("lee-deal-chip");
     await expect(chips).toHaveCount(2);

@@ -108,7 +108,7 @@ async function openReport(
     id: reportId,
   });
   const page = await context.newPage();
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   await expect(page.getByTestId("persistence-text")).toBeVisible();
   return { context, page };
 }
@@ -328,7 +328,7 @@ test("matching local recovery restores pending edits and resumes authoritative s
   await opened.page.close();
 
   const restoredPage = await opened.context.newPage();
-  await restoredPage.goto("/", { waitUntil: "load" });
+  await restoredPage.goto("/?editor=1", { waitUntil: "load" });
   await expect(restoredPage.getByTestId("persistence-text")).toBeVisible();
   await restoredPage.getByTestId("persistence-text").click();
   await expect(restoredPage.getByLabel("Layer name")).toHaveValue(

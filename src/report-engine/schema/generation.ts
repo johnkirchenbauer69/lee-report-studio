@@ -145,5 +145,6 @@ export interface ReportInstance {
    */
   brokerInterviews?: BrokerInterviewSet;
   readiness: ReportReadiness;
+  publishedAt?: string;
   status: "draft" | "approved" | "published";
 }

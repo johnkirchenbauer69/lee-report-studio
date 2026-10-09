@@ -1,3 +1,4 @@
+import { displayAssetName } from "../shared/assetNames";
 import type { DatasetSectionStatus } from "../report-engine/schema/industrialMarketReport";
 import type { ValidationItem } from "../types/report";
 
@@ -41,7 +42,7 @@ export function ValidationPanel({
         key={`${item.message}-${index}`}
       >
         <span>{severityIcon(item.level)}</span>
-        <em>{item.message}</em>
+        <em>{displayAssetName(item.message)}{item.pageId && <small className="qa-page-label"> · Page {item.pageId}</small>}{item.elementId && <small> · Review placement or approved page bleed</small>}</em>
         {item.elementId && (
           <button onClick={() => onSelect?.(item.elementId!, item.pageId)}>
             Select
@@ -64,6 +65,7 @@ export function ValidationPanel({
           </span>
         </div>
       </div>
+      <p className="validation-empty">Document checks update as you edit. Full PDF export preflight additionally checks fonts, images and report data.</p>
       {items.length === 0 && (
         <p className="validation-empty" role="status">
           No issues found in the current page checks. Export PDF also checks
@@ -102,6 +104,7 @@ export function ValidationPanel({
       )}
       {informationalItems.length > 0 && (
         <section className="validation-group informational-group">
+          <strong>Passed checks and information</strong>
           {renderItems(informationalItems)}
         </section>
       )}

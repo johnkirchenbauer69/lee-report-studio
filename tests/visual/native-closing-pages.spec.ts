@@ -219,7 +219,7 @@ test("contact edits use the Inspector and survive Save and reopening the templat
       await route.fulfill({ json: { assets: [] } });
     else await route.fulfill({ json: {} });
   });
-  await page.goto("/");
+  await page.goto("/?editor=1");
   await page
     .getByTestId("contacts-content")
     .click({ position: { x: 80, y: 15 } });

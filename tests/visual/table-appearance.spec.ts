@@ -62,7 +62,7 @@ test("table appearance controls persist and render consistently across editor, s
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/?editor=1", { waitUntil: "load" });
 
     // A. Overall Market Table: a whole-table drop shadow, applied once at
     // the container level (never per-cell).
