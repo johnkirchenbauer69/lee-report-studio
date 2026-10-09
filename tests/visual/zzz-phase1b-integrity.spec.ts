@@ -233,6 +233,7 @@ async function exportTemplate(page: Page) {
   await revealViewOptions(page);
   await page.getByRole("button", { name: "Download JSON source", exact: true }).click();
   const download = await downloadPromise;
+  await page.locator(".view-options > summary").click();
   const downloadedPath = await download.path();
   expect(downloadedPath).not.toBeNull();
   return JSON.parse(await readFile(downloadedPath!, "utf8")) as ReportTemplate;
