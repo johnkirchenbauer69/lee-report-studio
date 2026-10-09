@@ -122,6 +122,14 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
     await mkdir(this.root, { recursive: true });
   }
 
+  async deletedIds(): Promise<string[]> {
+    try { const metadata = JSON.parse(await readFile(path.join(path.dirname(this.root), "deleted-report-instances.json"), "utf8")); return metadata.ids.filter((id: unknown) => typeof id === "string" && /^report-[a-zA-Z0-9-]+$/.test(id)); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  }
+
+  private async assertNotDeleted(id: string) {
+    if ((await this.deletedIds()).includes(id)) throw new Error("This legacy report was permanently removed. Recovery cannot recreate it.");
+  }
+
   private file(id: string) {
     return path.join(this.root, `${safeId(id)}.json`);
   }
@@ -249,6 +257,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
 
   async create(instance: ReportInstance) {
     return this.enqueue(instance.id, "create", async () => {
+      await this.assertNotDeleted(instance.id);
       const started = Date.now();
       const current = await this.readCurrent(instance.id);
       if (current)
@@ -276,6 +285,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
       options.operation ?? "replace",
       async () => {
         const started = Date.now();
+        await this.assertNotDeleted(instance.id);
         const current = await this.readCurrent(instance.id);
         if (current?.status === "published") throw new Error("Published reports are read-only.");
         this.assertRevision(instance.id, options.expectedRevision, current);

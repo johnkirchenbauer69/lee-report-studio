@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { BrandLogo, useBrandTypography } from "./BrandLogo";
 import type { TemplateVersionSummary } from "../types/templateLibrary";
 
 export type Destination = "home" | "reports" | "templates" | "editor";
 export type SavedReportSummary = { id: string; name: string; period: string; status: string; generatedAt: string; modifiedAt?: string; templateVersion: string; revision: number };
 
 export function GlobalNavigation({ destination, onNavigate }: { destination: string; onNavigate?: (destination: Destination) => void }) {
+  useBrandTypography();
   return <nav className="application-nav" aria-label="Application navigation">
-    <a className="application-brand" href="/" onClick={onNavigate ? e => { e.preventDefault(); onNavigate("home"); } : undefined}>LEE <span>Report Studio</span></a>
+    <a className="application-brand" href="/" onClick={onNavigate ? e => { e.preventDefault(); onNavigate("home"); } : undefined} aria-label="Lee & Associates Report Studio home"><BrandLogo compact /><span>Report Studio</span></a>
     {([['home', 'Home'], ['reports', 'Reports'], ['templates', 'Templates']] as const).map(([key, label]) => <a key={key} href={`/?workspace=${key}`} aria-current={destination === key ? "page" : undefined} onClick={onNavigate ? e => { e.preventDefault(); onNavigate(key); } : undefined}>{label}</a>)}
     <a href="/?marketAssets=1" aria-current={destination === "market-assets" ? "page" : undefined}>Market Assets</a>
     <a className="launcher-link" href="http://127.0.0.1:8799/" target="_blank" rel="noreferrer">Local app controls</a>
@@ -39,10 +41,11 @@ export function ApplicationHub({ destination, templates, onNavigate, onCreate, o
   useEffect(() => { void load(); }, [destination]);
   const filtered = useMemo(() => reports.filter(r => `${r.name} ${r.id}`.toLowerCase().includes(search.toLowerCase()) && (!period || r.period === period) && (!status || r.status === status)).sort((a,b) => sort === 'name' ? a.name.localeCompare(b.name) : (b.modifiedAt ?? b.generatedAt).localeCompare(a.modifiedAt ?? a.generatedAt)), [reports,search,period,status,sort]);
   const cards = (records: SavedReportSummary[]) => <div className="report-library-list">{records.map(r => <article className="library-card" key={r.id}>
-    <div><span className="document-badge">{r.status}</span><h3>{r.name}</h3><p>{r.period} · Template v{r.templateVersion}</p><small>{r.modifiedAt ? 'File last modified' : 'Created'} {new Date(r.modifiedAt ?? r.generatedAt).toLocaleString()}</small></div>
+    <div><span className={`document-badge status-${r.status}`}>{r.status}</span><h3>{r.name}</h3><p className="report-period">{r.period} <span>· Template v{r.templateVersion}</span></p><small>{r.modifiedAt ? 'File last modified' : 'Created'} {new Date(r.modifiedAt ?? r.generatedAt).toLocaleString()}</small></div>
     <div className="library-actions"><button className="primary-button" disabled={loadingDocument} onClick={() => onOpenReport(r.id)}>Open report</button><button disabled={loadingDocument} onClick={() => onOpenReport(r.id, true)}>Export PDF</button><a href={`/?marketAssets=1&report=${encodeURIComponent(r.id)}`}>Export Market Assets</a><details><summary>Report details</summary><dl><dt>Saved report</dt><dd>{r.id}</dd><dt>Revision</dt><dd>{r.revision}</dd><dt>Snapshot created</dt><dd>{new Date(r.generatedAt).toLocaleString()}</dd></dl></details></div>
   </article>)}</div>;
   return <main className="application-home">
+    {destination === "home" && <div className="dashboard-brand"><BrandLogo /><span>Report Studio</span></div> }
     <div className="destination-heading"><div><p className="eyebrow">LEE &amp; ASSOCIATES</p><h1>{destination === 'home' ? 'Your reports, ready to work on' : destination === 'reports' ? 'Reports' : 'Templates'}</h1><p>{destination === 'templates' ? 'Design reusable layouts. Published templates affect future reports only.' : 'Create a report, continue editing, or export your saved work.'}</p></div><button className="primary-button" disabled={loadingDocument} onClick={onCreate}>Create New Report</button></div>
     {destination === 'home' && <>
       <div className="home-actions">

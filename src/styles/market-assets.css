@@ -3,20 +3,20 @@ body:has(.asset-workspace) {
 }
 .asset-workspace {
   min-height: 100vh;
-  background: #f3f5f7;
-  color: #182d46;
-  font-family: Arial, sans-serif;
+  background: var(--ui-background);
+  color: var(--lee-charcoal);
+  font-family: var(--ui-font);
 }
 .asset-header {
   padding: 20px 5%;
   background: #fff;
-  border-bottom: 3px solid #4e131e;
+  border-bottom: 3px solid var(--lee-red);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .asset-header a {
-  color: #4e131e;
+  color: var(--lee-red);
   text-decoration: none;
   font-weight: 700;
 }
@@ -25,7 +25,7 @@ body:has(.asset-workspace) {
   gap: 28px;
 }
 .asset-header [aria-current] {
-  border-bottom: 2px solid #4e131e;
+  border-bottom: 2px solid var(--lee-red);
   padding-bottom: 6px;
 }
 .asset-workspace main {
@@ -41,7 +41,7 @@ body:has(.asset-workspace) {
   margin: 8px 0;
 }
 .asset-eyebrow {
-  color: #4e131e;
+  color: var(--lee-red);
   font-size: 12px;
   letter-spacing: 2px;
   font-weight: 700;
@@ -61,7 +61,7 @@ body:has(.asset-workspace) {
   float: right;
   font-size: 12px;
   font-weight: 400;
-  color: #5b6471;
+  color: var(--ui-muted);
   padding-top: 4px;
 }
 .asset-columns {
@@ -81,7 +81,7 @@ body:has(.asset-workspace) {
   padding: 11px;
   border: 1px solid #b9c3cc;
   border-radius: 4px;
-  color: #182d46;
+  color: var(--lee-charcoal);
   background: white;
   font: inherit;
   font-weight: 400;
@@ -94,7 +94,7 @@ body:has(.asset-workspace) {
 }
 .asset-metadata dt {
   font-size: 12px;
-  color: #5b6471;
+  color: var(--ui-muted);
 }
 .asset-metadata dd {
   margin: 6px 0 0;
@@ -112,7 +112,7 @@ body:has(.asset-workspace) {
   border-radius: 4px;
   background: white;
   padding: 9px 13px;
-  color: #182d46;
+  color: var(--lee-charcoal);
 }
 .asset-workspace button:disabled {
   opacity: 0.5;
@@ -130,12 +130,12 @@ body:has(.asset-workspace) {
   width: 17px;
   height: 17px;
   margin: 0;
-  accent-color: #4e131e;
+  accent-color: var(--lee-red);
   flex-shrink: 0;
 }
 .asset-check small {
   display: block;
-  color: #5b6471;
+  color: var(--ui-muted);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -151,9 +151,9 @@ body:has(.asset-workspace) {
 }
 .asset-workspace .asset-primary {
   display: inline-block;
-  background: #4e131e;
+  background: var(--lee-red);
   color: #fff;
-  border: 1px solid #4e131e;
+  border: 1px solid var(--lee-red);
   border-radius: 4px;
   padding: 12px 18px;
   text-decoration: none;
@@ -189,14 +189,14 @@ body:has(.asset-workspace) {
 .asset-job progress {
   width: 100%;
   height: 16px;
-  accent-color: #4e131e;
+  accent-color: var(--lee-red);
 }
 .market-assets-nav {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 14px 2px;
-  color: #4e131e;
+  color: var(--lee-red);
   text-decoration: none;
   font-size: 11px;
   text-align: center;

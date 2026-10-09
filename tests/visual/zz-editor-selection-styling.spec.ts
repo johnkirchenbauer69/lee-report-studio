@@ -1,10 +1,11 @@
+import { revealInspectorControls, revealViewOptions } from "../support/editorDisclosures";
 import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
 import { sampleTemplate } from "../../src/data/sampleTemplate";
 import type { ReportTemplate } from "../../src/types/report";
 
-const topbar = (page: Page) => page.locator(".topbar");
+const topbar = (page: Page) => page.locator(".document-header");
 const pageButtons = (page: Page) => page.locator(".page-list > button");
 const activePageIndex = (page: Page) =>
   pageButtons(page).evaluateAll((buttons) =>
@@ -17,12 +18,12 @@ async function openPages(page: Page) {
 }
 
 async function ensureDraft(page: Page) {
-  const save = topbar(page).getByRole("button", { name: "Save", exact: true });
+  const save = topbar(page).getByRole("button", { name: "Save Draft", exact: true });
   await expect(
-    topbar(page).getByRole("button", { name: "Save as version" }),
+    topbar(page).getByRole("button", { name: "Save as New Version" }),
   ).toBeEnabled();
   if (await save.isDisabled()) {
-    await topbar(page).getByRole("button", { name: "Save as version" }).click();
+    await topbar(page).getByRole("button", { name: "Save as New Version" }).click();
     await expect(save).toBeEnabled();
   }
 }
@@ -44,17 +45,17 @@ test("save, save-as and publish preserve the active page while open starts at pa
       response.request().method() === "PUT" &&
       /\/api\/templates\/[^/]+\/versions\/[^/]+$/.test(response.url()),
   );
-  await topbar(page).getByRole("button", { name: "Save", exact: true }).click();
+  await topbar(page).getByRole("button", { name: "Save Draft", exact: true }).click();
   expect((await saveResponse).ok()).toBe(true);
   await expect.poll(() => activePageIndex(page)).toBe(targetIndex);
 
-  const versionLabel = page.locator(".brand > div:last-child > span");
+  const versionLabel = page.locator(".document-identity span");
   const versionBeforeSaveAs = await versionLabel.innerText();
   const versionResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" && response.url().endsWith("/new"),
   );
-  await topbar(page).getByRole("button", { name: "Save as version" }).click();
+  await topbar(page).getByRole("button", { name: "Save as New Version" }).click();
   expect((await versionResponse).ok()).toBe(true);
   await expect(versionLabel).not.toHaveText(versionBeforeSaveAs);
   await expect.poll(() => activePageIndex(page)).toBe(targetIndex);
@@ -65,16 +66,17 @@ test("save, save-as and publish preserve the active page while open starts at pa
       response.url().endsWith("/publish"),
   );
   await topbar(page)
-    .getByRole("button", { name: "Publish", exact: true })
+    .getByRole("button", { name: "Publish Template", exact: true })
     .click();
+  await page.getByRole("button", { name: "Confirm Publish", exact: true }).click();
   expect((await publishResponse).ok()).toBe(true);
-  await expect(versionLabel).toContainText("Published — Read Only");
+  await expect(versionLabel).toContainText("published");
   await expect.poll(() => activePageIndex(page)).toBe(targetIndex);
   await expect(
-    topbar(page).getByRole("button", { name: "Save", exact: true }),
+    topbar(page).getByRole("button", { name: "Save Draft", exact: true }),
   ).toBeDisabled();
 
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const published = page
     .locator(".template-version-list > section")
     .filter({ hasText: "published" })
@@ -88,14 +90,14 @@ test("save, save-as and publish preserve the active page while open starts at pa
     (response) =>
       response.request().method() === "POST" && response.url().endsWith("/new"),
   );
-  await topbar(page).getByRole("button", { name: "Save as version" }).click();
+  await topbar(page).getByRole("button", { name: "Save as New Version" }).click();
   expect((await restoreDraftResponse).ok()).toBe(true);
   await expect(
-    topbar(page).getByRole("button", { name: "Save", exact: true }),
+    topbar(page).getByRole("button", { name: "Save Draft", exact: true }),
   ).toBeEnabled();
   await openPages(page);
   await pageButtons(page).nth(targetIndex).click();
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const draft = page
     .locator(".template-version-list > section")
     .filter({ hasText: "draft" })
@@ -118,9 +120,13 @@ test("image shadow and independent corners persist, with a live radius handle", 
     .click();
   const image = page.locator(".canvas-element.is-selected");
 
+  await revealInspectorControls(page);
+
   await page.getByLabel("Drop Shadow").check();
   await expect(image).toHaveCSS("box-shadow", /rgba\(0, 0, 0, 0\.25\)/);
+  await revealInspectorControls(page);
   await page.getByLabel("Link corner radii").uncheck();
+  await revealInspectorControls(page);
   await page.getByLabel("Top left radius").fill("24");
   await expect(image).toHaveCSS("border-top-left-radius", "24px");
   await expect(image).toHaveCSS("border-top-right-radius", "0px");
@@ -130,9 +136,9 @@ test("image shadow and independent corners persist, with a live radius handle", 
   );
 
   await openPages(page);
-  await topbar(page).getByRole("button", { name: "Save", exact: true }).click();
+  await topbar(page).getByRole("button", { name: "Save Draft", exact: true }).click();
   await expect(page.locator(".canvas-element.is-selected")).toHaveCount(1);
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const activeDraft = page
     .locator(".template-version-list > section.active")
     .filter({ hasText: "draft" });
@@ -151,7 +157,9 @@ test("image shadow and independent corners persist, with a live radius handle", 
   );
 
   await page.locator(".shape-grid > button").first().click();
+  await revealInspectorControls(page);
   await page.getByLabel("Link corner radii").uncheck();
+  await revealInspectorControls(page);
   await page.getByLabel("Top left radius").fill("8");
   const handle = page.getByRole("button", { name: "topLeft corner radius" });
   const handleBox = await handle.boundingBox();
@@ -165,7 +173,10 @@ test("image shadow and independent corners persist, with a live radius handle", 
       Number(await page.getByLabel("Top left radius").inputValue()),
     )
     .toBeGreaterThan(8);
+  await revealInspectorControls(page);
   await expect(page.getByLabel("Top right radius")).toHaveValue("0");
+
+  await revealInspectorControls(page);
 
   await page.getByLabel("Link corner radii").check();
   const linkedHandle = page.getByRole("button", {
@@ -178,6 +189,7 @@ test("image shadow and independent corners persist, with a live radius handle", 
   await page.mouse.down();
   await page.mouse.move(linkedBox.x + 15, linkedBox.y + 5, { steps: 5 });
   await page.mouse.up();
+  await revealInspectorControls(page);
   await page.getByLabel("Link corner radii").uncheck();
   const values = await Promise.all(
     [
@@ -195,16 +207,20 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
 }) => {
   await page.goto("/?editor=1", { waitUntil: "load" });
   await ensureDraft(page);
+  await revealViewOptions(page);
   await page.getByRole("button", { name: "px", exact: true }).click();
+  await page.locator(".view-options summary").click();
   await page.getByRole("button", { name: "Elements" }).click();
   await page.locator(".shape-grid > button").first().click();
   const first = page.locator(".canvas-element.is-selected");
   const firstId = await first.getAttribute("data-testid");
   if (!firstId) throw new Error("First shape has no stable ID.");
+  await revealInspectorControls(page);
   await page.getByLabel("Bevel").check();
   await expect(first).toHaveCSS("box-shadow", /inset/);
 
   await page.locator(".shape-grid > button").first().click();
+  await revealInspectorControls(page);
   await page.getByLabel(/^X/).fill("400");
   const second = page.locator(".canvas-element.is-selected");
   const secondId = await second.getAttribute("data-testid");
@@ -288,6 +304,7 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
     .locator(".layer-list button")
     .filter({ hasText: "Rectangle" });
   await shapeLayers.nth(0).click();
+  await revealInspectorControls(page);
   await page.getByLabel(/^X/).fill("130");
   await shapeLayers.nth(1).click({ modifiers: ["Shift"] });
   await expect(
@@ -319,6 +336,7 @@ test("table edit mode applies a text shadow only to the targeted header cell", a
   );
   const target = table.locator("th").nth(2);
   await target.click();
+  await revealInspectorControls(page);
   await page.getByLabel("Table selection text shadow").check();
   await expect(target).toHaveCSS("text-shadow", /rgba\(0, 0, 0, 0\.25\)/);
   await expect(table.locator("th").nth(1)).toHaveCSS("text-shadow", "none");

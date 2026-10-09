@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test, type Page } from "@playwright/test";
 
 test("text vertical alignment and color controls update the canvas", async ({
@@ -16,7 +17,9 @@ test("text vertical alignment and color controls update the canvas", async ({
   const positionSection = page
     .locator(".inspector-section")
     .filter({ hasText: "Position & Size" });
+  await revealInspectorControls(page);
   await positionSection.getByLabel(/^W/).fill("752");
+  await revealInspectorControls(page);
   await positionSection.getByLabel(/^H/).fill("27");
 
   await page.getByTitle("Vertically align text middle").click();
@@ -30,8 +33,12 @@ test("text vertical alignment and color controls update the canvas", async ({
     "center",
   );
 
+  await revealInspectorControls(page);
+
   await page.getByLabel("Text color picker").fill("#00ff00");
   await expect(selected).toHaveCSS("color", "rgb(0, 255, 0)");
+
+  await revealInspectorControls(page);
 
   await page.getByLabel("Color picker", { exact: true }).fill("#123456");
   await expect(selected).toHaveCSS("background-color", "rgb(18, 52, 86)");
@@ -51,10 +58,13 @@ test("wide text visibly honors left, center, right, resize, rotation, and undo",
   const position = page
     .locator(".inspector-section")
     .filter({ hasText: "Position & Size" });
+  await revealInspectorControls(page);
   await position.getByLabel(/^W/).fill("400");
+  await revealInspectorControls(page);
   await position.getByLabel(/^H/).fill("72");
   const element = page.locator(".canvas-element.is-selected");
 
+  await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
   const geometry = () =>
     element.locator(".text-value").evaluate((node) => {
       const range = document.createRange();
@@ -93,6 +103,7 @@ test("wide text visibly honors left, center, right, resize, rotation, and undo",
   await expect(page.getByTitle("Text align center")).toHaveClass(/active/);
   await page.keyboard.press("Control+Shift+z");
   await expect(page.getByTitle("Text align right")).toHaveClass(/active/);
+  await revealInspectorControls(page);
   await page.getByLabel(/^Rotation/).fill("90");
   await page.getByTitle("Text align center").click();
   await expect(element.locator(".text-value")).toHaveCSS(
@@ -152,6 +163,7 @@ test("drag rotation handle snaps to 90 and syncs the inspector field", async ({
   const selected = page.locator(".canvas-element.is-selected");
   const testId = await selected.getAttribute("data-testid");
   const stable = page.locator(`[data-testid="${testId}"]`);
+  await page.locator(".rotation-handle").hover();
   const box = await selected.boundingBox();
   if (!box) throw new Error("Selected element has no bounding box.");
   const centerX = box.x + box.width / 2;
@@ -173,6 +185,7 @@ test("drag rotation handle snaps to 90 and syncs the inspector field", async ({
     .locator(".layer-list")
     .getByRole("button", { name: /TOP AVAILABILITIES.*text/i })
     .click();
+  await revealInspectorControls(page);
   await expect(page.getByLabel(/^Rotation/)).toHaveValue("90");
 });
 
@@ -184,6 +197,7 @@ test("drag rotation handle snaps to 45 and free rotation bypasses snapping with 
   const selected = page.locator(".canvas-element.is-selected");
   const testId = await selected.getAttribute("data-testid");
   const stable = page.locator(`[data-testid="${testId}"]`);
+  await page.locator(".rotation-handle").hover();
   const box = await selected.boundingBox();
   if (!box) throw new Error("Selected element has no bounding box.");
   const centerX = box.x + box.width / 2;
@@ -202,6 +216,7 @@ test("drag rotation handle snaps to 45 and free rotation bypasses snapping with 
     .locator(".layer-list")
     .getByRole("button", { name: /TOP AVAILABILITIES.*text/i })
     .click();
+  await revealInspectorControls(page);
   await expect(page.getByLabel(/^Rotation/)).toHaveValue("45");
 
   // Free rotation: an angle just inside the 90-degree snap threshold would
@@ -226,24 +241,27 @@ test("structured tables support real-mouse selection, edit mode, cell and column
   await page.getByRole("combobox", { name: "Zoom" }).selectOption("100%");
 
   const tableElement = page.getByTestId("submarket-matrix");
+  await tableElement.scrollIntoViewIfNeeded();
   const box = await tableElement.boundingBox();
   if (!box)
     throw new Error("Overall Market table has no visible mouse target.");
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const stage = (await page.locator(".stage").boundingBox())!;
+  const target = { x: (Math.max(box.x, stage.x) + Math.min(box.x + box.width, stage.x + stage.width))/2, y: (Math.max(box.y, stage.y) + Math.min(box.y + box.height, stage.y + stage.height))/2 };
+  await page.mouse.click(target.x, target.y);
   await expect(tableElement).toHaveClass(/is-selected/);
 
-  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.dblclick(target.x, target.y);
   await expect(tableElement).toHaveClass(/is-table-editing/);
   const header = tableElement.locator("th").nth(5);
+  await header.scrollIntoViewIfNeeded();
   const headerBox = await header.boundingBox();
   if (!headerBox) throw new Error("Table header has no visible mouse target.");
-  await page.mouse.click(
-    headerBox.x + headerBox.width / 2,
-    headerBox.y + headerBox.height / 2,
-  );
+  await header.click();
   await expect(header).toHaveClass(/table-cell-selected/);
 
+  await revealInspectorControls(page);
   await page.getByRole("button", { name: "Select column" }).click();
+  await revealInspectorControls(page);
   await page.getByLabel("Table column width").fill("18");
   await expect(tableElement.locator("col").nth(5)).toHaveAttribute(
     "style",

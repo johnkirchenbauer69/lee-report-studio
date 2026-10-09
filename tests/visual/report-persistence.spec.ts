@@ -1,3 +1,4 @@
+import { revealInspectorControls, revealViewOptions } from "../support/editorDisclosures";
 import {
   expect,
   test,
@@ -125,21 +126,32 @@ test("generated report position, style, image, and table edits survive a fresh b
   const instance = await createFixture(request);
   const first = await openReport(browser, instance.id);
   await first.page.getByTestId("persistence-text").click();
+  await revealInspectorControls(first.page);
   const position = first.page
     .locator(".inspector-section")
     .filter({ hasText: "Position & Size" });
+  await revealViewOptions(first.page);
   const usesInches = await first.page
     .getByRole("button", { name: "in", exact: true })
     .evaluate((element) => element.classList.contains("active"));
   const positionInput = usesInches ? "0.75" : "72";
+  await first.page.locator(".view-options summary").click();
+  await revealInspectorControls(first.page);
+
   await position.getByLabel("Layer name").fill("Persisted text layer");
+
   await position.getByLabel(/^X/).fill(positionInput);
+  await revealInspectorControls(first.page);
   await first.page.getByLabel("Text color picker").fill("#1266aa");
 
   await first.page.getByTestId("persistence-image").click();
+
+  await revealInspectorControls(first.page);
   await first.page.getByLabel("Fit").selectOption("contain");
 
   await first.page.getByTestId("persistence-table").click();
+
+  await revealInspectorControls(first.page);
   await first.page.getByLabel("Table row height").fill("31");
   await waitForSaved(first.page);
 
@@ -172,13 +184,22 @@ test("generated report position, style, image, and table edits survive a fresh b
     "rgb(18, 102, 170)",
   );
   await reopened.page.getByTestId("persistence-text").click();
+  await revealInspectorControls(reopened.page);
+
   await expect(reopened.page.getByLabel("Layer name")).toHaveValue(
     "Persisted text layer",
   );
+
+  await revealInspectorControls(reopened.page);
+
   await expect(reopened.page.getByLabel(/^X/)).toHaveValue(positionInput);
   await reopened.page.getByTestId("persistence-image").click();
+  await revealInspectorControls(reopened.page);
+
   await expect(reopened.page.getByLabel("Fit")).toHaveValue("contain");
   await reopened.page.getByTestId("persistence-table").click();
+  await revealInspectorControls(reopened.page);
+
   await expect(reopened.page.getByLabel("Table row height")).toHaveValue("31");
   await reopened.context.close();
 });
@@ -190,6 +211,7 @@ test("manual overrides stay coherent through undo, redo, save, and reload", asyn
   const instance = await createFixture(request);
   const opened = await openReport(browser, instance.id);
   await opened.page.getByTestId("persistence-text").click();
+  await revealInspectorControls(opened.page);
   const editor = opened.page
     .locator(".inspector-section")
     .filter({ hasText: "Typography" })
@@ -234,10 +256,14 @@ test("a stale browser conflicts, keeps recovery, and cannot overwrite the accept
   const clientB = await openReport(browser, instance.id);
 
   await clientA.page.getByTestId("persistence-text").click();
+
+  await revealInspectorControls(clientA.page);
   await clientA.page.getByLabel("Layer name").fill("Client A accepted");
   await waitForSaved(clientA.page);
 
   await clientB.page.getByTestId("persistence-text").click();
+
+  await revealInspectorControls(clientB.page);
   await clientB.page.getByLabel("Layer name").fill("Client B stale");
   await expect(clientB.page.locator(".statusbar")).toContainText(
     "Report conflict",
@@ -282,6 +308,7 @@ test("autosave exposes failure, retains recovery, retries, and only then reports
     },
   );
   await opened.page.getByTestId("persistence-text").click();
+  await revealInspectorControls(opened.page);
   await opened.page.getByLabel("Layer name").fill("Retry persisted");
   await expect(opened.page.locator(".statusbar")).toContainText(
     "Report error",
@@ -320,6 +347,7 @@ test("matching local recovery restores pending edits and resumes authoritative s
       }),
   );
   await opened.page.getByTestId("persistence-text").click();
+  await revealInspectorControls(opened.page);
   await opened.page.getByLabel("Layer name").fill("Recovered pending edit");
   await expect(opened.page.locator(".statusbar")).toContainText(
     "Report error",

@@ -1,0 +1,278 @@
+/* Corporate identity tokens. Application chrome only; publication styles stay independent. */
+:root {
+  --lee-red: #98002e;
+  --lee-slate: #7e8083;
+  --lee-white: #ffffff;
+  --lee-charcoal: #303c42;
+  --lee-navy: #003146;
+  --lee-sky: #009ad9;
+  --lee-frost: #a9c3cb;
+  --lee-merlot: #4e131e;
+  --lee-bright-red: #cd1442;
+  --lee-green: #8a941e;
+  --lee-mint: #6fc9c4;
+  --lee-gradient: linear-gradient(
+    145deg,
+    #cd1442 0%,
+    #98002e 65%,
+    #4e131e 100%
+  );
+  --ui-font: "Lee Application Avenir", "Avenir Next", Arial, sans-serif;
+  --ui-space: 16px;
+  --ui-text: var(--lee-charcoal);
+  --ui-muted: #536168;
+  --ui-brand: var(--lee-red);
+  --ui-border: #d6dfe2;
+  --ui-radius: 8px;
+  --ui-background: #f3f5f5;
+  --ui-selected-surface: #eaf2f4;
+}
+:where(.app-shell, .asset-workspace) {
+  --navy: var(--lee-navy);
+  --navy-2: var(--lee-navy);
+  --blue: var(--lee-red);
+  --accent: var(--lee-sky);
+  --selected: var(--lee-navy);
+  --danger: var(--lee-red);
+  --muted: var(--ui-muted);
+  --border: var(--ui-border);
+  color: var(--ui-text);
+}
+:where(
+  .application-nav,
+  .application-home,
+  .document-header,
+  .editing-toolbar,
+  .left-panel,
+  .inspector,
+  .statusbar,
+  .review-dialog,
+  .report-wizard,
+  .asset-workspace
+) {
+  font-family: var(--ui-font);
+}
+:where(
+    .application-nav,
+    .application-home,
+    .document-header,
+    .editing-toolbar,
+    .left-panel,
+    .inspector,
+    .statusbar,
+    .review-dialog,
+    .report-wizard,
+    .asset-workspace
+  )
+  :where(button, input, select, textarea) {
+  font-family: var(--ui-font);
+}
+:where(
+    .application-home,
+    .document-header,
+    .left-panel,
+    .inspector,
+    .review-dialog,
+    .report-wizard,
+    .asset-workspace
+  )
+  button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+:where(
+    .application-home,
+    .document-header,
+    .left-panel,
+    .inspector,
+    .review-dialog,
+    .report-wizard,
+    .asset-workspace
+  )
+  .primary-button {
+  background: var(--lee-red);
+  color: var(--lee-white);
+  border-color: var(--lee-red);
+  box-shadow: none;
+}
+:where(
+    .application-home,
+    .document-header,
+    .left-panel,
+    .inspector,
+    .review-dialog,
+    .report-wizard,
+    .asset-workspace
+  )
+  .primary-button:hover:not(:disabled) {
+  background: var(--lee-merlot);
+  border-color: var(--lee-merlot);
+}
+:where(
+    .editing-toolbar,
+    .left-panel,
+    .inspector,
+    .report-wizard,
+    .asset-workspace
+  )
+  :where(button, input, select, textarea) {
+  font-size: 13px;
+}
+:where(.left-panel, .inspector) :where(label, summary) {
+  font-size: 13px;
+  color: var(--lee-charcoal);
+}
+.brand-logo {
+  display: block;
+  width: 240px;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: none;
+  box-shadow: none;
+}
+.brand-logo.compact {
+  width: 44px;
+  height: auto;
+}
+.application-nav {
+  padding: 10px 24px;
+  min-height: 64px;
+}
+.application-nav .application-brand {
+  margin-right: 12px;
+}
+.application-nav .application-brand:hover {
+  background: transparent;
+}
+.dashboard-brand {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 28px 0 32px;
+}
+.dashboard-brand span {
+  font-size: 18px;
+  color: var(--lee-charcoal);
+  border-left: 1px solid var(--ui-border);
+  padding-left: 24px;
+}
+.application-home .library-card {
+  box-shadow: none;
+  min-height: 112px;
+}
+.application-home .library-card .primary-button {
+  height: 36px;
+  padding: 0 18px;
+}
+.report-period {
+  font-weight: 700;
+  color: var(--lee-charcoal);
+}
+.report-period span {
+  font-weight: 400;
+}
+.document-badge.status-published {
+  background: var(--ui-selected-surface);
+  color: var(--lee-navy);
+  border: 1px solid var(--lee-frost);
+}
+.document-badge.status-draft {
+  background: #f9edf0;
+  color: var(--lee-red);
+  border: 1px solid #ecd1d9;
+}
+.document-header .document-actions button:disabled {
+  opacity: 0.6;
+}
+
+.redesigned-app .rail {
+  background: var(--lee-navy);
+}
+.redesigned-app .rail button {
+  font-family: var(--ui-font);
+}
+.redesigned-app .rail button.active {
+  color: var(--lee-red);
+}
+.redesigned-app .editing-toolbar button:hover {
+  color: var(--lee-red);
+  background: var(--ui-selected-surface);
+}
+.redesigned-app .statusbar {
+  font-family: Arial, sans-serif;
+}
+.document-loading {
+  gap: 16px;
+  align-content: center;
+  justify-items: center;
+}
+.document-loading .brand-logo {
+  width: 240px;
+}
+:where(
+    .application-nav,
+    .application-home,
+    .document-header,
+    .editing-toolbar,
+    .left-panel,
+    .inspector,
+    .review-dialog,
+    .report-wizard,
+    .asset-workspace
+  )
+  :focus-visible {
+  outline: 2px solid var(--lee-navy);
+  outline-offset: 3px;
+}
+@media (max-width: 1400px) {
+  .document-header {
+    gap: 10px;
+  }
+  .document-identity {
+    max-width: 45%;
+  }
+  .document-actions {
+    gap: 6px;
+  }
+  .document-header button,
+  .document-header a {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+}
+@media (max-width: 1000px) {
+  .application-nav {
+    padding: 8px 12px;
+  }
+  .application-nav .application-brand span {
+    display: none;
+  }
+  .library-card {
+    align-items: flex-start;
+  }
+  .dashboard-brand {
+    gap: 20px;
+  }
+  .dashboard-brand .brand-logo {
+    width: 200px;
+  }
+}
+
+:where(.left-panel, .application-home) .delete-draft-button {
+  color: var(--lee-red);
+  border-color: var(--lee-red);
+}
+/* Generator controls use the same corporate hierarchy as the application. */
+.report-wizard {font-family:var(--ui-font);color:var(--lee-charcoal);}
+.report-wizard :is(button,input,select,textarea) {font-family:var(--ui-font);}
+.report-wizard .eyebrow {color:var(--lee-red);font-size:11px;}
+.report-wizard .wizard-choice {border-color:var(--lee-red);}
+.report-wizard .template-preview {background:var(--lee-gradient);box-shadow:none;}
+.report-wizard .choice-check,.report-wizard footer .primary {background:var(--lee-red);color:var(--lee-white);border-color:var(--lee-red);}
+.report-wizard footer .primary:hover:not(:disabled) {background:var(--lee-merlot);}
+.report-wizard .source-options > button.selected {border-color:var(--lee-red);box-shadow:0 0 0 1px var(--lee-red);}
+.report-wizard .wizard-steps li {font-size:12px;}
+.report-wizard .wizard-steps li.active,.report-wizard .source-icon {color:var(--lee-navy);}
+.report-wizard .wizard-steps li.active span {background:var(--lee-navy);border-color:var(--lee-navy);color:var(--lee-white);}
+.report-wizard :is(input[type=radio],input[type=checkbox]) {accent-color:var(--lee-red);}

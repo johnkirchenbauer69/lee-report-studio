@@ -31,6 +31,7 @@ export function createReportInstanceRouter(
   capture?: (instance: ReportInstance) => Promise<ReportInstance>,
 ) {
   const router = Router();
+  router.get("/report-instances/deleted", async (_request, response, next) => { try { response.json({ ids: await repository.deletedIds() }); } catch (error) { next(error); } });
   router.post("/report-instances/:id/publish", async (request, response, next) => {
     try { response.json(await repository.publish(request.params.id, request.body?.baseRevision)); }
     catch (error) { if (conflict(error, response)) return; next(error); }

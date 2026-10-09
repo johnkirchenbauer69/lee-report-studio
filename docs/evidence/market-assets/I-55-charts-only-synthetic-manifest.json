@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "exportedAt": "2026-10-08T17:49:37.138Z",
+  "exportedAt": "2026-10-09T20:40:25.635Z",
   "reportName": "Synthetic Market Asset QA",
   "reportId": "report-market-assets-synthetic-qa",
   "reportingPeriod": "Q3 2026",
   "revision": 1,
-  "snapshotHash": "e9657ea83a31f27c97af17eece6be23032e092fd5c8d4af55a02844ca0171225",
+  "snapshotHash": "07cbc6b7640ccabffd786581f1aeb9f24d0c957fbb7b10257cbc94263735fd08",
   "templateVersion": "1.3.0",
-  "templateChecksum": "733598efc9cb490209611e7d6394df13d974dd18867571525485ed0326503b77",
-  "generatedAt": "2026-10-08T17:48:57.772Z",
+  "templateChecksum": "7cb754855e76bb3edeb940f874544a9c28bf39d9ef923ad99f78ce52f0afad49",
+  "generatedAt": "2026-10-09T20:39:41.726Z",
   "selectedMarkets": [
     {
       "id": "i55-corridor",
@@ -24,8 +24,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "265950644ad2281071746e57af933de455590ed24e0bdc9e6cf242f3a29ec8c0",
-      "bytes": 200191,
+      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "bytes": 230569,
       "warnings": []
     },
     {
@@ -33,8 +33,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "041f786f541363ad92c94d4927aee7f750f4247458320e3765cda5ec2fe7e0f4",
-      "bytes": 89459,
+      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "bytes": 101731,
       "warnings": []
     },
     {
@@ -42,8 +42,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "4549ed8f1a03acc9f22254f41408d356a0753fd06e16bdb17a7904d829a34643",
-      "bytes": 138668,
+      "checksum": "2e1b52757bf9d7591f717fd2a90710de1d2e9fa1e706f859f0c312225b66b9f0",
+      "bytes": 177650,
       "warnings": []
     },
     {
@@ -51,8 +51,8 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "1a138beddfe695d4f1c2f36bf999cc9b5775eaa6408c02a4eca5cd77e8e1bec8",
-      "bytes": 150746,
+      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
+      "bytes": 167984,
       "warnings": []
     }
   ],

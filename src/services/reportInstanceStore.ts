@@ -103,6 +103,11 @@ const send = async <T>(
 };
 
 export const reportInstanceStore = {
+  discardDeletedRecovery: async () => {
+    const { ids } = await json<{ ids: string[] }>(fetch("/api/report-instances/deleted"));
+    if (!Array.isArray(ids)) return;
+    for (const id of ids.filter(id => typeof id === "string" && /^report-[a-zA-Z0-9-]+$/.test(id))) { localStorage.removeItem(`lee-report-studio.report-recovery.v1.${id}`); if (localStorage.getItem("lee-report-studio.report-instance.v1") === id) localStorage.removeItem("lee-report-studio.report-instance.v1"); }
+  },
   lastId: () =>
     localStorage.getItem("lee-report-studio.report-instance.v1") ?? undefined,
   remember: (id: string) =>

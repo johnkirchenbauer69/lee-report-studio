@@ -194,8 +194,8 @@ test("table appearance controls persist and render consistently across editor, s
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 

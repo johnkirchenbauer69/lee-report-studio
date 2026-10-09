@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
@@ -95,13 +96,18 @@ test("text and shape shadows plus image stroke and clipping persist through save
     const textShadow = section(page, "Drop Shadow");
     await expect(textShadow).toBeVisible();
     await expect(textNode).toHaveCSS("text-shadow", "none");
+    await revealInspectorControls(page);
     await textShadow.getByLabel("Drop Shadow").check();
     await textShadow
       .getByRole("textbox", { name: "Shadow color" })
       .fill("#224466");
+    await revealInspectorControls(page);
     await textShadow.getByLabel("Shadow X Offset").fill("3");
+    await revealInspectorControls(page);
     await textShadow.getByLabel("Shadow Y Offset").fill("4");
+    await revealInspectorControls(page);
     await textShadow.getByLabel("Shadow Blur").fill("6");
+    await revealInspectorControls(page);
     await textShadow.getByLabel("Shadow Opacity").fill("35");
     await expect(textNode).toHaveCSS(
       "text-shadow",
@@ -113,13 +119,18 @@ test("text and shape shadows plus image stroke and clipping persist through save
     await expect(shapeNode).toHaveClass(/is-selected/);
     const shapeShadow = section(page, "Drop Shadow");
     await expect(shapeShadow).toBeVisible();
+    await revealInspectorControls(page);
     await shapeShadow.getByLabel("Drop Shadow").check();
     await shapeShadow
       .getByRole("textbox", { name: "Shadow color" })
       .fill("#102030");
+    await revealInspectorControls(page);
     await shapeShadow.getByLabel("Shadow X Offset").fill("-2");
+    await revealInspectorControls(page);
     await shapeShadow.getByLabel("Shadow Y Offset").fill("5");
+    await revealInspectorControls(page);
     await shapeShadow.getByLabel("Shadow Blur").fill("8");
+    await revealInspectorControls(page);
     await shapeShadow.getByLabel("Shadow Opacity").fill("40");
     await expect(shapeNode).toHaveCSS(
       "box-shadow",
@@ -134,11 +145,14 @@ test("text and shape shadows plus image stroke and clipping persist through save
     await expect(imageShadow.getByLabel("Drop Shadow")).not.toBeChecked();
     const imageStyle = section(page, "Stroke & Corners");
     await expect(imageStyle).toBeVisible();
+    await revealInspectorControls(page);
     await imageStyle.getByLabel("Stroke").check();
     await imageStyle
       .getByRole("textbox", { name: "Stroke color" })
       .fill("#c4123f");
+    await revealInspectorControls(page);
     await imageStyle.getByLabel("Stroke width").fill("4");
+    await revealInspectorControls(page);
     await imageStyle.getByLabel("Corner radius value").fill("18");
     await expect(imageNode).toHaveCSS("border-width", "4px");
     await expect(imageNode).toHaveCSS("border-radius", "18px");
@@ -205,8 +219,8 @@ test("text and shape shadows plus image stroke and clipping persist through save
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 

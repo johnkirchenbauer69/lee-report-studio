@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { extractText, getDocumentProxy } from "unpdf";
@@ -34,14 +35,18 @@ test("table display override survives save/reopen, prints in PDF, and clears to 
   await node.evaluate((element) => (element as HTMLElement).click());
   await page.getByRole("button", { name: "Edit table", exact: true }).click();
   await cell.click();
+  await revealInspectorControls(page);
   await expect(page.getByLabel("Table cell display value")).toHaveValue("—");
   const source = await page.getByLabel("Table cell source").inputValue();
+  await revealInspectorControls(page);
   await page.getByLabel("Override display value", { exact: true }).fill("=SUM(A1:A4)");
   await expect(page.getByRole("button", { name: "Apply override" })).toBeDisabled();
+  await revealInspectorControls(page);
   await page.getByLabel("Override display value", { exact: true }).fill("18,086,895");
   await page.getByRole("button", { name: "Apply override" }).click();
   await expect(cell).toHaveText("18,086,895");
   await expect(page.getByText("Manual override active", { exact: true })).toBeVisible();
+  await revealInspectorControls(page);
   await expect(page.getByLabel("Table cell source")).toHaveValue(source);
   await expect(page.locator(".statusbar")).toContainText("1 manual override");
   await expect(page.locator(".statusbar")).toContainText("Report saved");

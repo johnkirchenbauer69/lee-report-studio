@@ -7,7 +7,7 @@ import type { StoredTemplateVersion } from "../../src/types/templateLibrary";
 
 async function openVersion(page: Page, version: string) {
   await page.goto("/?editor=1");
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const card = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${version} · draft` });

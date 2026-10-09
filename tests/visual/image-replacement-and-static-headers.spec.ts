@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test, type Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
@@ -82,7 +83,8 @@ test("static headers are editable and Replace Image preserves the selected image
     await page.goto("/?editor=1", { waitUntil: "networkidle" });
     await openTemplatePage(page, created.version, "Data Methodology");
 
-    await selectLayer(page, /DATA METHODOLOGY.*text/i);
+    await selectLayer(page, /DATA METHODOLOGY text$/i);
+    await revealInspectorControls(page);
     await expect(
       page.getByRole("button", { name: "Replace Image" }),
     ).toHaveCount(0);
@@ -152,7 +154,9 @@ test("static headers are editable and Replace Image preserves the selected image
         .filter({ hasText: "Image" })
         .getByLabel("Crop zoom"),
     ).toHaveValue("100");
+    await revealInspectorControls(page);
     await expect(page.getByLabel("Crop X")).toHaveValue("50");
+    await revealInspectorControls(page);
     await expect(page.getByLabel("Crop Y")).toHaveValue("50");
 
     const saveResponse = page.waitForResponse(
@@ -161,8 +165,8 @@ test("static headers are editable and Replace Image preserves the selected image
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 
@@ -234,7 +238,7 @@ test("static headers are editable and Replace Image preserves the selected image
     expect(replacementName.length).toBeGreaterThan(0);
 
     await openTemplatePage(page, created.version, "Definitions");
-    await selectLayer(page, /DEFINITIONS.*text/i);
+    await selectLayer(page, /DEFINITIONS text$/i);
     await expect(page.locator(".inspector")).toContainText("text");
     await selectLayer(page, /Report Period.*text/i);
     await expect(page.locator(".inspector")).toContainText("text");
@@ -304,6 +308,7 @@ test("static page header backgrounds are directly selectable, editable, and pers
       }
       const headerMask = page.getByTestId(`${id}-header-mask`);
       await headerMask.click();
+      await revealInspectorControls(page);
       await expect(page.locator(".canvas-element.is-selected")).toHaveAttribute(
         "data-testid",
         `${id}-header-mask`,
@@ -346,8 +351,8 @@ test("static page header backgrounds are directly selectable, editable, and pers
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 
@@ -446,6 +451,7 @@ test("static page footers are directly selectable, editable, and persist", async
     for (const [id, name] of staticPages) {
       await goToStaticPage(name);
       await page.getByTestId(`${id}-footer-address`).click();
+      await revealInspectorControls(page);
       await expect(page.locator(".canvas-element.is-selected")).toHaveAttribute(
         "data-testid",
         `${id}-footer-address`,
@@ -467,8 +473,8 @@ test("static page footers are directly selectable, editable, and persist", async
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 

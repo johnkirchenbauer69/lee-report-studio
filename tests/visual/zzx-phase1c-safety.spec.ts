@@ -2,13 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Runs before the destructive Phase 1B source-draft deletion acceptance.
 
-const topbar = (page: Page) => page.locator(".topbar");
+const topbar = (page: Page) => page.locator(".document-header");
 const pageButtons = (page: Page) => page.locator(".page-list > button");
 
 async function ensureDraft(page: Page) {
-  const save = topbar(page).getByRole("button", { name: "Save", exact: true });
+  const save = topbar(page).getByRole("button", { name: "Save Draft", exact: true });
   if (await save.isDisabled()) {
-    await topbar(page).getByRole("button", { name: "Save as version" }).click();
+    await topbar(page).getByRole("button", { name: "Save as New Version" }).click();
     await expect(save).toBeEnabled();
   }
 }
@@ -87,7 +87,7 @@ test("crop and table edit modes reset across page navigation and Escape", async 
     (response) =>
       response.request().method() === "POST" && response.url().endsWith("/new"),
   );
-  await topbar(page).getByRole("button", { name: "Save as version" }).click();
+  await topbar(page).getByRole("button", { name: "Save as New Version" }).click();
   expect((await versionResponse).ok()).toBe(true);
   await expect(page.locator(".canvas-element.is-cropping")).toHaveCount(0);
 

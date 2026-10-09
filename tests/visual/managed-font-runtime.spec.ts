@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
@@ -61,6 +62,7 @@ test("managed Nunito Sans resolves, loads, and never exposes a raw CSS family te
     .locator(".layer-list")
     .getByRole("button", { name: /TOP AVAILABILITIES.*text/i })
     .click();
+  await revealInspectorControls(page);
   const typography = page
     .locator(".inspector-section")
     .filter({ hasText: "Typography" });
@@ -135,6 +137,7 @@ test("only approved families survive the runtime store, picker, and Chromium PDF
     .locator(".layer-list")
     .getByRole("button", { name: /TOP AVAILABILITIES.*text/i })
     .click();
+  await revealInspectorControls(page);
   const picker = page
     .locator(".inspector-section")
     .filter({ hasText: "Typography" })

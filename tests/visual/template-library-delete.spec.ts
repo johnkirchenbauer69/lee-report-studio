@@ -25,7 +25,7 @@ test("draft cards expose a red Delete Draft action with cancel and confirmed per
 
   try {
     await page.goto("/?editor=1", { waitUntil: "load" });
-    await page.getByRole("button", { name: /Templates/ }).click();
+    await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
     const publishedCard = page
       .locator(".template-version-list section")
       .filter({ hasText: /· published/ })
@@ -42,7 +42,7 @@ test("draft cards expose a red Delete Draft action with cancel and confirmed per
     await expect(card).toBeVisible();
     const deleteButton = card.getByRole("button", { name: "Delete Draft" });
     await expect(deleteButton).toBeVisible();
-    await expect(deleteButton).toHaveCSS("color", "rgb(180, 35, 53)");
+    await expect(deleteButton).toHaveCSS("color", "rgb(152, 0, 46)");
 
     await card
       .getByRole("button", { name: `More actions for v${created.version}` })

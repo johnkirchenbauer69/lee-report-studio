@@ -1,0 +1,54 @@
+[
+  {
+    "source": "2017_Lee_Logo_Full Color_No Tag.png",
+    "file": "lee-full-color.png",
+    "size": [
+      856,
+      169
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "source": "2017_Lee_Logo_2Color_NoTag_White Text_2Color_NoTag.png",
+    "file": "lee-white-text.png",
+    "size": [
+      865,
+      174
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "source": "lee_icon.png",
+    "file": "lee-icon.png",
+    "size": [
+      308,
+      170
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "source": "2017_Lee_Logo_Color Icon_White  JUST THE LA (BP Upscaled).png",
+    "file": "lee-white-icon.png",
+    "size": [
+      467,
+      270
+    ],
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  }
+]

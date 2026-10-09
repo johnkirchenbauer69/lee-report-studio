@@ -1,3 +1,4 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test, type Page } from "@playwright/test";
 
 const templateId = "industrial-market-report";
@@ -27,7 +28,7 @@ async function createDraft(page: Page) {
 
 async function openDraft(page: Page, version: string) {
   await page.goto("/?editor=1", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const card = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${version} · draft` });
@@ -62,14 +63,15 @@ test("a stale template save is rejected, not silently overwritten, and the edit 
     await page.getByRole("button", { name: /Elements/ }).click();
     const layer = page.locator(".layer-list button").first();
     await layer.click();
+    await revealInspectorControls(page);
     await page
       .locator(".inspector-section")
       .filter({ hasText: "Position & Size" })
       .getByLabel("Layer name")
       .fill("Browser's own edit");
     const saveButton = page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true });
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true });
     await saveButton.click();
 
     await expect(page.locator(".statusbar")).toContainText(
@@ -99,7 +101,7 @@ test("a stale template save is rejected, not silently overwritten, and the edit 
       "Cover",
       { timeout: 15_000 },
     );
-    await page.getByRole("button", { name: /Templates/ }).click();
+    await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
     await expect(page.locator(".master-mode-card")).toContainText(
       `v${created.version}`,
     );
@@ -121,7 +123,7 @@ test("a draft version can be given a custom label that persists and survives rel
 
   try {
     await page.goto("/?editor=1", { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: /Templates/ }).click();
+    await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
     const card = page
       .locator(".template-version-list section")
       .filter({ hasText: `v${created.version} · draft` });
@@ -145,7 +147,7 @@ test("a draft version can be given a custom label that persists and survives rel
     expect(stored.name).toBe("Industrial Market Report");
 
     await page.reload({ waitUntil: "networkidle" });
-    await page.getByRole("button", { name: /Templates/ }).click();
+    await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
     await expect(
       page
         .locator(".template-version-list section")

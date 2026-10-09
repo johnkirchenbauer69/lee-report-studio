@@ -1,3 +1,4 @@
+import { BrandLogo } from "./components/BrandLogo";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sampleTemplate } from "./data/sampleTemplate";
 import { sampleData } from "./data/sampleData";
@@ -642,6 +643,7 @@ export default function App() {
       assetStorage.list().catch(() => [] as Asset[]),
     ])
       .then(async ([records, serverAssets]) => {
+        await reportInstanceStore.discardDeletedRecovery();
         managedServerAssets.current = serverAssets;
         const preferred =
           records.find((record) => record.status === "draft") ?? records[0];
@@ -726,7 +728,7 @@ export default function App() {
             } else {
               if (recovery) reportRecovery.clear(restored.id);
               setReportSaveState("saved");
-              setReportLastSavedAt(new Date().toISOString());
+              setReportLastSavedAt(restored.publishedAt);
             }
           } catch (error) {
             reportInstanceStore.forget();
@@ -1778,7 +1780,7 @@ export default function App() {
    */
   const handleNarrativeFit: NarrativeFitListener = (marketId, result) => {
     const instance = latestReportInstance.current;
-    if (documentMode !== "report-instance" || mode !== "data" || !instance)
+    if (documentMode !== "report-instance" || mode !== "data" || !instance || instance.status === "published")
       return;
     const record = instance.narratives.find(
       (item) => item.marketId === marketId,
@@ -2383,18 +2385,18 @@ export default function App() {
               <div className="master-mode-card">
                 <strong>
                   {documentMode === "master-template"
-                    ? "MASTER TEMPLATE MODE"
-                    : "REPORT INSTANCE MODE"}
+                    ? "Master template"
+                    : "Quarterly report"}
                 </strong>
                 <span>
-                  {activeTemplateRecord
-                    ? `${activeTemplateRecord.label || activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}`
-                    : "Loading template library…"}
+                  {documentMode === "report-instance" && reportInstance
+                    ? `${reportInstance.generationRequest.period} · ${reportInstance.status === "published" ? "Published report · Read only" : "Draft report"} · Pinned template v${reportInstance.templateVersion}`
+                    : activeTemplateRecord ? `${activeTemplateRecord.label || activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}` : "Loading template library…"}
                 </span>
                 <small>
                   {documentMode === "master-template"
                     ? "Published changes affect future reports only."
-                    : "Edits are isolated to this generated report."}
+                    : reportInstance?.status === "published" ? "This finalized report is read-only. The templates below are separate reusable layouts." : "Edits are isolated to this generated report. The templates below are separate reusable layouts."}
                 </small>
               </div>
               <div className="template-version-list">
@@ -2538,7 +2540,7 @@ export default function App() {
                   </section>
                 ))}
               </div>
-              <div className="panel-actions template-actions">
+              {documentMode === "master-template" && <div className="panel-actions template-actions">
                 <button
                   disabled={
                     documentMode !== "master-template" ||
@@ -2560,7 +2562,7 @@ export default function App() {
                 >
                   Publish Template
                 </button>
-              </div>
+              </div>}
             </>
           )}
         </>
@@ -3261,7 +3263,7 @@ export default function App() {
         </div>
       )}
       </div>
-      {documentLoading && destination === "editor" && <div className="document-loading" role="status">Loading Document…</div>}
+      {documentLoading && destination === "editor" && <div className="document-loading" role="status"><BrandLogo /><p>Loading Document…</p></div>}
       {showPublishReport && reportInstance && <ReviewDialog title="Publish Report" onClose={() => !publishing && setShowPublishReport(false)}><p>Finalize {reportInstance.generationRequest.market} · {reportInstance.generationRequest.period}. Your saved pages, narratives, source snapshot and manual overrides will be preserved. This edition will be read-only in the Reports library.</p><p>Review warnings before publishing. Publishing records your finalized edition locally; it does not upload it to a public website.</p><button disabled={publishing} onClick={() => setShowPublishReport(false)}>Keep editing</button><button className="primary-button" disabled={publishing} onClick={async () => { setPublishing(true); try { if (["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) throw new Error("Wait for report changes to finish saving before publishing."); const saved = latestReportInstance.current ?? reportInstance; handleReportInstanceChange(await reportInstanceStore.publish(saved.id, saved.revision)); setShowPublishReport(false); } catch (e) { setOpenError((e as Error).message); } finally { setPublishing(false); } }}>{publishing ? "Publishing…" : "Confirm Publish Report"}</button></ReviewDialog>}
       {showPublishReview && <ReviewDialog title="Publish Template" onClose={() => !publishing && setShowPublishReview(false)}><h3>{activeTemplateRecord?.label || template.name}</h3><p>Version {activeTemplateRecord?.version} · Future reports only</p><p>Publishing makes this version read-only. Existing saved reports keep their pinned template and content.</p><p>{validations.filter(v=>v.level === "blocking" || v.level === "error").length} blocking issues · {validations.filter(v=>v.level === "warning").length} warnings in document checks. PDF export runs additional font and image checks.</p><ul>{validations.filter(v=>v.level !== "ok" && v.level !== "info").map((v,i)=><li key={i}>{v.message}</li>)}</ul><button disabled={publishing} onClick={() => setShowPublishReview(false)}>Keep editing</button><button className="primary-button" disabled={publishing} onClick={async () => { setPublishing(true); await publishMasterTemplate(); setPublishing(false); setShowPublishReview(false); }}>{publishing ? "Publishing…" : "Confirm Publish"}</button></ReviewDialog>}
       {showNarratives && reportInstance && <ReviewDialog title="Report Narratives" onClose={() => { if(narrativeDirty) { setOpenError("Save the narrative edit before returning to the report."); return; } setShowNarratives(false); }} wide><p>{template.name}</p><NarrativeWorkspace instance={reportInstance} onChange={handleReportInstanceChange} onDirtyChange={setNarrativeDirty} /><p role="status">{narrativeDirty ? "Unsaved narrative changes · choose Save Edit before returning" : "Narrative edits saved"}</p><button disabled={narrativeDirty} onClick={() => setShowNarratives(false)}>Return to report</button></ReviewDialog>}

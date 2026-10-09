@@ -1,3 +1,4 @@
+import { seedVisualFixtures } from "./seedVisualFixtures";
 import path from "node:path";
 
 /**
@@ -39,7 +40,34 @@ export default async function globalSetup(): Promise<void> {
   };
   const defaultDataRoot = path.resolve("server/data");
   const isolated = body.testMode === true && body.dataRoot !== defaultDataRoot;
-  if (isolated) return;
+  if (isolated) {
+    if (
+      path.resolve(body.dataRoot!) !==
+      path.resolve(process.env.PLAYWRIGHT_DATA_DIR!)
+    )
+      throw new Error(
+        "The reused test API does not match this run's isolated storage root.",
+      );
+    const frontendUrl = `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3000"}/api/health`;
+    const frontendResponse = await fetch(frontendUrl);
+    if (!frontendResponse.ok)
+      throw new Error("Cannot verify the visual frontend API proxy.");
+    const frontendHealth = (await frontendResponse.json()) as {
+      testMode?: boolean;
+      dataRoot?: string;
+    };
+    if (
+      frontendHealth.testMode !== true ||
+      !frontendHealth.dataRoot ||
+      path.resolve(frontendHealth.dataRoot) !== path.resolve(body.dataRoot!)
+    ) {
+      throw new Error(
+        "Visual frontend proxy does not point to this run's isolated test API. No fixtures or tests were run.",
+      );
+    }
+    await seedVisualFixtures(url, body.dataRoot!);
+    return;
+  }
 
   throw new Error(
     `Visual tests require an isolated API server, but the process answering ` +

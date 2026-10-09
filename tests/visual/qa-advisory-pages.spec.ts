@@ -25,7 +25,7 @@ test("Pages is a dedicated, independently scrollable navigation panel", async ({
   await expect(page.locator(".template-version-list")).toBeVisible();
   await expect(page.locator(".page-list")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Save As New Version" }),
+    page.getByRole("button", { name: "Save as New Version" }),
   ).toBeVisible();
 
   await page.locator(".rail").getByTitle("Pages").click();
@@ -38,7 +38,7 @@ test("Pages is a dedicated, independently scrollable navigation panel", async ({
   expect(independentlyScrollable).toBe(true);
 
   const target = pageButtons.nth(Math.min(5, sampleTemplate.pages.length - 1));
-  const targetName = (await target.locator(":scope > span").textContent())!;
+  const targetName = await target.locator(":scope > span").evaluate(node => node.lastChild!.textContent!);
   await target.click();
   await expect(target).toHaveClass(/active/);
   await expect(page.locator(".stage-topline span").first()).toHaveText(

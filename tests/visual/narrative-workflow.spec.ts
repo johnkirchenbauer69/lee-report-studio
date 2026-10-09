@@ -62,7 +62,7 @@ test("the review page leads on to the report editor", async ({ page, request }) 
   await expect(open).toBeEnabled();
   await open.click();
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(new RegExp(`\\?editor=1&report=${instance.id}$`));
   await expect(
     await page.evaluate(() =>
       localStorage.getItem("lee-report-studio.report-instance.v1"),

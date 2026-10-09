@@ -303,3 +303,12 @@ describe("finalized report publication", () => {
     expect(await new FileSystemReportInstanceRepository(root).get(saved.id)).toEqual(published);
   });
 });
+
+it("rejects resurrection of a deleted legacy report from browser recovery", async () => {
+  await mkdir(root, { recursive: true });
+  await writeFile(path.join(root, "deleted-report-instances.json"), JSON.stringify({ ids: [instance.id] }));
+  try {
+    await expect(repository.create(instance)).rejects.toThrow("permanently removed");
+    await expect(repository.save(instance)).rejects.toThrow("permanently removed");
+  } finally { await rm(path.join(root, "deleted-report-instances.json"), { force: true }); }
+});

@@ -20,7 +20,7 @@ test('audit every editor panel, creation steps and desktop sizes', async ({ page
   const sizes = [];
   for (const [width, height] of [[1366,768], [1440,900], [1920,1080], [2560,1440]]) {
     await page.setViewportSize({ width, height });
-    sizes.push(await page.locator('.topbar').evaluate(bar => ({
+    sizes.push(await page.locator('.document-header').evaluate(bar => ({
       width: innerWidth, height: innerHeight, toolbarWidth: bar.scrollWidth,
       toolbarClient: bar.clientWidth,
       overflow: document.documentElement.scrollWidth > innerWidth,
