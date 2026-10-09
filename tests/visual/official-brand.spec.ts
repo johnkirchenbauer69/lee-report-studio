@@ -56,6 +56,10 @@ for (const [width, height] of [
       ),
     ).toBe("/brand/lee-app.ico");
     await page.screenshot({ path: testInfo.outputPath("home.png") });
+    await page.getByRole("button", { name: "Create New Report", exact: true }).click();
+    const generator = page.getByRole("dialog", { name: "Create report", exact: true });
+    await expect(generator.getByRole("button", { name: "Continue", exact: true })).toHaveCSS("background-color", "rgb(152, 0, 46)");
+    await generator.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.getByRole("link", { name: "Reports", exact: true }).click();
     await page
       .getByRole("button", { name: "Published reports", exact: true })

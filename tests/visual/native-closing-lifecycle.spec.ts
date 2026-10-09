@@ -130,7 +130,7 @@ for (const kind of ["contacts", "company"] as const) {
       );
       await page
         .getByRole("banner")
-        .getByRole("button", { name: "Save", exact: true })
+        .getByRole("button", { name: "Save Draft", exact: true })
         .click();
       expect((await saveResponse).ok()).toBeTruthy();
       const saved = (await (
