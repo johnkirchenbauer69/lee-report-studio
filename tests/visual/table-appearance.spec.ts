@@ -75,7 +75,7 @@ test("table appearance controls persist and render consistently across editor, s
     await expect(tableShadow).toBeVisible();
     await tableShadow.getByLabel("Table Shadow").check();
     await tableShadow
-      .getByRole("textbox", { name: "Table Shadow color" })
+      .getByRole("textbox", { name: "Table Shadow color", exact: true })
       .fill("#1a1a1a");
     await tableShadow.getByLabel("Table Shadow X Offset").fill("0");
     await tableShadow.getByLabel("Table Shadow Y Offset").fill("2");
@@ -163,7 +163,7 @@ test("table appearance controls persist and render consistently across editor, s
     await expect(textEffects).toBeVisible();
     await textEffects.getByLabel("Header Text Shadow").check();
     await textEffects
-      .getByRole("textbox", { name: "Header Text Shadow color" })
+      .getByRole("textbox", { name: "Header Text Shadow color", exact: true })
       .fill("#000000");
     await textEffects.getByLabel("Header Text Shadow X Offset").fill("0");
     await textEffects.getByLabel("Header Text Shadow Y Offset").fill("1");
@@ -175,7 +175,7 @@ test("table appearance controls persist and render consistently across editor, s
     );
     await textEffects.getByLabel("Body Text Shadow").check();
     await textEffects
-      .getByRole("textbox", { name: "Body Text Shadow color" })
+      .getByRole("textbox", { name: "Body Text Shadow color", exact: true })
       .fill("#224466");
     await textEffects.getByLabel("Body Text Shadow X Offset").fill("0");
     await textEffects.getByLabel("Body Text Shadow Y Offset").fill(".5");
