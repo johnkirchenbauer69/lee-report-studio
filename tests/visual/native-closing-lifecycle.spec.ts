@@ -7,12 +7,16 @@ import type { StoredTemplateVersion } from "../../src/types/templateLibrary";
 
 async function openVersion(page: Page, version: string) {
   await page.goto("/?editor=1");
+  await expect(page.locator(".document-loading")).toBeHidden();
   await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const card = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${version} · draft` });
   await expect(card).toBeVisible();
+  const loaded = page.waitForResponse(response => response.request().method() === "GET" && response.url().endsWith(`/versions/${version}`));
   await card.getByRole("button", { name: "Open Draft", exact: true }).click();
+  expect((await loaded).ok()).toBeTruthy();
+  await expect(page.locator(".document-header")).toContainText(`v${version}`);
 }
 
 test("native closing pages export through the production Chromium HTTP path", async ({
