@@ -114,6 +114,7 @@ import type {
 } from "./types/templateLibrary";
 import "./styles/app.css";
 import "./styles/advanced.css";
+import "./styles/ux-quick-wins.css";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const uid = (prefix = "item") => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -2652,6 +2653,7 @@ export default function App() {
             className="icon-button"
             disabled={!past.length || !documentMutable}
             title="Undo · Ctrl+Z"
+            aria-label="Undo"
             onClick={undo}
           >
             ↶
@@ -2660,6 +2662,7 @@ export default function App() {
             className="icon-button"
             disabled={!future.length || !documentMutable}
             title="Redo · Ctrl+Shift+Z"
+            aria-label="Redo"
             onClick={redo}
           >
             ↷
@@ -2668,6 +2671,7 @@ export default function App() {
         <div className="toolbar-group zoom-control">
           <button
             title="Zoom out"
+            aria-label="Zoom out"
             onClick={() => setZoom(Math.max(0.25, zoom - 0.1))}
           >
             −
@@ -2685,11 +2689,12 @@ export default function App() {
           </select>
           <button
             title="Zoom in"
+            aria-label="Zoom in"
             onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
           >
             +
           </button>
-          <button onClick={() => setZoom(0.72)}>Fit</button>
+          <button title="Set the canvas zoom to 72%" onClick={() => setZoom(0.72)}>Fit</button>
         </div>
         <div className="toolbar-group segmented compact">
           <button
@@ -2791,7 +2796,7 @@ export default function App() {
           />
           Validate
         </button>
-        <button className="toolbar-button" onClick={downloadTemplate}>
+        <button className="toolbar-button" title="Download the template source as JSON" onClick={downloadTemplate}>
           JSON
         </button>
         <button
@@ -2803,8 +2808,8 @@ export default function App() {
         </button>
       </header>
       <div className="workspace">
-        <nav className="rail">
-          <a href="/?marketAssets=1" className="market-assets-nav" title="Market Assets"><span>↧</span>Market Assets</a>
+        <nav className="rail" aria-label="Editor tools">
+          <a href="/?marketAssets=1" className="market-assets-nav" title="Market Assets" aria-label="Market Assets"><span aria-hidden="true">↧</span>Market Assets</a>
           {(
             [
               ["templates", "▤", "Templates"],
@@ -2823,6 +2828,7 @@ export default function App() {
               className={leftTab === tab ? "active" : ""}
               onClick={() => setLeftTab(tab)}
               title={label}
+              aria-pressed={leftTab === tab}
             >
               <span>{icon}</span>
               {label}
@@ -3170,7 +3176,7 @@ export default function App() {
           </button>
         </div>
       )}
-      {toast && <div className="toast">✓ {toast}</div>}
+      {toast && <div className="toast" role="status">{toast}</div>}
       {showWizard && (activeTemplateRecord ?? publishedTemplate) && (
         <CreateReportWizard
           onClose={() => setShowWizard(false)}

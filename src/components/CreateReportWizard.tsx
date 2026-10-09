@@ -176,6 +176,7 @@ export function CreateReportWizard({
           {steps.map((label, index) => (
             <li
               key={label}
+              aria-current={index === step ? "step" : undefined}
               className={
                 index === step ? "active" : index < step ? "complete" : ""
               }

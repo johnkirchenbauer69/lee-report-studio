@@ -64,6 +64,12 @@ export function ValidationPanel({
           </span>
         </div>
       </div>
+      {items.length === 0 && (
+        <p className="validation-empty" role="status">
+          No issues found in the current page checks. Export PDF also checks
+          required fonts, images, and report data before creating the file.
+        </p>
+      )}
       {completeness && (
         <section className="completeness-card">
           <strong>Data Completeness</strong>

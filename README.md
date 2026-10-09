@@ -4,7 +4,7 @@ LEE Report Studio is a browser-based report production system for building edita
 
 ## What works
 
-- Five-step report wizard for template, period, source, geography, and review
+- Seven-step report wizard for template, period, source, markets/pages, data checks, narratives, and review
 - Strict Zod-based Industrial Market Report schema with raw numeric values
 - Isolated sample, JSON, Excel, and server-only Ascendix provider boundaries; production providers never fall back to fixtures
 - One deterministic Report Data Service shared by the web API and semantic MCP tools
@@ -35,6 +35,12 @@ npm run dev
 ```
 
 Open `http://localhost:3000`. The command starts both Vite on port 3000 and the local API on port 8787.
+
+For everyday Windows use, double-click `scripts/windows/Install.cmd` once to build the
+application and create the **Lee Report Studio** desktop shortcut. The shortcut
+starts one local server, checks readiness, and opens your browser without a
+terminal. See [Windows launcher](docs/windows-launcher.md) for setup, stopping,
+logs, port conflicts, and rebuilding after code changes.
 
 ## Validate
 
@@ -77,7 +83,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [EDITOR_TRANSFORMS.md](EDITOR_TRANSFORMS
 
 ## Local storage
 
-Templates and report editing state currently persist in LocalStorage. Uploaded assets are validated and written by the local API under `server/data/assets`; generated binaries and the manifest are gitignored. Set `LEE_DATA_DIR` to relocate this development data root. Import organization fonts through the Fonts panel; never commit private uploads.
+Template versions and saved report instances persist through disk-backed local
+API repositories under `server/data`. LocalStorage remembers editor recovery and
+the last report ID; it is not the saved-report library. Uploaded assets are
+validated and written under `server/data/assets`; generated binaries and the
+manifest are gitignored. Set `LEE_DATA_DIR` to relocate this data root. Import
+organization fonts through the Fonts panel; never commit private uploads.
 
 ## Current production boundaries
 

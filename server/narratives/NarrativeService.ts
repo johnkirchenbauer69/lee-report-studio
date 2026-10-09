@@ -176,6 +176,10 @@ export class NarrativeService {
   private readonly externalStarts = new Map<string, Promise<ReportInstance>>();
 
   readonly mode: NarrativeGenerationMode;
+  get hasPendingWork(): boolean {
+    return this.externalStarts.size > 0 || this.externalPolls.size > 0 ||
+      [...this.jobs.values()].some(job => job.status !== "complete");
+  }
   private readonly bridge?: NarrativeMcpBridgeClient;
 
   constructor(

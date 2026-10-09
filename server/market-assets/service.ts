@@ -75,6 +75,9 @@ export class MarketAssetService {
   private busy = false;
   private reservations = 0;
   constructor(private options: Options) {}
+  get hasPendingWork(): boolean {
+    return this.busy || this.queue.length > 0 || this.reservations > 0;
+  }
   async initialize() {
     await mkdir(this.options.root, { recursive: true });
     const retention = setInterval(
