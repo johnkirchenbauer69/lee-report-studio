@@ -1,4 +1,4 @@
-import { revealViewOptions } from "../support/editorDisclosures";
+import { revealInspectorControls, revealViewOptions } from "../support/editorDisclosures";
 import { readFile } from "node:fs/promises";
 import {
   expect,
@@ -324,6 +324,7 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
     .click();
   await expect(page.locator(".document-header")).toContainText("· draft");
   await page.getByTestId(`${token}-text`).click();
+  await revealInspectorControls(page);
   await expect(page.getByLabel("Layer name")).toBeEnabled();
   await page.getByLabel("Layer name").fill("Editable successor text");
   const saveResponse = page.waitForResponse(
@@ -331,7 +332,7 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
       response.request().method() === "PUT" &&
       /\/api\/templates\/[^/]+\/versions\/[^/]+$/.test(response.url()),
   );
-  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  await page.locator(".document-header").getByRole("button", { name: "Save Draft", exact: true }).click();
   expect((await saveResponse).status()).toBe(200);
 
   const summaries = (await (await request.get("/api/templates")).json()) as {
