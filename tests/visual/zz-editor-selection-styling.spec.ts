@@ -185,12 +185,13 @@ test("image shadow and independent corners persist, with a live radius handle", 
   const linkedHandle = page.getByRole("button", {
     name: "topLeft corner radius",
   });
+  await linkedHandle.hover();
   const linkedBox = await linkedHandle.boundingBox();
   if (!linkedBox)
     throw new Error("Linked corner radius handle is not visible.");
-  await page.mouse.move(linkedBox.x + 5, linkedBox.y + 5);
+  await page.mouse.move(linkedBox.x + linkedBox.width / 2, linkedBox.y + linkedBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(linkedBox.x + 15, linkedBox.y + 5, { steps: 5 });
+  await page.mouse.move(linkedBox.x + linkedBox.width / 2 + 10, linkedBox.y + linkedBox.height / 2, { steps: 5 });
   await page.mouse.up();
   await revealInspectorControls(page);
   await page.getByLabel("Link corner radii").uncheck();
@@ -310,7 +311,7 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
   await revealInspectorControls(page);
   await page.getByLabel(/^X/).fill("130");
   await shapeLayers.nth(1).click({ modifiers: ["Shift"] });
-  await revealViewOptions(page);
+  await revealInspectorControls(page);
   await expect(
     page.getByRole("button", { name: "Union shapes" }),
   ).toBeEnabled();

@@ -231,7 +231,7 @@ async function uploadImage(
 async function exportTemplate(page: Page) {
   const downloadPromise = page.waitForEvent("download");
   await revealViewOptions(page);
-  await page.getByRole("button", { name: "JSON", exact: true }).click();
+  await page.getByRole("button", { name: "Download JSON source", exact: true }).click();
   const download = await downloadPromise;
   const downloadedPath = await download.path();
   expect(downloadedPath).not.toBeNull();
@@ -521,6 +521,7 @@ test("a generated 44-page report reopens and exports after its source draft is d
   });
   const page = await context.newPage();
   await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
   await expect(page.locator(".document-header")).toContainText("Report ·");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   await page.getByRole("button", { name: "Validate", exact: true }).click();
@@ -602,6 +603,7 @@ test("a legacy report without snapshot metadata is not forgotten when its source
     if (message.type() === "warning") warnings.push(message.text());
   });
   await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
   await expect(page.locator(".document-header")).toContainText("Report ·");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   expect(warnings.join("\n")).toContain(

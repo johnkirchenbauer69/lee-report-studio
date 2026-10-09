@@ -119,7 +119,7 @@ function ColorField({
           value={value === "transparent" ? "#ffffff" : value}
           onInput={(e) => onChange(e.currentTarget.value)}
         />
-        <input value={value} onChange={(e) => onChange(e.target.value)} />
+        <input aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
         {allowNone && (
           <button
             type="button"
@@ -1550,6 +1550,7 @@ export function Inspector({
         <Section title={element.type === "table" ? "Table Shadow" : "Drop Shadow"}>
           <ShadowFields
             toggleLabel={element.type === "table" ? "Table Shadow" : "Drop Shadow"}
+            fieldPrefix={element.type === "table" ? "Table Shadow" : "Shadow"}
             shadow={shadow}
             onChange={setShadow}
           />
