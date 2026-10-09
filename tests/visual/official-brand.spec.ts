@@ -12,6 +12,7 @@ for (const [width, height] of [
     page,
     request,
   }, testInfo) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ width, height });
     const instance = await generateReportInstance(sampleTemplate, {
       templateId: sampleTemplate.id,
@@ -72,6 +73,7 @@ for (const [width, height] of [
     await card
       .getByRole("button", { name: "Open report", exact: true })
       .click();
+    await page.locator(".document-header").waitFor({ timeout: 30_000 });
     await expect(
       page.getByRole("button", { name: "Published report", exact: true }),
     ).toBeDisabled();

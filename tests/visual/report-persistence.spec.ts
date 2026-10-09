@@ -27,9 +27,12 @@ async function createFixture(request: APIRequestContext) {
   const library = (await (await request.get("/api/templates")).json()) as {
     templates: TemplateVersionSummary[];
   };
+  // Earlier lifecycle tests can create single-page drafts. This fixture needs
+  // text, image, and table content from the full stored report template.
+  const completeTemplates = [...library.templates].sort((a, b) => b.pageDefinitionCount - a.pageDefinitionCount);
   const summary =
-    library.templates.find((item) => item.status === "draft") ??
-    library.templates[0]!;
+    completeTemplates.find((item) => item.status === "draft") ??
+    completeTemplates[0]!;
   const source = (await (
     await request.get(
       `/api/templates/${summary.id}/versions/${summary.version}`,

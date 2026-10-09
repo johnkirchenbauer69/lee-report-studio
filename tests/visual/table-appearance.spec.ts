@@ -69,6 +69,7 @@ test("table appearance controls persist and render consistently across editor, s
     await openTemplatePage(page, created.version, "Overall Market Table");
     const matrixNode = page.getByTestId("submarket-matrix");
     await matrixNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const tableShadow = section(page, "Table Shadow");
     await expect(tableShadow).toBeVisible();
     await tableShadow.getByLabel("Table Shadow").check();
@@ -90,6 +91,7 @@ test("table appearance controls persist and render consistently across editor, s
     // corners, and no bevel/radius leaking into body rows.
     const indicatorNode = page.getByTestId("indicator-table");
     await indicatorNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const indicatorHeaderAppearance = section(page, "Header Appearance");
     await expect(indicatorHeaderAppearance).toBeVisible();
     await indicatorHeaderAppearance.getByLabel("Header Bevel").check();
@@ -123,6 +125,7 @@ test("table appearance controls persist and render consistently across editor, s
     // beveled group — outer corners round, the shared internal edge does not.
     const leasesNode = page.getByTestId("top-leases-table");
     await leasesNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const leasesHeaderAppearance = section(page, "Header Appearance");
     await leasesHeaderAppearance.getByLabel("Header Bevel").check();
     await leasesHeaderAppearance.getByLabel("Bevel size").fill("3");
@@ -154,6 +157,7 @@ test("table appearance controls persist and render consistently across editor, s
 
     // D. Header and body text shadow are independently controllable and
     // stay scoped to their own region.
+    await revealInspectorControls(page);
     const textEffects = section(page, "Text Effects");
     await expect(textEffects).toBeVisible();
     await textEffects.getByLabel("Header Text Shadow").check();

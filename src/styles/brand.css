@@ -269,10 +269,11 @@
 .report-wizard .eyebrow {color:var(--lee-red);font-size:11px;}
 .report-wizard .wizard-choice {border-color:var(--lee-red);}
 .report-wizard .template-preview {background:var(--lee-gradient);box-shadow:none;}
-.report-wizard .choice-check,.report-wizard footer .primary {background:var(--lee-red);color:var(--lee-white);border-color:var(--lee-red);}
-.report-wizard footer .primary:hover:not(:disabled) {background:var(--lee-merlot);}
+.report-wizard .choice-check,.report-wizard > footer button.primary {background:var(--lee-red);color:var(--lee-white);border-color:var(--lee-red);}
+.report-wizard > footer button.primary:hover:not(:disabled) {background:var(--lee-merlot);}
 .report-wizard .source-options > button.selected {border-color:var(--lee-red);box-shadow:0 0 0 1px var(--lee-red);}
 .report-wizard .wizard-steps li {font-size:12px;}
 .report-wizard .wizard-steps li.active,.report-wizard .source-icon {color:var(--lee-navy);}
 .report-wizard .wizard-steps li.active span {background:var(--lee-navy);border-color:var(--lee-navy);color:var(--lee-white);}
 .report-wizard :is(input[type=radio],input[type=checkbox]) {accent-color:var(--lee-red);}
+.redesigned-app .rail button {font-size:11px;line-height:14px;}

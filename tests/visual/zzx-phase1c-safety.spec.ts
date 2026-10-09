@@ -93,7 +93,7 @@ test("crop and table edit modes reset across page navigation and Escape", async 
 
   await selectCoverImage(page);
   await clickTransientModeButton(page, "Crop image");
-  await topbar(page)
+  await page.locator(".editing-toolbar")
     .getByRole("button", { name: /Create report/ })
     .click();
   const dialog = page.getByRole("dialog", { name: "Create report" });

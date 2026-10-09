@@ -71,6 +71,7 @@ test("table display override survives save/reopen, prints in PDF, and clears to 
   await node.evaluate((element) => (element as HTMLElement).click());
   await page.getByRole("button", { name: "Edit table", exact: true }).click();
   await cell.click();
+  await revealInspectorControls(page);
   await page.getByRole("button", { name: "Clear override / Revert to source" }).click();
   await expect(cell).toHaveText("—");
   await expect(page.locator(".statusbar")).toContainText("0 manual overrides");

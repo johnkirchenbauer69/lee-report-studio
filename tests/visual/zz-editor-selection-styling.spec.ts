@@ -77,6 +77,7 @@ test("save, save-as and publish preserve the active page while open starts at pa
   ).toBeDisabled();
 
   await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".left-panel .library-tabs").getByRole("button", {name:"Published", exact:true}).click();
   const published = page
     .locator(".template-version-list > section")
     .filter({ hasText: "published" })
@@ -98,6 +99,7 @@ test("save, save-as and publish preserve the active page while open starts at pa
   await openPages(page);
   await pageButtons(page).nth(targetIndex).click();
   await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".left-panel .library-tabs").getByRole("button", {name:"Drafts", exact:true}).click();
   const draft = page
     .locator(".template-version-list > section")
     .filter({ hasText: "draft" })
@@ -162,11 +164,12 @@ test("image shadow and independent corners persist, with a live radius handle", 
   await revealInspectorControls(page);
   await page.getByLabel("Top left radius").fill("8");
   const handle = page.getByRole("button", { name: "topLeft corner radius" });
+  await handle.hover();
   const handleBox = await handle.boundingBox();
   if (!handleBox) throw new Error("Corner radius handle is not visible.");
-  await page.mouse.move(handleBox.x + 5, handleBox.y + 5);
+  await page.mouse.move(handleBox.x + handleBox.width/2, handleBox.y + handleBox.height/2);
   await page.mouse.down();
-  await page.mouse.move(handleBox.x + 29, handleBox.y + 5, { steps: 8 });
+  await page.mouse.move(handleBox.x + handleBox.width/2 + 24, handleBox.y + handleBox.height/2, { steps: 8 });
   await page.mouse.up();
   await expect
     .poll(async () =>
@@ -307,6 +310,7 @@ test("bevel, shift multi-select, rigid drag, union and undo work together", asyn
   await revealInspectorControls(page);
   await page.getByLabel(/^X/).fill("130");
   await shapeLayers.nth(1).click({ modifiers: ["Shift"] });
+  await revealViewOptions(page);
   await expect(
     page.getByRole("button", { name: "Union shapes" }),
   ).toBeEnabled();

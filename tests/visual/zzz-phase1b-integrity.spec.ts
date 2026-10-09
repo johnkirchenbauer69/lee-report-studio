@@ -204,11 +204,12 @@ function editorFixture(
 async function openVersion(page: Page, version: string, status: string) {
   await page.goto("/?editor=1", { waitUntil: "load" });
   await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".left-panel .library-tabs").getByRole("button", {name: status === "published" ? "Published" : status === "archived" ? "History" : "Drafts", exact:true}).click();
   const card = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${version} · ${status}` });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Open", exact: true }).click();
+  await card.getByRole("button", { name: status === "draft" ? "Open Draft" : "Open", exact: true }).click();
 }
 
 async function uploadImage(
