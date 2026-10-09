@@ -5,17 +5,21 @@ import { PDFDocument } from "pdf-lib";
 const templateId = "industrial-market-report";
 
 async function openTemplatePage(page: Page, version: string, name: string) {
-  await page.locator(".rail").getByTitle("Templates").click();
-  const card = page
-    .locator(".template-version-list section")
-    .filter({ hasText: `v${version} · draft` });
-  const opened = page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" &&
-      response.url().endsWith(`/versions/${version}`),
-  );
-  await card.getByRole("button", { name: "Open Draft" }).click();
-  expect((await opened).ok()).toBe(true);
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
+  // Page navigation must preserve pending edits in the already-open draft.
+  if (!(await page.locator(".document-header").innerText()).includes(`v${version} \u00b7 draft`)) {
+    await page.locator(".rail").getByTitle("Templates").click();
+    const card = page
+      .locator(".template-version-list section")
+      .filter({ hasText: `v${version} · draft` });
+    const opened = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().endsWith(`/versions/${version}`),
+    );
+    await card.getByRole("button", { name: "Open Draft" }).click();
+    expect((await opened).ok()).toBe(true);
+  }
   await page.locator(".rail").getByTitle("Pages").click();
   await page
     .locator(".page-list")

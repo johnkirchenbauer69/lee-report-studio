@@ -203,6 +203,7 @@ function editorFixture(
 
 async function openVersion(page: Page, version: string, status: string) {
   await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
   await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   await page.locator(".left-panel .library-tabs").getByRole("button", {name: status === "published" ? "Published" : status === "archived" ? "History" : "Drafts", exact:true}).click();
   const card = page
@@ -287,6 +288,9 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
   await page.mouse.move(shapeBox!.x + 80, shapeBox!.y + 70);
   await page.mouse.up();
   expect(await shape.boundingBox()).toEqual(shapeBox);
+  // A rejected drag can end on the stage background and clear selection.
+  // Select the first shape before exercising multi-select and grouping.
+  await shape.click();
 
   await page.getByTestId(`${token}-shape-b`).click({ modifiers: ["Shift"] });
   await page.keyboard.press("Control+g");
