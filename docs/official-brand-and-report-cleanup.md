@@ -25,3 +25,11 @@ The existing visual suite checks an isolated test API and exact per-run storage 
 Visual assertions, image comparison tolerances, and existing acceptance coverage remain unchanged. Legacy control locators now navigate the actual document header, view options, and inspector disclosures. Local logs, before/after screenshots at four desktop resolutions, backup inventory, and retained-report export evidence are under the ignored `output/brand-cleanup/` directory.
 
 Two Windows chart goldens predated the approved left-axis and deal-count-chip changes. The pre-branding commit `3a71b5c` and branded app were rendered with the same licensed font, viewport, data, and Chromium runtime: both affected charts measured 352 x 216 pixels with **zero changed pixels**. Those two stale goldens now use the preserved pre-branding rendering. Screenshot tolerances remain `maxDiffPixelRatio: 0.015` and `threshold: 0.2`; no publication implementation was changed to make this comparison pass. Evidence: `docs/evidence/official-brand/chart-preservation-comparison.json`.
+
+## CI fixture requirements
+
+A public GitHub runner does not contain this organization's licensed Avenir font assets or the approved local font inventory. Tests that require those exact assets remain enabled and retain their publication-preflight, font-family and checksum assertions. Provide licensed fixtures through an authorized private runner or private fixture source; do not commit commercial font binaries to the public repository. Existing fixture-dependent skips are reported separately from executed failures.
+
+The inspector's color text fields have explicit accessible names. Visual tests distinguish those text fields from native color pickers with exact accessible-name locators. Source downloads close their disclosure before subsequent canvas interactions. These changes preserve the original style, mutation, export and persistence assertions.
+
+Before/after desktop captures are available at 1366 x 768, 1440 x 900, 1920 x 1080 and 2560 x 1440. The pre-brand launcher comparison was captured from commit `3a71b5c` in a separate checkout using disposable mock storage; that process was stopped afterward. The real Windows shortcut was independently launched against this checkout and its existing retained report storage.

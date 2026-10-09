@@ -99,7 +99,7 @@ test("text and shape shadows plus image stroke and clipping persist through save
     await revealInspectorControls(page);
     await textShadow.getByLabel("Drop Shadow").check();
     await textShadow
-      .getByRole("textbox", { name: "Shadow color" })
+      .getByRole("textbox", { name: "Shadow color", exact: true })
       .fill("#224466");
     await revealInspectorControls(page);
     await textShadow.getByLabel("Shadow X Offset").fill("3");
@@ -122,7 +122,7 @@ test("text and shape shadows plus image stroke and clipping persist through save
     await revealInspectorControls(page);
     await shapeShadow.getByLabel("Drop Shadow").check();
     await shapeShadow
-      .getByRole("textbox", { name: "Shadow color" })
+      .getByRole("textbox", { name: "Shadow color", exact: true })
       .fill("#102030");
     await revealInspectorControls(page);
     await shapeShadow.getByLabel("Shadow X Offset").fill("-2");
@@ -148,7 +148,7 @@ test("text and shape shadows plus image stroke and clipping persist through save
     await revealInspectorControls(page);
     await imageStyle.getByLabel("Stroke").check();
     await imageStyle
-      .getByRole("textbox", { name: "Stroke color" })
+      .getByRole("textbox", { name: "Stroke color", exact: true })
       .fill("#c4123f");
     await revealInspectorControls(page);
     await imageStyle.getByLabel("Stroke width").fill("4");
