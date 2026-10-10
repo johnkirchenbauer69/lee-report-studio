@@ -1,0 +1,982 @@
+{
+  "sources": {
+    "OFL.txt": "https://raw.githubusercontent.com/google/fonts/main/ofl/nunitosans/OFL.txt",
+    "UFL.txt": "https://raw.githubusercontent.com/google/fonts/main/ufl/ubuntu/UFL.txt",
+    "Apache-2.0.txt": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "Metropolis-UNLICENSE.txt": "https://raw.githubusercontent.com/dw5/Metropolis/master/UNLICENSE"
+  },
+  "fonts": [
+    {
+      "name": "NunitoSans-Black",
+      "family": "Nunito Sans",
+      "checksum": "8208722ef891169364b69dc333c5af7a11e9a69070d7b056782d23bf0761f865",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-BlackItalic",
+      "family": "Nunito Sans",
+      "checksum": "6a79323a8cb3cb1b4661681eb35da21e134aa259a83020f4125f80552c355499",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-Bold",
+      "family": "Nunito Sans",
+      "checksum": "4f7fe7bdbc69aa5e94d79d62d04542f05052623c1ebdb738a4d344c9361aa9b9",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-BoldItalic",
+      "family": "Nunito Sans",
+      "checksum": "85462524849759f042181cfc6887aac5da4a84c2bb54390d227ff417fcf4fef9",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-ExtraBold",
+      "family": "Nunito Sans",
+      "checksum": "f8bcd8b3ff4a2ea1574b64e9b83c5b58759a041463572605ce951a60eef5b747",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-ExtraBoldItalic",
+      "family": "Nunito Sans",
+      "checksum": "9785d764e7231b0ef34091ef5bdc758118e94a68eb25edaf45a66c2c16a09491",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-Light",
+      "family": "Nunito Sans",
+      "checksum": "4fd508109486ead4bec37d60b1a0fd6e90c6487b91e6c9c52b07c2c774c27e7a",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-LightItalic",
+      "family": "Nunito Sans",
+      "checksum": "bf631c215f33c9ee708b75f1fed73cbed6de7ce7c29bab4e45e3ac93c7982106",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-Medium",
+      "family": "Nunito Sans",
+      "checksum": "69d11546020f3021e16df9beb5dc7999e241073e46379701aa5bcdee571d9dd1",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-MediumItalic",
+      "family": "Nunito Sans",
+      "checksum": "13743c1ecf8006ebfbbe3fdc07f14b79dda30e15152c354705e32da239f07a22",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-Regular",
+      "family": "Nunito Sans",
+      "checksum": "b014d2b0113929273927dfa34d613c240b34e1bdacd953274b82c564f338bd7b",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-RegularItalic",
+      "family": "Nunito Sans",
+      "checksum": "939c44d9bfc780f67c2dfcf95eeb6bed05485812d127b8583efac669b639543c",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-SemiBold",
+      "family": "Nunito Sans",
+      "checksum": "d688246d153a43762f85dcc1d06e69254ff535545afce760c711094f9d2804b9",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "NunitoSans-SemiBoldItalic",
+      "family": "Nunito Sans",
+      "checksum": "d9cffb192f6e0f8e5014d447beae33e052000700abeb01ca63c2a867421b173b",
+      "copyright": [
+        "Copyright 2016 The Nunito Sans Project Authors (https://github.com/Fonthausen/NunitoSans)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "OpenSansCondensed-Light",
+      "family": "Open Sans Condensed",
+      "checksum": "8ae2a4d772519a12130bd844dab9916a575ac5ef8e371a643d6f67e15c7f8566",
+      "copyright": [
+        "Digitized data copyright \u00a9 2011, Google Corporation."
+      ],
+      "license": {
+        "type": "Apache License 2.0",
+        "fileName": "LICENSE.txt"
+      }
+    },
+    {
+      "name": "OpenSansCondensed-LightItalic",
+      "family": "Open Sans Condensed",
+      "checksum": "aceec8387bad177ceb240bf628efe32c9b61f3c971d86a3cf00e4199142b81de",
+      "copyright": [
+        "Digitized data copyright \u00a9 2010-2011, Google Corporation."
+      ],
+      "license": {
+        "type": "Apache License 2.0",
+        "fileName": "LICENSE.txt"
+      }
+    },
+    {
+      "name": "OpenSansCondensed-Bold",
+      "family": "Open Sans Condensed",
+      "checksum": "0c6bc4fecd8b88179d09508a12de72fa51d9a0b9842077c29c37ab586e7b6668",
+      "copyright": [
+        "Digitized data copyright \u00a9 2010-2011, Google Corporation."
+      ],
+      "license": {
+        "type": "Apache License 2.0",
+        "fileName": "LICENSE.txt"
+      }
+    },
+    {
+      "name": "CarroisGothic-Regular",
+      "family": "Carrois Gothic",
+      "checksum": "5fa38885ea9f9ea2d42319d1e88ce9170d67b858da7a67a2740460d15d7fcff8",
+      "copyright": [
+        "Copyright (c) 2011 by Ralph du Carrois, with Reserved Font Name 'Carrois'"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-B-hinting",
+      "family": "Ubuntu",
+      "checksum": "73aa75d81f11d3a883ea40c2ccc4326bbeb3a724e31f1b827a80a7b8618973ae",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-BI-hinting",
+      "family": "Ubuntu",
+      "checksum": "c4d61423ced7e878ef034891666a226e7cfe171458bf31d3c847f36f15090c43",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-C-hinting",
+      "family": "Ubuntu Condensed",
+      "checksum": "068622922d01399c10034daa6cb5e76440b03974f3d7dd962657a6749fb5f727",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-L-hinting",
+      "family": "Ubuntu",
+      "checksum": "331a118dabac7e0971b313d3f0d376b36f0924345e9e03ccdc43d02e0fc3e9f6",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-LI-hinting",
+      "family": "Ubuntu",
+      "checksum": "c0a4ee42947533178087772077bc5855d268e33aa327629caf2b05e00163dfcd",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-M-hinting",
+      "family": "Ubuntu",
+      "checksum": "f87cec5f974f21c744189631360baa656fab837d206a20d07ae16d6d18b575e6",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-MI-hinting",
+      "family": "Ubuntu",
+      "checksum": "64fc0d722f457dc4931a9236e3d7093f9fdf1fe5e640d80e994c57d7a9f961fc",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-R-hinting",
+      "family": "Ubuntu",
+      "checksum": "8109a5bce3dacd91f57f1f466e97cf645db8cde7713ef9178fc0b6bebd0ec2cd",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-RI-hinting",
+      "family": "Ubuntu",
+      "checksum": "4f70d133a8a58d6830a1e6aa95183e25e55343fef793085b2938ee60560e4ae8",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "UbuntuMono-B-hinting",
+      "family": "Ubuntu Monospaced",
+      "checksum": "46a6201e50ee501d5851790207246ed55932c4286797514e0b45abc6172355ca",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "UbuntuMono-BI-hinting",
+      "family": "Ubuntu Monospaced",
+      "checksum": "a3b9811891297b63581f0c8ae7015363c70406644b0d4f7f235373ca1589fcc9",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "UbuntuMono-R-hinting",
+      "family": "Ubuntu Monospaced",
+      "checksum": "83350bb56c3046692e873f3aad55e150e7980635337441a9d36388679320319d",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "UbuntuMono-RI-hinting",
+      "family": "Ubuntu Monospaced",
+      "checksum": "a3768e7684e4e12627b31974e533a4ca1b8e36f9b561b6caab657eba0c4c72de",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-Bold",
+      "family": "Ubuntu",
+      "checksum": "85180753fa255615b5f5b436c00b203567fb87a271a5af9dd095d43a429c53eb",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-BoldItalic",
+      "family": "Ubuntu",
+      "checksum": "b91b92b936b824437358ea6d19cac8dcbf2cc762722b70bbf394371368350b3b",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-Italic",
+      "family": "Ubuntu",
+      "checksum": "6dc6b234242dc8695d9459e8924286a9b7c5be64558e4b43ed376b5c840c11c3",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-Light",
+      "family": "Ubuntu",
+      "checksum": "927d0f3de91ec09c04bd5d432bb2575ecf619c819e4e035f235cf983319406ac",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-LightItalic",
+      "family": "Ubuntu",
+      "checksum": "65f0734903f6c7a32e9bcc88345aea1ec5ef0338839eb77c05d65a64a9229c59",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-Medium",
+      "family": "Ubuntu",
+      "checksum": "937d2d8bd5e87d8972f7b7d570dccac487a188df3d6bfad9d3492aeb1c9cdd6e",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-MediumItalic",
+      "family": "Ubuntu",
+      "checksum": "d47b55fe1b65f22d9e2d543ef2e5be1d490eec80f2e0d98e2bf6af47fce05f8c",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Ubuntu-Regular",
+      "family": "Ubuntu",
+      "checksum": "ff6c85b5b809994e8f4a24027db9d6d64505001b0cb2fa7176ac3377e94a6e4f",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "UbuntuCondensed-Regular",
+      "family": "Ubuntu Condensed",
+      "checksum": "335173652aa12d172b97d21aa7d1a31b039eebc00d333ea49d624aa0b2d82736",
+      "copyright": [
+        "Copyright 2011 Canonical Ltd.  Licensed under the Ubuntu Font Licence 1.0"
+      ],
+      "license": {
+        "type": "Ubuntu Font Licence 1.0",
+        "fileName": "LICENCE.txt"
+      }
+    },
+    {
+      "name": "Padauk-Bold",
+      "family": "Padauk",
+      "checksum": "b720d8c44a29db7fa0b92d6de1eab5563795cc6a74d0df146f7b985a4dd78452",
+      "copyright": [
+        "Copyright 2016 SIL International, all rights reserved"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Padauk-Regular",
+      "family": "Padauk",
+      "checksum": "7165f738d046ef00f76c8cbd167da7b0f26496de122e2190cb5a5ccf1c0a7d42",
+      "copyright": [
+        "Copyright 2016 SIL International, all rights reserved"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-SemiBold",
+      "family": "Mada",
+      "checksum": "052e0e0f174e9e8ff63bf2a85f70db6cc59d3391a016a31ace8e20c49d0fa0d6",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-Medium",
+      "family": "Mada",
+      "checksum": "c3e70bf71ab0557ddd82906726c36d89e199792db1997040b1599f61e00acd78",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-ExtraLight",
+      "family": "Mada",
+      "checksum": "9e8f4edc7b74697883d4382000502d7429481f7ccc59b65ac62c28e99481cbc3",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-Bold",
+      "family": "Mada",
+      "checksum": "b94e1f9c917ae40e5e6b8d95fe24de1817e37942aafb9b9310d5e0d4b049221a",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-Regular",
+      "family": "Mada",
+      "checksum": "9e3c24ab83037a6d4fc5b72d068caaa6a0767414bd20d7defe31c562ced6d6e7",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-Black",
+      "family": "Mada",
+      "checksum": "7746a4ca1c6767a971c0db31ec18594fa5211adcc318e293d27b55efc36bded9",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Mada-Light",
+      "family": "Mada",
+      "checksum": "4987425fde45e8da45ede3fad409b0ac00e32ca0255a60b44b8e1f701764346c",
+      "copyright": [
+        "Copyright \u00a9 2015-2016 The Mada Project Authors, with Reserved Font Name \"Source\". Source is a trademark of Adobe Systems Incorporated in the United States and/or other countries."
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-BlackItalic",
+      "family": "Nunito",
+      "checksum": "45600ed3245d85119962294ba7b7e0eee28550655659d5d77a5462215bf815b3",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-LightItalic",
+      "family": "Nunito",
+      "checksum": "44c000e3b82abf79ad576609e0cd1cbc7699f1ef87f4ac295a4ef0e9c48eefc5",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-ExtraBold",
+      "family": "Nunito",
+      "checksum": "e6bdd0440e28c0bd08a9ef7c31dd9aa81d680db03278919804e2ba8ea2a8c465",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-Light",
+      "family": "Nunito",
+      "checksum": "9a719d574ea01bffb7feff7da97050910e486c4880e44186ddb8d278b48c0267",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-Bold",
+      "family": "Nunito",
+      "checksum": "0a2c124569bc97b3f088e4fd22423b68c45df5bd85c88e5aa80c5c2f2cf99405",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-Black",
+      "family": "Nunito",
+      "checksum": "055805e22a7efc737c3a0a4bc0423ac30b95f82acfef507b8af840a1ba877592",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-BoldItalic",
+      "family": "Nunito",
+      "checksum": "d7dec3fffe08fb7c8cb4c1d971eea13408d2f6bda2f332c493d829a130e129bb",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-ExtraLightItalic",
+      "family": "Nunito",
+      "checksum": "a16f628500bac0cf46b9d4dfc2b158bf467d5a93d19086ba473b61ebcc0845b2",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-ExtraLight",
+      "family": "Nunito",
+      "checksum": "6fea515044623ab263877b2ffbeca8e91e3a31a3b64c4bca0805d435e7c62c61",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-ExtraBoldItalic",
+      "family": "Nunito",
+      "checksum": "f8acfd0ceb521d366932f290dfe7882874d231bcd0b589eac724bfee0dfffb3b",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-SemiBoldItalic",
+      "family": "Nunito",
+      "checksum": "5c10362cb41a03724410ade000810bf5682b58319b83f6aea42d31aa61069f42",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-SemiBold",
+      "family": "Nunito",
+      "checksum": "c01f8ea857d7f02729f45c77d721c7e7200c975dd4c88bacec153fc4f8d21dbd",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-Regular",
+      "family": "Nunito",
+      "checksum": "9d958cf411edb1b4a0ae3d9a62e7e9d23124ac6d30402aff4d9dc8ea8cd7beee",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Nunito-Italic",
+      "family": "Nunito",
+      "checksum": "b3a1d95b94b2fe6e4c4d72049d4d7da8d73e76f187166f636dc6b2ea32da2012",
+      "copyright": [
+        "Copyright 2014 The Nunito Project Authors (contact@sansoxygen.com)"
+      ],
+      "license": {
+        "type": "SIL Open Font License 1.1",
+        "fileName": "OFL.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Black",
+      "family": "Metropolis",
+      "checksum": "a32c338b300dd1efe70ff0b54bf7a447547edf7069cb973228f89cc93385dbcd",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-BlackItalic",
+      "family": "Metropolis",
+      "checksum": "2306b80c3e8bbde8f639b344ad1ef064fe6630b19a0a6c0d7e7a3913946f3a64",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Bold",
+      "family": "Metropolis",
+      "checksum": "a470d16eb70e97992529479e751032e8cfd0146043d2245ad63d312a6991de63",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-BoldItalic",
+      "family": "Metropolis",
+      "checksum": "b3f5cdf5dd7acd8c650909587687e43a3870d70f571edc6d92e729be9bd6602d",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-ExtraBold",
+      "family": "Metropolis",
+      "checksum": "0f14035ed8395852dc8f5e98cab6652160e9b97ba7c6193e27c72cf8092775cb",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-ExtraBoldItalic",
+      "family": "Metropolis",
+      "checksum": "fd5d8eb35312cadc1d69233b93d916b6bc3682063e41dd9ce0b6628bb7e194de",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-ExtraLight",
+      "family": "Metropolis",
+      "checksum": "4991e3b30721999f0436a9e05ed914a30a109b9e9c38dcdc6c5742f4e68254ad",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-ExtraLightItalic",
+      "family": "Metropolis",
+      "checksum": "3d136a8da4f3017c23102defdd5af6ceb5558b2dcdd7ae5d7f21bae522b8b4ba",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Light",
+      "family": "Metropolis",
+      "checksum": "f4d0372fba5171f24262b493ea33f4ad7878eddf970db8b1f3011416b070ad51",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-LightItalic",
+      "family": "Metropolis",
+      "checksum": "197f2ab1b72c70d3e0fdff052c830f5ea7b1a713f13fdcbfa9f5e19a5f8fd844",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Medium",
+      "family": "Metropolis",
+      "checksum": "9110dda4baca06a6615fe50c473de0945a557dc53476e39efbf5b53c97f7a6d1",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-MediumItalic",
+      "family": "Metropolis",
+      "checksum": "4e45ceae9aa5521a648c5b2e63b6fd24bd70fb313ca12539e7cb94e7f04bfbbb",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Regular",
+      "family": "Metropolis",
+      "checksum": "6f8992eb58eeced41efea7076be4d468ac678f9778420438fab4a3358aa2b462",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-RegularItalic",
+      "family": "Metropolis",
+      "checksum": "a93681aad2b854b80cda4c8c14a4f8a7967e85450d4b57c5b51384a44463cace",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-SemiBold",
+      "family": "Metropolis",
+      "checksum": "1d58419be905f3a3d9f145a295e52d2cf863b89a19150c7e009ea56cdc823e67",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-SemiBoldItalic",
+      "family": "Metropolis",
+      "checksum": "2049dffca15f0ae34351e65529b6e9d21061f4124bc6996ec329a370fd5f5bd9",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-Thin",
+      "family": "Metropolis",
+      "checksum": "83e628264974b9aaf67077570bc915283a03c3722ad69b480f645fa49613f13b",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    },
+    {
+      "name": "Metropolis-ThinItalic",
+      "family": "Metropolis",
+      "checksum": "f4e4f47dbaa64a0fe9424bbe45ad83c6b767562284cd9bdec51952fc354ce4db",
+      "copyright": [
+        "Copyright \u00a9 2016 by Chris Simpson."
+      ],
+      "license": {
+        "type": "Unlicense",
+        "fileName": "licenses/Metropolis-UNLICENSE.txt"
+      }
+    }
+  ]
+}

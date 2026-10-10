@@ -5,8 +5,13 @@ import type { Asset } from "../../src/types/report";
 
 export async function seedVisualFixtures(apiUrl: string, dataRoot: string) {
   // This is invoked only after the production-data isolation guard has passed.
-  const fixtureRoot = process.env.PLAYWRIGHT_FONT_FIXTURE_ROOT;
-  if (fixtureRoot) {
+  const fixtureRoots = [
+    path.resolve("tests/fixtures/fonts/open"),
+    ...(process.env.PLAYWRIGHT_FONT_FIXTURE_ROOT
+      ? [process.env.PLAYWRIGHT_FONT_FIXTURE_ROOT]
+      : []),
+  ];
+  for (const fixtureRoot of fixtureRoots) {
     const sourceRoot = path.resolve(fixtureRoot);
     if (sourceRoot === path.resolve(dataRoot))
       throw new Error("Font fixture source must differ from test storage.");
