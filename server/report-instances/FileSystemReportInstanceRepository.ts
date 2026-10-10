@@ -357,6 +357,22 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
     });
   }
 
+  async createDraft(id: string) {
+    return this.enqueue(id, "create_draft", async () => {
+      const source = await this.readCurrent(id);
+      if (!source) throw new Error("Report instance not found.");
+      if (source.status !== "published") throw new Error("Choose a published report to create a draft.");
+      const draft = structuredClone(source);
+      draft.id = `report-${randomUUID()}`;
+      draft.status = "draft";
+      draft.revision = 0;
+      delete draft.publishedAt;
+      // A generation handoff belongs to the original report, not its copy.
+      delete draft.externalNarrativeJob;
+      return this.create(draft);
+    });
+  }
+
   async publish(id: string, expectedRevision: number) {
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) throw new Error("A saved report revision is required.");
     return this.update(id, current => ({ ...current, status: "published", publishedAt: new Date().toISOString() }), { expectedRevision, operation: "publish" });

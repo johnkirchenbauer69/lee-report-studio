@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -311,4 +311,24 @@ it("rejects resurrection of a deleted legacy report from browser recovery", asyn
     await expect(repository.create(instance)).rejects.toThrow("permanently removed");
     await expect(repository.save(instance)).rejects.toThrow("permanently removed");
   } finally { await rm(path.join(root, "deleted-report-instances.json"), { force: true }); }
+});
+
+it("creates an independent editable copy without changing the published file", async () => {
+  const saved = await repository.create(instance);
+  const published = await repository.publish(saved.id, saved.revision);
+  const originalBytes = await readFile(path.join(repository.root, `${saved.id}.json`), "utf8");
+  const draft = await repository.createDraft(saved.id);
+  expect(draft.id).not.toBe(saved.id);
+  expect(draft.status).toBe("draft");
+  expect(draft.publishedAt).toBeUndefined();
+  expect(draft.externalNarrativeJob).toBeUndefined();
+  const { id, revision, status, publishedAt, externalNarrativeJob, ...content } = published;
+  const { id: draftId, revision: draftRevision, status: draftStatus, ...draftContent } = draft;
+  expect(draftContent).toEqual(content);
+  const editedPages = structuredClone(draft.pages);
+  editedPages[0].name = "Updated highlight";
+  await repository.patchDocument(draft.id, { baseRevision: draft.revision, pages: editedPages, manualOverrides: draft.manualOverrides });
+  expect((await new FileSystemReportInstanceRepository(root).get(draft.id))?.pages).toEqual(editedPages);
+  expect(await readFile(path.join(repository.root, `${saved.id}.json`), "utf8")).toBe(originalBytes);
+  await expect(repository.createDraft(draft.id)).rejects.toThrow("published");
 });
