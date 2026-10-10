@@ -114,3 +114,12 @@ describe("managed image replacement", () => {
     });
   });
 });
+
+it("replaces a data-bound image instead of resolving back to the source image", () => {
+  const bound = { ...image, binding: { path: "market.topAvailabilities[2].image" }, bindingContext: { name: "market", path: "markets[0]" } };
+  const replaced = replaceImageAsset(bound, asset);
+  expect(replaced.binding).toBeUndefined();
+  expect(replaced.bindingContext).toBeUndefined();
+  expect(replaced.src).toBe(asset.source);
+  expect([replaced.x, replaced.y, replaced.width, replaced.height]).toEqual([image.x, image.y, image.width, image.height]);
+});

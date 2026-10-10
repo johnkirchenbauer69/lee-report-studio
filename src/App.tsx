@@ -276,6 +276,7 @@ export default function App() {
   const narrativeOverflowSync = useRef(new Map<string, boolean>());
   const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
+  const replacementUploadRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const pageListRef = useRef<HTMLDivElement>(null);
   const managedServerAssets = useRef<Asset[]>([]);
@@ -831,8 +832,16 @@ export default function App() {
             return element;
           }),
         };
-      }, record),
-    [selectedIds, updatePage],
+      }, record, Object.prototype.hasOwnProperty.call(patch, "text") && reportInstance
+        ? current => {
+            const element = latestTemplate.current.pages.find(p => p.id === page.id)?.elements.find(e => e.id === id);
+            return element?.binding ? upsertManualOverride(current, {
+              elementId: id, bindingPath: element.binding.path,
+              generatedValue: getByContextPath(reportData, element.binding.path, element.bindingContext),
+              overrideValue: (patch as { text?: string }).text,
+            }) : current;
+          } : undefined),
+    [selectedIds, updatePage, reportInstance, reportData, page.id],
   );
   const updateSelected = (patch: Partial<ReportElement>) => {
     const recordsManualOverride =
@@ -1692,7 +1701,7 @@ export default function App() {
         handleReportInstanceChange(exportInstance);
         exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot), exportInstance.manualOverrides);
       }
-      const publicationTemplate = prepareTemplateForPublication(template);
+      const publicationTemplate = prepareTemplateForPublication(template, exportInstance?.manualOverrides ?? []);
       const issues = await runExportPreflight(publicationTemplate);
       setPreflightIssues(issues);
       const readinessAdvisories =
@@ -3185,6 +3194,12 @@ export default function App() {
               current === selected?.id ? undefined : selected?.id,
             )
           }
+          onUploadReplacement={() => {
+            if (selected?.type !== "image") return;
+            setReplacingImageId(selected.id);
+            setLeftTab("images");
+            replacementUploadRef.current?.click();
+          }}
           onReplaceImage={() => {
             if (selected?.type !== "image") return;
             setReplacingImageId(selected.id);
@@ -3198,6 +3213,7 @@ export default function App() {
           onUnion={unionSelectedShapes}
         />
       </div>
+      <input hidden ref={replacementUploadRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { void handleFiles(e.target.files); e.target.value = ""; }} />
       <footer className="statusbar">
         <span>
           {page.name} · {page.elements.length} elements ·{" "}
