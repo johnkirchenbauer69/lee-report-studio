@@ -1,5 +1,4 @@
 import {
-  calculateMarketTotals,
   calculateMetricExtremes,
 } from "../calculations/marketCalculations";
 import { formatReportValue } from "../formatting/formatValue";
@@ -42,8 +41,42 @@ const money = (value: number) =>
   formatReportValue(value, { type: "currency", decimals: 0 });
 const percent = (value: number, decimals = 2) =>
   formatReportValue(value, { type: "percentage", decimals });
-const rent = (value: number) =>
+// null (an authoritative-null Overall rent) renders the report's existing
+// unavailable state ("—"), never $0.
+const rent = (value: number | null) =>
   formatReportValue(value, { type: "currency", decimals: 2 });
+const sizeSfDisplay = (value: number) =>
+  formatReportValue(value, { type: "square-feet" });
+const pricePerSfDisplay = (value: number) =>
+  formatReportValue(value, { type: "currency-per-square-foot" });
+/**
+ * Canonical "SIZE (SF) / PRICE ($/SF)" combined display value for the Top
+ * Sales table. Never recalculates Price/SF here -- both inputs are already
+ * normalized (and, when needed, derived) in the data layer
+ * (`server/integrations/ascendix/contributors.ts`); this only formats and
+ * joins whatever the report payload already contains.
+ */
+const saleSizePricePerSf = (
+  sizeSf: number | undefined,
+  pricePerSf: number | null | undefined,
+): string => {
+  const hasSize = typeof sizeSf === "number" && sizeSf > 0;
+  const hasPricePerSf = typeof pricePerSf === "number";
+  if (hasSize && hasPricePerSf)
+    return `${sizeSfDisplay(sizeSf)} / ${pricePerSfDisplay(pricePerSf)}`;
+  if (hasSize) return sizeSfDisplay(sizeSf);
+  if (hasPricePerSf) return pricePerSfDisplay(pricePerSf);
+  return "-";
+};
+/**
+ * Top Leases/Top Sales-only address formatting: drops a trailing ZIP (or
+ * ZIP+4) so the row reads "<street>, <city>, <state>" -- city and state are
+ * always preserved. This only reformats the display string produced for
+ * these two transaction tables; the canonical `address` field elsewhere in
+ * the report (property cards, provenance, exports) is untouched.
+ */
+const addressWithoutZip = (address: string): string =>
+  address.replace(/\s+\d{5}(-\d{4})?\s*$/, "").trim();
 const metricKeys: (keyof MarketMetrics)[] = [
   "inventorySf",
   "deliveredSf",
@@ -65,7 +98,11 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
     year: periodMatch?.[1] ?? report.report.period,
     quarter: periodMatch?.[2].toUpperCase() ?? report.report.period,
   };
-  const totals = options?.savedMetricsOnly ? report.overallMarket : calculateMarketTotals(report.submarkets);
+  // The Market Totals row is the report's Overall Market source object
+  // (for full Chicago scope, the first-class Overall Market Market_Data__c
+  // row). It is never independently recomputed from the submarkets: no
+  // summed inventory, no inventory-weighted percentages or rents.
+  const totals = report.overallMarket;
   const extremes = Object.fromEntries(
     metricKeys.map((key) => [
       key,
@@ -97,9 +134,27 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
     {
       kind: "total",
       name: "MARKET TOTALS",
-      inventory: integer(totals.inventorySf),
-      delivered: integer(totals.deliveredSf),
-      underConstruction: integer(totals.underConstructionSf),
+      inventory: integer(
+        resolvePresentationValue(
+          report,
+          "overallMarket.inventorySf",
+          totals.inventorySf,
+        ),
+      ),
+      delivered: integer(
+        resolvePresentationValue(
+          report,
+          "overallMarket.deliveredSf",
+          totals.deliveredSf,
+        ),
+      ),
+      underConstruction: integer(
+        resolvePresentationValue(
+          report,
+          "overallMarket.underConstructionSf",
+          totals.underConstructionSf,
+        ),
+      ),
       speculative: percent(
         resolvePresentationValue(
           report,
@@ -115,10 +170,34 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
           report.overallMarket.quarterlyNetAbsorptionSf,
         ),
       ),
-      vacancy: percent(totals.vacancyRate),
-      availability: percent(totals.availabilityRate),
-      rent: rent(totals.askingNetRentPsf),
-      sales: money(totals.salesVolume),
+      vacancy: percent(
+        resolvePresentationValue(
+          report,
+          "overallMarket.vacancyRate",
+          totals.vacancyRate,
+        ),
+      ),
+      availability: percent(
+        resolvePresentationValue(
+          report,
+          "overallMarket.availabilityRate",
+          totals.availabilityRate,
+        ),
+      ),
+      rent: rent(
+        resolvePresentationValue(
+          report,
+          "overallMarket.askingNetRentPsf",
+          totals.askingNetRentPsf,
+        ),
+      ),
+      sales: money(
+        resolvePresentationValue(
+          report,
+          "overallMarket.salesVolume",
+          totals.salesVolume,
+        ),
+      ),
     },
     {
       kind: "minimum",
@@ -196,11 +275,14 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
           : section === "delivery"
             ? [
                 item.developmentType || item.type,
-                item.developer || item.sponsor,
+                // Card UI consumes only the governed displayParty; the raw
+                // tenant/owner/developer fields never drive presentation
+                // directly (see resolveDisplayParty in contributors.ts).
+                item.displayParty || item.developer || item.sponsor,
               ]
             : [
                 item.constructionType || item.type,
-                item.developer || item.sponsor,
+                item.displayParty || item.developer || item.sponsor,
               ];
       return {
         ...item,
@@ -235,7 +317,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
                 .tenantDisplayName ??
               (item as IndustrialMarketReport["leasing"][number]).tenant,
             amount: `${integer((item as IndustrialMarketReport["leasing"][number]).sizeSf)} SF`,
-            address: item.address,
+            address: addressWithoutZip(item.address),
             type: (item as IndustrialMarketReport["leasing"][number]).leaseType,
             isLeeDeal:
               (item as IndustrialMarketReport["leasing"][number]).isLeeDeal ===
@@ -246,7 +328,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
             amount: money(
               (item as IndustrialMarketReport["sales"][number]).price,
             ),
-            address: item.address,
+            address: addressWithoutZip(item.address),
             type:
               (item as IndustrialMarketReport["sales"][number]).saleType ===
               "Included"
@@ -255,6 +337,10 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
             isLeeDeal:
               (item as IndustrialMarketReport["sales"][number]).isLeeDeal ===
               true,
+            sizePricePerSf: saleSizePricePerSf(
+              (item as IndustrialMarketReport["sales"][number]).sizeSf,
+              (item as IndustrialMarketReport["sales"][number]).pricePerSf,
+            ),
           },
     );
     while (rows.length < 3)
@@ -264,6 +350,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
         address: "-",
         type: "-",
         isLeeDeal: false,
+        sizePricePerSf: "-",
       });
     return rows;
   };

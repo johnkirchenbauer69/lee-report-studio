@@ -25,9 +25,13 @@ panel is created. Leases are included only when confidentiality is explicitly
 The context builder applies deterministic caps before inference:
 
 - absorption contributors: up to 5 positive and 5 negative;
-- leases, sales, availabilities, construction, and deliveries: up to 5 each
-  for display, though `count` facts report the full quarter's governed
-  record counts, uncapped;
+- leases and sales: only transactions that pass the narrative materiality
+  rule (governed-driver link, or a combined rank/size/share score; see
+  [narrative-context-v3.md](narrative-context-v3.md)), capped at 4 for the
+  Overall Market and 3 per submarket. The visible Top Leases / Top Sales
+  tables are unaffected;
+- availabilities, construction, and deliveries: up to 3 each, while `count`
+  facts report the full quarter's governed record counts, uncapped;
 - Overall Market leaderboards: top 3 and bottom 3 per ranked metric;
 - history: the current period plus up to 4 preceding quarters for the
   recited period trend list, though QoQ/YoY/YTD/historical facts use all
@@ -72,14 +76,16 @@ records support — nothing here is calculated by the model:
   construction, and sales volume; a leasing-activity leaderboard is added
   only when every canonical submarket has a current-quarter leasing figure,
   so an incomplete population is never silently ranked.
-- **Market drivers** (`market_driver` category): curated, deterministic
-  explanation facts synthesized from governed records already present
-  elsewhere in context — e.g. a vacancy increase paired with named
-  negative-absorption contributors, or a construction pipeline dominated by
-  built-to-suit SF. These exist so the model can attribute a result to a
-  named cause without inferring causation from two merely-simultaneous
-  facts; the prompt still requires an explicit driver fact before it may
-  use strong causal language.
+- **Governed explanatory facts** (`market_driver` category,
+  `analyticalType` of vacancy/availability/absorption bridge, leasing
+  conversion, pipeline change, materiality, breadth, or driver): consumed
+  verbatim from the Market Data Engine's explanatory contributor rows. Report
+  Studio no longer synthesizes causes (the former "vacancy increase
+  associated with second-generation space" inference was removed); causal
+  wording is licensed only by facts with `causalSupport: true`. When no
+  governed driver exists, the context states the movement only. See
+  [narrative-context-v3.md](narrative-context-v3.md) for the upstream
+  contract, breadth and inflection facts, and page awareness.
 
 ## Publication-safe entity sanitization
 
@@ -126,7 +132,11 @@ requires every narrative to be `approved`, current, successful, and within its
 rendered text box. Each record stores its prompt version, context SHA-256,
 report-data hash, claims, support keys, quality flags, timestamps, revision
 history, model, and token usage when available. A changed context hash marks the
-record `stale` without deleting its text.
+record `stale` without deleting its text. Each record is also bound to a
+report-data fingerprint (snapshot plus data-bearing manual overrides); a
+fingerprint change marks it stale too, a direct-generation result that
+completes after the data moved is stored as `stale`, and export refreshes
+staleness on the server before building the PDF from that same instance.
 
 The post-generation validator rejects unknown support keys, unsupported named
 entities, Salesforce IDs, internal workflow language (Salesforce, Ascendix,
@@ -137,7 +147,10 @@ Report Studio re-derives each market's current context and re-validates
 before anything becomes a Draft record.
 Plausible but ambiguous rounding is retained as an explicit review warning.
 Chromium performs the final text-fit measurement in the actual template boxes
-before publication PDF output.
+before publication PDF output. Narrative text is dynamically sized between
+its authored size and +2 pt (0.25 pt steps, ~4% safety margin); text that
+does not fit at the authored size is reported as overflow, never shrunk or
+truncated.
 
 The validator also runs pragmatic, non-blocking editorial QA heuristics and
 records them as quality flags rather than rejecting stylistically varied
@@ -148,15 +161,23 @@ All / imported batch, in addition to the per-narrative check),
 `metric_dump` and `repetitive_sentence_structure` (too many sentences read as
 bare metric recitations), `boilerplate_phrasing` (overused connective
 phrases), and `missing_comparative_context` (sufficient trend history existed
-but the narrative made no comparative statement).
+but the narrative made no comparative statement). Context v3 adds
+`transaction_repetition`, `weak_thesis`, `unsupported_outlook`,
+`excessive_metric_density`, `page_redundancy`, `generic_closing`, and
+`unsupported_causal_claim`; these are computed locally and never accepted
+from the generator.
 
-Prompt profiles are versioned as `overall-market-v2` and `submarket-v2`.
+Prompt profiles are versioned as `overall-market-v3` and `submarket-v3`.
 Changing a future prompt profile does not alter or reapprove existing prose.
-Word/paragraph targets: Overall Market 225–325 words (375 hard max) across
-3–5 short paragraphs; submarket 160–230 words (275 hard max) across 2–4 short
-paragraphs. The prompt asks the model to identify the quarter's dominant
-story, lead with it, select roughly 4–7 explanatory facts rather than a fixed
-metric sequence, and vary its openings and sentence structure across markets.
+Word/paragraph targets: Overall Market 250–340 words (375 hard max), 3–4
+preferred paragraphs; submarket 175–240 words (275 hard max), 2–3 preferred
+paragraphs, with a third only for a genuinely distinct analytical subject.
+Paragraph counts are guidance, not a gate. The prompt asks for a market
+thesis rather than a metric summary, causes only where governed facts
+support them, and prose that interprets rather than repeats the page's
+tables. Over the ChatGPT/MCP transport the frozen narrative-v2 profile is
+still sent (the MCP pins it); the v3 profile travels in each context's
+`editorialBrief` until the coordinated MCP v3 update.
 
 ## Known limitation
 

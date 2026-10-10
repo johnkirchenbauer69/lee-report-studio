@@ -1,3 +1,4 @@
+import { tableCellDisplayValue } from "../engine/tableValueOverrides";
 import {
   PDFDocument,
   StandardFonts,
@@ -16,6 +17,12 @@ import type {
 } from "../types/report";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 import { resolveTypography } from "../engine/typography";
+import { fitNarrativeFontSize } from "../report-engine/layout/narrativeFontFit";
+
+const NARRATIVE_BINDING_PATHS = new Set([
+  "overallMarket.narrative",
+  "market.narrative",
+]);
 
 const POINTS_PER_PIXEL = 72 / 96;
 const rotatedBoxOrigin = (
@@ -346,11 +353,7 @@ function drawTable(
     let columnX = x;
     element.columns.forEach((column, columnIndex) => {
       const columnWidth = (width * weights[columnIndex]) / weightTotal,
-        value = formatValue(getByPath(row, column.path), {
-          path: column.path,
-          format: column.format,
-          decimals: column.decimals ?? 1,
-        }),
+        value = tableCellDisplayValue(element, row, column, data),
         lines = wrapText(value, font, fontSize, columnWidth - 6);
       lines.slice(0, 2).forEach((line, lineIndex) =>
         pdfPage.drawText(line, {
@@ -426,7 +429,23 @@ async function drawElement(
         : Number(typography.fontWeight) >= 600
           ? fonts.bold
           : fonts.regular,
-      size = typography.fontSize * POINTS_PER_PIXEL,
+      authoredSize = typography.fontSize * POINTS_PER_PIXEL,
+      // Narrative text uses the same +0–2 pt dynamic fit as the Chromium
+      // renderer, measured here with this fallback's own font metrics.
+      size = NARRATIVE_BINDING_PATHS.has(element.binding?.path ?? "")
+        ? fitNarrativeFontSize(authoredSize, (candidate) => ({
+            contentHeight:
+              wrapText(
+                typography.uppercase ? value.toUpperCase() : value,
+                font,
+                candidate,
+                width,
+              ).length *
+              candidate *
+              typography.lineHeight,
+            availableHeight: height,
+          }), { tolerancePx: 0.01, unitsPerPt: 1 }).fontSizePx
+        : authoredSize,
       lineHeight = size * typography.lineHeight,
       lines = wrapText(
         typography.uppercase ? value.toUpperCase() : value,

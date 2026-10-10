@@ -534,6 +534,12 @@ const transactionColumns = [
     align: "left" as const,
   },
 ];
+// Shared 4-column grid for Top Leases and Top Sales (both the Overall
+// Market and submarket-detail variants), so every table's columns start at
+// identical x-positions. Column 4 (type) is widened relative to the earlier
+// 24/24/34/18 pass so "Direct / Renewal" and similar values have room next
+// to the fixed-width LEE DEAL badge without wrapping/crowding.
+const TRANSACTION_GRID_WIDTHS = [22, 20, 32, 26] as const;
 const transactionChipStyle = {
   fontFamily: "Nunito Sans",
   fontWeight: 900,
@@ -823,11 +829,13 @@ const overviewPage: ReportPage = {
       maxRows: 3,
       variant: "transactions",
       transactionChipStyle,
+      // Shares its 4-column grid with the Top Sales table below it so both
+      // tables' columns start at the same x-position.
       columns: [
-        { ...transactionColumns[0], label: "TENANT" },
-        { ...transactionColumns[1], label: "SIZE (SF)" },
-        transactionColumns[2],
-        { ...transactionColumns[3], label: "LEASE TYPE" },
+        { ...transactionColumns[0], label: "TENANT", width: TRANSACTION_GRID_WIDTHS[0] },
+        { ...transactionColumns[1], label: "SIZE", width: TRANSACTION_GRID_WIDTHS[1] },
+        { ...transactionColumns[2], width: TRANSACTION_GRID_WIDTHS[2] },
+        { ...transactionColumns[3], label: "LEASE TYPE", width: TRANSACTION_GRID_WIDTHS[3] },
       ],
       style: {
         fontFamily: "Nunito Sans, Arial, sans-serif",
@@ -886,11 +894,19 @@ const overviewPage: ReportPage = {
       maxRows: 3,
       variant: "transactions",
       transactionChipStyle,
+      // Shares its 4-column grid with the Top Leases table above it so both
+      // tables' columns start at the same x-position.
       columns: [
-        { ...transactionColumns[0], label: "BUYER" },
-        { ...transactionColumns[1], label: "PRICE ($)" },
-        transactionColumns[2],
-        { ...transactionColumns[3], label: "SALE TYPE" },
+        { ...transactionColumns[0], label: "BUYER", width: TRANSACTION_GRID_WIDTHS[0] },
+        {
+          ...transactionColumns[1],
+          key: "sizePricePerSf",
+          label: "SIZE / PRICE",
+          path: "sizePricePerSf",
+          width: TRANSACTION_GRID_WIDTHS[1],
+        },
+        { ...transactionColumns[2], width: TRANSACTION_GRID_WIDTHS[2] },
+        { ...transactionColumns[3], label: "SALE TYPE", width: TRANSACTION_GRID_WIDTHS[3] },
       ],
       style: {
         fontFamily: "Nunito Sans, Arial, sans-serif",
@@ -920,22 +936,25 @@ function propertySection(
       : section === "deliveries"
         ? "topDeliveries"
         : "topConstruction";
-  const result: ReportElement[] = [
-    shape(`${id}-bar`, `${title} Bar`, 32, y, 752, 27, crimson, 8),
-    text(
-      `${id}-section-title`,
-      title,
-      32,
-      y + 2,
-      752,
-      23,
-      title,
-      17,
-      white,
-      800,
-      "center",
-    ),
-  ];
+  // Cards are collected separately from the bar/title and appended AFTER
+  // them below: this render engine paints later array entries on top, so
+  // the beveled section bar (and its title) must come last to always sit
+  // above the property images, never the reverse.
+  const bar = shape(`${id}-bar`, `${title} Bar`, 32, y, 752, 27, crimson, 8);
+  const sectionTitle = text(
+    `${id}-section-title`,
+    title,
+    32,
+    y + 2,
+    752,
+    23,
+    title,
+    17,
+    white,
+    800,
+    "center",
+  );
+  const result: ReportElement[] = [];
   items.forEach((item, index) => {
     const x = 32 + index * 257,
       width = index === 2 ? 238 : 239;
@@ -1004,7 +1023,7 @@ function propertySection(
       bindingContext: { name: "property", path: `${sourcePath}[${index}]` },
     });
   });
-  return result;
+  return [...result, bar, sectionTitle];
 }
 
 const highlightsPage: ReportPage = {

@@ -1,4 +1,5 @@
 import { closingContentSchema } from "../closing/closingContent";
+import { brokerInterviewSetSchema } from "../narratives/brokerInterviews";
 import { z } from "zod";
 import { normalizeElementCorners } from "../../engine/corners";
 import type { ReportElement } from "../../types/report";
@@ -280,12 +281,7 @@ const chartStyleSchema = z
 
 export const reportElementSchema = z.discriminatedUnion("type", [
   z
-    .object({
-      ...baseElementShape,
-      type: z.literal("text"),
-      text: z.string(),
-      closingContent: closingContentSchema.optional(),
-    })
+    .object({ ...baseElementShape, type: z.literal("text"), text: z.string(), closingContent: closingContentSchema.optional() })
     .strict(),
   z
     .object({
@@ -483,6 +479,7 @@ const narrativeRecordSchema = z
     model: z.string().optional(),
     contextHash: z.string().optional(),
     reportDataHash: z.string(),
+    reportDataFingerprint: z.string().optional(),
     generatedAt: timestamp.optional(),
     editedAt: timestamp.optional(),
     approvedAt: timestamp.optional(),
@@ -539,18 +536,23 @@ const externalJobSchema = z
     errorMarketId: z.string().optional(),
     instruction: z.string().optional(),
     contextHashes: z.record(z.string(), z.string()).optional(),
+    reportDataHash: z.string().optional(),
+    reportDataFingerprint: z.string().optional(),
   })
   .strict();
 
 export const manualOverrideSchema = z
   .object({
     elementId: nonEmpty,
+    cellKey: nonEmpty.optional(),
     bindingPath: z.string().optional(),
     generatedValue: z.unknown(),
     overrideValue: z.unknown(),
     createdAt: timestamp,
   })
-  .strict();
+  .strict()
+  .refine((item) => !item.cellKey || (typeof item.overrideValue === "string" && !/^\s*[=+@]/.test(item.overrideValue)),
+    { message: "Table display overrides must be plain text, not formulas." });
 
 export const reportDocumentPatchSchema = z
   .object({
@@ -618,6 +620,7 @@ export const reportInstanceSchema = z
     manualOverrides: z.array(manualOverrideSchema),
     narratives: z.array(narrativeRecordSchema).length(19),
     externalNarrativeJob: externalJobSchema.optional(),
+    brokerInterviews: brokerInterviewSetSchema.optional(),
     readiness: z
       .object({
         canEdit: z.boolean(),
@@ -628,6 +631,7 @@ export const reportInstanceSchema = z
         issues: z.array(validationIssueSchema),
       })
       .strict(),
+    publishedAt: timestamp.optional(),
     status: z.enum(["draft", "approved", "published"]),
   })
   .strict();

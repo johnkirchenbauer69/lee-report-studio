@@ -1,3 +1,4 @@
+import type { BrokerInterviewSet } from "../narratives/brokerInterviews";
 import type {
   EditorSettings,
   FontReference,
@@ -26,6 +27,8 @@ export interface ReportGenerationRequest {
 
 export interface ManualOverride {
   elementId: string;
+  /** Semantic table row/column identity; absent for existing text overrides. */
+  cellKey?: string;
   bindingPath?: string;
   generatedValue: unknown;
   overrideValue: unknown;
@@ -95,6 +98,13 @@ export interface ExternalNarrativeJob {
    * data that moved while the narratives were being written.
    */
   contextHashes?: Record<string, string>;
+  /** Provider snapshot hash the job's contexts were built from. */
+  reportDataHash?: string;
+  /**
+   * Report-data fingerprint (snapshot + data-bearing overrides) at job
+   * creation. Import rejects the batch if the report has moved since.
+   */
+  reportDataFingerprint?: string;
 }
 
 export interface ReportInstance {
@@ -128,6 +138,13 @@ export interface ReportInstance {
    * Studio. Belongs to the instance, never to the master template.
    */
   externalNarrativeJob?: ExternalNarrativeJob;
+  /**
+   * Optional normalized broker interview context for this report. Supplemental
+   * qualitative intelligence only (BROKER_INTERVIEW_CONTEXT); never governs a
+   * metric. The raw uploaded file is not stored.
+   */
+  brokerInterviews?: BrokerInterviewSet;
   readiness: ReportReadiness;
+  publishedAt?: string;
   status: "draft" | "approved" | "published";
 }

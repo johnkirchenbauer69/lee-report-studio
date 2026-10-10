@@ -1,3 +1,4 @@
+import { revealInspectorControls, revealViewOptions } from "../support/editorDisclosures";
 import { readFile } from "node:fs/promises";
 import {
   expect,
@@ -201,13 +202,15 @@ function editorFixture(
 }
 
 async function openVersion(page: Page, version: string, status: string) {
-  await page.goto("/", { waitUntil: "load" });
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".left-panel .library-tabs").getByRole("button", {name: status === "published" ? "Published" : status === "archived" ? "History" : "Drafts", exact:true}).click();
   const card = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${version} · ${status}` });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Open", exact: true }).click();
+  await card.getByRole("button", { name: status === "draft" ? "Open Draft" : "Open", exact: true }).click();
 }
 
 async function uploadImage(
@@ -228,8 +231,10 @@ async function uploadImage(
 
 async function exportTemplate(page: Page) {
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "JSON", exact: true }).click();
+  await revealViewOptions(page);
+  await page.getByRole("button", { name: "Download JSON source", exact: true }).click();
   const download = await downloadPromise;
+  await page.locator(".view-options > summary").click();
   const downloadedPath = await download.path();
   expect(downloadedPath).not.toBeNull();
   return JSON.parse(await readFile(downloadedPath!, "utf8")) as ReportTemplate;
@@ -251,7 +256,7 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
   const before = structuredClone(published.template.pages);
 
   await openVersion(page, published.version, "published");
-  await expect(page.locator(".topbar")).toContainText("Published — Read Only");
+  await expect(page.locator(".document-header")).toContainText("published");
   await expect(page.locator(".statusbar")).toContainText("0 history steps");
   const inMemoryBefore = await exportTemplate(page);
 
@@ -283,6 +288,9 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
   await page.mouse.move(shapeBox!.x + 80, shapeBox!.y + 70);
   await page.mouse.up();
   expect(await shape.boundingBox()).toEqual(shapeBox);
+  // A rejected drag can end on the stage background and clear selection.
+  // Select the first shape before exercising multi-select and grouping.
+  await shape.click();
 
   await page.getByTestId(`${token}-shape-b`).click({ modifiers: ["Shift"] });
   await page.keyboard.press("Control+g");
@@ -307,15 +315,16 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
   expect(after.template.pages).toEqual(before);
   expect(after.checksum).toBe(published.checksum);
 
-  await page.getByRole("button", { name: /Templates/ }).click();
+  await page.locator(".rail").getByRole("button", { name: /Templates/ }).click();
   const publishedCard = page
     .locator(".template-version-list section")
     .filter({ hasText: `v${published.version} · published` });
   await publishedCard
     .getByRole("button", { name: "Create Draft From Version" })
     .click();
-  await expect(page.locator(".topbar")).toContainText("· draft");
+  await expect(page.locator(".document-header")).toContainText("· draft");
   await page.getByTestId(`${token}-text`).click();
+  await revealInspectorControls(page);
   await expect(page.getByLabel("Layer name")).toBeEnabled();
   await page.getByLabel("Layer name").fill("Editable successor text");
   const saveResponse = page.waitForResponse(
@@ -323,7 +332,7 @@ test("published templates reject canvas, keyboard, inspector, creation, grouping
       response.request().method() === "PUT" &&
       /\/api\/templates\/[^/]+\/versions\/[^/]+$/.test(response.url()),
   );
-  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  await page.locator(".document-header").getByRole("button", { name: "Save Draft", exact: true }).click();
   expect((await saveResponse).status()).toBe(200);
 
   const summaries = (await (await request.get("/api/templates")).json()) as {
@@ -517,8 +526,9 @@ test("a generated 44-page report reopens and exports after its source draft is d
     id: saved.id,
   });
   const page = await context.newPage();
-  await page.goto("/", { waitUntil: "load" });
-  await expect(page.locator(".topbar")).toContainText("Report Instance");
+  await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator(".document-header")).toContainText("Report ·");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   await page.getByRole("button", { name: "Validate", exact: true }).click();
   await expect(page.locator(".left-panel")).toContainText(
@@ -598,8 +608,9 @@ test("a legacy report without snapshot metadata is not forgotten when its source
   page.on("console", (message) => {
     if (message.type() === "warning") warnings.push(message.text());
   });
-  await page.goto("/", { waitUntil: "load" });
-  await expect(page.locator(".topbar")).toContainText("Report Instance");
+  await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
+  await expect(page.locator(".document-header")).toContainText("Report ·");
   await expect(page.getByTestId(marker.id)).toBeVisible();
   expect(warnings.join("\n")).toContain(
     "source_template_missing_during_report_restore",

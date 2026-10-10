@@ -32,6 +32,21 @@ export const marketingChartTheme = {
     construction: { left: 35.36, right: 11.5, top: 11.64, bottom: 35.49 },
   },
   shadow: { dx: 3, dy: 3, blur: 1.4, opacity: 0.26 },
+  // Count chips (distinct buildings / qualifying sales) reuse the dark-blue
+  // property-card footer navy so they read as the same report vocabulary.
+  countChip: {
+    fill: "#003C50",
+    text: "#FFFFFF",
+    fontSize: 6,
+    fontWeight: 700,
+    height: 9,
+    paddingX: 2.6,
+    radius: 1.8,
+    /** Gap between the bar top and an inside chip / between chip and label. */
+    inset: 2.5,
+    /** Approximate advance width of a tabular digit, as a share of font size. */
+    digitWidth: 0.6,
+  },
 } as const;
 
 export type MarketingChartId =

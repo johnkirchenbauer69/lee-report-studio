@@ -172,3 +172,100 @@ test("repeating submarket charts inherit plot-centered legends", async ({
       .locator("svg text", { hasText: "SQUARE FEET" }),
   ).toHaveCount(0);
 });
+
+type Box = { x: number; y: number; width: number; height: number };
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.width &&
+  b.x < a.x + a.width &&
+  a.y < b.y + b.height &&
+  b.y < a.y + a.height;
+
+for (const chart of [
+  { page: 3, id: "availability-chart", kind: "buildings" },
+  { page: 2, id: "chart-sales-unavailable", kind: "sales" },
+  { page: 5, id: "detail-availability-chart", kind: "buildings" },
+  { page: 4, id: "detail-chart-sales-unavailable", kind: "sales" },
+] as const) {
+  test(`${chart.id} count chips stay legible and collision-free`, async ({
+    page,
+  }) => {
+    await page.goto(`/?benchmark=1&page=${chart.page}`, { waitUntil: "load" });
+    const target = page.getByTestId(chart.id);
+    const geometry = await target.locator("svg").evaluate((svg, kind) => {
+      const box = (node: Element) => {
+        const b = (node as SVGGraphicsElement).getBBox();
+        return { x: b.x, y: b.y, width: b.width, height: b.height };
+      };
+      const chips = [
+        ...svg.querySelectorAll(`[data-count-chip="${kind}"]`),
+      ].map((chip) => ({
+        index: Number((chip as SVGGElement).dataset.barIndex),
+        placement: (chip as SVGGElement).dataset.chipPlacement,
+        box: box(chip.querySelector("rect")!),
+        text: box(chip.querySelector("text")!),
+      }));
+      // Every non-chip, non-legend text: SF/$ value labels, axis ticks,
+      // categories and titles.
+      const texts = [...svg.querySelectorAll("text")]
+        .filter(
+          (node) =>
+            !node.closest("[data-count-chip]") &&
+            !node.closest("[data-count-chip-key]") &&
+            node.textContent?.trim(),
+        )
+        .map((node) => ({ label: node.textContent, box: box(node) }));
+      const lines = [...svg.querySelectorAll('[data-series] path')].map(
+        (path) => {
+          const p = path as SVGPathElement;
+          const length = p.getTotalLength();
+          return Array.from({ length: 400 }, (_, i) =>
+            p.getPointAtLength((length * i) / 399),
+          ).map((pt) => ({ x: pt.x, y: pt.y }));
+        },
+      );
+      const view = (svg as SVGSVGElement).viewBox.baseVal;
+      return {
+        chips,
+        texts,
+        lines,
+        view: { width: view.width, height: view.height },
+      };
+    }, chart.kind);
+    expect(geometry.chips.length).toBeGreaterThan(0);
+    for (const chip of geometry.chips) {
+      // Inside the chart viewBox.
+      expect(chip.box.x).toBeGreaterThanOrEqual(0);
+      expect(chip.box.y).toBeGreaterThanOrEqual(0);
+      expect(chip.box.x + chip.box.width).toBeLessThanOrEqual(
+        geometry.view.width,
+      );
+      // The count text fits inside its chip.
+      expect(chip.text.width).toBeLessThanOrEqual(chip.box.width + 0.01);
+      expect(chip.text.height).toBeGreaterThan(4);
+      for (const text of geometry.texts)
+        expect(
+          overlaps(chip.box, text.box),
+          `chip ${chip.index} overlaps "${text.label}"`,
+        ).toBe(false);
+      for (const line of geometry.lines)
+        for (const pt of line)
+          expect(
+            pt.x > chip.box.x &&
+              pt.x < chip.box.x + chip.box.width &&
+              pt.y > chip.box.y &&
+              pt.y < chip.box.y + chip.box.height,
+            `chip ${chip.index} crosses the median line at ${pt.x},${pt.y}`,
+          ).toBe(false);
+    }
+    if (chart.kind === "buildings") {
+      // The curated fixture's 20-75k bucket is a very small bar: its chip
+      // must sit above the bar, while the tallest bucket keeps it inside.
+      expect(
+        geometry.chips.find((chip) => chip.index === 0)?.placement,
+      ).toBe("above");
+      expect(geometry.chips.find((chip) => chip.index === 4)?.placement).toBe(
+        "inside",
+      );
+    }
+  });
+}

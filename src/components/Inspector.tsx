@@ -1,4 +1,5 @@
 import { ClosingContentEditor } from "./ClosingContentEditor";
+import { displayAssetName } from "../shared/assetNames";
 import type {
   Asset,
   BevelStyle,
@@ -37,6 +38,10 @@ import {
   resolveContextPath,
 } from "../engine/bindings";
 import type { IndustrialMarketReport } from "../report-engine/schema/industrialMarketReport";
+import type { ManualOverride } from "../report-engine/schema/generation";
+import { tableCellKey, findTableValueOverride } from "../engine/tableValueOverrides";
+import { getByPath } from "../engine/bindings";
+import { TableValueOverrideControls } from "./TableValueOverrideControls";
 import {
   findPresentationOverride,
   findProvenance,
@@ -61,6 +66,8 @@ interface Props {
   onReplaceImage?: () => void;
   data?: unknown;
   report?: IndustrialMarketReport;
+  manualOverrides?: ManualOverride[];
+  onTableValueOverride?: (cellKey: string, bindingPath: string, generatedValue: unknown, value: string | null) => void;
   tableEditing?: boolean;
   tableSelection?: TableSelection;
   generated?: boolean;
@@ -74,14 +81,14 @@ interface Props {
 function Section({
   title,
   children,
-  open = true,
+  open,
 }: {
   title: string;
   children: React.ReactNode;
   open?: boolean;
 }) {
   return (
-    <details className="inspector-section" open={open}>
+    <details className={`inspector-section ${/Typography|Image|Chart Type|Legend|Series|Table$|Closing page content/.test(title) ? "content-section" : /Fill|Appearance/.test(title) ? "style-section" : /Position|Arrange/.test(title) ? "layout-section" : /Binding|Chart Data/.test(title) ? "data-section" : "effects-section"}`} open={open ?? /Typography|Image|Chart Type|Legend|Series|Table$|Closing page content|Fill|Arrange/.test(title)}>
       <summary>
         {title}
         <span>⌄</span>
@@ -112,7 +119,7 @@ function ColorField({
           value={value === "transparent" ? "#ffffff" : value}
           onInput={(e) => onChange(e.currentTarget.value)}
         />
-        <input value={value} onChange={(e) => onChange(e.target.value)} />
+        <input aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
         {allowNone && (
           <button
             type="button"
@@ -350,6 +357,8 @@ export function Inspector({
   onUnion,
   data,
   report,
+  manualOverrides,
+  onTableValueOverride,
   tableEditing,
   tableSelection,
   generated,
@@ -729,17 +738,22 @@ export function Inspector({
           decimals: selectedColumn.decimals,
         })
       : undefined;
+  const selectedCellKey = table && selectedRow && selectedColumn
+    ? tableCellKey(table, selectedRow, selectedColumn, data) : undefined;
+  const selectedOverride = table && selectedRow && selectedColumn
+    ? findTableValueOverride(table, selectedRow, selectedColumn, data, manualOverrides) : undefined;
   return (
     <aside className="inspector" inert={readOnly ? true : undefined}>
       <div className="inspector-header">
         <div>
           <strong>
-            {selectionCount > 1 ? `${selectionCount} elements` : element.name}
+            {selectionCount > 1 ? `${selectionCount} elements` : displayAssetName(element.name)}
           </strong>
           <span>{selectionCount > 1 ? "Multi-selection" : element.type}</span>
         </div>
         <span className="type-chip">{element.type}</span>
       </div>
+      <div className="inspector-layout">
       <Section title="Position & Size">
         {selectionCount === 1 && (
           <label>
@@ -1340,6 +1354,20 @@ export function Inspector({
                 Data-bound report values are read-only; style and formatting
                 changes do not modify Salesforce.
               </small>
+              {generated && onTableValueOverride && selectedCellKey && (
+                <TableValueOverrideControls
+                  cellKey={`${table.id}:${selectedCellKey}`}
+                  sourceValue={selectedDisplayValue ?? "—"}
+                  overrideValue={selectedOverride ? String(selectedOverride.overrideValue ?? "") : undefined}
+                  onApply={(value) => onTableValueOverride(selectedCellKey,
+                    `${table.sourcePath}.${selectedColumn.path}`, getByPath(selectedRow, selectedColumn.path), value)}
+                  onClear={() => onTableValueOverride(selectedCellKey,
+                    `${table.sourcePath}.${selectedColumn.path}`, getByPath(selectedRow, selectedColumn.path), null)}
+                />
+              )}
+              {generated && onTableValueOverride && !selectedCellKey && (
+                <small>A unique semantic row and column identity is required for a display override.</small>
+              )}
             </>
           )}
         </Section>
@@ -1522,6 +1550,7 @@ export function Inspector({
         <Section title={element.type === "table" ? "Table Shadow" : "Drop Shadow"}>
           <ShadowFields
             toggleLabel={element.type === "table" ? "Table Shadow" : "Drop Shadow"}
+            fieldPrefix={element.type === "table" ? "Table Shadow" : "Shadow"}
             shadow={shadow}
             onChange={setShadow}
           />
@@ -2441,6 +2470,7 @@ export function Inspector({
           </>
         )}
       </Section>
+      </div>
     </aside>
   );
 }

@@ -6,6 +6,7 @@ import {
   rename,
   unlink,
   writeFile,
+  stat,
 } from "node:fs/promises";
 import path from "node:path";
 import type {
@@ -23,6 +24,11 @@ export interface ReportDocumentPatch {
   baseRevision: number;
   pages: ReportPage[];
   manualOverrides: ManualOverride[];
+}
+
+export interface SavedReportSummary {
+  id: string; name: string; period: string; status: "draft" | "approved" | "published";
+  generatedAt: string; modifiedAt: string; templateVersion: string; revision: number;
 }
 
 export interface RepositoryWriteOptions {
@@ -81,6 +87,28 @@ type RepositoryLog = (entry: Record<string, unknown>) => void;
 export class FileSystemReportInstanceRepository implements ReportInstanceRepository {
   readonly root: string;
   private readonly queues = new Map<string, Promise<void>>();
+  private readonly summaryCache = new Map<string, { stamp: string; summary: SavedReportSummary }>();
+
+  /** Catalog reads do not hydrate and clone every multi-megabyte document at once.
+   * File metadata is explicitly labelled as file modification time in the UI.
+   * Opening/exporting still uses readCurrent's full schema validation. */
+  async summaries(): Promise<SavedReportSummary[]> {
+    await this.initialize();
+    const names = (await readdir(this.root)).filter(name => /^report-[a-zA-Z0-9-]+\.json$/.test(name));
+    const summaries: SavedReportSummary[] = [];
+    for (const name of names) {
+      const file = path.join(this.root, name), metadata = await stat(file);
+      const stamp = `${metadata.mtimeMs}:${metadata.size}`;
+      const cached = this.summaryCache.get(name);
+      if (cached?.stamp === stamp) { summaries.push(cached.summary); continue; }
+      const raw = JSON.parse(await readFile(file, "utf8"));
+      if (raw.id !== name.slice(0,-5) || !raw.dataSnapshot?.report || !["draft", "approved", "published"].includes(raw.status) || typeof raw.generatedAt !== "string")
+        throw new Error(`Saved report ${name} has invalid catalog metadata. Its file was preserved.`);
+      const summary: SavedReportSummary = { id: raw.id, name: raw.dataSnapshot.report.title, period: raw.dataSnapshot.report.period, status: raw.status, generatedAt: raw.generatedAt, modifiedAt: metadata.mtime.toISOString(), templateVersion: raw.templateVersion, revision: raw.revision ?? 0 };
+      this.summaryCache.set(name, {stamp, summary}); summaries.push(summary);
+    }
+    return summaries.sort((a,b)=>b.modifiedAt.localeCompare(a.modifiedAt));
+  }
 
   constructor(
     dataRoot: string,
@@ -92,6 +120,14 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
 
   async initialize() {
     await mkdir(this.root, { recursive: true });
+  }
+
+  async deletedIds(): Promise<string[]> {
+    try { const metadata = JSON.parse(await readFile(path.join(path.dirname(this.root), "deleted-report-instances.json"), "utf8")); return metadata.ids.filter((id: unknown) => typeof id === "string" && /^report-[a-zA-Z0-9-]+$/.test(id)); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  }
+
+  private async assertNotDeleted(id: string) {
+    if ((await this.deletedIds()).includes(id)) throw new Error("This legacy report was permanently removed. Recovery cannot recreate it.");
   }
 
   private file(id: string) {
@@ -221,6 +257,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
 
   async create(instance: ReportInstance) {
     return this.enqueue(instance.id, "create", async () => {
+      await this.assertNotDeleted(instance.id);
       const started = Date.now();
       const current = await this.readCurrent(instance.id);
       if (current)
@@ -248,7 +285,9 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
       options.operation ?? "replace",
       async () => {
         const started = Date.now();
+        await this.assertNotDeleted(instance.id);
         const current = await this.readCurrent(instance.id);
+        if (current?.status === "published") throw new Error("Published reports are read-only.");
         this.assertRevision(instance.id, options.expectedRevision, current);
         const next = await this.write(this.nextRevision(instance, current));
         this.logger({
@@ -297,6 +336,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
       const started = Date.now();
       const current = await this.readCurrent(id);
       if (!current) throw new Error("Report instance not found.");
+      if (current.status === "published") throw new Error("Published reports are read-only.");
       this.assertRevision(id, options.expectedRevision, current);
       const updated = await updater(current);
       if (updated.id !== id)
@@ -315,6 +355,11 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
       });
       return structuredClone(next);
     });
+  }
+
+  async publish(id: string, expectedRevision: number) {
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) throw new Error("A saved report revision is required.");
+    return this.update(id, current => ({ ...current, status: "published", publishedAt: new Date().toISOString() }), { expectedRevision, operation: "publish" });
   }
 
   async patchDocument(id: string, patch: ReportDocumentPatch) {

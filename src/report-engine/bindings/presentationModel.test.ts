@@ -93,6 +93,98 @@ describe("buildPresentationModel", () => {
     expect(JSON.stringify(model.topSaleRows)).not.toContain("Included");
   });
 
+  describe("Top Sales SIZE (SF) / PRICE ($/SF)", () => {
+    it("combines both values when the report already carries the canonical size and Price/SF", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.sizeSf = 80_000;
+      report.sales[0]!.pricePerSf = 120;
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.sizePricePerSf).toBe("80,000 SF / $120/SF");
+    });
+
+    it("shows size only when Price/SF is unavailable", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.sizeSf = 80_000;
+      report.sales[0]!.pricePerSf = null;
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.sizePricePerSf).toBe("80,000 SF");
+    });
+
+    it("shows Price/SF only when size is unavailable", () => {
+      const report = structuredClone(q2SampleReport);
+      delete report.sales[0]!.sizeSf;
+      report.sales[0]!.pricePerSf = 120;
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.sizePricePerSf).toBe("$120/SF");
+    });
+
+    it("falls back to the existing missing/not-published convention when neither is available", () => {
+      const report = structuredClone(q2SampleReport);
+      delete report.sales[0]!.sizeSf;
+      report.sales[0]!.pricePerSf = null;
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.sizePricePerSf).toBe("-");
+    });
+
+    it("never recalculates Price/SF in the presentation layer -- it only formats whatever the payload already has", () => {
+      const report = structuredClone(q2SampleReport);
+      // Deliberately inconsistent with price/size so a passing test proves
+      // the presentation layer trusts the payload rather than deriving its
+      // own value from price and size.
+      report.sales[0]!.price = 999_999_999;
+      report.sales[0]!.sizeSf = 80_000;
+      report.sales[0]!.pricePerSf = 120;
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.sizePricePerSf).toBe("80,000 SF / $120/SF");
+    });
+  });
+
+  describe("Top Leases/Top Sales address formatting", () => {
+    it("drops the trailing ZIP code from Top Sales addresses while keeping city and state", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.address = "23301 S Central Ave, University Park, IL 60484";
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.address).toBe(
+        "23301 S Central Ave, University Park, IL",
+      );
+    });
+
+    it("drops the trailing ZIP+4 code from Top Sales addresses", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.address = "23301 S Central Ave, University Park, IL 60484-1234";
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.address).toBe(
+        "23301 S Central Ave, University Park, IL",
+      );
+    });
+
+    it("drops the trailing ZIP code from Top Leases addresses while keeping city and state", () => {
+      const report = structuredClone(q2SampleReport);
+      report.leasing[0]!.address = "3835 Youngs Rd, Channahon, IL 60410";
+      const model = buildPresentationModel(report);
+      expect(model.topLeaseRows[0]!.address).toBe(
+        "3835 Youngs Rd, Channahon, IL",
+      );
+    });
+
+    it("leaves an address unchanged when it has no trailing ZIP to remove", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.address = "Address not published";
+      const model = buildPresentationModel(report);
+      expect(model.topSaleRows[0]!.address).toBe("Address not published");
+    });
+
+    it("does not affect the canonical address elsewhere in the report", () => {
+      const report = structuredClone(q2SampleReport);
+      report.sales[0]!.address = "23301 S Central Ave, University Park, IL 60484";
+      const model = buildPresentationModel(report);
+      // The raw dataSnapshot-level field (not the Top Sales table row) is untouched.
+      expect(report.sales[0]!.address).toBe(
+        "23301 S Central Ave, University Park, IL 60484",
+      );
+    });
+  });
+
   it("normalizes verified Lee Deal booleans and never marks placeholder rows", () => {
     const report = structuredClone(q2SampleReport);
     report.leasing = [

@@ -37,6 +37,18 @@ afterEach(async () => {
 });
 
 describe("FileSystemReportInstanceRepository", () => {
+  it("persists semantic table display overrides without changing the source snapshot or pages", async () => {
+    const created = await repository.create(instance);
+    const override = { elementId: "market-indicators", cellKey: '["metric:net_absorption_t12","period:2025 Q3"]',
+      bindingPath: "indicatorRows.prior", generatedValue: null, overrideValue: "18,086,895", createdAt: "2026-10-06T12:00:00.000Z" };
+    await repository.patchDocument(created.id, { baseRevision: created.revision, pages: created.pages, manualOverrides: [override] });
+    const reopened = (await new FileSystemReportInstanceRepository(root).get(created.id))!;
+    expect(reopened.manualOverrides).toEqual([override]);
+    expect(reopened.dataSnapshot).toEqual(created.dataSnapshot);
+    expect(reopened.pages).toEqual(created.pages);
+    await repository.patchDocument(created.id, { baseRevision: reopened.revision, pages: reopened.pages, manualOverrides: [] });
+    expect((await repository.get(created.id))!.manualOverrides).toEqual([]);
+  });
   it("persists edited pages and manual overrides across a new repository process", async () => {
     const created = await repository.create(instance);
     const pages = structuredClone(created.pages);
@@ -270,4 +282,33 @@ describe("FileSystemReportInstanceRepository", () => {
       ReportInstanceValidationError,
     );
   });
+});
+
+
+describe("finalized report publication", () => {
+  it("freezes the exact saved snapshot and rejects all subsequent document writes", async () => {
+    instance.manualOverrides = [{ elementId: "indicator-table", cellKey: '["metricKey:trailing12MonthNetAbsorptionSf","period:2025 Q3"]', bindingPath: "indicatorRows.prior", generatedValue: "—", overrideValue: "12,657,528", createdAt: new Date().toISOString() }];
+    const saved = await repository.create(instance);
+    await expect(repository.publish(saved.id, saved.revision - 1)).rejects.toBeInstanceOf(ReportInstanceConflictError);
+    const published = await repository.publish(saved.id, saved.revision);
+    expect(published.status).toBe("published");
+    expect(published.publishedAt).toBeTruthy();
+    expect(published.pages).toEqual(saved.pages);
+    expect(published.manualOverrides).toEqual(saved.manualOverrides);
+    expect(published.dataSnapshot).toEqual(saved.dataSnapshot);
+    expect(published.narratives).toEqual(saved.narratives);
+    await expect(repository.patchDocument(saved.id, { baseRevision: published.revision, pages: [], manualOverrides: [] })).rejects.toThrow("read-only");
+    await expect(repository.save({ ...saved, status: "draft" })).rejects.toThrow("read-only");
+    await expect(repository.update(saved.id, current => ({ ...current, status: "draft" }))).rejects.toThrow("read-only");
+    expect(await new FileSystemReportInstanceRepository(root).get(saved.id)).toEqual(published);
+  });
+});
+
+it("rejects resurrection of a deleted legacy report from browser recovery", async () => {
+  await mkdir(root, { recursive: true });
+  await writeFile(path.join(root, "deleted-report-instances.json"), JSON.stringify({ ids: [instance.id] }));
+  try {
+    await expect(repository.create(instance)).rejects.toThrow("permanently removed");
+    await expect(repository.save(instance)).rejects.toThrow("permanently removed");
+  } finally { await rm(path.join(root, "deleted-report-instances.json"), { force: true }); }
 });

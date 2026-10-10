@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 async function openPeriodStep(page: import("@playwright/test").Page) {
-  await page.goto("/");
+  await page.goto("/?editor=1");
   await expect(
-    page.locator(".topbar .brand > div:last-child > span"),
+    page.locator(".document-identity span"),
   ).not.toContainText("local recovery");
   await page.locator(".create-report-top").click();
   const dialog = page.getByRole("dialog", { name: "Create report" });

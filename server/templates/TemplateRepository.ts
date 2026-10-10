@@ -24,6 +24,7 @@ export interface TemplateRepository {
     sourceVersion: string,
     template?: ReportTemplate,
   ): Promise<StoredTemplateVersion>;
+  archiveOlderVersions?(id: string, keepVersion: string): Promise<number>;
   publish(id: string, version: string): Promise<StoredTemplateVersion>;
   deleteDraft(id: string, version: string): Promise<void>;
 }

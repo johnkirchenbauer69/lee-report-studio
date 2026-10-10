@@ -1,0 +1,177 @@
+{
+  "contractVersion": "narrative-v3",
+  "status": "draft",
+  "contextModelVersion": "narrative-context-v3",
+  "qualityFlags": [
+    "limited_driver_context",
+    "limited_transaction_context",
+    "interpretive_statement",
+    "numeric_validation_warning",
+    "entity_validation_warning",
+    "template_opening",
+    "batch_repeated_opening",
+    "metric_dump",
+    "repetitive_sentence_structure",
+    "boilerplate_phrasing",
+    "missing_comparative_context",
+    "transaction_repetition",
+    "weak_thesis",
+    "unsupported_outlook",
+    "excessive_metric_density",
+    "page_redundancy",
+    "generic_closing",
+    "unsupported_causal_claim"
+  ],
+  "evidenceClasses": [
+    "direct",
+    "derived",
+    "interpretive"
+  ],
+  "contextCategories": [
+    "metric",
+    "trend",
+    "ranking",
+    "driver",
+    "lease",
+    "sale",
+    "availability",
+    "construction",
+    "delivery",
+    "count",
+    "composition",
+    "historical",
+    "concentration",
+    "market_driver"
+  ],
+  "analyticalTypes": [
+    "metric",
+    "trend",
+    "historical",
+    "inflection",
+    "ranking",
+    "lease",
+    "sale",
+    "availability",
+    "construction",
+    "delivery",
+    "count",
+    "composition",
+    "concentration",
+    "vacancy_bridge",
+    "availability_bridge",
+    "absorption_bridge",
+    "leasing_conversion",
+    "pipeline_change",
+    "materiality",
+    "market_breadth",
+    "market_driver"
+  ],
+  "evidenceStrengths": [
+    "confirmed",
+    "strong",
+    "indicative",
+    "unspecified"
+  ],
+  "contextSourceTypes": [
+    "Market_Data__c",
+    "Property_Data__c",
+    "Market_Data_Contributor__c",
+    "Report_Data_Service"
+  ],
+  "optionalFactFields": [
+    "analyticalType",
+    "editorialPriority",
+    "evidenceStrength",
+    "driverType",
+    "causalSupport",
+    "priorValue",
+    "currentValue",
+    "changeValue",
+    "materialityPercent",
+    "visibleOn",
+    "constructionType",
+    "explanationProvenance"
+  ],
+  "optionalContextFields": [
+    "editorialBrief"
+  ],
+  "editorialBriefFields": [
+    "contextModelVersion",
+    "pageContext",
+    "causalCoverage",
+    "editorialProfile",
+    "marketActivity",
+    "rules"
+  ],
+  "pageContextFields": [
+    "marketIndicatorsVisible",
+    "trendChartsVisible",
+    "submarketTableVisible",
+    "topLeasesVisible",
+    "topSalesVisible",
+    "propertyCardsVisible",
+    "detailedSupplyPageFollows"
+  ],
+  "marketIds": [
+    "overall-market",
+    "central-dupage",
+    "chicago-south",
+    "fox-valley",
+    "i55-corridor",
+    "i57-corridor",
+    "i80-joliet",
+    "i88-corridor",
+    "lake-county",
+    "north-cook",
+    "north-dupage",
+    "north-kane",
+    "northwest-cook",
+    "northwest-indiana",
+    "ohare",
+    "south-cook",
+    "southeast-wisconsin",
+    "southwest-cook",
+    "west-cook"
+  ],
+  "requiredSubmitFields": [
+    "marketId",
+    "narrative",
+    "claims",
+    "contextKeysUsed",
+    "qualityFlags",
+    "promptVersion"
+  ],
+  "requiredClaimFields": [
+    "claim",
+    "supportKeys",
+    "evidenceClass"
+  ],
+  "limits": {
+    "narrativeCharacters": 5000,
+    "claims": 16,
+    "claimCharacters": 1000,
+    "supportKeysPerClaim": 12,
+    "contextKeyCharacters": 160,
+    "contextKeysUsed": 40,
+    "qualityFlags": 8
+  },
+  "profiles": {
+    "overall": {
+      "version": "overall-market-v3",
+      "targetMinWords": 250,
+      "targetMaxWords": 340,
+      "hardMaxWords": 375,
+      "targetParagraphsMin": 3,
+      "targetParagraphsMax": 4
+    },
+    "submarket": {
+      "version": "submarket-v3",
+      "targetMinWords": 175,
+      "targetMaxWords": 240,
+      "hardMaxWords": 275,
+      "targetParagraphsMin": 2,
+      "targetParagraphsMax": 3
+    }
+  },
+  "paragraphValidation": "advisory"
+}

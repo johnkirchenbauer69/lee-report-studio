@@ -1,5 +1,7 @@
 import {
   countNarrativeWords,
+  NARRATIVE_SUBMITTED_QUALITY_FLAGS,
+  transportPromptVersion,
   type NarrativeContext,
   type NarrativeGenerationResult,
   type NarrativeRecord,
@@ -50,6 +52,8 @@ export interface ExternalBatchImportPlan {
 
 export interface ExternalBatchImportInput {
   narratives: NarrativeMcpSubmittedNarrative[];
+  /** Distinctive terms from restricted broker commentary, per market (leak backstop). */
+  restrictedBrokerTerms?: (marketId: string) => readonly string[];
   requestedMarketIds: string[];
   /** contextHash recorded when the job was created, per market. */
   jobContextHashes: Record<string, string>;
@@ -58,6 +62,16 @@ export interface ExternalBatchImportInput {
   currentRecord: (marketId: string) => NarrativeRecord | undefined;
   currentContext: (marketId: string) => NarrativeContext;
   reportDataHash: string;
+  /**
+   * Report-data fingerprint recorded when the job was created, and the one
+   * the report holds now. When both are present and differ, every market is
+   * rejected as stale: the batch was written against a different snapshot
+   * than the one it would be exported with.
+   */
+  jobReportDataFingerprint?: string;
+  currentReportDataFingerprint?: string;
+  /** Provider snapshot hash recorded at job creation (cross-checked when present). */
+  jobReportDataHash?: string;
   now?: string;
   revision: (record: NarrativeRecord, now: string) => NarrativeRecord["revisions"][number];
 }
@@ -73,6 +87,14 @@ export function planExternalBatchImport(
   const records: NarrativeRecord[] = [];
   const requested = new Set(input.requestedMarketIds);
   const seen = new Set<string>();
+  const snapshotMoved =
+    (Boolean(input.jobReportDataFingerprint) &&
+      Boolean(input.currentReportDataFingerprint) &&
+      input.jobReportDataFingerprint !== input.currentReportDataFingerprint) ||
+    (Boolean(input.jobReportDataHash) &&
+      Boolean(input.reportDataHash) &&
+      input.jobReportDataHash !== input.reportDataHash);
+  const submittedFlags = new Set<string>(NARRATIVE_SUBMITTED_QUALITY_FLAGS);
 
   for (const item of input.narratives) {
     if (!requested.has(item.marketId)) {
@@ -135,12 +157,28 @@ export function planExternalBatchImport(
       });
       continue;
     }
+    // Backstop for data that moved without changing this market's context
+    // (another market's figures, a data-bearing page override, a new
+    // provider snapshot): the batch must not be paired with that data.
+    if (snapshotMoved) {
+      staleMarketIds.push(item.marketId);
+      failures.push({
+        marketId: item.marketId,
+        kind: "stale_context",
+        message: `${record.marketName} was written against a different report data snapshot than the report now holds. Regenerate it.`,
+      });
+      continue;
+    }
 
-    if (item.promptVersion !== context.promptVersion) {
+    // The generator echoes the transport (narrative-v2) prompt version the
+    // public context carried; the contextHash check above already binds the
+    // narrative to the exact v3 context it was written against.
+    const expectedPromptVersion = transportPromptVersion(context.marketKind);
+    if (item.promptVersion !== expectedPromptVersion) {
       failures.push({
         marketId: item.marketId,
         kind: "prompt_version",
-        message: `${record.marketName} was written for prompt profile ${item.promptVersion}; this report requires ${context.promptVersion}.`,
+        message: `${record.marketName} was written for prompt profile ${item.promptVersion}; this report requires ${expectedPromptVersion}.`,
       });
       continue;
     }
@@ -149,9 +187,16 @@ export function planExternalBatchImport(
       narrative: item.narrative,
       claims: item.claims ?? [],
       contextKeysUsed: item.contextKeysUsed ?? [],
-      qualityFlags: item.qualityFlags ?? [],
+      // Only transport-contract flags are accepted from the generator;
+      // Report Studio's editorial QA flags are always computed locally.
+      qualityFlags: (item.qualityFlags ?? []).filter(
+        (flag): flag is NarrativeGenerationResult["qualityFlags"][number] =>
+          submittedFlags.has(flag),
+      ),
     };
-    const validation = validateNarrativeResult(context, result);
+    const validation = validateNarrativeResult(context, result, {
+      restrictedBrokerTerms: input.restrictedBrokerTerms?.(item.marketId),
+    });
     const errors = validation.issues.filter((issue) => issue.severity === "error");
     if (errors.length) {
       failures.push({
@@ -171,6 +216,7 @@ export function planExternalBatchImport(
       model: EXTERNAL_NARRATIVE_MODEL,
       contextHash: context.contextHash,
       reportDataHash: input.reportDataHash,
+      reportDataFingerprint: input.currentReportDataFingerprint,
       generatedAt: now,
       approvedAt: undefined,
       claims: result.claims,

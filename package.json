@@ -49,6 +49,7 @@
     "react-dom": "latest",
     "sharp": "^0.35.4",
     "typescript": "latest",
+    "unpdf": "^1.8.1",
     "vite": "latest",
     "yauzl": "^3.4.0",
     "zod": "^4.4.3",
@@ -72,7 +73,6 @@
     "pngjs": "^7.0.0",
     "prettier": "^3.9.6",
     "tsx": "^4.23.12",
-    "unpdf": "1.8.1",
     "vitest": "^4.1.11"
   }
 }

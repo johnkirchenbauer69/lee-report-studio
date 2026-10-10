@@ -1,20 +1,25 @@
+import { revealInspectorControls } from "../support/editorDisclosures";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
 const templateId = "industrial-market-report";
 
 async function openTemplatePage(page: Page, version: string, name: string) {
-  await page.locator(".rail").getByTitle("Templates").click();
-  const card = page
-    .locator(".template-version-list section")
-    .filter({ hasText: `v${version} · draft` });
-  const opened = page.waitForResponse(
-    (response) =>
-      response.request().method() === "GET" &&
-      response.url().endsWith(`/versions/${version}`),
-  );
-  await card.getByRole("button", { name: "Open Draft" }).click();
-  expect((await opened).ok()).toBe(true);
+  await expect(page.locator(".document-loading")).toBeHidden({ timeout: 30_000 });
+  // Page navigation must preserve pending edits in the already-open draft.
+  if (!(await page.locator(".document-header").innerText()).includes(`v${version} \u00b7 draft`)) {
+    await page.locator(".rail").getByTitle("Templates").click();
+    const card = page
+      .locator(".template-version-list section")
+      .filter({ hasText: `v${version} · draft` });
+    const opened = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().endsWith(`/versions/${version}`),
+    );
+    await card.getByRole("button", { name: "Open Draft" }).click();
+    expect((await opened).ok()).toBe(true);
+  }
   await page.locator(".rail").getByTitle("Pages").click();
   await page
     .locator(".page-list")
@@ -62,18 +67,19 @@ test("table appearance controls persist and render consistently across editor, s
   const createdUrl = `/api/templates/${templateId}/versions/${created.version}`;
 
   try {
-    await page.goto("/", { waitUntil: "load" });
+    await page.goto("/?editor=1", { waitUntil: "load" });
 
     // A. Overall Market Table: a whole-table drop shadow, applied once at
     // the container level (never per-cell).
     await openTemplatePage(page, created.version, "Overall Market Table");
     const matrixNode = page.getByTestId("submarket-matrix");
     await matrixNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const tableShadow = section(page, "Table Shadow");
     await expect(tableShadow).toBeVisible();
     await tableShadow.getByLabel("Table Shadow").check();
     await tableShadow
-      .getByRole("textbox", { name: "Table Shadow color" })
+      .getByRole("textbox", { name: "Table Shadow color", exact: true })
       .fill("#1a1a1a");
     await tableShadow.getByLabel("Table Shadow X Offset").fill("0");
     await tableShadow.getByLabel("Table Shadow Y Offset").fill("2");
@@ -90,6 +96,7 @@ test("table appearance controls persist and render consistently across editor, s
     // corners, and no bevel/radius leaking into body rows.
     const indicatorNode = page.getByTestId("indicator-table");
     await indicatorNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const indicatorHeaderAppearance = section(page, "Header Appearance");
     await expect(indicatorHeaderAppearance).toBeVisible();
     await indicatorHeaderAppearance.getByLabel("Header Bevel").check();
@@ -123,6 +130,7 @@ test("table appearance controls persist and render consistently across editor, s
     // beveled group — outer corners round, the shared internal edge does not.
     const leasesNode = page.getByTestId("top-leases-table");
     await leasesNode.evaluate((node) => (node as HTMLElement).click());
+    await revealInspectorControls(page);
     const leasesHeaderAppearance = section(page, "Header Appearance");
     await leasesHeaderAppearance.getByLabel("Header Bevel").check();
     await leasesHeaderAppearance.getByLabel("Bevel size").fill("3");
@@ -154,11 +162,12 @@ test("table appearance controls persist and render consistently across editor, s
 
     // D. Header and body text shadow are independently controllable and
     // stay scoped to their own region.
+    await revealInspectorControls(page);
     const textEffects = section(page, "Text Effects");
     await expect(textEffects).toBeVisible();
     await textEffects.getByLabel("Header Text Shadow").check();
     await textEffects
-      .getByRole("textbox", { name: "Header Text Shadow color" })
+      .getByRole("textbox", { name: "Header Text Shadow color", exact: true })
       .fill("#000000");
     await textEffects.getByLabel("Header Text Shadow X Offset").fill("0");
     await textEffects.getByLabel("Header Text Shadow Y Offset").fill("1");
@@ -170,7 +179,7 @@ test("table appearance controls persist and render consistently across editor, s
     );
     await textEffects.getByLabel("Body Text Shadow").check();
     await textEffects
-      .getByRole("textbox", { name: "Body Text Shadow color" })
+      .getByRole("textbox", { name: "Body Text Shadow color", exact: true })
       .fill("#224466");
     await textEffects.getByLabel("Body Text Shadow X Offset").fill("0");
     await textEffects.getByLabel("Body Text Shadow Y Offset").fill(".5");
@@ -194,8 +203,8 @@ test("table appearance controls persist and render consistently across editor, s
         response.url().includes(createdUrl),
     );
     await page
-      .locator(".topbar")
-      .getByRole("button", { name: "Save", exact: true })
+      .locator(".document-header")
+      .getByRole("button", { name: "Save Draft", exact: true })
       .click();
     expect((await saveResponse).ok()).toBe(true);
 

@@ -5,18 +5,29 @@ export interface ServerReportRenderer<T> {
   render(input: T): Promise<Uint8Array>;
 }
 
+/** Must match NARRATIVE_REFIT_EVENT in src/report-engine/layout/narrativeFontFit.ts. */
+export const NARRATIVE_REFIT_EVENT = "lee:refit-narratives";
+
+export interface ChromiumRenderLayout {
+  /** Narrative ids whose text does not fit at the authored minimum size. */
+  narrativeOverflow: string[];
+}
+
 export class ChromiumPdfRenderer implements ServerReportRenderer<{
   url: string;
   title: string;
+  onLayout?: (layout: ChromiumRenderLayout) => void;
   offline?: boolean;
 }> {
   async render({
     url,
     title,
+    onLayout,
     offline,
   }: {
     url: string;
     title: string;
+    onLayout?: (layout: ChromiumRenderLayout) => void;
     offline?: boolean;
   }): Promise<Uint8Array> {
     const browser = await chromium.launch({
@@ -55,6 +66,30 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
           ),
         );
       });
+      // Dynamic narrative font sizing: re-measure every narrative now that
+      // managed fonts are loaded, then wait until none is still pending, so
+      // the PDF captures the same fitted size the preview computes.
+      await page.evaluate(
+        (eventName) => window.dispatchEvent(new Event(eventName)),
+        NARRATIVE_REFIT_EVENT,
+      );
+      await page
+        .waitForFunction(
+          () => !document.querySelector('[data-narrative-fit="pending"]'),
+          undefined,
+          { timeout: 10_000 },
+        )
+        .catch(() => undefined);
+      const narrativeOverflow = await page.evaluate(() =>
+        Array.from(
+          document.querySelectorAll('[data-narrative-overflow="true"]'),
+        ).map(
+          (node) =>
+            node.closest("[data-narrative-id]")?.getAttribute("data-narrative-id") ??
+            "unknown",
+        ),
+      );
+      onLayout?.({ narrativeOverflow });
       // Fixed publication page bounds: never silently clip editorial additions.
       const closingProblems = await page.evaluate(() =>
         Array.from(document.querySelectorAll<HTMLElement>(".closing-content")).flatMap(node => {

@@ -75,6 +75,9 @@ export class MarketAssetService {
   private busy = false;
   private reservations = 0;
   constructor(private options: Options) {}
+  get hasPendingWork(): boolean {
+    return this.busy || this.queue.length > 0 || this.reservations > 0;
+  }
   async initialize() {
     await mkdir(this.options.root, { recursive: true });
     const retention = setInterval(
@@ -114,22 +117,7 @@ export class MarketAssetService {
     }
   }
   async reports() {
-    const priority = { published: 0, approved: 1, draft: 2 };
-    return (await this.options.repository.list())
-      .sort(
-        (a, b) =>
-          priority[a.status] - priority[b.status] ||
-          b.generatedAt.localeCompare(a.generatedAt),
-      )
-      .map((i) => ({
-        id: i.id,
-        name: i.dataSnapshot.report.title,
-        period: i.dataSnapshot.report.period,
-        status: i.status,
-        generatedAt: i.generatedAt,
-        templateVersion: i.templateVersion,
-        revision: i.revision,
-      }));
+    return this.options.repository.summaries();
   }
   async report(id: string) {
     const instance = await this.getInstance(id),
@@ -388,17 +376,21 @@ export class MarketAssetService {
                 "Section PDF page-count or renderer verification failed.",
               );
           } else {
+            // Charts preserve the report's transparent plotting canvas by default.
+            // Other asset categories retain the user's explicit background option.
+            const transparent =
+              asset.category === "charts" || request.transparent;
             const page = fragmentPage(
               asset.page!,
               asset.elements!,
-              request.transparent,
+              transparent,
             );
             const frozen = await freezePresentation(
               instance,
               [
                 {
                   ...asset.page!,
-                  background: request.transparent
+                  background: transparent
                     ? "transparent"
                     : asset.page!.background,
                   elements: asset.elements!,
@@ -463,7 +455,7 @@ export class MarketAssetService {
                   images.some((i) => !(i as HTMLImageElement).naturalWidth),
                 );
               if (missing) throw new Error("A saved image failed to render.");
-              if (request.transparent)
+              if (transparent)
                 await tab.addStyleTag({
                   content:
                     "html,body,#root,.print-document { background:transparent !important; }",
@@ -486,7 +478,7 @@ export class MarketAssetService {
                   height: page.height,
                 },
                 animations: "disabled",
-                omitBackground: request.transparent,
+                omitBackground: transparent,
               });
               const meta = await sharp(bytes).metadata();
               if (!meta.width || Math.abs(meta.width - targetWidth) > 1)

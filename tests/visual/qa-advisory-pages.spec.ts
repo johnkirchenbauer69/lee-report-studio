@@ -1,10 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { sampleTemplate } from "../../src/data/sampleTemplate";
 
+async function openCompleteFixture(page: import("@playwright/test").Page) {
+  await page.goto("/?editor=1", { waitUntil: "load" });
+  await expect(page.locator(".document-loading")).toBeHidden();
+  const listing = await (await page.request.get("/api/templates")).json();
+  const source = listing.templates.filter((item: { status: string; pageDefinitionCount: number }) => item.status === "draft" && item.pageDefinitionCount === sampleTemplate.pages.length)[0];
+  expect(source, "QA navigation requires the complete report fixture").toBeTruthy();
+  await page.locator(".rail").getByTitle("Templates").click();
+  const card = page.locator(".template-version-list section").filter({ hasText: `v${source.version} \u00b7 draft` });
+  const loaded = page.waitForResponse(response => response.request().method() === "GET" && response.url().endsWith(`/versions/${source.version}`));
+  await card.getByRole("button", { name: "Open Draft", exact: true }).click();
+  expect((await loaded).ok()).toBeTruthy();
+  await expect(page.locator(".document-header")).toContainText(`v${source.version}`);
+}
+
 test("Pages is a dedicated, independently scrollable navigation panel", async ({
   page,
 }) => {
-  await page.goto("/", { waitUntil: "load" });
+  await openCompleteFixture(page);
 
   const navTitles = await page
     .locator(".rail > button")
@@ -25,7 +39,7 @@ test("Pages is a dedicated, independently scrollable navigation panel", async ({
   await expect(page.locator(".template-version-list")).toBeVisible();
   await expect(page.locator(".page-list")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Save As New Version" }),
+    page.locator(".document-header").getByRole("button", { name: "Save as New Version", exact: true }),
   ).toBeVisible();
 
   await page.locator(".rail").getByTitle("Pages").click();
@@ -38,7 +52,7 @@ test("Pages is a dedicated, independently scrollable navigation panel", async ({
   expect(independentlyScrollable).toBe(true);
 
   const target = pageButtons.nth(Math.min(5, sampleTemplate.pages.length - 1));
-  const targetName = (await target.locator(":scope > span").textContent())!;
+  const targetName = await target.locator(":scope > span").evaluate(node => node.lastChild!.textContent!);
   await target.click();
   await expect(target).toHaveClass(/active/);
   await expect(page.locator(".stage-topline span").first()).toHaveText(
@@ -56,7 +70,7 @@ test("warnings can be reviewed or explicitly accepted without individual dismiss
   page,
 }) => {
   test.setTimeout(120_000);
-  await page.goto("/", { waitUntil: "load" });
+  await openCompleteFixture(page);
 
   await page.getByRole("button", { name: "Export PDF" }).click();
   const dialog = page.getByRole("dialog", {

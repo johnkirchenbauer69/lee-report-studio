@@ -219,7 +219,7 @@ test("contact edits use the Inspector and survive Save and reopening the templat
       await route.fulfill({ json: { assets: [] } });
     else await route.fulfill({ json: {} });
   });
-  await page.goto("/");
+  await page.goto("/?editor=1");
   await page
     .getByTestId("contacts-content")
     .click({ position: { x: 80, y: 15 } });
@@ -232,7 +232,7 @@ test("contact edits use the Inspector and survive Save and reopening the templat
   await expect(
     page.locator('.closing-contact a[href="mailto:edited@example.com"]'),
   ).toHaveCount(1);
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "Save Draft", exact: true }).click();
   await expect.poll(() => saves).toBe(1);
   await page.reload();
   await expect(

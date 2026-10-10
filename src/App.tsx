@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrandLogo } from "./components/BrandLogo";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sampleTemplate } from "./data/sampleTemplate";
 import { sampleData } from "./data/sampleData";
 import type {
@@ -39,6 +40,13 @@ import {
   upsertManualOverride,
 } from "./engine/reportDocumentHistory";
 import { CanvasElement } from "./components/CanvasElement";
+import type { NarrativeFitListener } from "./components/useNarrativeFontFit";
+import { ApplicationHub, GlobalNavigation, type Destination } from "./components/ApplicationHub";
+import { NarrativeWorkspace } from "./components/NarrativeWorkspace";
+import { ReviewDialog } from "./components/ReviewDialog";
+import { pageSection, fitPageZoom } from "./engine/workspaceLayout";
+import { displayAssetName } from "./shared/assetNames";
+import "./styles/workspace.css";
 import { Inspector } from "./components/Inspector";
 import { DataBrowser } from "./components/DataBrowser";
 import { ValidationPanel } from "./components/ValidationPanel";
@@ -75,6 +83,7 @@ import type {
 } from "./report-engine/schema/generation";
 import type { IndustrialMarketReport } from "./report-engine/schema/industrialMarketReport";
 import { getByContextPath } from "./engine/bindings";
+import { isPlainDisplayValue, withTableDisplayOverrides } from "./engine/tableValueOverrides";
 import {
   elementRect,
   getRotatedAabb,
@@ -112,6 +121,7 @@ import type {
 } from "./types/templateLibrary";
 import "./styles/app.css";
 import "./styles/advanced.css";
+import "./styles/ux-quick-wins.css";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const uid = (prefix = "item") => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -174,6 +184,28 @@ type ReportSaveStatus =
   "clean" | "dirty" | "saving" | "saved" | "error" | "conflict";
 
 export default function App() {
+  const initialParams = new URLSearchParams(window.location.search);
+  const [destination, setDestination] = useState<Destination>(() => initialParams.get("editor") === "1" || initialParams.has("report") || initialParams.get("workspace") === "editor" ? "editor" : (initialParams.get("workspace") as Destination) || "home");
+  const [documentLoading, setDocumentLoading] = useState(true);
+  const [openError, setOpenError] = useState("");
+  const [focusMode, setFocusMode] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(() => Math.min(420, Math.max(220, Number(localStorage.getItem("lrs.panel-width")) || 260)));
+  const [inspectorWidth, setInspectorWidth] = useState(() => Math.min(480, Math.max(240, Number(localStorage.getItem("lrs.inspector-width")) || 300)));
+  const [fitMode, setFitMode] = useState<"page" | "width" | undefined>("page");
+  const [pageSearch, setPageSearch] = useState("");
+  const [templateFilter, setTemplateFilter] = useState("draft");
+  const [showPublishReport, setShowPublishReport] = useState(false);
+  const [showPublishReview, setShowPublishReview] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [showNarratives, setShowNarratives] = useState(false);
+  const [narrativeDirty, setNarrativeDirty] = useState(false);
+  const stageRef = useRef<HTMLElement>(null);
+  const [pendingLibraryPdf, setPendingLibraryPdf] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateDirty, setTemplateDirty] = useState(false);
+  const [templateRecovered, setTemplateRecovered] = useState(false);
   const [template, setTemplate] = useState<ReportTemplate>(() => {
     const saved = localPersistence.load();
     return hydrate(
@@ -237,7 +269,11 @@ export default function App() {
   const [pendingPdfExport, setPendingPdfExport] = useState<{
     template: ReportTemplate;
     warningCount: number;
+    /** Presentation data built from the exact snapshot preflight checked. */
+    data: unknown;
   }>();
+  /** Narrative overflow writes in flight, keyed by market, to avoid repeats. */
+  const narrativeOverflowSync = useRef(new Map<string, boolean>());
   const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
   const uploadRef = useRef<HTMLInputElement>(null);
@@ -396,6 +432,7 @@ export default function App() {
   const documentMutable = canMutateDocument({
     mode: documentMode,
     templateStatus: activeTemplateRecord?.status,
+    reportStatus: reportInstance?.status,
   });
   const unionAvailability = useMemo(
     () => evaluateShapeUnion(selectedElements),
@@ -458,6 +495,7 @@ export default function App() {
         ]);
         setFuture([]);
         setLibrarySaveState("local");
+        setTemplateDirty(true);
       }
       const next = updater(current);
       latestTemplate.current = next;
@@ -512,6 +550,8 @@ export default function App() {
           );
         }
       }
+      setTemplateDirty(Boolean(recovery && recovery.baseRevision === record.revision));
+      setTemplateRecovered(Boolean(recovery));
       setActiveTemplateRecord(record);
       setTemplate(next);
       latestTemplate.current = next;
@@ -544,6 +584,8 @@ export default function App() {
       ),
     );
     const editorState = savedTemplateEditorState(next, pageId, selectedIds);
+    setTemplateDirty(false);
+    setTemplateRecovered(false);
     setActiveTemplateRecord(record);
     setTemplate(next);
     latestTemplate.current = next;
@@ -573,13 +615,13 @@ export default function App() {
     const shouldWarn = ["dirty", "saving", "error", "conflict"].includes(
       reportSaveStatus,
     );
-    if (!shouldWarn) return;
+    if (!shouldWarn && !templateDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [reportSaveStatus]);
+  }, [reportSaveStatus, templateDirty]);
   useEffect(() => {
     installManagedFonts(template.assets ?? [])
       .then(setFontDiagnostics)
@@ -601,6 +643,7 @@ export default function App() {
       assetStorage.list().catch(() => [] as Asset[]),
     ])
       .then(async ([records, serverAssets]) => {
+        await reportInstanceStore.discardDeletedRecovery();
         managedServerAssets.current = serverAssets;
         const preferred =
           records.find((record) => record.status === "draft") ?? records[0];
@@ -608,7 +651,7 @@ export default function App() {
           openTemplateRecord(
             await templateStore.get(preferred.id, preferred.version),
           );
-        const reportId = reportInstanceStore.lastId();
+        const reportId = new URLSearchParams(window.location.search).get("report") ?? (new URLSearchParams(window.location.search).get("workspace") === "templates" ? undefined : reportInstanceStore.lastId());
         if (reportId) {
           try {
             const restored = await reportInstanceStore.get(reportId);
@@ -685,7 +728,7 @@ export default function App() {
             } else {
               if (recovery) reportRecovery.clear(restored.id);
               setReportSaveState("saved");
-              setReportLastSavedAt(new Date().toISOString());
+              setReportLastSavedAt(restored.publishedAt);
             }
           } catch (error) {
             reportInstanceStore.forget();
@@ -699,7 +742,7 @@ export default function App() {
           "Template library unavailable; local recovery remains active.",
           error,
         );
-      });
+      }).finally(() => setDocumentLoading(false));
   }, [
     openTemplateRecord,
     refreshTemplateLibrary,
@@ -1072,7 +1115,7 @@ export default function App() {
       setSelectedIds([replacingImageId]);
       setCroppingId(undefined);
       setReplacingImageId(undefined);
-      notify(`${asset.name} replaced the selected image`);
+      notify(`${displayAssetName(asset.name)} replaced the selected image`);
       return;
     }
     const id = uid("image"),
@@ -1416,6 +1459,7 @@ export default function App() {
       notify("Published templates require Save As New Version.");
       return;
     }
+    setTemplateSaving(true);
     const base = activeTemplateRecord;
     const normalized = normalizeReportTemplateFonts(
       latestTemplate.current,
@@ -1457,8 +1501,9 @@ export default function App() {
       }
       setLibrarySaveState("error");
       setLibrarySaveError(undefined);
+      setLibrarySaveError(error instanceof Error ? error.message : "Template save failed");
       notify(error instanceof Error ? error.message : "Template save failed");
-    }
+    } finally { setTemplateSaving(false); }
   };
   const renameTemplateVersion = async (
     record: StoredTemplateVersion | TemplateVersionSummary,
@@ -1584,13 +1629,14 @@ export default function App() {
   const performPdfExport = async (
     publicationTemplate: ReportTemplate,
     warningCount: number,
+    exportData: unknown = reportData,
   ) => {
     setExportingPdf(true);
     try {
       const fileName = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
       let chromiumFailure: ReturnType<typeof classifyExportError> | undefined;
       try {
-        await exportChromiumPdf(publicationTemplate, reportData, fileName);
+        await exportChromiumPdf(publicationTemplate, exportData, fileName);
       } catch (chromiumError) {
         chromiumFailure = classifyExportError("chromium", chromiumError);
         console.warn(
@@ -1598,7 +1644,7 @@ export default function App() {
           chromiumFailure,
         );
         try {
-          await exportReportPdf(publicationTemplate, reportData, fileName);
+          await exportReportPdf(publicationTemplate, exportData, fileName);
         } catch (fallbackError) {
           const fallbackFailure = classifyExportError(
             "fallback",
@@ -1625,18 +1671,39 @@ export default function App() {
   const downloadPdf = async () => {
     setExportingPdf(true);
     try {
+      // Snapshot integrity: never combine narratives reviewed against one
+      // data snapshot with report data from another. Pending edits must reach
+      // the server first, then staleness is re-evaluated there and the PDF
+      // is built from that exact refreshed instance.
+      let exportInstance = latestReportInstance.current ?? reportInstance;
+      let exportData: unknown = reportData;
+      if (documentMode === "report-instance" && exportInstance) {
+        if (
+          ["dirty", "saving", "error", "conflict"].includes(
+            reportSaveStatusRef.current,
+          )
+        ) {
+          notify(
+            "Report changes have not finished saving. Export again once the report is saved.",
+          );
+          return;
+        }
+        if (exportInstance.status !== "published") exportInstance = await reportInstanceStore.refresh(exportInstance.id);
+        handleReportInstanceChange(exportInstance);
+        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot), exportInstance.manualOverrides);
+      }
       const publicationTemplate = prepareTemplateForPublication(template);
       const issues = await runExportPreflight(publicationTemplate);
       setPreflightIssues(issues);
       const readinessAdvisories =
-        reportInstance?.readiness.issues.map((issue) => ({
+        exportInstance?.readiness.issues.map((issue) => ({
           level: issue.level,
           category: "data" as const,
           message: issue.message,
           path: issue.path,
         })) ?? [];
       const pageAdvisories = template.pages.flatMap((reportPage) =>
-        validatePage(reportPage, reportData).map((issue) => ({
+        validatePage(reportPage, exportData).map((issue) => ({
           ...issue,
           pageId: reportPage.id,
         })),
@@ -1666,10 +1733,11 @@ export default function App() {
         setPendingPdfExport({
           template: publicationTemplate,
           warningCount: assessment.warnings.length,
+          data: exportData,
         });
         return;
       }
-      await performPdfExport(publicationTemplate, 0);
+      await performPdfExport(publicationTemplate, 0, exportData);
     } catch (error) {
       console.error("PDF preflight failed unexpectedly.", error);
       notify("The PDF preflight could not be completed.");
@@ -1703,6 +1771,31 @@ export default function App() {
     reportRecovery.clear(instance.id);
     setReportSaveState("saved");
     setReportLastSavedAt(new Date().toISOString());
+  };
+  /**
+   * Dynamic narrative sizing reports whether a narrative still overflows its
+   * text box at the authored minimum size. That measured state is persisted
+   * on the narrative record, where the existing rules already block approval
+   * and publication of overflowing narratives.
+   */
+  const handleNarrativeFit: NarrativeFitListener = (marketId, result) => {
+    const instance = latestReportInstance.current;
+    if (documentMode !== "report-instance" || mode !== "data" || !instance || instance.status === "published")
+      return;
+    const record = instance.narratives.find(
+      (item) => item.marketId === marketId,
+    );
+    if (!record || !record.text.trim() || record.overflow === result.overflow)
+      return;
+    if (narrativeOverflowSync.current.get(marketId) === result.overflow) return;
+    narrativeOverflowSync.current.set(marketId, result.overflow);
+    void reportInstanceStore
+      .overflow(instance.id, marketId, result.overflow)
+      .then(handleReportInstanceChange)
+      .catch((error) =>
+        console.warn("Narrative overflow state could not be saved.", error),
+      )
+      .finally(() => narrativeOverflowSync.current.delete(marketId));
   };
   const handleGenerate = async (
     request: ReportGenerationRequest,
@@ -1841,7 +1934,7 @@ export default function App() {
         ...current,
         assets: (current.assets ?? []).filter((item) => item.id !== asset.id),
       }));
-      notify(`${asset.name} removed`);
+      notify(`${displayAssetName(asset.name)} removed`);
     } catch (error) {
       notify(
         error instanceof Error ? error.message : "Asset could not be removed.",
@@ -1941,6 +2034,77 @@ export default function App() {
     updatePage,
   ]);
 
+  const navigate = (next: Destination) => {
+    setDestination(next);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("editor"); url.searchParams.delete("report");
+    url.searchParams.set("workspace", next);
+    window.history.pushState({}, "", url);
+  };
+  useEffect(() => {
+    const back = () => {
+      const params = new URLSearchParams(window.location.search);
+      setDestination(params.has("report") || params.get("editor") === "1" ? "editor" : (params.get("workspace") as Destination) || "home");
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
+  const openReportFromLibrary = async (id: string, pdf = false) => {
+    if (["dirty", "saving", "error", "conflict"].includes(reportSaveStatusRef.current)) {
+      setOpenError("Finish saving the current report before opening another. Your current document is retained."); return;
+    }
+    if (documentMode === "master-template" && templateDirty) {
+      setOpenError("Save the current template draft or create a new version before opening another document."); return;
+    }
+    setDocumentLoading(true); setOpenError("");
+    try {
+      const restored = await reportInstanceStore.get(id);
+      const recovery = reportRecovery.load(id);
+      const matches = recovery?.baseRevision === restored.revision;
+      const effective = matches ? { ...restored, pages: recovery.pages, manualOverrides: recovery.manualOverrides } : restored;
+      const next = hydrate({ id: restored.templateId, version: restored.templateVersion, name: `${restored.generationRequest.period} ${restored.generationRequest.market} Industrial Market Report`, pages: effective.pages, settings: restored.sourceTemplateSnapshot?.settings, assets: [...managedServerAssets.current] });
+      setTemplate(next); latestTemplate.current = next;
+      setReportData(buildPresentationModel(effective.dataSnapshot)); setNormalizedReport(effective.dataSnapshot);
+      latestReportInstance.current = effective; setReportInstance(effective); setDocumentMode("report-instance");
+      setPageId(next.pages[0].id); setSelectedIds([]); setPast([]); setFuture([]); setMode("data");
+      if (matches) stageReportDocument(next, effective.manualOverrides);
+      else if (recovery) setReportSaveState("conflict", "Local recovery uses an older revision. It was retained without overwriting saved work.");
+      else setReportSaveState("saved");
+      setReportLastSavedAt(undefined); reportInstanceStore.remember(id);
+      navigate("editor"); setLeftTab("pages"); setPendingLibraryPdf(pdf);
+    } catch(e) { setOpenError((e as Error).message); }
+    finally { setDocumentLoading(false); }
+  };
+  useEffect(() => {
+    if (!pendingLibraryPdf || documentLoading || !reportInstance) return;
+    setPendingLibraryPdf(false); void downloadPdf();
+  }, [pendingLibraryPdf, documentLoading, reportInstance]);
+  useEffect(() => {
+    if (destination !== "editor" || !fitMode || !stageRef.current) return;
+    const stage = stageRef.current;
+    const resize = () => setZoom(fitPageZoom(stage.clientWidth, stage.clientHeight, page.width, page.height, fitMode));
+    resize(); const observer = new ResizeObserver(resize); observer.observe(stage);
+    return () => observer.disconnect();
+  }, [destination, fitMode, page.width, page.height, focusMode, leftCollapsed, inspectorCollapsed, panelWidth, inspectorWidth]);
+  const resizePanel = (event: React.PointerEvent, side: "left" | "right") => {
+    const start = event.clientX, width = side === "left" ? panelWidth : inspectorWidth;
+    const move = (e: PointerEvent) => {
+      const next = Math.max(side === "left" ? 220 : 240, Math.min(side === "left" ? 420 : 480, width + (e.clientX - start) * (side === "left" ? 1 : -1)));
+      if (side === "left") setPanelWidth(next); else setInspectorWidth(next);
+      localStorage.setItem(side === "left" ? "lrs.panel-width" : "lrs.inspector-width", String(next));
+    };
+    const end = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", end); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", end, {once:true});
+  };
+  const saveLabel = documentLoading ? "Loading Document" : reportInstance
+    ? ({clean:"Saved",dirty:"Unsaved Changes",saving:"Saving…",saved:"Saved",error:"Save Failed",conflict:"Conflict"}[reportSaveStatus])
+    : templateSaving ? "Saving…" : librarySaveState === "conflict" ? "Conflict" : librarySaveState === "error" ? "Save Failed" : activeTemplateRecord?.status !== "draft" && activeTemplateRecord ? "Published / Read Only" : templateDirty ? "Unsaved Changes" : templateRecovered || librarySaveState === "local" ? "Local Recovery Available" : "Saved";
+  const openMasterFromHub = async (record: TemplateVersionSummary) => {
+    if (templateDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) { setOpenError("Save your current document before opening another template. Your edits are retained."); return; }
+    setDocumentLoading(true); setOpenError("");
+    try { await openTemplateVersion(record); reportInstanceStore.forget(); navigate("editor"); }
+    finally { setDocumentLoading(false); }
+  };
   const sidebar = () => {
     if (leftTab === "elements")
       return (
@@ -1973,7 +2137,7 @@ export default function App() {
                 onClick={(event) => select(element.id, event.shiftKey)}
               >
                 <span>{element.hidden ? "◌" : element.locked ? "▣" : "◇"}</span>
-                <em>{element.name}</em>
+                <em>{displayAssetName(element.name)}</em>
                 <small>{element.type}</small>
               </button>
             ))}
@@ -2189,11 +2353,11 @@ export default function App() {
               .map((asset) => (
                 <button
                   key={asset.id}
-                  aria-label={`${replacingImageId ? "Replace image with" : "Add"} ${asset.name}`}
+                  aria-label={`${replacingImageId ? "Replace image with" : "Add"} ${displayAssetName(asset.name)}`}
                   onClick={() => useImageAsset(asset)}
                 >
                   <img src={asset.source} alt="" />
-                  <span>{asset.name}</span>
+                  <span>{displayAssetName(asset.name)}</span>
                 </button>
               ))}
           </div>
@@ -2216,27 +2380,28 @@ export default function App() {
             <>
               <PanelTitle
                 title="Template Library"
-                subtitle="Durable server-side master versions"
+                subtitle="Drafts, published templates and history"
               />
               <div className="master-mode-card">
                 <strong>
                   {documentMode === "master-template"
-                    ? "MASTER TEMPLATE MODE"
-                    : "REPORT INSTANCE MODE"}
+                    ? "Master template"
+                    : "Quarterly report"}
                 </strong>
                 <span>
-                  {activeTemplateRecord
-                    ? `${activeTemplateRecord.label || activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}`
-                    : "Loading template library…"}
+                  {documentMode === "report-instance" && reportInstance
+                    ? `${reportInstance.generationRequest.period} · ${reportInstance.status === "published" ? "Published report · Read only" : "Draft report"} · Pinned template v${reportInstance.templateVersion}`
+                    : activeTemplateRecord ? `${activeTemplateRecord.label || activeTemplateRecord.name} · v${activeTemplateRecord.version} · ${activeTemplateRecord.status}` : "Loading template library…"}
                 </span>
                 <small>
                   {documentMode === "master-template"
                     ? "Published changes affect future reports only."
-                    : "Edits are isolated to this generated report."}
+                    : reportInstance?.status === "published" ? "This finalized report is read-only. The templates below are separate reusable layouts." : "Edits are isolated to this generated report. The templates below are separate reusable layouts."}
                 </small>
               </div>
               <div className="template-version-list">
-                {templateLibrary.map((record) => (
+                <div className="library-tabs">{[["draft","Drafts"],["published","Published"],["archived","History"]].map(([key,label]) => <button key={key} aria-pressed={templateFilter === key} onClick={() => setTemplateFilter(key)}>{label}</button>)}</div>
+                {templateLibrary.filter(record => record.status === templateFilter).map((record) => (
                   <section
                     key={`${record.id}-${record.version}`}
                     className={
@@ -2375,7 +2540,7 @@ export default function App() {
                   </section>
                 ))}
               </div>
-              <div className="panel-actions template-actions">
+              {documentMode === "master-template" && <div className="panel-actions template-actions">
                 <button
                   disabled={
                     documentMode !== "master-template" ||
@@ -2393,11 +2558,11 @@ export default function App() {
                 </button>
                 <button
                   disabled={activeTemplateRecord?.status !== "draft"}
-                  onClick={publishMasterTemplate}
+                  onClick={() => setShowPublishReview(true)}
                 >
                   Publish Template
                 </button>
-              </div>
+              </div>}
             </>
           )}
         </>
@@ -2412,8 +2577,11 @@ export default function App() {
           <button className="create-report-button" onClick={startCreateReport}>
             ＋ Create report from data
           </button>
+          <input className="page-search" type="search" aria-label="Search pages or markets" placeholder="Find a page or market…" value={pageSearch} onChange={e => setPageSearch(e.target.value)} />
           <div className="page-list" ref={pageListRef}>
-            {template.pages.map((item, index) => (
+            {template.pages.map((item, index) => ({item,index})).filter(({item}) => `${item.name} ${pageSection(item, normalizedReport)} ${item.pageNumber ?? ""}`.toLowerCase().includes(pageSearch.toLowerCase())).map(({item,index}, visibleIndex, visiblePages) => (
+              <React.Fragment key={item.id}>
+              {(visibleIndex === 0 || pageSection(visiblePages[visibleIndex-1].item, normalizedReport) !== pageSection(item, normalizedReport)) && <div className="page-section-label">{pageSection(item, normalizedReport)}</div>}
               <button
                 type="button"
                 draggable
@@ -2442,8 +2610,8 @@ export default function App() {
                     />
                   ))}
                 </div>
-                <span>{item.name}</span>
-              </button>
+                <span><small className="page-number">Page {item.pageNumber ?? index+1}</small>{item.name}</span>
+              </button></React.Fragment>
             ))}
           </div>
           <div className="page-setup">
@@ -2578,26 +2746,25 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell" onClick={() => setContextMenu(undefined)}>
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">
-            <span>LEE</span>
-          </div>
-          <div>
-            <strong>{template.name}</strong>
-            <span>
-              {documentMode === "master-template"
-                ? `Master Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status === "published" ? "Published — Read Only" : activeTemplateRecord?.status === "archived" ? "Archived — Read Only" : (activeTemplateRecord?.status ?? "local recovery")}`
-                : `Report Instance · pinned to v${reportInstance?.templateVersion ?? template.version}`}
-            </span>
-          </div>
-        </div>
+    <div className="app-shell redesigned-app" onClick={() => setContextMenu(undefined)}>
+      <GlobalNavigation destination={destination === "editor" ? documentMode === "master-template" ? "templates" : "reports" : destination} onNavigate={navigate} />
+      {openError && <div className="application-error" role="alert">{openError}<button onClick={() => setOpenError("")}>Dismiss</button></div>}
+      {destination !== "editor" && <ApplicationHub destination={destination} templates={templateLibrary} onNavigate={navigate} onCreate={() => { navigate("editor"); startCreateReport(); }} onOpenReport={openReportFromLibrary} onOpenTemplate={openMasterFromHub} onCreateVersion={async record => { if(templateDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) { setOpenError("Save your current document before creating a version."); return; } await createDraftFromVersion(record); navigate("editor"); }} onRename={renameTemplateVersion} onDeleteDraft={setDraftToDelete} loadingDocument={documentLoading} />}
+      <div className="editor-surface" hidden={destination !== "editor"}>
+      <header className="document-header">
+        <button onClick={() => navigate(reportInstance ? "reports" : "templates")}>← {reportInstance ? "Reports" : "Templates"}</button>
+        <div className="document-identity"><strong>{reportInstance ? template.name : activeTemplateRecord?.label || template.name}</strong><span>{reportInstance ? `Report · ${reportInstance.generationRequest.period} · ${reportInstance.status}` : `Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status ?? "local recovery"}`}</span></div>
+        <div className={`document-save-state state-${saveLabel.toLowerCase().replace(/[^a-z]/g, "")}`} role="status" title={reportSaveError || librarySaveError}><strong>{saveLabel}</strong>{reportInstance && reportLastSavedAt && reportSaveStatus === "saved" && <small>{new Date(reportLastSavedAt).toLocaleTimeString()}</small>}{templateRecovered && templateDirty && <small>Recovered locally · save draft to keep</small>}{(reportSaveError || librarySaveError) && <small>{reportSaveError || librarySaveError}</small>}{reportSaveStatus === "error" && <button onClick={() => runReportSaveRef.current()}>Retry save</button>}</div>
+        <div className="document-actions">{reportInstance ? <><button disabled={reportInstance.status === "published"} onClick={() => setShowNarratives(true)}>Narratives</button><button onClick={async () => { try { const response = await fetch(`/api/templates/${encodeURIComponent(reportInstance.templateId)}/versions/${encodeURIComponent(reportInstance.templateVersion)}/archive-older`, { method: "POST" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Cleanup failed."); setTemplateLibrary(await templateStore.list()); notify(`${body.archived} older templates archived. They remain available in History.`); } catch (e) { setOpenError((e as Error).message); } }}>Archive older templates</button><button disabled={reportInstance.status === "published" || narrativeDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatus)} onClick={() => setShowPublishReport(true)}>{reportInstance.status === "published" ? "Published report" : "Publish Report"}</button><a href={`/?marketAssets=1&report=${encodeURIComponent(reportInstance.id)}`}>Export Market Assets</a></> : <><button disabled={activeTemplateRecord?.status !== "draft" || templateSaving} onClick={saveMasterTemplate}>Save Draft</button><button disabled={!activeTemplateRecord} onClick={() => saveAsNewTemplateVersion()}>Save as New Version</button><button disabled={activeTemplateRecord?.status !== "draft"} onClick={() => setShowPublishReview(true)}>Publish Template</button></>}
+        <button onClick={() => setLeftTab("validate")}>Review / Validate</button><button className="primary-button" disabled={exportingPdf || documentLoading} onClick={downloadPdf}>{exportingPdf ? "Rendering…" : "Export PDF"}</button></div>
+      </header>
+      <header className="topbar editing-toolbar">
         <div className="toolbar-group">
           <button
             className="icon-button"
             disabled={!past.length || !documentMutable}
             title="Undo · Ctrl+Z"
+            aria-label="Undo"
             onClick={undo}
           >
             ↶
@@ -2606,6 +2773,7 @@ export default function App() {
             className="icon-button"
             disabled={!future.length || !documentMutable}
             title="Redo · Ctrl+Shift+Z"
+            aria-label="Redo"
             onClick={redo}
           >
             ↷
@@ -2614,16 +2782,17 @@ export default function App() {
         <div className="toolbar-group zoom-control">
           <button
             title="Zoom out"
-            onClick={() => setZoom(Math.max(0.25, zoom - 0.1))}
+            aria-label="Zoom out"
+            onClick={() => { setFitMode(undefined); setZoom(Math.max(0.1, zoom - 0.1)); }}
           >
             −
           </button>
           <select
             aria-label="Zoom"
             value={Math.round(zoom * 100)}
-            onChange={(e) => setZoom(Number(e.target.value) / 100)}
+            onChange={(e) => { setFitMode(undefined); setZoom(Number(e.target.value) / 100); }}
           >
-            {[25, 50, 75, 100, 125, 150].map((value) => (
+            {[...new Set([Math.round(zoom * 100), 25, 50, 75, 100, 125, 150])].sort((a,b)=>a-b).map((value) => (
               <option key={value} value={value}>
                 {value}%
               </option>
@@ -2631,13 +2800,14 @@ export default function App() {
           </select>
           <button
             title="Zoom in"
-            onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
+            aria-label="Zoom in"
+            onClick={() => { setFitMode(undefined); setZoom(Math.min(2, zoom + 0.1)); }}
           >
             +
           </button>
-          <button onClick={() => setZoom(0.72)}>Fit</button>
+          <button title="Fit the entire selected page" onClick={() => setFitMode("page")}>Fit</button><button onClick={() => setFitMode("width")}>Fit Width</button>
         </div>
-        <div className="toolbar-group segmented compact">
+        <details className="view-options"><summary>View options</summary><div className="view-options-menu">        <div className="toolbar-group segmented compact">
           <button
             className={settings.unit === "px" ? "active" : ""}
             onClick={() => setSettings({ unit: "px" })}
@@ -2685,6 +2855,7 @@ export default function App() {
             Snap
           </button>
         </div>
+<button onClick={downloadTemplate}>Download JSON source</button></div></details>
         <div className="toolbar-spacer" />
         <button
           className="toolbar-button create-report-top"
@@ -2692,28 +2863,6 @@ export default function App() {
         >
           ＋ Create report
         </button>
-        {documentMode === "master-template" && (
-          <div className="toolbar-group template-save-actions">
-            <button
-              disabled={activeTemplateRecord?.status !== "draft"}
-              onClick={saveMasterTemplate}
-            >
-              Save
-            </button>
-            <button
-              disabled={!activeTemplateRecord}
-              onClick={() => saveAsNewTemplateVersion()}
-            >
-              Save as version
-            </button>
-            <button
-              disabled={activeTemplateRecord?.status !== "draft"}
-              onClick={publishMasterTemplate}
-            >
-              Publish
-            </button>
-          </div>
-        )}
         <div className="mode-toggle">
           <button
             className={mode === "design" ? "active" : ""}
@@ -2737,20 +2886,12 @@ export default function App() {
           />
           Validate
         </button>
-        <button className="toolbar-button" onClick={downloadTemplate}>
-          JSON
-        </button>
-        <button
-          className="primary-button"
-          disabled={exportingPdf}
-          onClick={downloadPdf}
-        >
-          {exportingPdf ? "Rendering…" : "Export PDF"}
-        </button>
+        <button className="toolbar-button" aria-pressed={leftCollapsed} onClick={() => setLeftCollapsed(!leftCollapsed)}>Tools panel</button>
+        <button className="toolbar-button" aria-pressed={inspectorCollapsed} onClick={() => setInspectorCollapsed(!inspectorCollapsed)}>Inspector</button>
+        <button className="toolbar-button focus-toggle" aria-pressed={focusMode} onClick={() => setFocusMode(!focusMode)}>{focusMode ? "Exit Focus Mode" : "Focus Mode"}</button>
       </header>
-      <div className="workspace">
-        <nav className="rail">
-          <a href="/?marketAssets=1" className="market-assets-nav" title="Market Assets"><span>↧</span>Market Assets</a>
+      <div className={`workspace ${focusMode ? "focus-mode" : ""} ${leftCollapsed ? "left-collapsed" : ""} ${inspectorCollapsed ? "inspector-collapsed" : ""}`} style={{ "--left-width": `${panelWidth}px`, "--inspector-width": `${inspectorWidth}px` } as React.CSSProperties}>
+        <nav className="rail" aria-label="Editor tools">
           {(
             [
               ["templates", "▤", "Templates"],
@@ -2767,8 +2908,9 @@ export default function App() {
             <button
               key={tab}
               className={leftTab === tab ? "active" : ""}
-              onClick={() => setLeftTab(tab)}
+              onClick={() => { setLeftTab(tab); setLeftCollapsed(false); }}
               title={label}
+              aria-pressed={leftTab === tab}
             >
               <span>{icon}</span>
               {label}
@@ -2778,12 +2920,15 @@ export default function App() {
         <aside
           className={`left-panel ${leftTab === "pages" ? "pages-panel" : ""}`}
         >
+          <button className="panel-close" aria-label="Collapse tools panel" onClick={() => setLeftCollapsed(true)}>‹</button>
           {sidebar()}
           <button className="reset-link" onClick={reset}>
             Restore sample document
           </button>
         </aside>
+        <div role="separator" tabIndex={0} aria-label="Resize tools panel" aria-orientation="vertical" className="panel-resizer left-resizer" onPointerDown={e=>resizePanel(e,"left")} onKeyDown={e=>{if(e.key === "ArrowLeft" || e.key === "ArrowRight") setPanelWidth(w=>Math.max(220,Math.min(420,w+(e.key === "ArrowRight" ? 10:-10))));}} />
         <main
+          ref={stageRef}
           className="stage"
           onClick={(event) => {
             if ((event.target as HTMLElement).closest(".canvas-element"))
@@ -2932,6 +3077,7 @@ export default function App() {
                   settings={settings}
                   data={reportData}
                   manualOverrides={reportInstance?.manualOverrides}
+                  onNarrativeFit={handleNarrativeFit}
                   mode={mode}
                   selected={selectedIds.includes(element.id)}
                   selectedIds={selectedIds}
@@ -2984,6 +3130,7 @@ export default function App() {
             </div>
           </div>
         </main>
+        <div role="separator" tabIndex={0} aria-label="Resize inspector" aria-orientation="vertical" className="panel-resizer right-resizer" onPointerDown={e=>resizePanel(e,"right")} onKeyDown={e=>{if(e.key === "ArrowLeft" || e.key === "ArrowRight") setInspectorWidth(w=>Math.max(240,Math.min(480,w+(e.key === "ArrowLeft" ? 10:-10))));}} />
         <Inspector
           element={selected}
           unit={settings.unit}
@@ -3001,6 +3148,14 @@ export default function App() {
             tableEditingId === selected?.id ? tableSelection : undefined
           }
           generated={Boolean(reportInstance)}
+          manualOverrides={reportInstance?.manualOverrides}
+          onTableValueOverride={reportInstance ? (cellKey, bindingPath, generatedValue, value) => {
+            if (selected?.type !== "table" || (value !== null && !isPlainDisplayValue(value))) return;
+            const elementId = selected.id;
+            mutate((current) => current, true, (overrides) => value === null
+              ? overrides.filter((item) => !(item.elementId === elementId && item.cellKey === cellKey))
+              : upsertManualOverride(overrides, { elementId, cellKey, bindingPath, generatedValue, overrideValue: value }));
+          } : undefined}
           readOnly={!documentMutable}
           onToggleTableEdit={() => {
             if (tableEditingId === selected?.id) {
@@ -3046,7 +3201,7 @@ export default function App() {
             : ""}
           {reportInstance ? (
             <>
-              {reportInstance.manualOverrides.length} manual overrides · Report{" "}
+              {reportInstance.manualOverrides.length} manual override{reportInstance.manualOverrides.length === 1 ? "" : "s"} · Report{" "}
               {reportSaveStatus}
               {reportLastSavedAt && reportSaveStatus === "saved"
                 ? ` at ${new Date(reportLastSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
@@ -3107,7 +3262,12 @@ export default function App() {
           </button>
         </div>
       )}
-      {toast && <div className="toast">✓ {toast}</div>}
+      </div>
+      {documentLoading && destination === "editor" && <div className="document-loading" role="status"><BrandLogo /><p>Loading Document…</p></div>}
+      {showPublishReport && reportInstance && <ReviewDialog title="Publish Report" onClose={() => !publishing && setShowPublishReport(false)}><p>Finalize {reportInstance.generationRequest.market} · {reportInstance.generationRequest.period}. Your saved pages, narratives, source snapshot and manual overrides will be preserved. This edition will be read-only in the Reports library.</p><p>Review warnings before publishing. Publishing records your finalized edition locally; it does not upload it to a public website.</p><button disabled={publishing} onClick={() => setShowPublishReport(false)}>Keep editing</button><button className="primary-button" disabled={publishing} onClick={async () => { setPublishing(true); try { if (["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) throw new Error("Wait for report changes to finish saving before publishing."); const saved = latestReportInstance.current ?? reportInstance; handleReportInstanceChange(await reportInstanceStore.publish(saved.id, saved.revision)); setShowPublishReport(false); } catch (e) { setOpenError((e as Error).message); } finally { setPublishing(false); } }}>{publishing ? "Publishing…" : "Confirm Publish Report"}</button></ReviewDialog>}
+      {showPublishReview && <ReviewDialog title="Publish Template" onClose={() => !publishing && setShowPublishReview(false)}><h3>{activeTemplateRecord?.label || template.name}</h3><p>Version {activeTemplateRecord?.version} · Future reports only</p><p>Publishing makes this version read-only. Existing saved reports keep their pinned template and content.</p><p>{validations.filter(v=>v.level === "blocking" || v.level === "error").length} blocking issues · {validations.filter(v=>v.level === "warning").length} warnings in document checks. PDF export runs additional font and image checks.</p><ul>{validations.filter(v=>v.level !== "ok" && v.level !== "info").map((v,i)=><li key={i}>{v.message}</li>)}</ul><button disabled={publishing} onClick={() => setShowPublishReview(false)}>Keep editing</button><button className="primary-button" disabled={publishing} onClick={async () => { setPublishing(true); await publishMasterTemplate(); setPublishing(false); setShowPublishReview(false); }}>{publishing ? "Publishing…" : "Confirm Publish"}</button></ReviewDialog>}
+      {showNarratives && reportInstance && <ReviewDialog title="Report Narratives" onClose={() => { if(narrativeDirty) { setOpenError("Save the narrative edit before returning to the report."); return; } setShowNarratives(false); }} wide><p>{template.name}</p><NarrativeWorkspace instance={reportInstance} onChange={handleReportInstanceChange} onDirtyChange={setNarrativeDirty} /><p role="status">{narrativeDirty ? "Unsaved narrative changes · choose Save Edit before returning" : "Narrative edits saved"}</p><button disabled={narrativeDirty} onClick={() => setShowNarratives(false)}>Return to report</button></ReviewDialog>}
+      {toast && <div className="toast" role="status">{toast}</div>}
       {showWizard && (activeTemplateRecord ?? publishedTemplate) && (
         <CreateReportWizard
           onClose={() => setShowWizard(false)}
@@ -3202,7 +3362,11 @@ export default function App() {
                 onClick={() => {
                   const pending = pendingPdfExport;
                   setPendingPdfExport(undefined);
-                  void performPdfExport(pending.template, pending.warningCount);
+                  void performPdfExport(
+                    pending.template,
+                    pending.warningCount,
+                    pending.data,
+                  );
                 }}
               >
                 Export anyway

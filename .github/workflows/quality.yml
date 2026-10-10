@@ -2,7 +2,7 @@ name: Quality
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/market-asset-export]
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -16,6 +16,73 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Stage private licensed font secrets (1/5)
+        env:
+          LEE_FONT_FIXTURE_01: ${{ secrets.LEE_FONT_FIXTURE_01 }}
+          LEE_FONT_FIXTURE_02: ${{ secrets.LEE_FONT_FIXTURE_02 }}
+          LEE_FONT_FIXTURE_03: ${{ secrets.LEE_FONT_FIXTURE_03 }}
+          LEE_FONT_FIXTURE_04: ${{ secrets.LEE_FONT_FIXTURE_04 }}
+          LEE_FONT_FIXTURE_05: ${{ secrets.LEE_FONT_FIXTURE_05 }}
+          LEE_FONT_FIXTURE_06: ${{ secrets.LEE_FONT_FIXTURE_06 }}
+          LEE_FONT_FIXTURE_07: ${{ secrets.LEE_FONT_FIXTURE_07 }}
+          LEE_FONT_FIXTURE_08: ${{ secrets.LEE_FONT_FIXTURE_08 }}
+          LEE_FONT_FIXTURE_09: ${{ secrets.LEE_FONT_FIXTURE_09 }}
+          LEE_FONT_FIXTURE_10: ${{ secrets.LEE_FONT_FIXTURE_10 }}
+        run: node scripts/restore-ci-font-fixtures.mjs append 0
+      - name: Stage private licensed font secrets (2/5)
+        env:
+          LEE_FONT_FIXTURE_11: ${{ secrets.LEE_FONT_FIXTURE_11 }}
+          LEE_FONT_FIXTURE_12: ${{ secrets.LEE_FONT_FIXTURE_12 }}
+          LEE_FONT_FIXTURE_13: ${{ secrets.LEE_FONT_FIXTURE_13 }}
+          LEE_FONT_FIXTURE_14: ${{ secrets.LEE_FONT_FIXTURE_14 }}
+          LEE_FONT_FIXTURE_15: ${{ secrets.LEE_FONT_FIXTURE_15 }}
+          LEE_FONT_FIXTURE_16: ${{ secrets.LEE_FONT_FIXTURE_16 }}
+          LEE_FONT_FIXTURE_17: ${{ secrets.LEE_FONT_FIXTURE_17 }}
+          LEE_FONT_FIXTURE_18: ${{ secrets.LEE_FONT_FIXTURE_18 }}
+          LEE_FONT_FIXTURE_19: ${{ secrets.LEE_FONT_FIXTURE_19 }}
+          LEE_FONT_FIXTURE_20: ${{ secrets.LEE_FONT_FIXTURE_20 }}
+        run: node scripts/restore-ci-font-fixtures.mjs append 1
+      - name: Stage private licensed font secrets (3/5)
+        env:
+          LEE_FONT_FIXTURE_21: ${{ secrets.LEE_FONT_FIXTURE_21 }}
+          LEE_FONT_FIXTURE_22: ${{ secrets.LEE_FONT_FIXTURE_22 }}
+          LEE_FONT_FIXTURE_23: ${{ secrets.LEE_FONT_FIXTURE_23 }}
+          LEE_FONT_FIXTURE_24: ${{ secrets.LEE_FONT_FIXTURE_24 }}
+          LEE_FONT_FIXTURE_25: ${{ secrets.LEE_FONT_FIXTURE_25 }}
+          LEE_FONT_FIXTURE_26: ${{ secrets.LEE_FONT_FIXTURE_26 }}
+          LEE_FONT_FIXTURE_27: ${{ secrets.LEE_FONT_FIXTURE_27 }}
+          LEE_FONT_FIXTURE_28: ${{ secrets.LEE_FONT_FIXTURE_28 }}
+          LEE_FONT_FIXTURE_29: ${{ secrets.LEE_FONT_FIXTURE_29 }}
+          LEE_FONT_FIXTURE_30: ${{ secrets.LEE_FONT_FIXTURE_30 }}
+        run: node scripts/restore-ci-font-fixtures.mjs append 2
+      - name: Stage private licensed font secrets (4/5)
+        env:
+          LEE_FONT_FIXTURE_31: ${{ secrets.LEE_FONT_FIXTURE_31 }}
+          LEE_FONT_FIXTURE_32: ${{ secrets.LEE_FONT_FIXTURE_32 }}
+          LEE_FONT_FIXTURE_33: ${{ secrets.LEE_FONT_FIXTURE_33 }}
+          LEE_FONT_FIXTURE_34: ${{ secrets.LEE_FONT_FIXTURE_34 }}
+          LEE_FONT_FIXTURE_35: ${{ secrets.LEE_FONT_FIXTURE_35 }}
+          LEE_FONT_FIXTURE_36: ${{ secrets.LEE_FONT_FIXTURE_36 }}
+          LEE_FONT_FIXTURE_37: ${{ secrets.LEE_FONT_FIXTURE_37 }}
+          LEE_FONT_FIXTURE_38: ${{ secrets.LEE_FONT_FIXTURE_38 }}
+          LEE_FONT_FIXTURE_39: ${{ secrets.LEE_FONT_FIXTURE_39 }}
+          LEE_FONT_FIXTURE_40: ${{ secrets.LEE_FONT_FIXTURE_40 }}
+        run: node scripts/restore-ci-font-fixtures.mjs append 3
+      - name: Stage private licensed font secrets (5/5)
+        env:
+          LEE_FONT_FIXTURE_41: ${{ secrets.LEE_FONT_FIXTURE_41 }}
+          LEE_FONT_FIXTURE_42: ${{ secrets.LEE_FONT_FIXTURE_42 }}
+          LEE_FONT_FIXTURE_43: ${{ secrets.LEE_FONT_FIXTURE_43 }}
+          LEE_FONT_FIXTURE_44: ${{ secrets.LEE_FONT_FIXTURE_44 }}
+          LEE_FONT_FIXTURE_45: ${{ secrets.LEE_FONT_FIXTURE_45 }}
+          LEE_FONT_FIXTURE_46: ${{ secrets.LEE_FONT_FIXTURE_46 }}
+          LEE_FONT_FIXTURE_47: ${{ secrets.LEE_FONT_FIXTURE_47 }}
+          LEE_FONT_FIXTURE_48: ${{ secrets.LEE_FONT_FIXTURE_48 }}
+          LEE_FONT_FIXTURE_49: ${{ secrets.LEE_FONT_FIXTURE_49 }}
+          LEE_FONT_FIXTURE_50: ${{ secrets.LEE_FONT_FIXTURE_50 }}
+        run: node scripts/restore-ci-font-fixtures.mjs append 4
+      - name: Restore checksum-pinned licensed font fixtures
+        run: node scripts/restore-ci-font-fixtures.mjs restore
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: TypeScript
@@ -33,7 +100,13 @@ jobs:
         if: always()
         with:
           name: market-asset-export-synthetic-qa
-          path: docs/evidence/market-assets/
+          # PDF/ZIP exports may contain licensed embedded fonts. Keep them off
+          # public-repository artifacts; validation still examines all formats.
+          path: |
+            docs/evidence/market-assets/**/*.json
+            docs/evidence/market-assets/**/*.csv
+            docs/evidence/market-assets/**/*.png
+            docs/evidence/market-assets/**/*.md
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload test diagnostics
@@ -41,7 +114,12 @@ jobs:
         if: failure()
         with:
           name: quality-failure-artifacts
+          # Playwright trace ZIPs contain fetched font bytes. Upload only
+          # screenshots and text diagnostics from this public repository.
           path: |
-            test-results
-            visual-report
+            test-results/**/*.png
+            test-results/**/*.md
           if-no-files-found: ignore
+      - name: Remove private fixture material
+        if: always()
+        run: node scripts/restore-ci-font-fixtures.mjs cleanup

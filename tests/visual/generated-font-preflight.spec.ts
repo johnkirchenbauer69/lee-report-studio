@@ -25,7 +25,7 @@ test("generated unavailable copy remains exactly pinned through publication pref
   );
   test.skip(!published, "A published template is required.");
 
-  await page.goto("/", { waitUntil: "load" });
+  await page.goto("/?editor=1", { waitUntil: "load" });
   const result = await page.evaluate(
     async (summary) => {
       const [

@@ -1,6 +1,7 @@
 import { ClosingContent } from "./ClosingContent";
 import { INDICATOR_STYLE, indicatorColor } from "../report-engine/indicators/indicatorStyle";
 import React, { useEffect, useRef, useState } from "react";
+import { tableCellDisplayValue, findTableValueOverride } from "../engine/tableValueOverrides";
 import type {
   EditorSettings,
   ImageCrop,
@@ -16,6 +17,10 @@ import type { SnapGuide } from "../engine/editorMath";
 import { fillToCss, snapPosition } from "../engine/editorMath";
 import { formatValue, getByContextPath, getByPath } from "../engine/bindings";
 import { NativeChart } from "../report-engine/charts/NativeChart";
+import {
+  useNarrativeFontFit,
+  type NarrativeFitListener,
+} from "./useNarrativeFontFit";
 import { normalizeRotation, snapRotation } from "../engine/geometry";
 import { getRotatedAabb, elementRect } from "../engine/geometry";
 import {
@@ -83,6 +88,11 @@ interface Props {
    * below for the commit/cancel rule.
    */
   onCommitCrop?: (id: string) => void;
+  /**
+   * Reports the dynamic narrative font fit (chosen size, and whether the
+   * text overflows even at the authored minimum) for narrative-bound text.
+   */
+  onNarrativeFit?: NarrativeFitListener;
 }
 
 const DEFAULT_IMAGE_CROP: ImageCrop = { x: 50, y: 50, zoom: 1 };
@@ -191,6 +201,38 @@ export function CanvasElement(props: Props) {
     onGuides,
   } = props;
   const [rotationAngle, setRotationAngle] = useState<number | null>(null);
+
+  // Bound narrative text: identified by its binding, and dynamically sized
+  // (authored size up to +2 pt) to the largest size that fits its box.
+  const narrativeMarketId =
+    element.type === "text" &&
+    element.binding?.path === "overallMarket.narrative"
+      ? "overall-market"
+      : element.type === "text" && element.binding?.path === "market.narrative"
+        ? String(
+            getByContextPath(data, "market.id", element.bindingContext) ??
+              getByContextPath(data, "market.name", element.bindingContext) ??
+              "submarket",
+          )
+        : undefined;
+  const narrativeTextRef = useRef<HTMLSpanElement>(null);
+  useNarrativeFontFit(
+    narrativeTextRef,
+    {
+      enabled: Boolean(narrativeMarketId) && mode === "data" && !element.hidden,
+      marketId: narrativeMarketId,
+      onFit: props.onNarrativeFit,
+    },
+    [
+      data,
+      props.manualOverrides,
+      element.width,
+      element.height,
+      element.style,
+      element.binding?.path,
+      element.bindingContext?.path,
+    ],
+  );
 
   // --- Crop mode: temporary, non-persisted state ---------------------
   //
@@ -796,7 +838,10 @@ export function CanvasElement(props: Props) {
       <div
         className={`text-content ${verticalAlignmentClass(typography?.verticalAlign ?? "top")}`}
       >
-        <span className="text-value">
+        <span
+          className="text-value"
+          ref={narrativeMarketId ? narrativeTextRef : undefined}
+        >
           {typography?.uppercase ? raw.toUpperCase() : raw}
         </span>
       </div>
@@ -882,11 +927,8 @@ export function CanvasElement(props: Props) {
       row: unknown,
       column: (typeof element.columns)[number],
     ) => {
-      const formatted = formatValue(getByPath(row, column.path), {
-        path: column.path,
-        format: column.format,
-        decimals: column.decimals ?? 1,
-      });
+      const formatted = tableCellDisplayValue(element, row, column, data, props.manualOverrides);
+      if (findTableValueOverride(element, row, column, data, props.manualOverrides)) return formatted;
       if (element.variant === "indicators" && column.path === "metric") {
         const direction = String(getByPath(row, "direction") ?? "equal");
         const semanticStatus = String(
@@ -1119,7 +1161,8 @@ export function CanvasElement(props: Props) {
                         : undefined
                     }
                   >
-                    {element.variant === "transactions" && c.path === "type" ? (
+                    {element.variant === "transactions" && c.path === "type" &&
+                      !findTableValueOverride(element, row, c, data, props.manualOverrides) ? (
                       <div className="transaction-type-cell">
                         <span className="transaction-type-value">
                           {formatValue(getByPath(row, c.path), {
@@ -1179,17 +1222,6 @@ export function CanvasElement(props: Props) {
     content = <NativeChart element={element} data={data} />;
   }
   if (element.hidden) return null;
-  const narrativeMarketId =
-    element.type === "text" &&
-    element.binding?.path === "overallMarket.narrative"
-      ? "overall-market"
-      : element.type === "text" && element.binding?.path === "market.narrative"
-        ? String(
-            getByContextPath(data, "market.id", element.bindingContext) ??
-              getByContextPath(data, "market.name", element.bindingContext) ??
-              "submarket",
-          )
-        : undefined;
   return (
     <div
       data-testid={element.id}

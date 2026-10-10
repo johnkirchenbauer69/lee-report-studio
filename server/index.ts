@@ -45,6 +45,21 @@ import { ArtifactIntegrityCoordinator } from "./integrity/ArtifactIntegrityCoord
 import { assertSafeDataRoot } from "./config/testStorageGuard.ts";
 
 const app = express();
+let desktopActiveRequests = 0;
+if (process.env.LEE_DESKTOP_LAUNCHER === "1") {
+  app.use((_request, response, next) => {
+    desktopActiveRequests += 1;
+    let completed = false;
+    const done = () => {
+      if (completed) return;
+      completed = true;
+      desktopActiveRequests -= 1;
+    };
+    response.once("finish", done);
+    response.once("close", done);
+    next();
+  });
+}
 const port = Number(process.env.PORT ?? 8787);
 const dataRoot = path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
 // Fail fast rather than relying on cleanup after the fact: a test-mode
@@ -300,10 +315,27 @@ app.post("/api/render/pdf", async (request, response) => {
     title: body.title ?? "LEE Market Report",
   });
   try {
+    let narrativeOverflow: string[] = [];
     const pdf = await pdfRenderer.render({
       url: `${appUrl}/?printJob=${encodeURIComponent(id)}`,
       title: body.title ?? "LEE Market Report",
+      onLayout: (layout) => {
+        narrativeOverflow = layout.narrativeOverflow;
+      },
     });
+    // Overflow at the minimum narrative size keeps the existing behavior:
+    // the PDF renders with the text box clipping intact, and publication
+    // blocking happens through narrative readiness (record.overflow). The
+    // renderer only reports what it measured.
+    if (narrativeOverflow.length) {
+      console.warn(
+        JSON.stringify({
+          event: "narrative_render_overflow",
+          narrativeIds: narrativeOverflow,
+        }),
+      );
+      response.setHeader("x-lee-narrative-overflow", narrativeOverflow.join(","));
+    }
     response.type("application/pdf");
     response.setHeader(
       "content-disposition",
@@ -343,7 +375,8 @@ app.use(
     });
   },
 );
-app.listen(port, "127.0.0.1", async () => {
+const httpServer = app.listen(port, "127.0.0.1", async () => {
+  if (process.env.LEE_DESKTOP_LAUNCHER === "1") process.send?.({ type: "lee-desktop-ready" });
   console.log(`LEE Report Studio API listening on http://127.0.0.1:${port}`);
   if (narrativeGenerationMode !== "chatgpt_mcp") return;
   const health = await narrativeService.bridgeHealth({ force: true });
@@ -353,3 +386,21 @@ app.listen(port, "127.0.0.1", async () => {
       : `Narrative MCP bridge unavailable: ${health.error ?? `missing ${health.missingTools.join(", ")}`}`,
   );
 });
+
+// Only the desktop launcher owns this IPC channel. No HTTP stop endpoint.
+if (process.env.LEE_DESKTOP_LAUNCHER === "1" && process.send) {
+  process.on("message", (message: unknown) => {
+    if ((message as { type?: string })?.type !== "lee-desktop-stop") return;
+    if (desktopActiveRequests || renderJobs.size || marketAssets.hasPendingWork || narrativeService.hasPendingWork) {
+      process.send?.({ type: "lee-desktop-stop-result", ok: false,
+        error: "A request, export, or narrative task is still running. Wait for it to finish, then stop again." });
+      return;
+    }
+    process.send?.({ type: "lee-desktop-stop-result", ok: true });
+    httpServer.close(() => {
+      process.disconnect?.();
+      // Existing requests have completed; no process-tree termination.
+      process.exit(0);
+    });
+  });
+}

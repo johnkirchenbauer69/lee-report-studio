@@ -127,16 +127,31 @@ export class ReportDataService {
           item.fieldPath.startsWith("overallMarket.") &&
           item.authority.includes("Property_Data__c"),
       );
+      // Explicit authority contract: a first-class Overall Market
+      // Market_Data__c row (OVERALL_MARKET_RECORD) is the headline for the
+      // full Chicago scope. It is never replaced by the submarket
+      // calculation; the submarket totals are retained only as a cross-check.
+      const usesOverallMarketRecord = report.provenance.some(
+        (item) =>
+          item.fieldPath.startsWith("overallMarket.") &&
+          item.authority.startsWith("OVERALL_MARKET_RECORD"),
+      );
+      const overallMarketAuthority = report.provenance.find(
+        (item) =>
+          item.fieldPath === "overallMarket.inventorySf" &&
+          item.authority.startsWith("OVERALL_MARKET_RECORD"),
+      )?.authority;
       const usesOfficialMarketDataHeadline = report.provenance.some(
         (item) =>
           item.fieldPath.startsWith("overallMarket.") &&
           item.authority.includes("official submarket snapshot"),
       );
       const useHistoricalAggregate =
-        hasHistoricalAggregate &&
-        (calculationScope.type === "all-submarkets" ||
-          usesPropertyDataHeadline ||
-          usesOfficialMarketDataHeadline);
+        usesOverallMarketRecord ||
+        (hasHistoricalAggregate &&
+          (calculationScope.type === "all-submarkets" ||
+            usesPropertyDataHeadline ||
+            usesOfficialMarketDataHeadline));
       if (!useHistoricalAggregate) {
         report.overallMarket = {
           ...report.overallMarket,
@@ -152,11 +167,19 @@ export class ReportDataService {
         const selectedValue = useHistoricalAggregate
           ? authoritative[key]
           : calculated[key];
-        const difference = Math.abs(authoritative[key] - calculated[key]);
-        const status = useHistoricalAggregate
+        // An authoritative-null headline value (Overall Market rent) is never
+        // compared as zero; it simply has no numeric cross-check difference.
+        const authoritativeValue = authoritative[key];
+        const difference =
+          authoritativeValue == null
+            ? Number.POSITIVE_INFINITY
+            : Math.abs(authoritativeValue - calculated[key]);
+        const status = usesOverallMarketRecord
+          ? ("matched" as const)
+          : useHistoricalAggregate
           ? usesPropertyDataHeadline
             ? ("reconciled" as const)
-            : difference <= tolerance(key, authoritative[key])
+            : difference <= tolerance(key, authoritativeValue ?? 0)
               ? ("matched" as const)
               : ("conflict" as const)
           : ("calculated" as const);
@@ -170,8 +193,9 @@ export class ReportDataService {
           fieldPath,
           selectedValue,
           sources: [calculationSource],
-          authority:
-            key === "speculativeShare" && useHistoricalAggregate
+          authority: usesOverallMarketRecord
+            ? overallMarketAuthority!
+            : key === "speculativeShare" && useHistoricalAggregate
               ? usesPropertyDataHeadline
                 ? "verified-derived Property_Data__c ratio-of-sums"
                 : "verified-derived Market_Data__c ratio"
@@ -188,9 +212,11 @@ export class ReportDataService {
           critical:
             key === "speculativeShare" ||
             (!usesPropertyDataHeadline &&
+              !usesOverallMarketRecord &&
               ["inventorySf", "vacancyRate", "availabilityRate"].includes(key)),
-          note:
-            key === "speculativeShare" && useHistoricalAggregate
+          note: usesOverallMarketRecord
+            ? `First-class Overall Market row is authoritative. Submarket cross-check value ${calculated[key]} is evidence only and never replaces it.`
+            : key === "speculativeShare" && useHistoricalAggregate
               ? usesPropertyDataHeadline
                 ? "Verified-derived as SUM(Under_Construction_Available_SF__c) / SUM(Under_Construction_SF__c), validated against live Chicago 2026 Q2."
                 : "Verified-derived as Under_Construction_Available_SF__c / Under_Construction_SF__c, validated against live Chicago 2026 Q2."
@@ -224,7 +250,8 @@ export class ReportDataService {
             critical: crossCheck.critical,
             note: crossCheck.note,
             calculation:
-              usesPropertyDataHeadline && report.provenance[index].calculation
+              (usesPropertyDataHeadline || usesOverallMarketRecord) &&
+              report.provenance[index].calculation
                 ? report.provenance[index].calculation
                 : crossCheck.calculation,
           };

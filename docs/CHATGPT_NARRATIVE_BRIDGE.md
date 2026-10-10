@@ -73,6 +73,17 @@ paragraphs with a 375-word hard maximum; submarkets target 160–230 words acros
 editorial guidance, while the hard word maximum is enforced. There is no
 single-paragraph requirement.
 
+Narrative Context v3 (see [narrative-context-v3.md](narrative-context-v3.md))
+keeps this transport unchanged: the v2 `promptVersion`/`promptProfile` above
+are still what each public context carries, because the MCP pins them. The v3
+editorial profile (Overall 250–340 words, 3–4 paragraphs; submarket 175–240
+words, 2–3 paragraphs; same hard maxima), page context, causal coverage, and
+publication rules travel in each context's additive `editorialBrief`, and
+facts carry additive v3 metadata (`analyticalType`, `evidenceStrength`,
+`causalSupport`, `visibleOn`, …). ChatGPT echoes the v2 `promptVersion`;
+import binds the result to the exact v3 context through `contextHash` and to
+the exact report data through the job's recorded snapshot fingerprint.
+
 The complete per-market submission shape is `marketId`, `narrative`, `claims`,
 `contextKeysUsed`, `qualityFlags`, and `promptVersion`. Every claim requires
 `claim`, `supportKeys`, and `evidenceClass` (`direct`, `derived`, or

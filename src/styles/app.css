@@ -1546,14 +1546,14 @@ button {
 }
 .delete-draft-button,
 .confirm-delete-draft {
-  border-color: #b42335 !important;
+  border-color: var(--lee-red) !important;
   background: #fff4f5 !important;
-  color: #b42335 !important;
+  color: var(--lee-red) !important;
   font-weight: 700;
 }
 .delete-draft-button:hover,
 .confirm-delete-draft:hover {
-  background: #b42335 !important;
+  background: var(--lee-red) !important;
   color: #fff !important;
 }
 .template-version-menu {

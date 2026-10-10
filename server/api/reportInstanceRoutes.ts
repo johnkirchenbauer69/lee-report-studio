@@ -1,4 +1,9 @@
 import { Router, type Response } from "express";
+import multer from "multer";
+import {
+  BROKER_INTERVIEW_MAX_BYTES,
+  BrokerInterviewIngestionError,
+} from "../narratives/brokerInterviewIngestion.ts";
 import type { ReportInstance } from "../../src/report-engine/schema/generation.ts";
 import {
   normalizeReportInstance,
@@ -26,6 +31,11 @@ export function createReportInstanceRouter(
   capture?: (instance: ReportInstance) => Promise<ReportInstance>,
 ) {
   const router = Router();
+  router.get("/report-instances/deleted", async (_request, response, next) => { try { response.json({ ids: await repository.deletedIds() }); } catch (error) { next(error); } });
+  router.post("/report-instances/:id/publish", async (request, response, next) => {
+    try { response.json(await repository.publish(request.params.id, request.body?.baseRevision)); }
+    catch (error) { if (conflict(error, response)) return; next(error); }
+  });
   const conflict = (error: unknown, response: Response) => {
     if (!(error instanceof ReportInstanceConflictError)) return false;
     response.status(409).json({
@@ -62,6 +72,62 @@ export function createReportInstanceRouter(
     });
     return true;
   };
+  // Optional broker interview upload (PDF/DOCX). Held in memory only for
+  // parsing; the raw file is never written to disk or sent to Salesforce.
+  const brokerUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: BROKER_INTERVIEW_MAX_BYTES, files: 1, fields: 4 },
+  }).single("file");
+  router.post(
+    "/report-instances/:id/broker-interviews",
+    (request, response, next) =>
+      brokerUpload(request, response, (error: unknown) => {
+        if (!error) return next();
+        const tooLarge = (error as { code?: string })?.code === "LIMIT_FILE_SIZE";
+        response.status(tooLarge ? 413 : 400).json({
+          error: tooLarge
+            ? "Broker interview files must be 15 MB or smaller."
+            : "The broker interview upload could not be read.",
+          code: tooLarge ? "FILE_TOO_LARGE" : "UPLOAD_FAILED",
+        });
+      }),
+    async (request, response, next) => {
+      try {
+        const file = request.file;
+        if (!file) {
+          response.status(400).json({
+            error: "Choose a PDF or Word (.docx) broker interview file.",
+            code: "NO_FILE",
+          });
+          return;
+        }
+        response.json(
+          await narratives.uploadBrokerInterviews(request.params.id, {
+            fileName: Buffer.from(file.originalname, "latin1").toString("utf8"),
+            bytes: new Uint8Array(file.buffer),
+          }),
+        );
+      } catch (error) {
+        if (error instanceof BrokerInterviewIngestionError) {
+          response.status(422).json({ error: error.message, code: error.code });
+          return;
+        }
+        if (conflict(error, response)) return;
+        next(error);
+      }
+    },
+  );
+  router.delete(
+    "/report-instances/:id/broker-interviews",
+    async (request, response, next) => {
+      try {
+        response.json(await narratives.removeBrokerInterviews(request.params.id));
+      } catch (error) {
+        if (conflict(error, response)) return;
+        next(error);
+      }
+    },
+  );
   router.get("/narratives/config", async (_request, response, next) => {
     try {
       response.json(await narratives.config());

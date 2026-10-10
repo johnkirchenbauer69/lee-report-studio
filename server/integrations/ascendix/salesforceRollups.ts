@@ -37,20 +37,34 @@ export const AVAILABILITY_SIZE_BUCKETS = [
   { bucket: "500k SF+", minimum: 500_000, maximum: Number.POSITIVE_INFINITY },
 ] as const;
 
-/** Buckets the already-scoped eligible Property_Data rows without exposing records client-side. */
+/**
+ * Buckets the already-scoped eligible Property_Data rows without exposing
+ * records client-side. `buildingCount` is the number of DISTINCT buildings
+ * (Property__c, falling back to the Property_Data row Id when unlinked)
+ * contributing Available SF to the bucket -- duplicate rows for the same
+ * Property never count twice -- and is forced to 0 whenever the bucket's
+ * Available SF is 0.
+ */
 export function aggregateAvailabilityBySize(
   rows: SalesforceRecord[],
 ): AvailabilitySizeBucket[] {
   const field = mapping.propertyData.availableSf;
+  const propertyField = mapping.propertyData.propertyId.apiName;
+  const buildingKey = (row: SalesforceRecord) =>
+    String(row[propertyField] ?? "").trim() || `row:${String(row.Id ?? "")}`;
   return AVAILABILITY_SIZE_BUCKETS.map(({ bucket, minimum, maximum }) => {
     const members = rows.filter((row) => {
       const availableSf = numeric(row, field);
       return availableSf >= minimum && availableSf < maximum;
     });
+    const availableSf = sum(members, field);
+    const buildings = new Set(
+      members.filter((row) => numeric(row, field) > 0).map(buildingKey),
+    );
     return {
       bucket,
-      availableSf: sum(members, field),
-      buildingCount: members.length,
+      availableSf,
+      buildingCount: availableSf > 0 ? buildings.size : 0,
     };
   });
 }
@@ -159,6 +173,69 @@ export type QuarterlyMarketPeriod = Omit<
   sourceIds?: string[];
 };
 
+const optionalMetric = (
+  record: SalesforceRecord,
+  field: { apiName: string },
+): number | null => {
+  const raw = record[field.apiName];
+  if (raw === null || raw === undefined || raw === "") return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed))
+    throw new Error(`Salesforce returned an invalid ${field.apiName}.`);
+  return parsed;
+};
+
+/** Metric keys a first-class Overall Market row maps one-to-one. */
+export const OVERALL_MARKET_PERIOD_METRICS = [
+  ["quarterlyNetAbsorptionSf", "quarterlyNetAbsorptionSf"],
+  ["vacancyRate", "vacancyRate"],
+  ["availabilityRate", "availabilityRate"],
+  ["underConstructionSf", "underConstructionSf"],
+  ["deliveredSf", "deliveredSf"],
+  ["salesVolume", "salesVolume"],
+  ["salesTransactions", "salesTransactions"],
+  ["medianSalesPricePsf", "medianSalesPricePerBuildingSf"],
+  ["leasingActivitySf", "leasingActivitySf"],
+] as const satisfies ReadonlyArray<
+  readonly [keyof QuarterlyMarketPeriod, keyof typeof mapping.marketData]
+>;
+
+/**
+ * ONE first-class Overall Market Market_Data__c row IN = ONE report quarter
+ * OUT. No summing, averaging, ratio recomputation or median suppression,
+ * and every null on the row stays null (AUTHORITATIVE_NULL): an existing
+ * Overall row is never field-level backfilled from submarkets, Property_Data
+ * or anything else. Percent fields are expected to be pre-normalized by
+ * normalizeSalesforceMarketDataRecord (fractions).
+ */
+export function mapOverallMarketPeriod(
+  period: string,
+  row: SalesforceRecord,
+): QuarterlyMarketPeriod {
+  const md = mapping.marketData;
+  const values = Object.fromEntries(
+    OVERALL_MARKET_PERIOD_METRICS.map(([key, field]) => [
+      key,
+      optionalMetric(row, md[field]),
+    ]),
+  ) as Record<(typeof OVERALL_MARKET_PERIOD_METRICS)[number][0], number | null>;
+  const label = normalizeQuarterBounds(period).label;
+  const externalId = String(row[md.externalId.apiName] ?? "").trim();
+  return {
+    period: label,
+    ...values,
+    source: {
+      authority: "OVERALL_MARKET_RECORD",
+      quarter: label,
+      ...(externalId ? { externalIds: [externalId] } : {}),
+      authoritativeNulls: OVERALL_MARKET_PERIOD_METRICS.filter(
+        ([key]) => values[key] === null,
+      ).map(([key]) => key),
+    },
+    sourceIds: [String(row.Id)].filter(Boolean),
+  };
+}
+
 export function aggregateQuarterlyMarketPeriod(
   period: string,
   rows: SalesforceRecord[],
@@ -174,6 +251,9 @@ export function aggregateQuarterlyMarketPeriod(
     underConstructionSf: sum(rows, md.underConstructionSf),
     deliveredSf: completeSum(rows, md.deliveredSf),
     salesVolume: completeSum(rows, md.salesVolume),
+    // Same rows as salesVolume, so the count describes exactly the Sale
+    // population behind the bar. Undefined unless every row publishes it.
+    salesTransactions: completeSum(rows, md.salesTransactions),
     medianSalesPricePsf: verifiedMedianSalesPricePsf(rows),
     leasingActivitySf: sum(rows, md.leasingActivitySf),
     sourceIds: rows.map((row) => String(row.Id)).filter(Boolean),
@@ -182,9 +262,11 @@ export function aggregateQuarterlyMarketPeriod(
 
 export interface Trailing12MonthNetAbsorptionResult {
   value: number | null;
-  status: "complete" | "insufficient_history";
+  status: "complete" | "insufficient_history" | "authoritative_null";
   inputPeriods: string[];
   missingPeriods: string[];
+  /** Required quarters that exist but carry an authoritative null. */
+  nullPeriods?: string[];
   sourceIds: string[];
 }
 
@@ -201,11 +283,11 @@ const periodFromOrdinal = (ordinal: number) => {
 
 /** Calculates a signed rolling four-quarter sum without zero-filling gaps. */
 export function calculateTrailing12MonthNetAbsorption(
-  periods: Array<
-    Pick<QuarterlyMarketPeriod, "period" | "quarterlyNetAbsorptionSf"> & {
-      sourceIds?: string[];
-    }
-  >,
+  periods: Array<{
+    period: string;
+    quarterlyNetAbsorptionSf: number | null;
+    sourceIds?: string[];
+  }>,
   targetPeriod: string,
 ): Trailing12MonthNetAbsorptionResult {
   const normalized = periods
@@ -240,9 +322,24 @@ export function calculateTrailing12MonthNetAbsorption(
       missingPeriods,
       sourceIds,
     };
+  // A required quarter that exists with an authoritative-null absorption
+  // makes the trailing value unavailable; it is never zero-filled or
+  // replaced from another source.
+  const nullPeriods = inputPeriods.filter(
+    (_, index) => inputs[index]!.quarterlyNetAbsorptionSf === null,
+  );
+  if (nullPeriods.length)
+    return {
+      value: null,
+      status: "authoritative_null",
+      inputPeriods,
+      missingPeriods: [],
+      nullPeriods,
+      sourceIds,
+    };
   return {
     value: inputs.reduce(
-      (total, input) => total + input!.quarterlyNetAbsorptionSf,
+      (total, input) => total + input!.quarterlyNetAbsorptionSf!,
       0,
     ),
     status: "complete",

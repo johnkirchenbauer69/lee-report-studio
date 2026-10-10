@@ -1,3 +1,4 @@
+import { displayAssetName } from "../../src/shared/assetNames.ts";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -182,8 +183,9 @@ export class FileSystemAssetStore {
       rejected: [],
     };
     for (const file of files) {
+      const originalName = displayAssetName(file.originalname);
       try {
-        const extension = safeExtension(file.originalname);
+        const extension = safeExtension(originalName);
         if (extension === ".zip") {
           const bundle = await readFontBundle(file.buffer);
           for (const face of bundle.fonts) {
@@ -203,7 +205,7 @@ export class FileSystemAssetStore {
             }
           }
         } else if (FONT_EXTENSIONS.has(extension)) {
-          const result = await this.importFont(file.originalname, file.buffer, [
+          const result = await this.importFont(originalName, file.buffer, [
             ...existing,
             ...created,
           ]);
@@ -213,7 +215,7 @@ export class FileSystemAssetStore {
           const asset = await this.importImageBuffer({
             buffer: file.buffer,
             mimeType: file.mimetype,
-            originalName: file.originalname,
+            originalName,
           });
           created.push(asset);
           summary.imported += 1;

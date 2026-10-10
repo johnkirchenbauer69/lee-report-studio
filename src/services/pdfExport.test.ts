@@ -7,6 +7,8 @@ import type { ReportTemplate, TableElement } from "../types/report";
 import { generateReportInstance } from "../report-engine/generation/generateReport";
 import { buildPresentationModel } from "../report-engine/bindings/presentationModel";
 import { q2SampleReport } from "../data-providers/sample/q2SampleReport";
+import { tableCellKey, withTableDisplayOverrides } from "../engine/tableValueOverrides";
+import { extractText, getDocumentProxy } from "unpdf";
 
 // Compatibility fixture: legacy stored templates still use the existing fallback path.
 const legacyTemplate: ReportTemplate = { ...sampleTemplate, pages: sampleTemplate.pages.map(page => ({ ...page, elements: page.elements.map(element => element.type === "text" && element.closingContent ? {
@@ -14,6 +16,18 @@ const legacyTemplate: ReportTemplate = { ...sampleTemplate, pages: sampleTemplat
 } : element) })) };
 
 describe("deterministic PDF export", () => {
+  it("prints a table display override while preserving the bound source", async () => {
+    const table: TableElement = { id: "values", type: "table", name: "Values", x: 20, y: 20, width: 500, height: 90,
+      sourcePath: "rows", columns: [{ key: "value", label: "Value", path: "value" }], style: {} };
+    const data = { rows: [{ id: "metric-1", value: null }] };
+    const cellKey = tableCellKey(table, data.rows[0], table.columns[0]!, data)!;
+    const rendered = withTableDisplayOverrides(data, [{ elementId: table.id, cellKey, generatedValue: null,
+      overrideValue: "18,086,895", createdAt: "2026-10-06T12:00:00.000Z" }]);
+    const template = { ...sampleTemplate, assets: [], pages: [{ ...sampleTemplate.pages[0]!, elements: [table] }] };
+    const pdf = await getDocumentProxy(await createReportPdfBytes(template, rendered));
+    expect((await extractText(pdf, { mergePages: true })).text).toContain("18,086,895");
+    expect(data.rows[0]!.value).toBeNull();
+  });
   it("requires Chromium for native content rather than silently omitting it", async () => {
     await expect(createReportPdfBytes(sampleTemplate, sampleData)).rejects.toThrow(/Native closing pages require the Chromium/);
   });

@@ -33,3 +33,5 @@ vite.config.d.ts
 docs/evidence/market-assets/office-qa/*.pdf
 
 server/data/report-instance-assets/
+
+server/data/deleted-report-instances.json

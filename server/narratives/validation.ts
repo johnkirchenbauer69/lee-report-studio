@@ -1,4 +1,5 @@
 import { containsSalesforceIdToken } from "../../src/shared/salesforceIds.ts";
+import { brokerKeyMarketId } from "../../src/report-engine/narratives/brokerInterviews.ts";
 import {
   NARRATIVE_PROMPT_PROFILES,
   countNarrativeWords,
@@ -10,7 +11,7 @@ import {
 
 export interface NarrativeValidationIssue {
   severity: "warning" | "error";
-  kind: "support" | "entity" | "numeric" | "length" | "identifier" | "workflow" | "formatting" | "style";
+  kind: "support" | "entity" | "numeric" | "length" | "identifier" | "workflow" | "formatting" | "style" | "broker";
   message: string;
   /**
    * Provenance for entity-grounding decisions (kind: "entity"): the
@@ -119,7 +120,13 @@ const numericTokens = (text: string): NumericToken[] => {
   add(/\b(\d+(?:\.\d+)?)\s*%/gi, "percent", (match) => Number(match[1]));
   add(/\b(\d+(?:\.\d+)?)\s*(?:basis points|bps)\b/gi, "bps", (match) => Number(match[1]));
   add(/\b(\d[\d,]*(?:\.\d+)?)\s*(million|m)?\s*(?:SF|square feet)\b/gi, "sf", (match) => Number(match[1]!.replace(/,/g, "")) * (match[2] ? 1_000_000 : 1));
-  add(/\$(\d[\d,]*(?:\.\d+)?)\s*(million|m)?\b/gi, "currency", (match) => Number(match[1]!.replace(/,/g, "")) * (match[2] ? 1_000_000 : 1));
+  add(
+    /\$(\d[\d,]*(?:\.\d+)?)\s*(billion|million|bn|b|m)?\b/gi,
+    "currency",
+    (match) =>
+      Number(match[1]!.replace(/,/g, "")) *
+      (match[2] ? (/^b/i.test(match[2]) ? 1_000_000_000 : 1_000_000) : 1),
+  );
   return tokens;
 };
 
@@ -359,13 +366,47 @@ const matchEntity = (candidate: string, context: NarrativeContext): EntityMatchR
   return { matched: false, normalizedCandidate, resolutionMethod: "unsupported_entity" };
 };
 
+export interface NarrativeValidationOptions {
+  /**
+   * Distinctive terms from RESTRICTED broker observations for this market
+   * (see brokerRestrictedTerms). Prose containing one is rejected unless the
+   * term is independently present in governed or publishable context.
+   */
+  restrictedBrokerTerms?: readonly string[];
+}
+
+/** Same causal vocabulary the MCP applies to broker-supported claims. */
+const BROKER_CAUSAL_LANGUAGE =
+  /\b(?:because|due to|caused?|causes?|driven by|drove|drives?|led to|leads? to|result(?:ed|s|ing)? (?:in|from)|attribut(?:ed|able) to|owing to)\b/i;
+
+const GOVERNED_SOURCE_TYPES = new Set([
+  "Market_Data__c",
+  "Property_Data__c",
+  "Market_Data_Contributor__c",
+  "Report_Data_Service",
+]);
+
+/** The MCP's independent causal support: a governed market driver or absorption driver. */
+const governedCausalSupport = (fact: NarrativeContext["facts"][number]) =>
+  GOVERNED_SOURCE_TYPES.has(fact.sourceType) &&
+  fact.publicationSafe === true &&
+  (fact.category === "market_driver" ||
+    (fact.category === "driver" && /absorption/i.test(fact.label)));
+
 export function validateNarrativeResult(
   context: NarrativeContext,
   result: NarrativeGenerationResult,
+  options: NarrativeValidationOptions = {},
 ) {
   const issues: NarrativeValidationIssue[] = [];
   const warnings: NarrativeValidationWarning[] = [];
-  const keys = new Set(context.facts.map((item) => item.contextKey));
+  // Broker observations are supplemental context keys: valid support for
+  // qualitative/interpretive claims only (enforced below), never facts.
+  const brokerObservations = new Map(
+    (context.brokerContext?.observations ?? []).map((item) => [item.contextKey, item]),
+  );
+  const factsByKey = new Map(context.facts.map((item) => [item.contextKey, item]));
+  const keys = new Set([...factsByKey.keys(), ...brokerObservations.keys()]);
   for (const key of [
     ...result.contextKeysUsed,
     ...result.claims.flatMap((claim) => claim.supportKeys),
@@ -383,7 +424,75 @@ export function validateNarrativeResult(
         kind: "support",
         message: `Claim “${claim.claim.slice(0, 80)}” has no supporting context.`,
       });
+    const brokerKeys = claim.supportKeys.filter((key) => brokerObservations.has(key));
+    if (!brokerKeys.length) return;
+    const label = claim.claim.slice(0, 80);
+    const governedFacts = claim.supportKeys
+      .map((key) => factsByKey.get(key))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    // A broker key never supports a number: every numeric token in a claim
+    // that cites broker context must match a governed fact it also cites.
+    for (const token of numericTokens(claim.claim))
+      if (
+        !governedFacts.some((fact) =>
+          numericTokens(fact.displayValue).some((allowed) => closeEnough(token, allowed)),
+        )
+      )
+        issues.push({
+          severity: "error",
+          kind: "broker",
+          message: `Claim “${label}” uses broker interview context to support the figure ${token.raw}; broker context can never support a numeric metric claim.`,
+        });
+    if (!governedFacts.length && claim.evidenceClass !== "interpretive")
+      issues.push({
+        severity: "error",
+        kind: "broker",
+        message: `Claim “${label}” is supported only by broker interview context and must be classed interpretive, not ${claim.evidenceClass}.`,
+      });
+    // Mirrors the MCP's BROKER_CAUSAL_SUPPORT_REQUIRED rule, which is
+    // authoritative: broker attribution does not make causal wording safe.
+    if (
+      BROKER_CAUSAL_LANGUAGE.test(claim.claim) &&
+      !governedFacts.some(governedCausalSupport)
+    )
+      issues.push({
+        severity: "error",
+        kind: "broker",
+        message: `Claim “${label}” uses causal wording with broker interview support but cites no governed market driver; broker commentary cannot establish a cause. Describe what brokers reported instead.`,
+      });
+    if (context.marketKind === "overall") {
+      const sourceMarkets = new Set(brokerKeys.map(brokerKeyMarketId));
+      if (sourceMarkets.size < 2)
+        issues.push({
+          severity: "error",
+          kind: "broker",
+          message: `Overall Market claim “${label}” generalizes broker commentary from a single submarket; cite broker observations from at least two submarkets or omit it.`,
+        });
+    }
   });
+
+  // Restricted broker commentary must never reach publication prose.
+  if (options.restrictedBrokerTerms?.length) {
+    const permitted = [
+      ...context.facts.flatMap((item) => [item.label, item.displayValue, ...(item.entityNames ?? [])]),
+      ...(context.brokerContext?.observations ?? []).map((item) => item.statement),
+      context.marketName,
+    ]
+      .join(" \n ")
+      .toLocaleLowerCase();
+    const prose = result.narrative.toLocaleLowerCase();
+    const leaked = options.restrictedBrokerTerms.filter((term) => {
+      const needle = term.toLocaleLowerCase();
+      if (permitted.includes(needle)) return false;
+      return new RegExp(`(^|[^a-z0-9])${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`).test(prose);
+    });
+    if (leaked.length)
+      issues.push({
+        severity: "error",
+        kind: "broker",
+        message: `Narrative contains detail from broker commentary marked not for publication (${leaked.slice(0, 3).join(", ")}); restricted broker commentary must never reach publication prose.`,
+      });
+  }
 
   const profile =
     NARRATIVE_PROMPT_PROFILES[
@@ -555,7 +664,141 @@ export function validateNarrativeResult(
   if (hasComparativeHistory && !COMPARATIVE_LANGUAGE.test(result.narrative))
     flags.add("missing_comparative_context");
 
+  for (const flag of editorialQaFlags(context, result.narrative, sentences))
+    flags.add(flag);
+
   return { issues, qualityFlags: [...flags], warnings };
+}
+
+// --- Context v3 editorial QA (non-blocking) ---------------------------------
+
+const FORWARD_LOOKING =
+  /\b(expected to|is expected|are expected|poised to|is set to|are set to|will likely|likely to|should continue|going forward|in the coming (?:quarters|months|year)|looking ahead|outlook|anticipat\w*|forecast\w*|projected to|on track to|bodes well)\b/i;
+const OUTLOOK_SUPPORT_TOPIC = /\b(deliver\w*|construction|pipeline|commenc\w*|occupan\w*|occupy|move[- ]in)\b/i;
+const CAUSAL_LANGUAGE =
+  /\b(because|due to|driven by|drove|attributable to|as a result of|resulting from|stemm(?:ed|ing) from|caused by|owing to)\b/i;
+const GENERIC_CLOSING = [
+  /^(overall|in summary|in conclusion|taken together|all in all|looking ahead|going forward|ultimately)\b/i,
+  /^(these|such) (trends|dynamics|factors|conditions|developments)\b/i,
+  /\b(well[- ]positioned|positions? the (?:sub)?market|bodes well|solid foundation|remains? poised|for the remainder of the year|in the quarters ahead)\b/i,
+];
+const OVERUSED_VERBS = /\b(underscor\w*|highlight\w*|reflect\w*|signal\w*|a testament to)\b/gi;
+const THESIS_VOCABULARY =
+  /\b(strengthen\w*|soften\w*|tighten\w*|loosen\w*|shift\w*|turn\w*|revers\w*|accelerat\w*|slow\w*|cool\w*|concentrat\w*|broad\w*|momentum|demand|supply|pressure|rebound\w*|recover\w*|stall\w*|diverg\w*|despite|outpac\w*|weaken\w*|firm\w*|steady|stabiliz\w*|imbalance)\b/i;
+
+const mentions = (text: string, name: string) => {
+  const normalized = normalizeEntityForMatch(name);
+  if (normalized.length < 3) return false;
+  return new RegExp(`\\b${escapeRegExp(normalized)}\\b`, "i").test(
+    text.replace(APOSTROPHE_VARIANTS, "'").toLocaleLowerCase(),
+  );
+};
+
+/**
+ * Pragmatic editorial QA heuristics for context v3. Advisory only: these
+ * add quality flags for the reviewer and never reject a narrative.
+ */
+export function editorialQaFlags(
+  context: NarrativeContext,
+  narrative: string,
+  sentences: string[] = splitSentences(narrative),
+): Set<NarrativeQualityFlag> {
+  const flags = new Set<NarrativeQualityFlag>();
+  if (!sentences.length) return flags;
+  const words = Math.max(1, countNarrativeWords(narrative));
+
+  // Transactions: three or more named, or two that only repeat the page tables.
+  const transactions = context.facts.filter(
+    (item) => item.category === "lease" || item.category === "sale",
+  );
+  const named = transactions.filter((item) =>
+    (item.entityNames ?? []).some((name) => mentions(narrative, name)),
+  );
+  if (
+    named.length >= 3 ||
+    (named.length >= 2 &&
+      named.every(
+        (item) =>
+          (item.visibleOn ?? []).some((component) => component === "top_leases" || component === "top_sales") &&
+          item.editorialPriority !== "lead",
+      ))
+  )
+    flags.add("transaction_repetition");
+
+  // Thesis: the opening should interpret, not recite.
+  const opening = sentences[0]!;
+  const openingNumbers = numericTokens(opening).length;
+  if (openingNumbers >= 3 || (openingNumbers >= 2 && !THESIS_VOCABULARY.test(opening)))
+    flags.add("weak_thesis");
+
+  // Metric density across the narrative and within any one sentence.
+  const allNumbers = numericTokens(narrative).length;
+  if (
+    (allNumbers / words) * 100 > 6 ||
+    sentences.some((sentence) => numericTokens(sentence).length >= 4)
+  )
+    flags.add("excessive_metric_density");
+
+  // Page redundancy: reciting values the reader already sees in the tables.
+  const visibleMetrics = context.facts.filter(
+    (item) => item.category === "metric" && (item.visibleOn ?? []).length > 0,
+  );
+  const narrativeNumbers = numericTokens(narrative);
+  const recited = visibleMetrics.filter((item) =>
+    numericTokens(item.displayValue).some((allowed) =>
+      narrativeNumbers.some((token) => closeEnough(token, allowed)),
+    ),
+  ).length;
+  if (recited >= (context.marketKind === "overall" ? 5 : 4))
+    flags.add("page_redundancy");
+
+  // Forward-looking statements need governed pipeline/commencement support.
+  const outlookSupport = context.facts.some((item) =>
+    ["leasing_conversion", "pipeline_change", "construction"].includes(
+      item.analyticalType ?? item.category,
+    ),
+  );
+  if (
+    sentences.some(
+      (sentence) =>
+        FORWARD_LOOKING.test(sentence) &&
+        !(outlookSupport && OUTLOOK_SUPPORT_TOPIC.test(sentence)),
+    )
+  )
+    flags.add("unsupported_outlook");
+
+  // Causal wording requires a governed driver that licenses it. Property
+  // absorption contributors may only "explain" absorption itself.
+  const governedCause = context.facts.some((item) => item.causalSupport === true);
+  const contributorNames = context.facts
+    .filter((item) => item.contextKey.startsWith("driver.absorption."))
+    .flatMap((item) => item.entityNames ?? []);
+  if (
+    !governedCause &&
+    sentences.some(
+      (sentence) =>
+        CAUSAL_LANGUAGE.test(sentence) &&
+        !(
+          /absorption/i.test(sentence) &&
+          contributorNames.some((name) => mentions(sentence, name))
+        ),
+    )
+  )
+    flags.add("unsupported_causal_claim");
+
+  // Formulaic close.
+  const closing = sentences[sentences.length - 1]!;
+  if (sentences.length >= 3 && GENERIC_CLOSING.some((pattern) => pattern.test(closing)))
+    flags.add("generic_closing");
+
+  // Repeated "while" contrasts and overused connective verbs.
+  const whileContrasts = sentences.filter(
+    (sentence) => /^while\b/i.test(sentence) || /,\s*while\b/i.test(sentence),
+  ).length;
+  if (whileContrasts >= 3) flags.add("repetitive_sentence_structure");
+  if ((narrative.match(OVERUSED_VERBS)?.length ?? 0) >= 2)
+    flags.add("boilerplate_phrasing");
+  return flags;
 }
 
 /**

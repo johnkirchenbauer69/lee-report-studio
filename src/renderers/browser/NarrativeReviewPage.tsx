@@ -20,7 +20,7 @@ export function NarrativeReviewPage({ reportInstanceId }: { reportInstanceId: st
   // readiness gates.
   const openReportEditor = () => {
     reportInstanceStore.remember(instance.id);
-    window.location.assign("/");
+    window.location.assign(`/?editor=1&report=${encodeURIComponent(instance.id)}`);
   };
   const approved = instance.narratives.filter(
     (record) => record.status === "approved",

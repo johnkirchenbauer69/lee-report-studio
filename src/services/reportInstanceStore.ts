@@ -103,6 +103,11 @@ const send = async <T>(
 };
 
 export const reportInstanceStore = {
+  discardDeletedRecovery: async () => {
+    const { ids } = await json<{ ids: string[] }>(fetch("/api/report-instances/deleted"));
+    if (!Array.isArray(ids)) return;
+    for (const id of ids.filter(id => typeof id === "string" && /^report-[a-zA-Z0-9-]+$/.test(id))) { localStorage.removeItem(`lee-report-studio.report-recovery.v1.${id}`); if (localStorage.getItem("lee-report-studio.report-instance.v1") === id) localStorage.removeItem("lee-report-studio.report-instance.v1"); }
+  },
   lastId: () =>
     localStorage.getItem("lee-report-studio.report-instance.v1") ?? undefined,
   remember: (id: string) =>
@@ -135,6 +140,7 @@ export const reportInstanceStore = {
       input,
       15_000,
     ),
+  publish: (id: string, baseRevision: number) => send<ReportInstance>(`/api/report-instances/${encodeURIComponent(id)}/publish`, "POST", { baseRevision }),
   refresh: (id: string) =>
     send<ReportInstance>(
       `/api/report-instances/${encodeURIComponent(id)}/narratives/refresh`,
@@ -170,6 +176,22 @@ export const reportInstanceStore = {
       `/api/report-instances/${encodeURIComponent(id)}/narratives/external-job`,
       "POST",
       options,
+    ),
+  /** Optional broker interview upload (PDF/DOCX); returns the updated instance. */
+  uploadBrokerInterviews: (id: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file, file.name);
+    return json<ReportInstance>(
+      fetch(`/api/report-instances/${encodeURIComponent(id)}/broker-interviews`, {
+        method: "POST",
+        body,
+      }),
+    );
+  },
+  removeBrokerInterviews: (id: string) =>
+    send<ReportInstance>(
+      `/api/report-instances/${encodeURIComponent(id)}/broker-interviews`,
+      "DELETE",
     ),
   retryExternalImport: (id: string) =>
     send<ReportInstance>(

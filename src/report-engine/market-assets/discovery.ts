@@ -483,7 +483,22 @@ export function buildExportPlan(
         });
       if (category === "properties" && propertyGroups.length)
         add(market, folder, category, "Property Highlights", "xlsx", {
-          payload: propertyGroups,
+          payload: [
+            ["Top Availabilities", "availabilities"],
+            ["Deliveries", "deliveries"],
+            ["Under Construction", "construction"],
+          ].map(
+            ([title, sourceKey]) =>
+              propertyGroups.find((group) => group.title === title) ?? {
+                title,
+                rows: [],
+                emptyMessage:
+                  Array.isArray(market.source[sourceKey]) &&
+                  market.source[sourceKey].length === 0
+                    ? "No qualifying records in this saved report."
+                    : "This section is not displayed in the saved report.",
+              },
+          ),
         });
       if (assets.length === before)
         warnings.push(

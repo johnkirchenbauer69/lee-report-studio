@@ -181,6 +181,90 @@ export function restoreNarrativeRevision(
   };
 }
 
+const NARRATIVE_BINDING_PATHS = new Set([
+  "overallMarket.narrative",
+  "market.narrative",
+]);
+
+/** Minimal instance shape needed to check narrative/snapshot consistency. */
+export interface NarrativeSnapshotSubject {
+  sourceSnapshotHash?: string;
+  dataSnapshot: {
+    overallMarket: { narrative: string };
+    submarketDetails: {
+      id?: string;
+      name: string;
+      canonicalName?: string;
+      displayName?: string;
+      narrative: string;
+    }[];
+  };
+  manualOverrides?: { bindingPath?: string; elementId: string }[];
+  narratives: NarrativeRecord[];
+}
+
+const pageNarrativeText = (
+  subject: NarrativeSnapshotSubject,
+  record: NarrativeRecord,
+): string | undefined => {
+  if (record.marketKind === "overall")
+    return subject.dataSnapshot.overallMarket.narrative;
+  return subject.dataSnapshot.submarketDetails.find(
+    (item) =>
+      item.id === record.marketId ||
+      item.canonicalName === record.marketName ||
+      item.displayName === record.marketName ||
+      item.name === record.marketName,
+  )?.narrative;
+};
+
+/**
+ * Export-time integrity: the prose the renderer will print must be exactly
+ * the reviewed narrative, written against the snapshot the report holds.
+ * Blocks (a) narrative text overridden on the page, which bypasses review,
+ * (b) page text that differs from the narrative record, and (c) a record
+ * bound to a different provider snapshot than the instance's.
+ */
+export function narrativeSnapshotIssues(
+  subject: NarrativeSnapshotSubject,
+): ReportValidationIssue[] {
+  const issues: ReportValidationIssue[] = [];
+  for (const override of subject.manualOverrides ?? [])
+    if (NARRATIVE_BINDING_PATHS.has(override.bindingPath ?? ""))
+      issues.push({
+        path: `narratives.manualOverride.${override.elementId}`,
+        message:
+          "A manual page override replaces narrative text. Remove the override and edit the narrative through review instead.",
+        level: "blocking",
+        category: "readiness",
+      });
+  for (const record of subject.narratives) {
+    if (!record.text.trim() || record.status === "not_generated") continue;
+    const path = `narratives.${record.marketId}.snapshot`;
+    const pageText = pageNarrativeText(subject, record);
+    if (pageText !== undefined && pageText !== record.text)
+      issues.push({
+        path,
+        message: `${record.marketName} narrative on the report page does not match the reviewed narrative.`,
+        level: "blocking",
+        category: "readiness",
+      });
+    if (
+      subject.sourceSnapshotHash &&
+      record.reportDataHash &&
+      record.source === "ai" &&
+      record.reportDataHash !== subject.sourceSnapshotHash
+    )
+      issues.push({
+        path,
+        message: `${record.marketName} narrative was written against a different report data snapshot. Regenerate it.`,
+        level: "blocking",
+        category: "readiness",
+      });
+  }
+  return issues;
+}
+
 export function narrativeReadinessIssues(
   narratives: NarrativeRecord[],
 ): ReportValidationIssue[] {

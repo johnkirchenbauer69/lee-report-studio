@@ -279,6 +279,20 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     });
   }
 
+  async archiveOlderVersions(id: string, keepVersion: string) {
+    return this.enqueue(async () => {
+      const records = await this.read();
+      if (!records.some(r => r.id === id && r.version === keepVersion)) throw new Error("The retained template version must exist.");
+      let count = 0;
+      const updated = records.map(r => {
+        if (r.id !== id || r.status === "archived" || compareVersions(r.version, keepVersion) >= 0) return r;
+        count++; return { ...r, status: "archived" as const, updatedAt: this.now().toISOString() };
+      });
+      if (count) await this.write(updated);
+      return count;
+    });
+  }
+
   async publish(id: string, version: string) {
     return this.enqueue(async () => {
       const records = await this.read();

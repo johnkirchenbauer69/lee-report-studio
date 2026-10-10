@@ -9,6 +9,7 @@ import {
 } from "./renderers/browser/PrintReport";
 import "./styles/app.css";
 import "./styles/advanced.css";
+import "./styles/brand.css";
 import { RotationFontBenchmarkPage } from "./renderers/browser/RotationFontBenchmarkPage";
 import { NarrativeReviewPage } from "./renderers/browser/NarrativeReviewPage";
 

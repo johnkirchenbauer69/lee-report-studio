@@ -63,6 +63,38 @@ const unzip = (bytes: Buffer): Promise<Record<string, string>> =>
       .catch(reject);
   });
 describe("saved market asset exports", () => {
+  it("retains all three property sections when saved delivery cards are absent without inventing records", async () => {
+    const instance = await marketAssetFixture();
+    instance.pages.forEach((page) => {
+      page.elements = page.elements.filter(
+        (element) => !JSON.stringify(element).includes("topDeliveries["),
+      );
+    });
+    instance.dataSnapshot.submarketDetails.forEach(detail => { detail.deliveries = []; });
+    const plan = buildExportPlan(
+      instance,
+      { ...request(instance.id), categories: ["properties"] },
+      sourceHash(instance),
+    );
+    const asset = plan.assets.find((asset) => asset.format === "xlsx")!;
+    const groups = asset.payload as { title: string; rows: unknown[] }[];
+    expect(groups.map((group) => group.title)).toEqual([
+      "Top Availabilities",
+      "Deliveries",
+      "Under Construction",
+    ]);
+    expect(groups[1].rows).toEqual([]);
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load((await writeWorkbook(asset, plan)) as any);
+    expect(book.worksheets).toHaveLength(1);
+    const text: unknown[] = [];
+    book.worksheets[0].eachRow((row) =>
+      row.eachCell((cell) => text.push(cell.value)),
+    );
+    expect(text).toContain("Deliveries");
+    expect(text).toContain("No qualifying records in this saved report.");
+    expect(book.worksheets[0].getTable("PropertyGroup2")).toBeUndefined();
+  });
   it("keeps native transaction amounts aligned when a saved placeholder is omitted", () => {
     const table = {
       type: "table",
