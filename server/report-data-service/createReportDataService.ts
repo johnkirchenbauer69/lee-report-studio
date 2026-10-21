@@ -10,7 +10,8 @@ import { resolveSalesforceImage } from "../integrations/salesforce/salesforceIma
 import { FileSystemAssetStore } from "../assets/assetStore.ts";
 import { SalesforceImageIndex } from "../assets/salesforceImageIndex.ts";
 import { ReportDataService } from "./ReportDataService.ts";
-import { InMemoryReportSnapshotStore } from "./reportSnapshots.ts";
+import { FileSystemReportSnapshotStore } from "./reportSnapshots.ts";
+import { prepareGeographicReport } from "../templates/prepareGeographic.ts";
 
 export function createReportDataService(deps: {
   assetStore?: FileSystemAssetStore;
@@ -39,7 +40,11 @@ export function createReportDataService(deps: {
         })();
   return new ReportDataService({
     ascendixAdapter: adapter,
-    snapshotStore: new InMemoryReportSnapshotStore(),
+    snapshotStore: new FileSystemReportSnapshotStore(dataRoot),
+    ...(process.env.LEE_GEOGRAPHIC_BASEMAP_ROOT ? {
+      prepareGeographic: (report: Parameters<typeof prepareGeographicReport>[0]) =>
+        prepareGeographicReport(report, path.resolve(process.env.LEE_GEOGRAPHIC_BASEMAP_ROOT!), assetStore),
+    } : {}),
     mode,
     logger: (entry) => console.info(JSON.stringify(entry)),
   });

@@ -25,7 +25,7 @@ const resolveBoundImage = (
     // A repeated slot with no source is an explicit data-availability state,
     // not a broken image URL. Non-empty sources remain publication-required
     // and are verified by server preflight.
-    ...(src ? {} : { publicationRequired: false }),
+    ...(src || element.binding.path === "market.activityMapAssetUrl" ? {} : { publicationRequired: false }),
   };
 };
 

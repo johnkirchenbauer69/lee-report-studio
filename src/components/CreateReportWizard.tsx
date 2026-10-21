@@ -74,6 +74,9 @@ export function CreateReportWizard({
     [prepared, setPrepared] = useState<ReportInstance>();
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    if (canonicalTemplate(generationTemplate.id)) setDetailedSelected(q2Submarkets.map(item => item.name));
+  }, [generationTemplate.id]);
+  useEffect(() => {
     let active = true;
     loadReportPeriods()
       .then((result) => {
@@ -581,6 +584,7 @@ export function CreateReportWizard({
               <button
                 className="primary"
                 disabled={
+                  (step === 0 && Boolean(templateChoiceError)) ||
                   (step === 1 &&
                     (periodsLoading || Boolean(periodsError) || !period)) ||
                   (step === 2 && !canContinue) ||

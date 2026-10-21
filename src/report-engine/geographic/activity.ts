@@ -17,7 +17,8 @@ export function activitySections(detail: Detail) {
       code: `${section.code}${index + 1}`, record,
       coordinateStatus: !record.location || record.location.latitude === null || record.location.longitude === null
         ? "missing" as const : "available" as const,
-      assignmentMismatch: Boolean(record.location && record.location.assignedSubmarket !== (detail.canonicalName ?? detail.name)),
+      assignmentMismatch: Boolean(record.location && (record.location.assignedSubmarket !== (detail.canonicalName ?? detail.name) ||
+        (record.location.propertyAssignedSubmarket && record.location.propertyAssignedSubmarket !== record.location.assignedSubmarket))),
     })),
   }));
 }

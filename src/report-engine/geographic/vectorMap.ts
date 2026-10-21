@@ -17,6 +17,16 @@ export interface VectorMapInput {
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]!);
 const mercator = ([lon, lat]: Position): Position => [lon * Math.PI / 180, Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))];
 
+/** Expand the context capture extent to cover the entire print frame without distortion. */
+export function frameBounds(bounds: [number, number, number, number], width: number, height: number): [number, number, number, number] {
+  const lower = mercator([bounds[0], bounds[1]]), upper = mercator([bounds[2], bounds[3]]);
+  const cx = (lower[0] + upper[0]) / 2, cy = (lower[1] + upper[1]) / 2;
+  const scale = Math.max((upper[0] - lower[0]) / width, (upper[1] - lower[1]) / height);
+  const latitude = (y: number) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+  return [(cx - scale * width / 2) * 180 / Math.PI, latitude(cy - scale * height / 2),
+    (cx + scale * width / 2) * 180 / Math.PI, latitude(cy + scale * height / 2)];
+}
+
 /** Independent Census-based Variant B renderer. No hosted map service or membership lookup. */
 export function renderVectorMap(input: VectorMapInput) {
   const [west, south, east, north] = input.bounds;
@@ -57,7 +67,7 @@ export function renderVectorMap(input: VectorMapInput) {
   const labelBoxes: { x: number; y: number; width: number }[] = [];
   const labels = input.municipalities.flatMap(city => {
     const p = project([city.longitude, city.latitude]), width = city.name.length * 5;
-    if (!inside(p) || labelBoxes.some(other => Math.abs(p.y - other.y) < 20 && Math.abs(p.x - other.x) < (width + other.width) / 2 + 8) ||
+    if (labelBoxes.length >= 14 || p.x - width / 2 < 6 || p.x + width / 2 > input.width - 6 || p.y < 12 || p.y > input.height - 6 || labelBoxes.some(other => Math.abs(p.y - other.y) < 20 && Math.abs(p.x - other.x) < (width + other.width) / 2 + 8) ||
       placements.some(marker => Math.hypot(p.x - marker.label.x, p.y - marker.label.y) < width / 2 + 15)) return [];
     labelBoxes.push({ ...p, width });
     return [`<text x="${p.x}" y="${p.y}" text-anchor="middle" font-size="9" fill="#47535b" stroke="#f2f3f0" stroke-width="2" paint-order="stroke">${escapeXml(city.name)}</text>`];

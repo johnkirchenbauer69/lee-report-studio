@@ -129,6 +129,8 @@ export const propertyLocationSchema = z.object({
   propertyId: z.string().min(1),
   contributorId: z.string().min(1),
   assignedSubmarket: z.string(),
+  propertyAssignedSubmarket: z.string().optional(),
+  propertyLastModifiedAt: z.string().optional(),
   latitude: z.number().finite().min(-90).max(90).nullable(),
   longitude: z.number().finite().min(-180).max(180).nullable(),
   coordinateSource: z.literal("parent-property"),
@@ -332,6 +334,8 @@ export const featuredAvailabilitySchema = z.discriminatedUnion("status", [
 
 export const submarketDetailSchema = z.object({
   featuredAvailability: featuredAvailabilitySchema.optional(),
+  activityMapAssetUrl: z.string().optional(),
+  activityMapChecksum: z.string().optional(),
   id: z.string().min(1).optional(),
   canonicalName: z.string().min(1).optional(),
   displayName: z.string().min(1).optional(),

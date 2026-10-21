@@ -19,9 +19,13 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
     Object.assign(element, { x: x * 4 / 3, y: y * 4 / 3, width: width * 4 / 3, height: height * 4 / 3 });
   const title = find("detail-overview-title") as TextElement;
   function text(id: string, content: string, x: number, y: number, w: number, h: number, size: number, color: string, binding?: string): TextElement {
+    const fontWeight = size <= 8.2 ? 400 : 700;
     return { ...place(structuredClone(title), x, y, w, h), type: "text", id, name: id, text: content,
       binding: binding ? { path: binding, fallback: "" } : undefined,
-      style: { ...title.style, shadow: undefined, bevel: undefined, fontSize: size * 4 / 3, color, textAlign: "left", padding: 0, lineHeight: 1.2 } };
+      style: { ...title.style, shadow: undefined, bevel: undefined, fontSize: size * 4 / 3, fontWeight,
+        fontAssetId: undefined, fontChecksum: undefined, color, textAlign: "left", padding: 0, lineHeight: 1.2,
+        typography: { ...title.style.typography!, fontSize: size * 4 / 3, fontWeight, fontAssetId: undefined,
+          fontChecksum: undefined, color, textAlign: "left", lineHeight: 1.2 } } };
   }
   const availability = place(find("detail-availability-chart"), 16, 578, 284.25, 174.73828125);
   const construction = place(find("detail-construction-chart"), 312, 578, 284.25, 174.73828125);
@@ -36,8 +40,8 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
   overview.elements.push(availability, construction,
     text("geo-availability-chart-title", "AVAILABILITY BY SIZE RANGE", 24, 564, 276, 14, 9, "#762c40"),
     text("geo-construction-chart-title", "UNDER CONSTRUCTION & DELIVERIES", 320, 564, 276, 14, 9, "#762c40"),
-    text("featured-heading", "LEE FEATURED AVAILABILITY", 324, 91.5, 264, 19.5, 12, "#762c40"),
-    { ...place(find("detail-market-map"), 324, 110, 264, 96), type: "image", id: "featured-photo", name: "Featured property photograph", src: "", fit: "cover", binding: { path: "market.featuredCard.image" }, publicationRequired: false },
+    text("featured-heading", "LEE FEATURED AVAILABILITY", 324, 91.5, 264, 19.5, 12.75, "#0099d8"),
+    { ...place(find("detail-market-map"), 324, 110, 264, 96), type: "image", id: "featured-photo", name: "Featured property photograph", src: "", fit: "cover", binding: { path: "market.featuredCard.image" }, linkBinding: { path: "market.featuredCard.listingUrl" }, publicationRequired: false },
     { ...place(find("detail-header-3"), 324, 206, 264, 66), id: "featured-panel", name: "Featured navy panel", style: { background: "#003146", fill: { type: "solid", color: "#003146" } } },
     text("featured-address", "", 336, 214, 240, 14, 10.6, "#ffffff", "market.featuredCard.address"),
     text("featured-area", "", 336, 230, 240, 16, 12.6, "#ffffff", "market.featuredCard.area"),
@@ -47,7 +51,7 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
   const chrome = new Set(["detail-header-4", "detail-period-4", "detail-market-4", "detail-footer-4", "detail-page-4", "text-94b8d453", "text-8911ecd2", "image-f68bff67"]);
   activity.elements = activity.elements.filter(item => chrome.has(item.id));
   activity.name = "{item} Geographic Market Activity";
-  activity.elements.push(text("map-title", "GEOGRAPHIC MARKET ACTIVITY", 28, 91.5, 380, 19.5, 12, "#762c40"),
+  activity.elements.push(text("map-title", "GEOGRAPHIC MARKET ACTIVITY", 28, 91.5, 380, 19.5, 12.75, "#0099d8"),
     { ...place(find("detail-market-map"), 28, 118, 380, 582), type: "image", id: "geographic-activity-map", name: "Vector activity map", src: "", fit: "contain", binding: { path: "market.activityMapAssetUrl" }, publicationRequired: true });
   ACTIVITY_SECTIONS.forEach((section, index) => {
     const y = 118 + index * 116;
@@ -58,8 +62,14 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
     }
     activity.elements.push(text(`activity-${section.code}-empty`, "", 426, y + 18, 162, 28, 8.2, "#626e77", `market.activityIndex.${index}.emptyMessage`));
   });
+  activity.elements.push(text("map-attribution", "Map context: U.S. Census Bureau • Reporting boundaries: Lee & Associates", 28, 704, 380, 12, 6.2, "#626e77"));
   for (const page of result.pages) for (const element of page.elements) {
     element.style.shadow = undefined; element.style.bevel = undefined;
+    if (element.type === "chart") element.chartStyle = { ...element.chartStyle, shadow: false };
+    if (element.id === "geographic-activity-map" || element.id === "featured-photo") {
+      element.style.borderRadius = 0;
+      element.style.cornerRadii = undefined;
+    }
   }
   return result;
 }

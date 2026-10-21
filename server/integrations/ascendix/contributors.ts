@@ -177,6 +177,8 @@ function propertyLocation(record: SalesforceRecord) {
   return { location: {
     propertyId: String(record.Property__c), contributorId: record.Id,
     assignedSubmarket: text(record, "Submarket__c"),
+      propertyAssignedSubmarket: text(record, "Property__r.Submarket_Picklist__c") || undefined,
+      propertyLastModifiedAt: text(record, "Property__r.LastModifiedDate") || undefined,
     latitude: coordinate("ascendix__Geolocation__Latitude__s", 90),
     longitude: coordinate("ascendix__Geolocation__Longitude__s", 180),
     coordinateSource: "parent-property" as const,

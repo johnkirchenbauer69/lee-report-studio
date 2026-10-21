@@ -145,6 +145,17 @@ describe("MarketingChart vector output", () => {
     },
   );
 
+  it("allows Geographic to remove chart shadows without altering Classic or the values", () => {
+    const classic = element("net_absorption_vacancy_availability");
+    const geographic = { ...classic, chartStyle: { ...classic.chartStyle, shadow: false } };
+    const original = renderToStaticMarkup(<MarketingChart element={classic} source={history} />);
+    const simplified = renderToStaticMarkup(<MarketingChart element={geographic} source={history} />);
+    expect(original).toContain('filter="url(');
+    expect(simplified).not.toContain('filter="url(');
+    expect(simplified).toContain("linearGradient");
+    expect(simplified.replace(/<[^>]*>/g, "")).toEqual(original.replace(/<[^>]*>/g, ""));
+  });
+
   it("renders exact availability bucket order and labels", () => {
     const rows = [
       "20-75k SF",

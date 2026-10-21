@@ -5,6 +5,7 @@ import {
   industrialMarketReportSchema,
   type MarketMetrics,
   type ProvenanceRecord,
+  type IndustrialMarketReport,
 } from "../../src/report-engine/schema/industrialMarketReport.ts";
 import type { AscendixReportAdapter } from "../integrations/ascendix/AscendixReportAdapter.ts";
 import {
@@ -49,6 +50,7 @@ export class ReportDataService {
     now?: () => Date;
     periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
+    prepareGeographic?: (report: IndustrialMarketReport) => Promise<IndustrialMarketReport>;
   };
 
   constructor(dependencies: {
@@ -58,6 +60,7 @@ export class ReportDataService {
     now?: () => Date;
     periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
+    prepareGeographic?: (report: IndustrialMarketReport) => Promise<IndustrialMarketReport>;
   }) {
     this.dependencies = dependencies;
   }
@@ -275,7 +278,11 @@ export class ReportDataService {
         return explicit && explicit.status !== "complete" ? explicit : item;
       });
       report.dataCompleteness = inferred;
-      const validated = industrialMarketReportSchema.parse(report);
+      let validated = industrialMarketReportSchema.parse(report);
+      if (request.presentationFamily === "geographic") {
+        if (!this.dependencies.prepareGeographic) throw new Error("Geographic map assets are not configured on this installation.");
+        validated = industrialMarketReportSchema.parse(await this.dependencies.prepareGeographic(validated));
+      }
       const generatedAt = (
         this.dependencies.now?.() ?? new Date()
       ).toISOString();

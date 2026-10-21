@@ -526,7 +526,7 @@ function AvailabilityChart({
         value === undefined ? (
           []
         ) : (
-          <g key={index} filter={`url(#${id}-shadow)`}>
+          <g key={index} filter={element.chartStyle?.shadow === false ? undefined : `url(#${id}-shadow)`}>
             <rect
               x={x(index) - barWidth / 2}
               y={y(value)}
@@ -628,7 +628,7 @@ function ConstructionChart({
           value === undefined ? (
             []
           ) : (
-            <g key={`${seriesIndex}-${index}`} filter={`url(#${id}-shadow)`}>
+            <g key={`${seriesIndex}-${index}`} filter={element.chartStyle?.shadow === false ? undefined : `url(#${id}-shadow)`}>
               <rect
                 x={x(index) + series.offset - barWidth / 2}
                 y={y(value)}
@@ -814,7 +814,7 @@ function CombinationChart({
         value === undefined ? (
           []
         ) : (
-          <g key={`bar-${index}`} filter={`url(#${id}-shadow)`}>
+          <g key={`bar-${index}`} filter={element.chartStyle?.shadow === false ? undefined : `url(#${id}-shadow)`}>
             <rect
               data-bar-index={index}
               x={x(index) - barWidth / 2}
@@ -865,7 +865,7 @@ function CombinationChart({
                 }
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                filter={`url(#${id}-shadow)`}
+                filter={element.chartStyle?.shadow === false ? undefined : `url(#${id}-shadow)`}
               />
             ))}
             {values.map((value, index) =>

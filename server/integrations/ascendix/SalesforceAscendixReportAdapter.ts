@@ -306,6 +306,8 @@ async function enrichFinalists(
       api(mapping.property.image),
       api(mapping.property.latitude),
       api(mapping.property.longitude),
+      api(mapping.property.submarket),
+      "LastModifiedDate",
     ],
     propertyRows,
     "Property__c",
