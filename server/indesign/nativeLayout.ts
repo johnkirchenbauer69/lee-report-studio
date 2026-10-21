@@ -109,7 +109,9 @@ export async function captureNativeLayout(
         ? route.continue()
         : route.abort(),
     );
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const captureUrl = new URL(url);
+    captureUrl.searchParams.set("nativeCapture", "1");
+    await page.goto(captureUrl.href, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForSelector('[data-render-ready="true"]', {
       timeout: 60000,
     });
@@ -136,19 +138,26 @@ export async function captureNativeLayout(
       .locator("#lee-managed-font-faces")
       .textContent()
       .catch(() => "");
-    // Read only placement baselines from Chromium; all editable content remains
-    // the frozen report/DOM text, never reconstructed from the PDF.
-    const geometryPdf = await getDocumentProxy(
-      new Uint8Array(
-        await page.pdf({ printBackground: true, preferCSSPageSize: true }),
-      ),
-    );
     const model: any[] = [];
     for (const [pi, sourcePage] of job.template.pages
       .filter((p) => !p.hidden)
       .entries()) {
+      progress(`Preparing native page ${pi + 1}: ${sourcePage.name}`);
+      await page.evaluate((index) => window.dispatchEvent(new CustomEvent("lee:native-page", { detail: index })), pi);
+      await page.waitForFunction((index) =>
+        document.querySelector(".print-document")?.getAttribute("data-native-page") === String(index) &&
+        document.querySelectorAll("section.print-page").length === 1 &&
+        document.fonts.status === "loaded" &&
+        Array.from(document.images).every((image) => image.complete && image.naturalWidth > 0), pi, { timeout: 60000 });
+      await page.evaluate(() => window.dispatchEvent(new Event("lee:refit-narratives")));
+      await page.waitForFunction(() => !document.querySelector('[data-narrative-fit="pending"]'));
+      if (await page.locator('[data-narrative-overflow="true"]').count()) throw Error(`Narrative overflow on native page ${pi + 1}`);
+      // Measure each fixed-size page independently. The actual text, table
+      // content and artwork continue to come from the frozen report and DOM.
+      const geometryPdf = await getDocumentProxy(new Uint8Array(await page.pdf({ printBackground: true, preferCSSPageSize: true })));
+      if (geometryPdf.numPages !== 1) throw Error(`Native page ${pi + 1} did not render as one page`);
       const textItems = (
-        await (await geometryPdf.getPage(pi + 1)).getTextContent()
+        await (await geometryPdf.getPage(1)).getTextContent()
       ).items.filter((item: any) => typeof item.str === "string") as any[];
       const baseline = (r: any, text: string) => {
         const hits = textItems.filter(
@@ -167,16 +176,7 @@ export async function captureNativeLayout(
             )
           : undefined;
       };
-      progress(`Preparing native page ${pi + 1}: ${sourcePage.name}`);
-      // Baselines above come from the complete PDF. For DOM geometry, only the
-      // current fixed-size page needs layout/painting; off-page SVG maps can
-      // otherwise keep Chromium busy long after printing a 44-page report.
-      await page.locator("section.print-page").evaluateAll((nodes, current) => {
-        nodes.forEach((node, index) => {
-          (node as HTMLElement).style.display = index === current ? "" : "none";
-        });
-      }, pi);
-      const pageLocator = page.locator("section.print-page").nth(pi);
+      const pageLocator = page.locator("section.print-page").first();
       for (const source of sourcePage.elements.filter((e) => !e.hidden)) {
         const loc = pageLocator.getByTestId(source.id);
         // Read the already-ready frozen DOM directly, without repeating
@@ -457,8 +457,8 @@ export async function captureNativeLayout(
           model.push(e);
         }
       }
+      await geometryPdf.loadingTask.destroy();
     }
-    await geometryPdf.loadingTask.destroy();
     await writeFile(
       path.join(directory, "layout.json"),
       JSON.stringify({
