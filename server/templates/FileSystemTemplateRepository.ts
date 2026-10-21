@@ -156,6 +156,19 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     return clone(await this.read());
   }
 
+  /** Add a family without rewriting any existing report or template identity. */
+  async createFamily(template: ReportTemplate): Promise<StoredTemplateVersion> {
+    return this.enqueue(async () => {
+      const records = await this.read();
+      if (records.some(record => record.id === template.id))
+        throw new Error(`Template family ${template.id} already exists.`);
+      const created = this.record(template, { status: "draft" });
+      records.push(created);
+      await this.write(records);
+      return clone(created);
+    });
+  }
+
   async listVersions(id: string) {
     return (await this.read())
       .filter((record) => record.id === id)

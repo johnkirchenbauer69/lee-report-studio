@@ -125,7 +125,17 @@ export const availabilitySizeBucketSchema = z.object({
   buildingCount: z.number().int().nonnegative(),
 });
 
+export const propertyLocationSchema = z.object({
+  propertyId: z.string().min(1),
+  contributorId: z.string().min(1),
+  assignedSubmarket: z.string(),
+  latitude: z.number().finite().min(-90).max(90).nullable(),
+  longitude: z.number().finite().min(-180).max(180).nullable(),
+  coordinateSource: z.literal("parent-property"),
+});
+
 export const leaseRecordSchema = z.object({
+  location: propertyLocationSchema.optional(),
   tenant: z.string().min(1),
   tenantDisplayName: z.string().min(1).optional(),
   isDealConfidential: z.boolean().nullable().optional(),
@@ -137,6 +147,7 @@ export const leaseRecordSchema = z.object({
 });
 
 export const saleRecordSchema = z.object({
+  location: propertyLocationSchema.optional(),
   buyer: z.string().min(1),
   /** Verified linked Sale checkbox. Null/undefined means the source was unavailable. */
   isLeeDeal: z.boolean().nullable().optional(),
@@ -158,6 +169,7 @@ export const saleRecordSchema = z.object({
 export const displayPartySourceSchema = z.enum(["tenant", "owner", "developer"]);
 
 export const propertyHighlightSchema = z.object({
+  location: propertyLocationSchema.optional(),
   address: z.string().min(1),
   sizeSf: nonNegativeNumber,
   type: z.string().min(1),
@@ -302,7 +314,24 @@ export type GovernedExplanatoryFact = z.infer<
   typeof governedExplanatoryFactSchema
 >;
 
+export const featuredAvailabilitySchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("selected"),
+    source: z.object({
+      kind: z.literal("contributor"), contributorId: z.string().min(1),
+      availabilityId: z.string().min(1), propertyId: z.string().min(1),
+      period: z.string().min(1), submarket: z.string().min(1),
+      rank: z.number().int().positive(), runId: z.string(),
+    }),
+    property: propertyHighlightSchema,
+    listingUrl: z.string().url().optional(),
+  }),
+  z.object({ status: z.literal("empty"), reason: z.string() }),
+  z.object({ status: z.literal("ambiguous"), reason: z.string() }),
+]);
+
 export const submarketDetailSchema = z.object({
+  featuredAvailability: featuredAvailabilitySchema.optional(),
   id: z.string().min(1).optional(),
   canonicalName: z.string().min(1).optional(),
   displayName: z.string().min(1).optional(),

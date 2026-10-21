@@ -13,6 +13,7 @@ import {
 } from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
+import { activitySections } from "../geographic/activity";
 import {
   buildMetricSemanticFields,
   METRIC_SEMANTICS,
@@ -364,6 +365,20 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
       canonicalName:
         identity?.canonicalName ?? detail.canonicalName ?? detail.name,
       displayName: identity?.displayName ?? detail.displayName ?? detail.name,
+      featuredCard: detail.featuredAvailability?.status === "selected" ? {
+        image: detail.featuredAvailability.property.image,
+        address: detail.featuredAvailability.property.address,
+        area: `${detail.featuredAvailability.property.sizeSf.toLocaleString("en-US")} SF`,
+        details: detail.featuredAvailability.property.availabilityType ?? "Available",
+        brokerage: "Lee & Associates of Illinois",
+        listingUrl: detail.featuredAvailability.listingUrl,
+      } : { image: "", address: "No featured availability", area: "", details: "", brokerage: "" },
+      activityIndex: activitySections(detail).map(section => ({
+        emptyMessage: section.entries.length ? "" : "No qualifying activity this quarter",
+        entries: section.entries.map(({ code, record }) => ({
+          label: `${code}  ${record.address}\n${"sizeSf" in record && record.sizeSf !== undefined ? `${record.sizeSf.toLocaleString("en-US")} SF` : "price" in record ? `$${record.price.toLocaleString("en-US")}` : ""}`,
+        })),
+      })),
       mapAssetUrl: resolveMarketMapAsset(identity?.id ?? ""),
       indicatorRows: buildIndicatorRows(detail.historicalPeriods),
       topLeaseRows: transactionRows(detail.leasing, "lease"),

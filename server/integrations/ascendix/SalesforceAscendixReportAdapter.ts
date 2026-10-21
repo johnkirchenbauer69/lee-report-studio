@@ -244,12 +244,8 @@ async function enrichFinalists(
       String(row.Contributor_Category__c ?? "").toLocaleLowerCase(),
     ]),
   );
-  const propertyRows = finalists.filter(
-    (row) =>
-      sections.get(row.Id)?.includes("delivery") ||
-      sections.get(row.Id)?.includes("construction") ||
-      sections.get(row.Id)?.includes("availability"),
-  );
+  // All map categories need the precise parent-property coordinate snapshot.
+  const propertyRows = finalists.filter(row => Boolean(row.Property__c));
   const availabilityRows = finalists.filter((row) =>
     sections.get(row.Id)?.includes("availability"),
   );
@@ -308,6 +304,8 @@ async function enrichFinalists(
       api(mapping.property.developerName),
       api(mapping.property.ownerName),
       api(mapping.property.image),
+      api(mapping.property.latitude),
+      api(mapping.property.longitude),
     ],
     propertyRows,
     "Property__c",
@@ -811,8 +809,10 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
       this.resolveImage,
     );
     const detailHighlights = await Promise.all(
-      detailScopes.map(({ scoped: detail }) =>
-        mapHistoricalContributors(detail.rows, this.resolveImage),
+      detailScopes.map(({ scoped: detail }, index) =>
+        mapHistoricalContributors(detail.rows, this.resolveImage, {
+          period: bounds.label, submarket: CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS[index]!,
+        }),
       ),
     );
     const submarketDetails = CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS.map(
@@ -868,6 +868,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           leasing: detailHighlights[detailIndex]!.leasing,
           sales: detailHighlights[detailIndex]!.sales,
           availabilities: detailHighlights[detailIndex]!.availabilities,
+          featuredAvailability: detailHighlights[detailIndex]!.featuredAvailability,
           deliveries: detailHighlights[detailIndex]!.deliveries,
           construction: detailHighlights[detailIndex]!.construction,
           absorptionContributors:
