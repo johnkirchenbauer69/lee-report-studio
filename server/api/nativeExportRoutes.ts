@@ -58,6 +58,7 @@ export function createNativeExportRouter(
     }
   });
   router.get("/jobs/:id", (req, res) => {
+    res.setHeader("cache-control", "private, no-store");
     const job = service.get(req.params.id);
     return job
       ? res.json(job)

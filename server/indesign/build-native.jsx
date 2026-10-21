@@ -24,6 +24,7 @@
     p.justification=Justification.LEFT_ALIGN;
     if(s.textAlign==='center')p.justification=Justification.CENTER_ALIGN;
     else if(s.textAlign==='right')p.justification=Justification.RIGHT_ALIGN;
+    else if(s.textAlign==='justify')p.justification=Justification.FULLY_JUSTIFIED;
     p.composer='Adobe Single-line Composer';return paragraphs[key]=p;
   }
   function hyperlink(item,url) {if(!url||!/^https?:|^mailto:/i.test(url))return;var dest=d.hyperlinkURLDestinations.add(url);d.hyperlinks.add(d.hyperlinkPageItemSources.add(item),dest,{visible:false});}
@@ -99,7 +100,14 @@
         var fill=source.style.background;if(!fill||fill==='rgba(0, 0, 0, 0)')fill=source.rowBackground;
         if(!fill||fill==='rgba(0, 0, 0, 0)')fill=row===0?'#c4123f':'#ffffff';
         cell.fillColor=color(fill);
-        cell.topEdgeStrokeWeight=0;cell.leftEdgeStrokeWeight=0;cell.rightEdgeStrokeWeight=0;cell.bottomEdgeStrokeWeight=row===0?0:.5;cell.bottomEdgeStrokeColor=color('#9ca3af');
+        // Adjacent native cells share an edge: resetting the next row's top
+        // edge to zero erases the previous row's bottom rule.
+        var previous=row>0?cells[(row-1)*cols+c]:null;
+        cell.topEdgeStrokeWeight=previous?(previous.style.borderBottomWidth||0)*.75:0;
+        cell.topEdgeStrokeColor=color(previous?previous.style.borderBottomColor:'#9ca3af');
+        cell.leftEdgeStrokeWeight=0;cell.rightEdgeStrokeWeight=0;
+        cell.bottomEdgeStrokeWeight=(source.style.borderBottomWidth||0)*.75;
+        cell.bottomEdgeStrokeColor=color(source.style.borderBottomColor);
         if(source.directionRect){var ar=source.directionRect,up=source.direction.indexOf('M5 1')>=0;
           var tri=page.polygons.add({geometricBounds:bounds(ar),fillColor:color(source.directionColor),strokeColor:none});
           tri.paths[0].entirePath=up?[[(ar.x+5)*.75,(ar.y+1)*.75],[(ar.x+10)*.75,(ar.y+9)*.75],[ar.x*.75,(ar.y+9)*.75]]:[[ar.x*.75,(ar.y+1)*.75],[(ar.x+10)*.75,(ar.y+1)*.75],[(ar.x+5)*.75,(ar.y+9)*.75]];

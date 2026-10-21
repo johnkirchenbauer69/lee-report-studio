@@ -9,7 +9,7 @@ for (const reportPath of reports)
     page,
     request,
   }, info) => {
-    test.setTimeout(20 * 60 * 1000);
+    test.setTimeout(30 * 60 * 1000);
     const report = JSON.parse(await readFile(reportPath, "utf8"));
     await page.goto(
       `/?workspace=editor&report=${encodeURIComponent(report.id)}`,
@@ -36,7 +36,7 @@ for (const reportPath of reports)
           if (job.state === "failed") throw Error(job.message);
           return job.state;
         },
-        { timeout: 18 * 60 * 1000, intervals: [3000, 5000] },
+        { timeout: 28 * 60 * 1000, intervals: [3000, 5000] },
       )
       .toBe("complete");
     const downloadPromise = page.waitForEvent("download");

@@ -90,11 +90,18 @@ export async function captureNativeLayout(
     { flag: "wx" },
   );
   const browser = await chromium.launch({ headless: true, timeout: 30000 });
-  const deadline = setTimeout(() => void browser.close(), 180000);
+  let timedOut = false;
+  const deadline = setTimeout(() => {
+    timedOut = true;
+    void browser.close().catch(() => undefined);
+  }, 600000);
   try {
     const page = await browser.newPage({
       viewport: { width: 816, height: 1056 },
     });
+    // Keep the layout media stable while reading PDF baselines and DOM frames,
+    // matching the production PDF renderer.
+    await page.emulateMedia({ media: "screen" });
     await page.addInitScript("window.__name = (value) => value");
     await page.route("**/*", (route) =>
       new URL(route.request().url()).origin === new URL(url).origin ||
@@ -161,11 +168,25 @@ export async function captureNativeLayout(
           : undefined;
       };
       progress(`Preparing native page ${pi + 1}: ${sourcePage.name}`);
+      // Baselines above come from the complete PDF. For DOM geometry, only the
+      // current fixed-size page needs layout/painting; off-page SVG maps can
+      // otherwise keep Chromium busy long after printing a 44-page report.
+      await page.locator("section.print-page").evaluateAll((nodes, current) => {
+        nodes.forEach((node, index) => {
+          (node as HTMLElement).style.display = index === current ? "" : "none";
+        });
+      }, pi);
       const pageLocator = page.locator("section.print-page").nth(pi);
       for (const source of sourcePage.elements.filter((e) => !e.hidden)) {
         const loc = pageLocator.getByTestId(source.id);
-        if (!(await loc.count())) continue;
-        const dom = await loc.evaluate((node) => {
+        // Read the already-ready frozen DOM directly, without repeating
+        // interactive locator visibility/action prechecks after PDF printing.
+        const handles = await loc.elementHandles();
+        if (!handles.length) continue;
+        if (handles.length !== 1) throw Error(`Duplicate native element: ${source.id}`);
+        const handle = handles[0]!;
+        const dom = await handle.evaluate((element) => {
+          const node = element as Element;
           const base = node.closest(".print-page")!.getBoundingClientRect();
           const rect = (el: Element) => {
             const r = el.getBoundingClientRect();
@@ -190,6 +211,8 @@ export async function captureNativeLayout(
               background: s.backgroundColor,
               paddingLeft: parseFloat(s.paddingLeft),
               paddingRight: parseFloat(s.paddingRight),
+              borderBottomWidth: parseFloat(s.borderBottomWidth),
+              borderBottomColor: s.borderBottomColor,
             };
           };
           const text =
@@ -200,7 +223,8 @@ export async function captureNativeLayout(
           const closing = node.querySelector(".closing-content");
           const closingItems: any[] = [];
           if (closing) {
-            for (const el of [closing, ...closing.querySelectorAll("*")]) {
+            const paintNodes = [closing, ...closing.querySelectorAll("*")];
+            for (const el of paintNodes) {
               const s = getComputedStyle(el),
                 r = rect(el);
               if (
@@ -209,6 +233,7 @@ export async function captureNativeLayout(
               )
                 closingItems.push({
                   type: "shape",
+                  paintOrder: paintNodes.indexOf(el) * 3,
                   rect: r,
                   background: s.backgroundColor,
                 });
@@ -216,6 +241,7 @@ export async function captureNativeLayout(
                 closingItems.push({
                   type: "text",
                   text: "•",
+                  paintOrder: paintNodes.indexOf(el) * 3 + 2,
                   rect: {
                     ...r,
                     x: r.x - 17,
@@ -228,6 +254,7 @@ export async function captureNativeLayout(
             for (const im of closing.querySelectorAll("img"))
               closingItems.push({
                 type: "image",
+                paintOrder: paintNodes.indexOf(im) * 3 + 1,
                 src: im.src,
                 rect: rect(im),
                 image: {
@@ -270,6 +297,7 @@ export async function captureNativeLayout(
                 if (line.text.trim())
                   closingItems.push({
                     type: "text",
+                    paintOrder: paintNodes.indexOf(el) * 3 + 2,
                     text: line.text,
                     rect: {
                       x: line.x - base.x,
@@ -277,10 +305,14 @@ export async function captureNativeLayout(
                       width: line.right - line.x + 1,
                       height: line.height + 2,
                     },
-                    style: { ...style(el), textAlign: "left" },
+                    style: {
+                      ...style(el),
+                      textAlign: style(el).textAlign === "justify" && line !== lines.at(-1) ? "justify" : "left",
+                    },
                     url: el.closest("a")?.href,
                   });
             }
+            closingItems.sort((a, b) => a.paintOrder - b.paintOrder);
           }
           return {
             rect: rect(node),
@@ -317,6 +349,7 @@ export async function captureNativeLayout(
             svg: node.querySelector("svg")?.outerHTML,
           };
         });
+        await handle.dispose();
         const entries: any[] = dom.hasClosing
           ? dom.closingItems.map((item: any, n: number) => ({
               id: `p${pi + 1}-${source.id}-${n}`,
@@ -437,8 +470,11 @@ export async function captureNativeLayout(
       { flag: "wx" },
     );
     return model;
+  } catch (error) {
+    if (timedOut) throw new Error("Native artwork preparation exceeded its ten-minute deadline. No InDesign execution was started.", { cause: error });
+    throw error;
   } finally {
     clearTimeout(deadline);
-    await browser.close();
+    await browser.close().catch(() => undefined);
   }
 }

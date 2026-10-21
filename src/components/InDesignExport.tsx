@@ -21,7 +21,7 @@ export function InDesignExport({
     if (!job || ["complete", "failed"].includes(job.state)) return;
     const timer = setInterval(
       () =>
-        void fetch(`/api/indesign/jobs/${job.id}`)
+        void fetch(`/api/indesign/jobs/${job.id}`, { cache: "no-store" })
           .then(async (r) => {
             const body = await r.json();
             if (!r.ok) throw Error(body.error);
