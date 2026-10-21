@@ -1,5 +1,6 @@
 import { chromium, type BrowserServer } from "playwright";
 import { PDFDocument } from "pdf-lib";
+import { normalizeShadowMasks } from "./normalizeShadowMasks";
 
 export interface ServerReportRenderer<T> {
   render(input: T): Promise<Uint8Array>;
@@ -155,6 +156,8 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
       });
       progress("pdf-metadata");
       const pdf = await PDFDocument.load(chromiumBytes);
+      const shadowMasks = normalizeShadowMasks(pdf);
+      console.info("PDF shadow mask normalization", shadowMasks);
       pdf.setTitle(title);
       pdf.setCreator("LEE Report Studio");
       pdf.setProducer("LEE Report Studio Chromium renderer");
