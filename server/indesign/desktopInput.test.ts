@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { marketAssetFixture } from "../../tests/support/marketAssetFixture";
 import { prepareDesktopInput } from "./desktopInput";
+import { verifyDesktopInput } from "./windowsDesktopSession";
 const sha = (bytes: string) => createHash("sha256").update(bytes).digest("hex");
 it("copies only pinned bytes without source queries and refuses a duplicate attempt or modified master", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "lee-input-"));
@@ -19,10 +20,13 @@ it("copies only pinned bytes without source queries and refuses a duplicate atte
     const options = { report, release, masterFile, scriptFile, capturedAssetsDirectory: captured, outputRoot: path.join(root, "jobs") };
     const before = JSON.stringify(report);
     const result = await prepareDesktopInput(options);
+    expect((await verifyDesktopInput(result.directory)).jobKey).toBe(result.manifest.jobKey);
     expect(JSON.stringify(report)).toBe(before);
     expect(await readFile(path.join(result.directory, result.manifest.assets[0]!.file), "utf8")).toBe("photo");
     expect(JSON.parse(await readFile(path.join(result.directory, "report.json"), "utf8"))).toEqual(report);
     await expect(prepareDesktopInput(options)).rejects.toMatchObject({ code: "EEXIST" });
+    await writeFile(path.join(result.directory, "build.jsx"), "tampered");
+    await expect(verifyDesktopInput(result.directory)).rejects.toThrow("Desktop input changed: build.jsx");
     await writeFile(masterFile, "changed");
     await expect(prepareDesktopInput(options)).rejects.toThrow("release hash");
   } finally { await rm(root, { recursive: true, force: true }); }

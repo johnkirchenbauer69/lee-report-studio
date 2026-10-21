@@ -27,7 +27,7 @@ Clean-checkout evidence is in `work/canonical-clean-pdf-v1` and `work/canonical-
 
 The previously validated desktop scripts and Marketing masters remain unchanged. The new implementation has hash-pinned export contracts, complete offline input preparation, a durable workstation lock, at-most-once job claims, and rejection of occupied desktop sessions. Timeouts retain the lock and require operator recovery. Script completion is not package acceptance; validation separately requires native text/tables, resolved links/fonts, zero overset, save/reopen, relocation and a correctly sized QA PDF. IDML is omitted unless an actual import passes.
 
-These controls have automated tests. They are not a connected Windows execution adapter or a demonstrated full native export for both new families. The versioned master integration, native assembly, actual InDesign round trips, package download UI and licensed execution provider remain release gates. Creative Cloud Desktop access is not treated as an API or Server entitlement. See `server/indesign/LOCAL-WORKER.md`.
+These controls have automated tests. A Windows COM adapter and operator command now implement active-session inspection, input revalidation and guarded dispatch; they have unit tests but have not been exercised in a real native assembly run. They are not demonstrated full native exports for both new families. The versioned master integration, native assembly, actual InDesign round trips, package download UI and licensed execution provider remain release gates. Creative Cloud Desktop access is not treated as an API or Server entitlement. See `server/indesign/LOCAL-WORKER.md`.
 
 ## Release and rollback gates
 

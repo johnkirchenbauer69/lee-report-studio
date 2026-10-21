@@ -2,7 +2,7 @@
 
 Status: candidate fallback, not an executed or licensed unattended service.
 
-Implemented foundations: `desktopInput.ts` verifies the entire captured asset population, copies the pinned master/script and writes an input-ready manifest only after readback. `desktopSession.ts` refuses occupied sessions; `fileDesktopJournal.ts` holds a workstation-wide lock across uncertain executions and preserves immutable attempt records. These are tested building blocks, not a connected Windows execution adapter. An input-ready manifest is never advertised as a finished InDesign package.
+Implemented foundations: `desktopInput.ts` verifies the entire captured asset population, copies the pinned master/script and writes an input-ready manifest only after readback. `desktopSession.ts` refuses occupied sessions; `fileDesktopJournal.ts` holds a workstation-wide lock across uncertain executions and preserves immutable attempt records. The Windows COM adapter and operator command are implemented, but have not yet been validated against a full native assembly run. An input-ready manifest is never advertised as a finished InDesign package.
 
 The installed InDesign Desktop and the validated versioned-template scripts can support an operator-started quarterly export session. That does not establish entitlement to operate an unattended, shared or hosted service. The organization is checking Adobe Admin/Developer Console access; Creative Cloud membership is not treated as InDesign API or Server entitlement.
 
@@ -24,3 +24,11 @@ Operational fit: a designated Marketing operator starting a batch on an availabl
 Adobe references reviewed during discovery:
 - https://developer.adobe.com/firefly-services/docs/indesign-apis/guides/working-with-custom-scripts-api/
 - https://www.adobe.com/products/indesignserver/buying-guide.html
+
+## Operator command and adapter
+
+`npx tsx scripts/run-indesign-desktop.ts <prepared-job-directory> <dedicated-workstation-journal-directory> --operator-started`
+
+Use only reviewed, locally prepared input with the approved release master/script. The command rechecks the report, master, script and asset hashes, then takes the durable workstation lock. InDesign 2026 must already be running. The adapter uses the active COM object; it never launches, restarts or kills Adobe. It checks occupancy again inside Adobe immediately before the versioned build script. The build receives the absolute job directory as its first script argument and must work only in that directory. A changed or missing input fails before Adobe execution. An inspection or execution timeout leaves the lock for operator recovery, and does not cancel an in-flight COM operation or replay the job.
+
+This is an execution adapter, not a complete native report renderer. The approved design still needs the production assembly script/master contract, full native round-trip verification and acceptance before the command is used for Marketing output. It prints `execution-finished`, never `accepted`, on script completion. No actual Adobe job was run to validate this adapter in the QA-diagnostics change.

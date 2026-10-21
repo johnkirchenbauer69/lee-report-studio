@@ -33,3 +33,10 @@ it("refuses a second job while the workstation has an unresolved attempt", async
   expect(input.session.inspect).not.toHaveBeenCalled();
   expect(input.session.execute).not.toHaveBeenCalled();
 });
+
+it("bounds a stalled inspection without dispatch or automatic lock release", async () => {
+  const input = setup(); input.session.inspect.mockImplementation(() => new Promise(() => {}));
+  await expect(executeDesktopJob(input)).rejects.toThrow("timed out");
+  expect(input.session.execute).not.toHaveBeenCalled();
+  expect(input.journal.releaseWorkstation).not.toHaveBeenCalled();
+});
