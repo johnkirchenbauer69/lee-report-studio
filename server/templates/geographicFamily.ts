@@ -1,6 +1,6 @@
-import type { ReportElement, ReportTemplate, TextElement } from "../../src/types/report.ts";
-import { CANONICAL_TEMPLATES } from "../../src/report-engine/canonicalTemplates.ts";
-import { ACTIVITY_SECTIONS } from "../../src/report-engine/geographic/activity.ts";
+import type { ReportElement, ReportTemplate, TextElement } from "../../src/types/report";
+import { CANONICAL_TEMPLATES } from "../../src/report-engine/canonicalTemplates";
+import { ACTIVITY_SECTIONS } from "../../src/report-engine/geographic/activity";
 
 /** Approved InDesign point geometry converted to the editor's 96 dpi coordinates. */
 export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplate {
@@ -58,7 +58,15 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
     activity.elements.push(text(`activity-${section.code}-heading`, section.title.toUpperCase(), 426, y, 162, 14, 9.6, "#762c40"));
     for (let row = 0; row < 3; row++) {
       const path = `market.activityIndex.${index}.entries.${row}`;
-      activity.elements.push(text(`activity-${section.code}${row + 1}`, "", 426, y + 18 + row * 30, 162, 28, 8.2, "#003146", `${path}.label`));
+      const id = `activity-${section.code}${row + 1}`;
+      activity.elements.push(
+        { id: `${id}-circle`, name: `${id} badge`, type: "shape", shape: "circle", x: 426 * 4 / 3, y: y * 4 / 3,
+          width: 12.4 * 4 / 3, height: 12.4 * 4 / 3, style: { background: section.color, fill: { type: "solid", color: section.color } } },
+        text(`${id}-code`, "", 426, y, 12.4, 12.4, 7.2, "#ffffff", `${path}.code`),
+        text(`${id}-address`, "", 444, y, 144, 11, 8.6, "#003146", `${path}.address`),
+        text(`${id}-metadata`, "", 444, y + 11, 144, 10, 8.2, "#626e77", `${path}.metadata`),
+        text(`${id}-party`, "", 444, y + 21, 144, 10, 8.2, "#626e77", `${path}.party`),
+      );
     }
     activity.elements.push(text(`activity-${section.code}-empty`, "", 426, y + 18, 162, 28, 8.2, "#626e77", `market.activityIndex.${index}.emptyMessage`));
   });
@@ -66,6 +74,11 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
   for (const page of result.pages) for (const element of page.elements) {
     element.style.shadow = undefined; element.style.bevel = undefined;
     if (element.type === "chart") element.chartStyle = { ...element.chartStyle, shadow: false };
+    if (element.type === "text" && /^activity-.*-code$/.test(element.id)) {
+      element.style.textAlign = "center";
+      element.style.typography!.textAlign = "center";
+      element.style.typography!.verticalAlign = "middle";
+    }
     if (element.id === "geographic-activity-map" || element.id === "featured-photo") {
       element.style.borderRadius = 0;
       element.style.cornerRadii = undefined;

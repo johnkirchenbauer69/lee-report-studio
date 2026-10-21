@@ -1,0 +1,22 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, expect, it } from "vitest";
+import { FileDesktopJournal } from "./fileDesktopJournal";
+const roots: string[] = [];
+afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+it("serializes different jobs across process instances and preserves attempts after restart", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "lee-worker-")); roots.push(root);
+  const a = new FileDesktopJournal(root), b = new FileDesktopJournal(root);
+  const first = "a".repeat(64), second = "b".repeat(64);
+  expect(await a.acquireWorkstation(first)).toBe(true);
+  expect(await b.acquireWorkstation(second)).toBe(false);
+  await expect(b.releaseWorkstation(first)).rejects.toThrow("ownership");
+  expect(await a.claim(first)).toBe(true);
+  await a.record(first, "needs-attention", "Simulated disconnect");
+  expect(await new FileDesktopJournal(root).acquireWorkstation(first)).toBe(false);
+  await a.releaseWorkstation(first);
+  expect(await b.acquireWorkstation(second)).toBe(true);
+  expect(await b.claim(first)).toBe(false);
+  await b.releaseWorkstation(second);
+});

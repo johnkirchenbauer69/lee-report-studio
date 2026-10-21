@@ -77,6 +77,14 @@ export function renderVectorMap(input: VectorMapInput) {
     if (!/^#[a-fA-F0-9]{6}$/.test(marker.color)) throw new Error("Invalid marker color");
     return `<path d="M${a.x},${a.y} L${p.x},${p.y}" stroke="${marker.color}" stroke-width="0.65"/><circle cx="${a.x}" cy="${a.y}" r="1.8" fill="${marker.color}"/><circle cx="${p.x}" cy="${p.y}" r="8" fill="${marker.color}" stroke="white" stroke-width="0.7"/><text x="${p.x}" y="${p.y + 2.6}" text-anchor="middle" font-size="7.5" font-weight="600" fill="white">${escapeXml(marker.code)}</text>`;
   }).join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}"><defs><clipPath id="map-frame"><rect width="${input.width}" height="${input.height}"/></clipPath></defs><g clip-path="url(#map-frame)" font-family="Nunito Sans, sans-serif"><rect width="${input.width}" height="${input.height}" fill="#f2f3f0"/>${paths(input.parks, "#e1e8db", "none", 0)}${paths(input.water, "#c0dce3", "none", 0)}${paths(input.local, "none", "#e2e4e3", .5)}${paths(input.local, "none", "white", .29)}${paths(input.secondary, "none", "white", 1.45)}${paths(input.secondary, "none", "#c7bca0", .48)}${paths(input.primary, "none", "white", 3.1)}${paths(input.primary, "none", "#788aa8", 1.35)}${paths([input.boundary], "#762c40", "none", 0, .045)}${paths([input.boundary], "none", "#762c40", 1)}${labels}${markers}</g></svg>`;
+  // Reuse each road path for its casing and centerline instead of duplicating thousands of objects.
+  const roadDefinitions = (["local", "secondary", "primary"] as const).map(layer => {
+    const batches: string[] = [];
+    for (let offset = 0; offset < input[layer].length; offset += 500)
+      batches.push(`<path d="${input[layer].slice(offset, offset + 500).map(feature => geometry(feature.geometry)).join(" ")}"/>`);
+    return `<g id="roads-${layer}">${batches.join("")}</g>`;
+  }).join("");
+  const road = (layer: string, stroke: string, width: number) => `<use href="#roads-${layer}" fill="none" stroke="${stroke}" stroke-width="${width}"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}"><defs>${roadDefinitions}<clipPath id="map-frame"><rect width="${input.width}" height="${input.height}"/></clipPath></defs><g clip-path="url(#map-frame)" font-family="Nunito Sans, sans-serif"><rect width="${input.width}" height="${input.height}" fill="#f2f3f0"/>${paths(input.parks, "#e1e8db", "none", 0)}${paths(input.water, "#c0dce3", "none", 0)}${road("local", "#e2e4e3", .5)}${road("local", "white", .29)}${road("secondary", "white", 1.45)}${road("secondary", "#c7bca0", .48)}${road("primary", "white", 3.1)}${road("primary", "#788aa8", 1.35)}${paths([input.boundary], "#762c40", "none", 0, .045)}${paths([input.boundary], "none", "#762c40", 1)}${labels}${markers}</g></svg>`;
   return { svg, placements };
 }

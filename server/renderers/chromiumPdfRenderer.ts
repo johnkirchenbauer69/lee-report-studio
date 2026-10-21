@@ -45,27 +45,22 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
         return requested.origin === new URL(url).origin || ["data:", "blob:"].includes(requested.protocol) ? route.continue() : route.abort();
       });
       await page.emulateMedia({ media: "screen" });
-      await page.goto(url, { waitUntil: "networkidle" });
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120_000 });
       await page.waitForSelector('[data-render-ready="true"]', {
-        timeout: 30_000,
+        timeout: 120_000,
       });
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all(
-          Array.from(document.images).map((image) =>
-            image.complete
-              ? Promise.resolve()
-              : new Promise<void>((resolve) => {
-                  image.addEventListener("load", () => resolve(), {
-                    once: true,
-                  });
-                  image.addEventListener("error", () => resolve(), {
-                    once: true,
-                  });
-                }),
-          ),
-        );
+      await page.waitForFunction(() => document.fonts.status === "loaded" &&
+        Array.from(document.images).every(image => image.complete), undefined, { timeout: 120_000 });
+      const brokenImages = await page.evaluate(() => Array.from(document.images)
+        .filter(image => image.naturalWidth === 0).map(image => image.alt || "Unnamed image"));
+      if (brokenImages.length) throw new Error(`PDF assets failed to load: ${brokenImages.join(", ")}`);
+      const unavailableFonts = await page.evaluate(() => {
+        const used = new Set(Array.from(document.querySelectorAll(".text-content, th, td, svg text"))
+          .map(node => getComputedStyle(node).fontFamily.match(/["']?(LEE Managed [^,"']+)/)?.[1]).filter(Boolean));
+        const faces = Array.from(document.fonts);
+        return Array.from(used).filter(family => !faces.some(face => face.family.replace(/^["']|["']$/g, "") === family && face.status === "loaded"));
       });
+      if (unavailableFonts.length) throw new Error(`PDF managed fonts failed to load: ${unavailableFonts.join(", ")}`);
       // Dynamic narrative font sizing: re-measure every narrative now that
       // managed fonts are loaded, then wait until none is still pending, so
       // the PDF captures the same fitted size the preview computes.
@@ -90,6 +85,11 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
         ),
       );
       onLayout?.({ narrativeOverflow });
+      const geographicOverflow = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>(
+        '[data-testid^="activity-"] .text-content, [data-testid^="featured-"] .text-content'))
+        .filter(node => node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1)
+        .map(node => node.closest("[data-testid]")?.getAttribute("data-testid") ?? "Geographic text"));
+      if (geographicOverflow.length) throw new Error(`Geographic text exceeds its frame: ${geographicOverflow.join(", ")}`);
       // Fixed publication page bounds: never silently clip editorial additions.
       const closingProblems = await page.evaluate(() =>
         Array.from(document.querySelectorAll<HTMLElement>(".closing-content")).flatMap(node => {

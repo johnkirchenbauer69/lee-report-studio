@@ -1,0 +1,19 @@
+{
+  "purpose": "Approved design samples only; report creation supplies the selected quarter and submarket data.",
+  "previews": [
+    {
+      "family": "classic",
+      "source": "Q3-Marketing-Final/Q3_2026_Industrial_Report.pdf",
+      "sourceSha256": "567a9c558a1f80f1ade6f09ea9b79633f0b1afbb94f2af398e1545f1588e48dd",
+      "sourcePage": 5,
+      "previewSha256": "f5e9bbc94a2f9ae06ac9865319b68e72574b4846fb4c51e2ad94b054cb32bc6a"
+    },
+    {
+      "family": "geographic",
+      "source": "Central-DuPage-Q4-Approved-Design/Central-DuPage-Q4-Approved-Design.pdf",
+      "sourceSha256": "57fc23f05b9904efaa1da19125e5ed0bd28091fd4b82e41513219a56970f7869",
+      "sourcePage": 1,
+      "previewSha256": "8692ea2e7c68947c3d654ba7b591c21936cd37c310a9ae6da7f1792338bb6a4d"
+    }
+  ]
+}

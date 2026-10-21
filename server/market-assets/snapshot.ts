@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readFile, mkdir, writeFile, rename } from "node:fs/promises";
+import { readFile, mkdir, writeFile, link, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { ReportInstance } from "../../src/report-engine/schema/generation.ts";
 import type {
@@ -42,6 +42,9 @@ export async function capturePresentationAssets(
   instance: ReportInstance,
   store: FileSystemAssetStore,
 ) {
+  const canonical = ["industrial-market-classic", "industrial-market-geographic"].includes(instance.templateId);
+  const maximumFileBytes = (canonical ? 64 : 16) * 1024 * 1024;
+  const maximumTotalBytes = (canonical ? 512 : 64) * 1024 * 1024;
   const captured: NonNullable<ReportInstance["presentationAssets"]> = [];
   const stored = await store.list();
   await mkdir(pinnedRoot(store), { recursive: true });
@@ -54,7 +57,10 @@ export async function capturePresentationAssets(
   });
   let total = 0;
   for (const source of urls) {
-    if (captured.length >= 250) break;
+    if (captured.length >= 250) {
+      if (canonical) throw new Error("Canonical snapshot exceeds the asset count limit; no partial snapshot may be published.");
+      break;
+    }
     try {
       let bytes: Buffer, mimeType: string;
       if (source.startsWith("data:")) {
@@ -66,10 +72,16 @@ export async function capturePresentationAssets(
         mimeType = match[1];
       } else if (source.startsWith("/api/assets/")) {
         const asset = stored.find((a) => a.source === source);
-        if (!asset) continue;
+        if (!asset) {
+          if (canonical) throw new Error("Canonical asset is unavailable.");
+          continue;
+        }
         bytes = await readFile(store.resolve(asset));
         mimeType = asset.mimeType;
-        if (asset.checksum !== sha256(bytes)) continue;
+        if (asset.checksum !== sha256(bytes)) {
+          if (canonical) throw new Error("Canonical asset checksum mismatch.");
+          continue;
+        }
       } else {
         const root = path.resolve("public");
         const file = path.resolve(root, `.${source}`);
@@ -78,10 +90,12 @@ export async function capturePresentationAssets(
         mimeType = mime(source);
       }
       if (
-        bytes.length > 16 * 1024 * 1024 ||
-        total + bytes.length > 64 * 1024 * 1024
-      )
+        bytes.length > maximumFileBytes ||
+        total + bytes.length > maximumTotalBytes
+      ) {
+        if (canonical) throw new Error("Canonical snapshot exceeds the asset byte limit; no partial snapshot may be published.");
         continue;
+      }
       total += bytes.length;
       const checksum = sha256(bytes),
         destination = path.join(pinnedRoot(store), checksum);
@@ -89,10 +103,19 @@ export async function capturePresentationAssets(
         pinnedRoot(store),
         `capture-${randomUUID()}.tmp`,
       );
-      await writeFile(temporary, bytes);
-      await rename(temporary, destination);
+      await writeFile(temporary, bytes, { flag: "wx" });
+      try {
+        // Publish complete bytes once. Never replace an existing immutable asset,
+        // including on Windows where rename-over-existing can fail with EPERM.
+        try { await link(temporary, destination); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        }
+        if (sha256(await readFile(destination)) !== checksum) throw new Error("Captured asset collision or corruption; existing bytes were preserved.");
+      } finally { await unlink(temporary); }
       captured.push({ source, checksum, mimeType, storageKey: checksum });
-    } catch {
+    } catch (error) {
+      if (canonical) throw error;
       /* Missing historical/local assets are explicitly omitted at export. */
     }
   }
@@ -110,6 +133,7 @@ export async function freezePresentation(
   pages: ReportPage[],
   store: FileSystemAssetStore,
 ): Promise<FrozenPresentation> {
+  const maximumTotalBytes = (["industrial-market-classic", "industrial-market-geographic"].includes(instance.templateId) ? 512 : 64) * 1024 * 1024;
   const pinned = new Map<string, string>();
   let total = 0;
   for (const asset of instance.presentationAssets ?? []) {
@@ -127,7 +151,7 @@ export async function freezePresentation(
       );
     }
     total += bytes.length;
-    if (total > 64 * 1024 * 1024 || sha256(bytes) !== asset.checksum)
+    if (total > maximumTotalBytes || sha256(bytes) !== asset.checksum)
       throw new Error("Captured presentation asset checksum failed.");
     pinned.set(
       asset.source,

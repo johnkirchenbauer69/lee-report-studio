@@ -458,6 +458,7 @@ export const industrialMarketReportSchema = z.object({
   report: reportMetadataSchema,
   overallMarket: overallMarketMetricsSchema.extend({ narrative: z.string() }),
   submarkets: z.array(submarketMetricsSchema),
+  presentationExtremes: z.record(z.string(), z.object({ minimum: submarketMetricsSchema.optional(), maximum: submarketMetricsSchema.optional() })).optional(),
   submarketDetails: z.array(submarketDetailSchema).default([]),
   historicalPeriods: z.array(historicalMarketPeriodSchema),
   leasing: z.array(leaseRecordSchema),

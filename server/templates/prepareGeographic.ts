@@ -51,7 +51,14 @@ export async function prepareGeographicReport(report: IndustrialMarketReport, ro
     const rendered = renderVectorMap({ width: 380, height: 582, bounds, boundary, primary: layers.primary!, secondary: layers.secondary!,
       local: layers.local!, water: layers.water!, parks: layers.parks!, municipalities, markers });
     const portable = outlineMapLabels(rendered.svg, fonts[0]!, fonts[1]!);
-    const asset = await store.importBuffer({ buffer: Buffer.from(portable), mimeType: "image/svg+xml", name: `${market.id}-activity.svg` });
+    const checksum = createHash("sha256").update(portable).digest("hex");
+    let asset = assets.find(item => item.checksum === checksum && item.mimeType === "image/svg+xml");
+    if (asset && createHash("sha256").update(await readFile(store.resolve(asset))).digest("hex") !== checksum)
+      throw new Error(`Saved map integrity failure: ${market.id}`);
+    if (!asset) {
+      asset = await store.importBuffer({ buffer: Buffer.from(portable), mimeType: "image/svg+xml", name: `${market.id}-activity.svg` });
+      assets.push(asset);
+    }
     detail.activityMapAssetUrl = asset.source;
     detail.activityMapChecksum = asset.checksum;
   }

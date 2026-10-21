@@ -520,6 +520,12 @@
 .wizard-choice strong {
   font-size: 18px;
 }
+.template-preview img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.canonical-template-choices { display: grid; gap: 12px; }
+.report-wizard .canonical-template-choices .wizard-choice { width: 100%; text-align: left; border-color: #cfd9df; background: #fff; }
+.report-wizard .canonical-template-choices .wizard-choice.selected { border-color: var(--lee-red, #c4123f); background: #fff8fa; }
+.report-wizard .canonical-template-choices .choice-check { flex: 0 0 24px; border: 1px solid #cfd9df; background: transparent; }
+.report-wizard .canonical-template-choices .selected .choice-check { background: var(--lee-red, #c4123f); border-color: var(--lee-red, #c4123f); }
 .wizard-choice p {
   margin: 8px 0;
   color: #536572;

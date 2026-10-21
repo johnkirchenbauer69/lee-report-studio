@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { q2SampleReport } from "../../data-providers/sample/q2SampleReport";
-import { buildPresentationModel } from "./presentationModel";
+import { buildPresentationModel, freezePresentationStatistics } from "./presentationModel";
 import { containsSalesforceIdToken } from "../../shared/salesforceIds";
 
 describe("buildPresentationModel", () => {
+  it("exports the summary statistics frozen at report creation without recomputing them", () => {
+    const snapshot = freezePresentationStatistics(structuredClone(q2SampleReport));
+    const rows = buildPresentationModel(snapshot, { savedMetricsOnly: true }).submarketTableRows.filter(row => row.kind === "minimum" || row.kind === "maximum");
+    snapshot.submarkets.forEach(market => { market.inventorySf = 0; market.salesVolume = 0; });
+    expect(buildPresentationModel(snapshot, { savedMetricsOnly: true }).submarketTableRows.filter(row => row.kind === "minimum" || row.kind === "maximum")).toEqual(rows);
+  });
   it("uses approved presentation overrides without mutating normalized calculations", () => {
     const model = buildPresentationModel(q2SampleReport);
     const totalRow = model.submarketTableRows.find(

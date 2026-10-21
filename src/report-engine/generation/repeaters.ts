@@ -6,6 +6,7 @@ import type {
   RepeatRule,
 } from "../../types/report";
 import { chicagoSubmarketId, resolveChicagoSubmarket } from "../submarkets";
+import { layoutActivitySidebar } from "../geographic/sidebarLayout";
 import {
   applyPageNavigationIdentity,
   assertUniquePageAnchors,
@@ -233,5 +234,5 @@ export function expandTemplatePages(
     }),
   );
   assertUniquePageAnchors(finalized);
-  return finalized;
+  return finalized.map(page => layoutActivitySidebar(page, data));
 }

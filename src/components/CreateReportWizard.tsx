@@ -74,7 +74,10 @@ export function CreateReportWizard({
     [prepared, setPrepared] = useState<ReportInstance>();
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (canonicalTemplate(generationTemplate.id)) setDetailedSelected(q2Submarkets.map(item => item.name));
+    if (canonicalTemplate(generationTemplate.id)) {
+      setDetailedSelected(q2Submarkets.map(item => item.name));
+      setProvider("ascendix");
+    }
   }, [generationTemplate.id]);
   useEffect(() => {
     let active = true;
@@ -207,14 +210,16 @@ export function CreateReportWizard({
         </ol>
         <div className="wizard-body">
           {step === 0 && (
-            <div role="radiogroup" aria-label="Report template">
+            <div className="canonical-template-choices" role="radiogroup" aria-label="Report template">
             {templateChoiceError && <p role="alert">{templateChoiceError}</p>}
             {templateChoices.map(choice => <button type="button" role="radio"
               aria-checked={choice.id === generationTemplate.id && choice.version === generationTemplate.version}
               key={`${choice.id}:${choice.version}`}
               className={`wizard-choice ${choice.id === generationTemplate.id && choice.version === generationTemplate.version ? "selected" : ""}`}
               onClick={() => setGenerationTemplate(choice)}>
-              <span className="template-preview">IM</span>
+              <span className="template-preview">{canonicalTemplate(choice.id)
+                ? <img src={canonicalTemplate(choice.id)!.preview} alt={`${canonicalTemplate(choice.id)!.shortName} design sample`} />
+                : "IM"}</span>
               <div>
                 <strong>{canonicalTemplate(choice.id)?.name ?? choice.name}</strong>
                 <p>

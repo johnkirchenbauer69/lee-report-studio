@@ -1699,7 +1699,9 @@ export default function App() {
         }
         if (exportInstance.status !== "published") exportInstance = await reportInstanceStore.refresh(exportInstance.id);
         handleReportInstanceChange(exportInstance);
-        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot), exportInstance.manualOverrides);
+        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot, {
+          savedMetricsOnly: ["industrial-market-classic", "industrial-market-geographic"].includes(exportInstance.templateId),
+        }), exportInstance.manualOverrides);
       }
       const publicationTemplate = prepareTemplateForPublication(template, exportInstance?.manualOverrides ?? []);
       const issues = await runExportPreflight(publicationTemplate);

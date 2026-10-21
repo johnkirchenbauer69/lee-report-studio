@@ -63,6 +63,34 @@ const unzip = (bytes: Buffer): Promise<Record<string, string>> =>
       .catch(reject);
   });
 describe("saved market asset exports", () => {
+  it("reuses immutable captured bytes and rejects corruption without replacing them", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-capture-once-"));
+    try {
+      const instance = await marketAssetFixture();
+      instance.templateId = "industrial-market-classic"; instance.fontReferences = [];
+      instance.pages = [{ ...instance.pages[0]!, elements: [{ id: "photo", name: "Photo", type: "image",
+        src: "data:image/png;base64,YWJj", x: 0, y: 0, width: 100, height: 100, style: {} }] }];
+      const store = new FileSystemAssetStore(root);
+      const first = await capturePresentationAssets(instance, store);
+      const second = await capturePresentationAssets(instance, store);
+      expect(first.presentationAssets).toEqual(second.presentationAssets);
+      const file = path.join(root, "report-instance-assets", first.presentationAssets![0]!.storageKey);
+      await writeFile(file, "corrupted fixture");
+      await expect(capturePresentationAssets(instance, store)).rejects.toThrow("corruption");
+      expect(await readFile(file, "utf8")).toBe("corrupted fixture");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  it.each(["industrial-market-classic", "industrial-market-geographic"])("refuses to save %s with an unavailable managed asset", async family => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-map-capture-"));
+    try {
+      const instance = await marketAssetFixture();
+      instance.templateId = family;
+      instance.fontReferences = [];
+      instance.pages = [{ ...instance.pages[0]!, elements: [{ id: "geographic-activity-map", name: "Map", type: "image",
+        src: "/api/assets/missing-map/content", x: 0, y: 0, width: 100, height: 100, style: {} }] }];
+      await expect(capturePresentationAssets(instance, new FileSystemAssetStore(root))).rejects.toThrow("unavailable");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
   it("retains all three property sections when saved delivery cards are absent without inventing records", async () => {
     const instance = await marketAssetFixture();
     instance.pages.forEach((page) => {

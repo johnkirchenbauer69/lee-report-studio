@@ -2,6 +2,8 @@
 
 Status: candidate fallback, not an executed or licensed unattended service.
 
+Implemented foundations: `desktopInput.ts` verifies the entire captured asset population, copies the pinned master/script and writes an input-ready manifest only after readback. `desktopSession.ts` refuses occupied sessions; `fileDesktopJournal.ts` holds a workstation-wide lock across uncertain executions and preserves immutable attempt records. These are tested building blocks, not a connected Windows execution adapter. An input-ready manifest is never advertised as a finished InDesign package.
+
 The installed InDesign Desktop and the validated versioned-template scripts can support an operator-started quarterly export session. That does not establish entitlement to operate an unattended, shared or hosted service. The organization is checking Adobe Admin/Developer Console access; Creative Cloud membership is not treated as InDesign API or Server entitlement.
 
 The local worker should use a dedicated Windows session and a single-job queue. It must refuse jobs while unrelated InDesign documents are open, never attach to or overwrite an operator's unsaved document, and never kill InDesign automatically. A stalled execution becomes a recoverable failed job requiring operator attention. Each job works in its own directory and copies the pinned master before opening it.

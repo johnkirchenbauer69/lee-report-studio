@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { MockAscendixReportAdapter } from "../integrations/ascendix/MockAscendixReportAdapter.ts";
 import { SalesforceAscendixReportAdapter } from "../integrations/ascendix/SalesforceAscendixReportAdapter.ts";
 import { SalesforceRestClient } from "../integrations/salesforce/SalesforceClient.ts";
@@ -22,6 +23,7 @@ export function createReportDataService(deps: {
     deps.dataRoot ?? path.resolve(process.env.LEE_DATA_DIR ?? "server/data");
   const assetStore = deps.assetStore ?? new FileSystemAssetStore(dataRoot);
   const imageIndex = new SalesforceImageIndex(dataRoot);
+  const basemapRoot = path.resolve(process.env.LEE_GEOGRAPHIC_BASEMAP_ROOT ?? path.join(dataRoot, "geographic-basemaps", "v1"));
   const adapter =
     mode === "mock"
       ? new MockAscendixReportAdapter()
@@ -41,9 +43,9 @@ export function createReportDataService(deps: {
   return new ReportDataService({
     ascendixAdapter: adapter,
     snapshotStore: new FileSystemReportSnapshotStore(dataRoot),
-    ...(process.env.LEE_GEOGRAPHIC_BASEMAP_ROOT ? {
+    ...(existsSync(path.join(basemapRoot, "display-manifest.json")) ? {
       prepareGeographic: (report: Parameters<typeof prepareGeographicReport>[0]) =>
-        prepareGeographicReport(report, path.resolve(process.env.LEE_GEOGRAPHIC_BASEMAP_ROOT!), assetStore),
+        prepareGeographicReport(report, basemapRoot, assetStore),
     } : {}),
     mode,
     logger: (entry) => console.info(JSON.stringify(entry)),

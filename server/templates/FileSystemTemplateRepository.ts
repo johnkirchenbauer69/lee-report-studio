@@ -158,12 +158,18 @@ export class FileSystemTemplateRepository implements TemplateRepository {
 
   /** Add a family without rewriting any existing report or template identity. */
   async createFamily(template: ReportTemplate): Promise<StoredTemplateVersion> {
+    return (await this.createFamilies([template]))[0]!;
+  }
+
+  /** Install a release's independent families atomically, without replacing existing identities. */
+  async createFamilies(templates: ReportTemplate[]): Promise<StoredTemplateVersion[]> {
     return this.enqueue(async () => {
       const records = await this.read();
-      if (records.some(record => record.id === template.id))
+      if (new Set(templates.map(template => template.id)).size !== templates.length) throw new Error("Duplicate template family identifiers.");
+      for (const template of templates) if (records.some(record => record.id === template.id))
         throw new Error(`Template family ${template.id} already exists.`);
-      const created = this.record(template, { status: "draft" });
-      records.push(created);
+      const created = templates.map(template => this.record(template, { status: "draft" }));
+      records.push(...created);
       await this.write(records);
       return clone(created);
     });
