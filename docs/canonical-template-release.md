@@ -39,3 +39,21 @@ These controls have automated tests. They are not a connected Windows execution 
 6. Back up the deployment's template registry and data, deploy the same tested commit locally and hosted, and verify real generation/export on both. A Git push is not deployment proof.
 
 Rollback code to the previous deployed commit without deleting reports or captured assets. Restore family publication metadata only after checking that the affected versions have not changed since the release manifest. Existing reports pin their template version and source snapshot. Do not restore an entire old registry over later user edits. Local pre-install template evidence is in `work/canonical-template-backup-v1`; no historical report or template was rewritten by installation.
+
+## QA command lifecycle investigation (2026-10-21)
+
+No canonical QA or owned Chromium process remained when the reported 53-minute hang was investigated. The previous clean run wrote Classic at 13:12:34, Geographic at 13:13:02, and its completion record at 13:13:02 local time. Historical logs do not establish a 53-minute renderer stall; a stale execution indicator is plausible, not proven. No unrelated application process was terminated.
+
+Confirmed reliability defects were sparse completion-only logs, no command-wide deadline, unbounded PDF/cleanup operations, server cleanup not awaited, setup outside cleanup protection, and a swallowed narrative-refit timeout. The command now uses an independent supervisor with a five-minute default deadline (maximum configurable ten minutes), graceful cancellation and a ten-second cleanup allowance before terminating only its owned Windows child process tree. Renderer phases have a three-minute total budget; browser closure runs in finally with an owned-browser kill fallback. Servers close active connections and await closure. Readiness/refit errors fail explicitly. There are no automatic retries or lowered rendering checks.
+
+The optional sixth positional argument selects comma-separated canonical submarket IDs, rendering their Geographic page pairs without changing the frozen source. Example: `central-dupage,north-dupage,i80-joliet`. Omitting it retains both full reports. JSON-line progress includes planned page/submarket/map identities, actual page image inventory, phase, pending requests, CPU time and memory. Chromium prints each document in one operation, so the PDF-print phase applies to all listed pages; it does not claim a fictitious per-page print cursor.
+
+Evidence retained under investigation workspace `work/canonical-diagnostic-*`:
+- Central DuPage: two pages, 6.2 seconds, exit 0; repeated successfully after error-message instrumentation.
+- Central DuPage, North DuPage, I-80/Joliet: six pages, 10.2 seconds, exit 0.
+- Forced 2.5-second command deadline: cancellation during readiness, browser/server cleanup, exit 1 after 2.7 seconds, no surviving QA process.
+- Deliberately missing map in a separate disposable fixture: named asset failure, cleanup, exit 1 after 2.9 seconds.
+- Invalid submarket ID: explicit failure/exit 1, no render.
+- Both complete reports after small tests passed: 44 Letter pages each, 78.1 seconds total, no narrative overflow, exit 0. Waiting time was PDF printing, with no pending asset requests. All 88 page thumbnails matched the prior successful PDFs exactly at 36 dpi. This comparison is a regression check, not a substitute for the earlier readable-resolution design review.
+
+No report data, source map geometry, quality setting or validation requirement was relaxed. Prior results and all source assets remain intact.
