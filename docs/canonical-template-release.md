@@ -10,7 +10,8 @@ Report creation defaults canonical editions to Salesforce and all 18 detailed su
 
 ## Validated locally
 
-- Build/typecheck passed; 1,018 tests passed with four workers. A separate isolated Playwright test verified both template choices, approved preview images, selected-family state, Ascendix default and all 18 detailed submarkets. It used published-choice fixtures and did not publish the real drafts.
+- Build/typecheck passed; 1,007 tests passed from a clean archive of the committed implementation with four workers (the working checkout also passes 11 pre-existing shadow-mask tests, totaling 1,018). A separate isolated Playwright test verified both template choices, approved preview images, selected-family state, Ascendix default and all 18 detailed submarkets. It used published-choice fixtures and did not publish the real drafts.
+- A clean committed checkout independently generated both 44-page PDFs without the unrelated local shadow-mask patch. All-page thumbnail comparison against the earlier QA run had a maximum mean RGB-channel difference below 0.019/255; readable page renders were also inspected. This validates that local patch is not required by this checkpoint.
 - Both families rendered 44 US Letter pages through the application Chromium renderer. The latest run rejected missing images/fonts and sidebar/featured overflow; both PDFs passed. Narrative-layout and live-data/photo runs are separate fixtures.
 - The earlier narrative-layout fixture uses the saved historical Q3 revision and deliberately empty featured cards. The later live-generation fixture contains 18 pinned vector maps and 17 qualifying featured listings; I-57 has an explicit empty selection. It does not invent or regenerate narratives.
 - The live-generation fixture was replayed through the production generation, save, reopen and export-freezing code. Each family reopened exactly, retained the complete source metrics and submarket records, and froze offline assets without mutating its saved instance. Classic captured 136 unique assets; Geographic captured 62. Both retained nine font references used by these browser templates.
@@ -19,6 +20,8 @@ Report creation defaults canonical editions to Salesforce and all 18 detailed su
 - Captured assets publish atomically without replacing existing content-addressed files. Both canonical families fail on missing/corrupt assets or size limits; legacy family behavior is unchanged.
 
 Evidence is under the investigation workspace `work/canonical-featured-qa-v2`, `work/canonical-full-qa-v6`, `work/canonical-roundtrip-v6`, and `work/canonical-candidates-v6`. Large source maps, private snapshots and generated PDFs are deliberately outside Git.
+
+Clean-checkout evidence is in `work/canonical-clean-pdf-v1` and `work/canonical-clean-tests.log`. The locally prepared basemap archive is `work/canonical-release-artifacts/geographic-basemaps-v1.zip` (143,068,441 bytes, SHA-256 `71e8b7c1bdb1937de94250cdca3726cd96daf498e88d8a43110fcfe239719557`). It contains 126 verified inputs plus the display manifest and has not been uploaded or deployed.
 
 ## InDesign status
 
@@ -30,7 +33,7 @@ These controls have automated tests. They are not a connected Windows execution 
 
 1. Finish native master/assembly and full package validation, including editable closing-page content and actual IDML imports.
 2. Complete browser template-selection and generation acceptance against the installed families; publish only validated family versions.
-3. Review/integrate the remote main branch and retain unrelated local changes. The local PDF QA currently includes a pre-existing, separately owned shadow-mask renderer fix; verify the final release checkout before deployment.
+3. Remote main has been integrated without content conflicts; unrelated local changes remain uncommitted and preserved. Reverify the final release checkout after the remaining native exporter work.
 4. Publish the immutable basemap library as a checksummed deployment artifact; do not place its large files in Git or silently fetch changing context during export.
 5. Identify the hosted URL and authorized deployment route. GitHub currently exposes no service homepage/deployment URL. The Render connector is unused at the user's request.
 6. Back up the deployment's template registry and data, deploy the same tested commit locally and hosted, and verify real generation/export on both. A Git push is not deployment proof.
