@@ -1,34 +1,17 @@
-# Controlled Windows desktop export worker
+# Operator-started InDesign Desktop export
 
-Status: candidate fallback, not an executed or licensed unattended service.
+This application runs locally on Windows with installed InDesign 2026. Adobe API and Server licensing are not part of this release. Unattended hosted execution is unavailable. Direct IDML generation is a future option and does not block Desktop export.
 
-Implemented foundations: `desktopInput.ts` verifies the entire captured asset population, copies the pinned master/script and writes an input-ready manifest only after readback. `desktopSession.ts` refuses occupied sessions; `fileDesktopJournal.ts` holds a workstation-wide lock across uncertain executions and preserves immutable attempt records. The Windows COM adapter and operator command are implemented, but have not yet been validated against a full native assembly run. An input-ready manifest is never advertised as a finished InDesign package.
+Save the canonical report, close other InDesign documents, and click **Export to InDesign**. The local application prepares the exact saved revision, captured assets, linked vector charts/maps, photographs, approved fonts, and native layout instructions. The explicit click may activate InDesign through its supported scripting interface. It never closes unrelated documents or kills Adobe.
 
-The installed InDesign Desktop and the validated versioned-template scripts can support an operator-started quarterly export session. That does not establish entitlement to operate an unattended, shared or hosted service. The organization is checking Adobe Admin/Developer Console access; Creative Cloud membership is not treated as InDesign API or Server entitlement.
+The package becomes downloadable only after native assembly, zero overset/missing-link/substituted-font checks, save/reopen, relocation, and independent 44-page PDF checks pass. It contains the INDD, InDesign-exported PDF, frozen report and input manifests, linked artwork, permitted fonts, and license notices. Native text and tables are editable; charts and maps remain linked vectors. IDML is omitted until actual InDesign import validation passes. Commercial fonts are for authorized internal organization use, not public redistribution.
 
-The local worker should use a dedicated Windows session and a single-job queue. It must refuse jobs while unrelated InDesign documents are open, never attach to or overwrite an operator's unsaved document, and never kill InDesign automatically. A stalled execution becomes a recoverable failed job requiring operator attention. Each job works in its own directory and copies the pinned master before opening it.
+Each job uses an isolated directory. Source reports, the approved publication, and existing Marketing files remain unchanged. Checksums bind report revision, layout, script, assets, and derived artwork before dispatch. A durable workstation lock serializes jobs across processes; immutable job claims prevent automatic replay.
 
-Both web and local applications should submit the same frozen export manifest. The worker can retrieve authenticated jobs through an outbound connection; it should not expose Windows COM or a public inbound desktop endpoint. Tokens and Salesforce credentials are never embedded in INDD, JSX or downloaded packages. Export jobs contain frozen report data and managed asset copies, not Salesforce access.
+Jobs default to the application's data directory under `native-exports`. Set `LEE_NATIVE_EXPORT_DIR` to a shorter local directory when the installation path is deeply nested; InDesign's Document fonts discovery can fail on long Windows paths. This changes only export scratch/package storage, not report storage.
 
-Required before production use:
+If export fails, retain its directory and journal. A timeout can leave Adobe execution indeterminate, so never retry automatically, delete the claim, or clear the lock while execution may still be active. Inspect the specific attempt and Adobe document state first. Recovery archives only the verified completed attempt's workstation lock; a corrected export receives a new identity. The journal is under `%LOCALAPPDATA%\Lee Report Studio\native-export-journal`.
 
-- Confirm Adobe licensing for the intended operator/automation model.
-- Demonstrate a full Classic and Geographic export with the installed InDesign version.
-- Record master/script hashes and the exact input report revision.
-- Validate native content, all links/fonts, zero overset, PDF page count, save/reopen and package relocation.
-- Validate IDML through an actual import; otherwise omit it.
-- Verify disconnect, crash, restart and duplicate-job behavior without touching unrelated documents.
+`scripts/native-export-smoke.ts` validates a subset or complete saved report with the production capture, input preparation, desktop adapter, and assembly script. The standalone `run-indesign-desktop.ts` command can dispatch reviewed prepared inputs; script completion alone is not package acceptance.
 
-Operational fit: a designated Marketing operator starting a batch on an available workstation may suit quarterly production. It depends on workstation availability and requires a human recovery path. It is not equivalent to an always-available cloud export service. The API/Server option remains preferred for shared unattended availability if entitlement and runtime testing support it.
-
-Adobe references reviewed during discovery:
-- https://developer.adobe.com/firefly-services/docs/indesign-apis/guides/working-with-custom-scripts-api/
-- https://www.adobe.com/products/indesignserver/buying-guide.html
-
-## Operator command and adapter
-
-`npx tsx scripts/run-indesign-desktop.ts <prepared-job-directory> <dedicated-workstation-journal-directory> --operator-started`
-
-Use only reviewed, locally prepared input with the approved release master/script. The command rechecks the report, master, script and asset hashes, then takes the durable workstation lock. InDesign 2026 must already be running. The adapter uses the active COM object; it never launches, restarts or kills Adobe. It checks occupancy again inside Adobe immediately before the versioned build script. The build receives the absolute job directory as its first script argument and must work only in that directory. A changed or missing input fails before Adobe execution. An inspection or execution timeout leaves the lock for operator recovery, and does not cancel an in-flight COM operation or replay the job.
-
-This is an execution adapter, not a complete native report renderer. The approved design still needs the production assembly script/master contract, full native round-trip verification and acceptance before the command is used for Marketing output. It prints `execution-finished`, never `accepted`, on script completion. No actual Adobe job was run to validate this adapter in the QA-diagnostics change.
+The modular capture, manifest, session, and validation contracts allow a future approved execution provider without changing report-data architecture. No cloud entitlement is implied by Desktop validation.
