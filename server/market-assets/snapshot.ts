@@ -180,7 +180,7 @@ export async function freezePresentation(
   }
   const replace = (value: unknown, key = ""): unknown => {
     if (typeof value === "string") {
-      if (key === "src" && value) {
+      if (["src", "logoAsset", "mapAsset"].includes(key) && value) {
         const resolved =
           pinned.get(value) ??
           (value.startsWith("data:image/") ? value : undefined);

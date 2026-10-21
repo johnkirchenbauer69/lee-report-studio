@@ -62,6 +62,15 @@ export function collectManagedFontReferences(
     Object.values(candidate).forEach(visit);
   };
   template.pages.forEach(visit);
+  // Structured closing content uses semantic CSS faces in addition to the
+  // containing element's explicit face. Freeze those dependencies as well.
+  if(template.pages.some(page=>page.elements.some(element=>'closingContent' in element && element.closingContent))) {
+    for(const asset of assets.values()) {
+      const used=asset.fontFamily==='Nunito Sans' && [400,500,600,700].includes(asset.fontWeight??400)
+        || asset.fontFamily==='Avenir Next LT Pro' && [400,500,600].includes(asset.fontWeight??400) && asset.fontStyle==='normal';
+      if(used&&isApprovedManagedFont(asset))visit({fontAssetId:asset.id});
+    }
+  }
   return [...references.values()];
 }
 
