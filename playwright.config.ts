@@ -47,7 +47,7 @@ export default defineConfig({
     {
       command: `cross-env NODE_ENV=test MOCK_NARRATIVE_MCP_PORT=${mockMcpPort} tsx tests/support/startMockNarrativeMcp.ts`,
       url: `http://127.0.0.1:${mockMcpPort}/health`,
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {

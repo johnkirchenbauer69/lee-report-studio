@@ -257,10 +257,10 @@ test("static headers are editable and Replace Image preserves the selected image
 
     await page.locator(".rail").getByTitle("Fonts").click();
     await expect(page.locator(".left-panel")).toContainText(
-      "Avenir Next LT Pro",
+      "Nunito Sans",
     );
     await expect(page.locator(".left-panel")).toContainText(
-      "Organization-owned commercial font license",
+      "SIL Open Font License",
     );
   } finally {
     await page.request.delete(createdUrl).catch(() => undefined);

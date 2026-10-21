@@ -65,7 +65,10 @@ export default async function globalSetup(): Promise<void> {
         "Visual frontend proxy does not point to this run's isolated test API. No fixtures or tests were run.",
       );
     }
-    await seedVisualFixtures(url, body.dataRoot!);
+    // Release acceptance can supply an already prepared frozen fixture store.
+    // The same API/frontend isolation checks above remain mandatory.
+    if (process.env.PLAYWRIGHT_PREPARED_FIXTURES !== "1")
+      await seedVisualFixtures(url, body.dataRoot!);
     return;
   }
 
