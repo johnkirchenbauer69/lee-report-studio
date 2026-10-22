@@ -193,6 +193,8 @@ export interface ShapeElement extends BaseElement {
 export interface ImageElement extends BaseElement {
   type: "image";
   src: string;
+  linkUrl?: string;
+  linkBinding?: Binding;
   /** Visible images are required for publication unless explicitly opted out. */
   publicationRequired?: boolean;
   fit?: "cover" | "contain" | "stretch" | "original";
@@ -370,6 +372,7 @@ export interface ChartLegend {
   position: "top" | "right" | "bottom" | "left";
 }
 export interface ChartStyle {
+  shadow?: boolean;
   background?: string;
   gridColor?: string;
   labelColor?: string;

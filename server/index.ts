@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { MarketAssetService } from "./market-assets/service.ts";
+import { NativeExportService } from './indesign/nativeService.ts';
+import { createNativeExportRouter } from './api/nativeExportRoutes.ts';
 import { capturePresentationAssets } from "./market-assets/snapshot.ts";
 import { createMarketAssetRouter } from "./api/marketAssetRoutes.ts";
 import cors from "cors";
@@ -274,6 +276,10 @@ const marketAssets = new MarketAssetService({
 });
 await marketAssets.initialize();
 app.use("/api/market-assets", createMarketAssetRouter(marketAssets));
+const nativeExports = new NativeExportService({repository:reportInstanceRepository,store:assetStore,
+  root:path.resolve(process.env.LEE_NATIVE_EXPORT_DIR ?? path.join(dataRoot,'native-exports')),dataRoot,appUrl:marketAssetRenderUrl,
+  renderJobs:renderJobs as Map<string,import('./market-assets/snapshot.ts').FrozenPresentation>});
+app.use('/api/indesign',createNativeExportRouter(nativeExports,marketAssetRenderUrl));
 
 app.get("/api/render-jobs/:id", (request, response) => {
   const job = renderJobs.get(request.params.id);
@@ -391,7 +397,7 @@ const httpServer = app.listen(port, "127.0.0.1", async () => {
 if (process.env.LEE_DESKTOP_LAUNCHER === "1" && process.send) {
   process.on("message", (message: unknown) => {
     if ((message as { type?: string })?.type !== "lee-desktop-stop") return;
-    if (desktopActiveRequests || renderJobs.size || marketAssets.hasPendingWork || narrativeService.hasPendingWork) {
+    if (desktopActiveRequests || renderJobs.size || marketAssets.hasPendingWork || nativeExports.hasPendingWork || narrativeService.hasPendingWork) {
       process.send?.({ type: "lee-desktop-stop-result", ok: false,
         error: "A request, export, or narrative task is still running. Wait for it to finish, then stop again." });
       return;

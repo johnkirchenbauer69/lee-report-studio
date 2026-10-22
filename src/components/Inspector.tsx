@@ -63,6 +63,7 @@ interface Props {
   onUnion?: () => void;
   cropping?: boolean;
   onToggleCrop?: () => void;
+  onUploadReplacement?: () => void;
   onReplaceImage?: () => void;
   data?: unknown;
   report?: IndustrialMarketReport;
@@ -349,6 +350,7 @@ export function Inspector({
   cropping,
   onToggleCrop,
   onReplaceImage,
+  onUploadReplacement,
   onChange,
   onAlign,
   onDistribute,
@@ -1957,6 +1959,7 @@ export function Inspector({
       )}
       {element.type === "image" && (
         <Section title="Image">
+          {onUploadReplacement && <button onClick={onUploadReplacement}>Upload replacement image</button>}
           <button className="replace-image-button" onClick={onReplaceImage}>
             Replace Image
           </button>

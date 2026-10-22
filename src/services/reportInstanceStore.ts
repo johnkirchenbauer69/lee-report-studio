@@ -140,6 +140,7 @@ export const reportInstanceStore = {
       input,
       15_000,
     ),
+  createDraft: (id: string) => send<ReportInstance>(`/api/report-instances/${encodeURIComponent(id)}/create-draft`, "POST"),
   publish: (id: string, baseRevision: number) => send<ReportInstance>(`/api/report-instances/${encodeURIComponent(id)}/publish`, "POST", { baseRevision }),
   refresh: (id: string) =>
     send<ReportInstance>(

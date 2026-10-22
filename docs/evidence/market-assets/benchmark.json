@@ -3,16 +3,24 @@
     "selection": "I-55-charts-only-synthetic",
     "markets": 1,
     "files": 4,
-    "seconds": 10.863,
-    "bytes": 610326,
+    "seconds": 12.277,
+    "bytes": 610269,
     "warnings": 0
   },
   {
     "selection": "multiple-markets-synthetic",
     "markets": 3,
     "files": 51,
-    "seconds": 96.628,
-    "bytes": 30949320,
+    "seconds": 102.815,
+    "bytes": 30949192,
     "warnings": 3
+  },
+  {
+    "selection": "all-19-markets-synthetic",
+    "markets": 19,
+    "files": 323,
+    "seconds": 592.329,
+    "bytes": 191893108,
+    "warnings": 19
   }
 ]

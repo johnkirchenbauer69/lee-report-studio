@@ -8,6 +8,7 @@ import type {
 } from "../../../src/report-engine/schema/industrialMarketReport.ts";
 import type { SalesforceRecord } from "../salesforce/SalesforceClient.ts";
 import { canonicalChicagoSubmarket } from "./salesforceFieldMap.ts";
+import { selectFeaturedAvailability, type FeaturedAvailabilityScope } from "./featuredAvailability.ts";
 import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
 import {
   looksLikeSalesforceId,
@@ -167,6 +168,22 @@ const booleanValue = (record: SalesforceRecord, path: string) => {
   const value = getSalesforceValue(record, path);
   return value === true ? true : value === false ? false : null;
 };
+function propertyLocation(record: SalesforceRecord) {
+  if (!record.Property__c) return {};
+  const coordinate = (field: string, bound: number) => {
+    const value = getSalesforceValue(record, `Property__r.${field}`);
+    return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= bound ? value : null;
+  };
+  return { location: {
+    propertyId: String(record.Property__c), contributorId: record.Id,
+    assignedSubmarket: text(record, "Submarket__c"),
+      propertyAssignedSubmarket: text(record, "Property__r.Submarket_Picklist__c") || undefined,
+      propertyLastModifiedAt: text(record, "Property__r.LastModifiedDate") || undefined,
+    latitude: coordinate("ascendix__Geolocation__Latitude__s", 90),
+    longitude: coordinate("ascendix__Geolocation__Longitude__s", 180),
+    coordinateSource: "parent-property" as const,
+  } };
+}
 const composedAddress = (record: SalesforceRecord, prefix: string) =>
   ["ascendix__Street__c", "ascendix__City__c", "State__c", "Zip_Code__c"]
     .map((field) => displayText(record, `${prefix}.${field}`))
@@ -395,6 +412,19 @@ export function selectContributorFinalists(rows: SalesforceRecord[]) {
     "positiveAbsorption",
     "negativeAbsorption",
   ].flatMap((section) => rankContributors(rows, section as ContributorSection));
+  // Enrich each scope independently, including photographs for featured cards.
+  const scopes = new Map<string, FeaturedAvailabilityScope>();
+  for (const row of rows) {
+    const submarket = canonicalChicagoSubmarket(String(row.Submarket__c ?? ""));
+    if (submarket && typeof row.Quarter_Label__c === "string") {
+      const scope = { period: row.Quarter_Label__c, submarket };
+      scopes.set(`${scope.period}:${submarket}`, scope);
+    }
+  }
+  for (const scope of scopes.values()) {
+    const result = selectFeaturedAvailability(rows, scope);
+    if (result.status === "selected") selected.push(result.record);
+  }
   return [...new Map(selected.map((row) => [row.Id, row])).values()];
 }
 
@@ -554,6 +584,7 @@ const highlight = async (
     : { displayParty: null, displayPartySource: null };
   return {
     highlight: {
+      ...propertyLocation(record),
       address: address(record, source),
       sizeSf: numeric(record, ...sizePaths),
       type,
@@ -627,6 +658,7 @@ const highlight = async (
 export async function mapHistoricalContributors(
   rows: SalesforceRecord[],
   resolveImage?: ImageResolver,
+  featuredScope?: FeaturedAvailabilityScope,
 ) {
   const leaseRows = rankContributors(rows, "leasing");
   const saleRows = rankContributors(rows, "sales");
@@ -659,6 +691,7 @@ export async function mapHistoricalContributors(
         : "(Confidential)";
     return {
       tenant: tenantDisplayName,
+      ...propertyLocation(record),
       tenantDisplayName,
       isDealConfidential,
       isLeeDeal: booleanValue(record, "Lease__r.Lee_Deal__c"),
@@ -728,6 +761,7 @@ export async function mapHistoricalContributors(
         : null);
     return {
       buyer: preferredBuyer || "Buyer not published",
+      ...propertyLocation(record),
       isLeeDeal: booleanValue(record, "Sale__r.Lee_Deal__c"),
       price,
       address: address(record, "Sale"),
@@ -893,7 +927,28 @@ export async function mapHistoricalContributors(
   ]
     .flatMap((entry) => [entry.warning, entry.diagnostic])
     .filter((diagnostic): diagnostic is string => Boolean(diagnostic));
+  const selection = featuredScope ? selectFeaturedAvailability(rows, featuredScope) : undefined;
+  const featured = selection?.status === "selected"
+    ? await highlight(selection.record, "availabilities", resolveImage)
+    : undefined;
+  if (featured?.warning) imageWarnings.push(featured.warning);
+  if (featured?.diagnostic) imageWarnings.push(featured.diagnostic);
+  const featuredAvailability = selection && featuredScope
+    ? selection.status === "selected" && featured
+      ? {
+          status: "selected" as const,
+          source: { kind: "contributor" as const, contributorId: selection.record.Id,
+            availabilityId: String(selection.record.Availability__c), propertyId: String(selection.record.Property__c),
+            period: featuredScope.period, submarket: featuredScope.submarket,
+            rank: Number(selection.record.Rank__c), runId: text(selection.record, "Run_ID__c") },
+          property: featured.highlight,
+        }
+      : selection.status === "ambiguous"
+        ? { status: "ambiguous" as const, reason: selection.reason }
+        : { status: "empty" as const, reason: "No qualifying featured availability." }
+    : undefined;
   return {
+    ...(featuredAvailability ? { featuredAvailability } : {}),
     leasing,
     sales,
     availabilities: availabilityHighlights.map((entry) => entry.highlight),

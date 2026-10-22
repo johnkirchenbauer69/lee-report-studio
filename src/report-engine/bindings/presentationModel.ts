@@ -13,6 +13,7 @@ import {
 } from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
+import { activitySections } from "../geographic/activity";
 import {
   buildMetricSemanticFields,
   METRIC_SEMANTICS,
@@ -106,7 +107,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
   const extremes = Object.fromEntries(
     metricKeys.map((key) => [
       key,
-      options?.savedMetricsOnly ? {} : calculateMetricExtremes(report.submarkets, key),
+      report.presentationExtremes?.[key] ?? (options?.savedMetricsOnly ? {} : calculateMetricExtremes(report.submarkets, key)),
     ]),
   ) as Record<keyof MarketMetrics, ReturnType<typeof calculateMetricExtremes>>;
   const detailRows = report.submarkets.map((item) => ({
@@ -364,6 +365,28 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
       canonicalName:
         identity?.canonicalName ?? detail.canonicalName ?? detail.name,
       displayName: identity?.displayName ?? detail.displayName ?? detail.name,
+      featuredCard: detail.featuredAvailability?.status === "selected" ? {
+        image: detail.featuredAvailability.property.image,
+        address: detail.featuredAvailability.property.address.split(",")[0],
+        area: `${detail.featuredAvailability.property.sizeSf.toLocaleString("en-US")} SF`,
+        details: [detail.featuredAvailability.property.address.split(",").slice(1, 3).join(",").trim().replace(/\s+\d{5}(?:-\d{4})?$/, ""),
+          detail.featuredAvailability.property.availabilityType ?? "Available"].filter(Boolean).join(" · "),
+        brokerage: "Lee & Associates of Illinois",
+        listingUrl: detail.featuredAvailability.listingUrl,
+      } : { image: "", address: "No featured availability", area: "", details: "", brokerage: "" },
+      activityIndex: activitySections(detail).map(section => ({
+        emptyMessage: section.entries.length ? "" : "No qualifying activity this quarter",
+        entries: section.entries.map(({ code, record }) => ({
+          code,
+          address: record.address.split(",")[0],
+          metadata: [record.address.split(",")[1]?.trim(), section.key === "sales" && "price" in record
+            ? `$${(record.price / 1_000_000).toFixed(2)}M` : "sizeSf" in record && record.sizeSf !== undefined
+              ? `${record.sizeSf.toLocaleString("en-US")} SF` : ""].filter(Boolean).join(" | "),
+          party: "tenant" in record ? record.tenant : "buyer" in record ? record.buyer :
+            "developer" in record && record.developer ? record.developer : "type" in record ? record.type : "",
+          label: `${code}  ${record.address}\n${"sizeSf" in record && record.sizeSf !== undefined ? `${record.sizeSf.toLocaleString("en-US")} SF` : "price" in record ? `$${record.price.toLocaleString("en-US")}` : ""}`,
+        })),
+      })),
       mapAssetUrl: resolveMarketMapAsset(identity?.id ?? ""),
       indicatorRows: buildIndicatorRows(detail.historicalPeriods),
       topLeaseRows: transactionRows(detail.leasing, "lease"),
@@ -409,4 +432,9 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
   const safePresentation = sanitizeSalesforceClientPayload(presentation);
   assertNoClientFacingSalesforceIds(safePresentation);
   return safePresentation;
+}
+
+/** Run during report creation, never during export. */
+export function freezePresentationStatistics(report: IndustrialMarketReport): IndustrialMarketReport {
+  return { ...report, presentationExtremes: structuredClone(Object.fromEntries(metricKeys.map(key => [key, calculateMetricExtremes(report.submarkets, key)]))) };
 }

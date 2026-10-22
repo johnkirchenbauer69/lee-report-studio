@@ -6,7 +6,7 @@ export function replaceImageAsset(
   element: ImageElement,
   asset: Asset,
 ): ImageElement {
-  const { sourceCrop: _sourceCrop, ...preserved } = element;
+  const { sourceCrop: _sourceCrop, binding: _binding, bindingContext: _bindingContext, ...preserved } = element;
   return {
     ...preserved,
     src: asset.source,

@@ -548,6 +548,8 @@ test("a generated 44-page report reopens and exports after its source draft is d
         name: restored.sourceTemplateSnapshot!.name,
         settings: restored.sourceTemplateSnapshot!.settings,
         pages: restored.pages,
+        assets: ((await (await request.get('/api/assets')).json()).assets as Asset[])
+          .filter(asset => restored.fontReferences.some(font => font.assetId === asset.id && font.checksum === asset.checksum)),
       },
       data: buildPresentationModel(restored.dataSnapshot),
       title: "Phase 1B source-independent report",

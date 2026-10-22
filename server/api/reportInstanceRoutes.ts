@@ -36,6 +36,10 @@ export function createReportInstanceRouter(
     try { response.json(await repository.publish(request.params.id, request.body?.baseRevision)); }
     catch (error) { if (conflict(error, response)) return; next(error); }
   });
+  router.post("/report-instances/:id/create-draft", async (request, response, next) => {
+    try { response.status(201).json(await repository.createDraft(request.params.id)); }
+    catch (error) { next(error); }
+  });
   const conflict = (error: unknown, response: Response) => {
     if (!(error instanceof ReportInstanceConflictError)) return false;
     response.status(409).json({

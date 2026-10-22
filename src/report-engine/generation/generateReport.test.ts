@@ -3,6 +3,12 @@ import { sampleTemplate } from "../../data/sampleTemplate";
 import { generateReportInstance } from "./generateReport";
 
 describe("generateReportInstance", () => {
+  it("rejects a Geographic source without frozen maps rather than creating blank map pages", async () => {
+    const template = { ...sampleTemplate, id: "industrial-market-geographic" };
+    await expect(generateReportInstance(template, { templateId: template.id, templateVersion: template.version,
+      market: "Chicago", period: "2026 Q2", calculationScope: { type: "all-submarkets" }, pageSelection: {}, source: { provider: "sample" } }))
+      .rejects.toThrow("saved source snapshot with activity maps");
+  });
   it("creates an editable, versioned report snapshot through the provider pipeline", async () => {
     const progress = vi.fn();
     const report = await generateReportInstance(

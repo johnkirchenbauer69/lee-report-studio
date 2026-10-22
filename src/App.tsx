@@ -56,6 +56,7 @@ import { validatePage } from "./engine/validation";
 import { localPersistence } from "./services/persistence";
 import { assetStorage } from "./services/assetStorage";
 import { exportReportPdf } from "./services/pdfExport";
+import { InDesignExport } from './components/InDesignExport';
 import { exportChromiumPdf } from "./renderers/pdf/ChromiumPdfClient";
 import {
   classifyExportError,
@@ -276,6 +277,7 @@ export default function App() {
   const narrativeOverflowSync = useRef(new Map<string, boolean>());
   const interactionStart = useRef<EditorHistorySnapshot | undefined>(undefined);
   const clipboard = useRef<ReportElement[]>([]);
+  const replacementUploadRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const pageListRef = useRef<HTMLDivElement>(null);
   const managedServerAssets = useRef<Asset[]>([]);
@@ -831,8 +833,16 @@ export default function App() {
             return element;
           }),
         };
-      }, record),
-    [selectedIds, updatePage],
+      }, record, Object.prototype.hasOwnProperty.call(patch, "text") && reportInstance
+        ? current => {
+            const element = latestTemplate.current.pages.find(p => p.id === page.id)?.elements.find(e => e.id === id);
+            return element?.binding ? upsertManualOverride(current, {
+              elementId: id, bindingPath: element.binding.path,
+              generatedValue: getByContextPath(reportData, element.binding.path, element.bindingContext),
+              overrideValue: (patch as { text?: string }).text,
+            }) : current;
+          } : undefined),
+    [selectedIds, updatePage, reportInstance, reportData, page.id],
   );
   const updateSelected = (patch: Partial<ReportElement>) => {
     const recordsManualOverride =
@@ -1690,9 +1700,11 @@ export default function App() {
         }
         if (exportInstance.status !== "published") exportInstance = await reportInstanceStore.refresh(exportInstance.id);
         handleReportInstanceChange(exportInstance);
-        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot), exportInstance.manualOverrides);
+        exportData = withTableDisplayOverrides(buildPresentationModel(exportInstance.dataSnapshot, {
+          savedMetricsOnly: ["industrial-market-classic", "industrial-market-geographic"].includes(exportInstance.templateId),
+        }), exportInstance.manualOverrides);
       }
-      const publicationTemplate = prepareTemplateForPublication(template);
+      const publicationTemplate = prepareTemplateForPublication(template, exportInstance?.manualOverrides ?? []);
       const issues = await runExportPreflight(publicationTemplate);
       setPreflightIssues(issues);
       const readinessAdvisories =
@@ -2073,6 +2085,19 @@ export default function App() {
       setReportLastSavedAt(undefined); reportInstanceStore.remember(id);
       navigate("editor"); setLeftTab("pages"); setPendingLibraryPdf(pdf);
     } catch(e) { setOpenError((e as Error).message); }
+    finally { setDocumentLoading(false); }
+  };
+  const createReportDraft = async (id: string) => {
+    if (documentLoading) return;
+    if (narrativeDirty || templateDirty || ["dirty", "saving", "error", "conflict"].includes(reportSaveStatusRef.current)) {
+      setOpenError("Finish saving your current document before creating a draft."); return;
+    }
+    setDocumentLoading(true); setOpenError("");
+    try {
+      const draft = await reportInstanceStore.createDraft(id);
+      await openReportFromLibrary(draft.id);
+      notify("Editable draft created. Your published report is preserved.");
+    } catch (error) { setOpenError((error as Error).message); }
     finally { setDocumentLoading(false); }
   };
   useEffect(() => {
@@ -2749,13 +2774,14 @@ export default function App() {
     <div className="app-shell redesigned-app" onClick={() => setContextMenu(undefined)}>
       <GlobalNavigation destination={destination === "editor" ? documentMode === "master-template" ? "templates" : "reports" : destination} onNavigate={navigate} />
       {openError && <div className="application-error" role="alert">{openError}<button onClick={() => setOpenError("")}>Dismiss</button></div>}
-      {destination !== "editor" && <ApplicationHub destination={destination} templates={templateLibrary} onNavigate={navigate} onCreate={() => { navigate("editor"); startCreateReport(); }} onOpenReport={openReportFromLibrary} onOpenTemplate={openMasterFromHub} onCreateVersion={async record => { if(templateDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) { setOpenError("Save your current document before creating a version."); return; } await createDraftFromVersion(record); navigate("editor"); }} onRename={renameTemplateVersion} onDeleteDraft={setDraftToDelete} loadingDocument={documentLoading} />}
+      {destination !== "editor" && <ApplicationHub destination={destination} templates={templateLibrary} onNavigate={navigate} onCreate={() => { navigate("editor"); startCreateReport(); }} onOpenReport={openReportFromLibrary} onCreateReportDraft={createReportDraft} onOpenTemplate={openMasterFromHub} onCreateVersion={async record => { if(templateDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatusRef.current)) { setOpenError("Save your current document before creating a version."); return; } await createDraftFromVersion(record); navigate("editor"); }} onRename={renameTemplateVersion} onDeleteDraft={setDraftToDelete} loadingDocument={documentLoading} />}
       <div className="editor-surface" hidden={destination !== "editor"}>
       <header className="document-header">
         <button onClick={() => navigate(reportInstance ? "reports" : "templates")}>← {reportInstance ? "Reports" : "Templates"}</button>
         <div className="document-identity"><strong>{reportInstance ? template.name : activeTemplateRecord?.label || template.name}</strong><span>{reportInstance ? `Report · ${reportInstance.generationRequest.period} · ${reportInstance.status}` : `Template · v${activeTemplateRecord?.version ?? template.version} · ${activeTemplateRecord?.status ?? "local recovery"}`}</span></div>
         <div className={`document-save-state state-${saveLabel.toLowerCase().replace(/[^a-z]/g, "")}`} role="status" title={reportSaveError || librarySaveError}><strong>{saveLabel}</strong>{reportInstance && reportLastSavedAt && reportSaveStatus === "saved" && <small>{new Date(reportLastSavedAt).toLocaleTimeString()}</small>}{templateRecovered && templateDirty && <small>Recovered locally · save draft to keep</small>}{(reportSaveError || librarySaveError) && <small>{reportSaveError || librarySaveError}</small>}{reportSaveStatus === "error" && <button onClick={() => runReportSaveRef.current()}>Retry save</button>}</div>
-        <div className="document-actions">{reportInstance ? <><button disabled={reportInstance.status === "published"} onClick={() => setShowNarratives(true)}>Narratives</button><button onClick={async () => { try { const response = await fetch(`/api/templates/${encodeURIComponent(reportInstance.templateId)}/versions/${encodeURIComponent(reportInstance.templateVersion)}/archive-older`, { method: "POST" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Cleanup failed."); setTemplateLibrary(await templateStore.list()); notify(`${body.archived} older templates archived. They remain available in History.`); } catch (e) { setOpenError((e as Error).message); } }}>Archive older templates</button><button disabled={reportInstance.status === "published" || narrativeDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatus)} onClick={() => setShowPublishReport(true)}>{reportInstance.status === "published" ? "Published report" : "Publish Report"}</button><a href={`/?marketAssets=1&report=${encodeURIComponent(reportInstance.id)}`}>Export Market Assets</a></> : <><button disabled={activeTemplateRecord?.status !== "draft" || templateSaving} onClick={saveMasterTemplate}>Save Draft</button><button disabled={!activeTemplateRecord} onClick={() => saveAsNewTemplateVersion()}>Save as New Version</button><button disabled={activeTemplateRecord?.status !== "draft"} onClick={() => setShowPublishReview(true)}>Publish Template</button></>}
+        <div className="document-actions">{reportInstance ? <>{reportInstance.status === "published" && <button disabled={documentLoading} onClick={() => createReportDraft(reportInstance.id)}>Create draft from published report</button>}<button disabled={reportInstance.status === "published"} onClick={() => setShowNarratives(true)}>Narratives</button><button onClick={async () => { try { const response = await fetch(`/api/templates/${encodeURIComponent(reportInstance.templateId)}/versions/${encodeURIComponent(reportInstance.templateVersion)}/archive-older`, { method: "POST" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || "Cleanup failed."); setTemplateLibrary(await templateStore.list()); notify(`${body.archived} older templates archived. They remain available in History.`); } catch (e) { setOpenError((e as Error).message); } }}>Archive older templates</button><button disabled={reportInstance.status === "published" || narrativeDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatus)} onClick={() => setShowPublishReport(true)}>{reportInstance.status === "published" ? "Published report" : "Publish Report"}</button><a href={`/?marketAssets=1&report=${encodeURIComponent(reportInstance.id)}`}>Export Market Assets</a></> : <><button disabled={activeTemplateRecord?.status !== "draft" || templateSaving} onClick={saveMasterTemplate}>Save Draft</button><button disabled={!activeTemplateRecord} onClick={() => saveAsNewTemplateVersion()}>Save as New Version</button><button disabled={activeTemplateRecord?.status !== "draft"} onClick={() => setShowPublishReview(true)}>Publish Template</button></>}
+        {reportInstance && ["industrial-market-classic","industrial-market-geographic"].includes(reportInstance.templateId) && <InDesignExport key={reportInstance.id} reportId={reportInstance.id} revision={reportInstance.revision} disabled={documentLoading || narrativeDirty || ["dirty","saving","error","conflict"].includes(reportSaveStatus)} />}
         <button onClick={() => setLeftTab("validate")}>Review / Validate</button><button className="primary-button" disabled={exportingPdf || documentLoading} onClick={downloadPdf}>{exportingPdf ? "Rendering…" : "Export PDF"}</button></div>
       </header>
       <header className="topbar editing-toolbar">
@@ -3172,6 +3198,12 @@ export default function App() {
               current === selected?.id ? undefined : selected?.id,
             )
           }
+          onUploadReplacement={() => {
+            if (selected?.type !== "image") return;
+            setReplacingImageId(selected.id);
+            setLeftTab("images");
+            replacementUploadRef.current?.click();
+          }}
           onReplaceImage={() => {
             if (selected?.type !== "image") return;
             setReplacingImageId(selected.id);
@@ -3185,6 +3217,7 @@ export default function App() {
           onUnion={unionSelectedShapes}
         />
       </div>
+      <input hidden ref={replacementUploadRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => { void handleFiles(e.target.files); e.target.value = ""; }} />
       <footer className="statusbar">
         <span>
           {page.name} · {page.elements.length} elements ·{" "}

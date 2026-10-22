@@ -9,7 +9,7 @@ import type {
   ReportTemplate,
   TextElement,
 } from "../../types/report";
-import type { ReportProviderId } from "../schema/generation";
+import type { ManualOverride, ReportProviderId } from "../schema/generation";
 import { normalizeReportTemplateFonts } from "../../services/templateNormalization";
 import type {
   DatasetSection,
@@ -58,16 +58,24 @@ const unavailablePlaceholder = (
 /** Applies publication-only copy after all editor and report-instance edits. */
 export function prepareTemplateForPublication(
   template: ReportTemplate,
+  overrides: ManualOverride[] = [],
 ): ReportTemplate {
   const publication = {
     ...structuredClone(template),
     pages: template.pages.map((page) => ({
       ...structuredClone(page),
-      elements: page.elements.map((element) =>
-        element.type === "text" && element.publishedText
+      elements: page.elements.map((element) => {
+        const override = element.type === "text" && element.binding
+          ? overrides.find(item => !item.cellKey && item.elementId === element.id && item.bindingPath === element.binding?.path)
+          : undefined;
+        if (override) {
+          const { binding, publishedText, ...preserved } = structuredClone(element);
+          return { ...preserved, text: String(override.overrideValue ?? "") };
+        }
+        return element.type === "text" && element.publishedText
           ? { ...structuredClone(element), text: element.publishedText }
-          : structuredClone(element),
-      ),
+          : structuredClone(element);
+      }),
     })),
   };
   return normalizeReportTemplateFonts(publication, publication.assets ?? []);

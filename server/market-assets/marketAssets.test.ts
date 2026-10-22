@@ -29,6 +29,7 @@ import {
 import { FileSystemAssetStore } from "../assets/assetStore";
 import { FileSystemReportInstanceRepository } from "../report-instances/FileSystemReportInstanceRepository";
 import { MarketAssetService, validateZip } from "./service";
+import { closingPageContent } from '../../src/data/closingPageContent';
 
 const request = (reportId: string, markets = ["i55-corridor"]) => ({
   reportId,
@@ -63,6 +64,34 @@ const unzip = (bytes: Buffer): Promise<Record<string, string>> =>
       .catch(reject);
   });
 describe("saved market asset exports", () => {
+  it("reuses immutable captured bytes and rejects corruption without replacing them", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-capture-once-"));
+    try {
+      const instance = await marketAssetFixture();
+      instance.templateId = "industrial-market-classic"; instance.fontReferences = [];
+      instance.pages = [{ ...instance.pages[0]!, elements: [{ id: "photo", name: "Photo", type: "image",
+        src: "data:image/png;base64,YWJj", x: 0, y: 0, width: 100, height: 100, style: {} }] }];
+      const store = new FileSystemAssetStore(root);
+      const first = await capturePresentationAssets(instance, store);
+      const second = await capturePresentationAssets(instance, store);
+      expect(first.presentationAssets).toEqual(second.presentationAssets);
+      const file = path.join(root, "report-instance-assets", first.presentationAssets![0]!.storageKey);
+      await writeFile(file, "corrupted fixture");
+      await expect(capturePresentationAssets(instance, store)).rejects.toThrow("corruption");
+      expect(await readFile(file, "utf8")).toBe("corrupted fixture");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  it.each(["industrial-market-classic", "industrial-market-geographic"])("refuses to save %s with an unavailable managed asset", async family => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-map-capture-"));
+    try {
+      const instance = await marketAssetFixture();
+      instance.templateId = family;
+      instance.fontReferences = [];
+      instance.pages = [{ ...instance.pages[0]!, elements: [{ id: "geographic-activity-map", name: "Map", type: "image",
+        src: "/api/assets/missing-map/content", x: 0, y: 0, width: 100, height: 100, style: {} }] }];
+      await expect(capturePresentationAssets(instance, new FileSystemAssetStore(root))).rejects.toThrow("unavailable");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
   it("retains all three property sections when saved delivery cards are absent without inventing records", async () => {
     const instance = await marketAssetFixture();
     instance.pages.forEach((page) => {
@@ -258,6 +287,23 @@ describe("saved market asset exports", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+  it('freezes the structured company logo and map instead of leaving live asset URLs',async()=>{
+    const root=await mkdtemp(path.join(tmpdir(),'lee-closing-assets-'));
+    try {
+      const store=new FileSystemAssetStore(root);await store.initialize();
+      const instance=await marketAssetFixture();
+      const content=structuredClone(closingPageContent.find(content=>content.kind==='company')!);
+      instance.pages=[{id:'company',name:'Company',width:816,height:1056,background:'#fff',elements:[{id:'content',name:'Content',type:'text',text:'',x:0,y:0,width:816,height:1000,style:{},closingContent:content}]}];
+      instance.fontReferences=[];
+      const captured=await capturePresentationAssets(instance,store);
+      const frozen=await freezePresentation(captured,captured.pages,store);
+      const element=frozen.template.pages[0]!.elements[0]!;
+      if(element.type!=='text'||element.closingContent?.kind!=='company')throw Error('Missing company content');
+      expect(element.closingContent.logoAsset).toMatch(/^data:image\//);
+      expect(element.closingContent.mapAsset).toMatch(/^data:image\//);
+      expect(content.logoAsset).toMatch(/^\/report-assets\//);
+    } finally {await rm(root,{recursive:true,force:true});}
   });
   it("reports absent narrative and history without manufacturing files or records", async () => {
     const instance = await marketAssetFixture();

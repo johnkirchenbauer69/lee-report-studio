@@ -31,14 +31,16 @@ export function PrintReport({ jobId }: { jobId: string }) {
   const [job, setJob] = useState<Job>(),
     [error, setError] = useState<string>();
   useEffect(() => {
-    fetch(`/api/render-jobs/${encodeURIComponent(jobId)}`)
+    const controller = new AbortController();
+    fetch(`/api/render-jobs/${encodeURIComponent(jobId)}`, { signal: controller.signal })
       .then((response) =>
         response.ok
           ? response.json()
           : Promise.reject(new Error("Render job unavailable")),
       )
-      .then(setJob)
-      .catch((reason) => setError(String(reason)));
+      .then((value) => { if (!controller.signal.aborted) setJob(value); })
+      .catch((reason) => { if (!controller.signal.aborted) setError(String(reason)); });
+    return () => controller.abort();
   }, [jobId]);
   if (error) return <main className="print-error">{error}</main>;
   if (!job) return <main className="print-loading">Preparing report…</main>;
@@ -60,6 +62,19 @@ export function PrintPages({
 }) {
   const [fontsReady, setFontsReady] = useState(false);
   const [fontError, setFontError] = useState<string>();
+  const [nativePage, setNativePage] = useState<number | undefined>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("nativeCapture") === "1" ? 0 : undefined,
+  );
+  const visiblePages = template.pages.filter((page) => !page.hidden);
+  useEffect(() => {
+    if (nativePage === undefined) return;
+    const selectPage = (event: Event) => {
+      const index = (event as CustomEvent).detail;
+      if (Number.isInteger(index) && index >= 0 && index < visiblePages.length) setNativePage(index);
+    };
+    window.addEventListener("lee:native-page", selectPage);
+    return () => window.removeEventListener("lee:native-page", selectPage);
+  }, [nativePage === undefined, visiblePages.length]);
   useEffect(() => {
     setFontsReady(false);
     installManagedFonts(template.assets ?? [])
@@ -85,14 +100,15 @@ export function PrintPages({
     <main
       className="print-document"
       data-render-ready={fontsReady ? "true" : "false"}
+      data-native-page={nativePage}
     >
-      {template.pages
-        .filter((page) => !page.hidden)
+      {(nativePage === undefined ? visiblePages : visiblePages.slice(nativePage, nativePage + 1))
         .map((page) => (
           <section
             key={page.id}
             id={page.anchor}
             className="print-page page-canvas"
+            data-page-id={page.id}
             data-page-anchor={page.anchor}
             style={{
               width: page.width,

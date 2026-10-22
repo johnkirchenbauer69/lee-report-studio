@@ -267,6 +267,7 @@ const chartAxisSchema = z
   .strict();
 const chartStyleSchema = z
   .object({
+    shadow: z.boolean().optional(),
     background: z.string().optional(),
     gridColor: z.string().optional(),
     labelColor: z.string().optional(),
@@ -314,6 +315,8 @@ export const reportElementSchema = z.discriminatedUnion("type", [
       ...baseElementShape,
       type: z.literal("image"),
       src: z.string(),
+      linkUrl: z.string().refine(value => !value || /^https?:\/\//i.test(value), "Listing links must use HTTP or HTTPS").optional(),
+      linkBinding: bindingSchema.optional(),
       publicationRequired: z.boolean().optional(),
       fit: z.enum(["cover", "contain", "stretch", "original"]).optional(),
       assetId: z.string().optional(),

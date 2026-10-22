@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { canonicalTemplate } from "../report-engine/canonicalTemplates";
 import { BrandLogo, useBrandTypography } from "./BrandLogo";
 import type { TemplateVersionSummary } from "../types/templateLibrary";
 
 export type Destination = "home" | "reports" | "templates" | "editor";
-export type SavedReportSummary = { id: string; name: string; period: string; status: string; generatedAt: string; modifiedAt?: string; templateVersion: string; revision: number };
+export type SavedReportSummary = { id: string; name: string; period: string; status: string; generatedAt: string; modifiedAt?: string; templateId?: string; templateVersion: string; revision: number };
 
 export function GlobalNavigation({ destination, onNavigate }: { destination: string; onNavigate?: (destination: Destination) => void }) {
   useBrandTypography();
@@ -15,10 +16,11 @@ export function GlobalNavigation({ destination, onNavigate }: { destination: str
   </nav>;
 }
 
-export function ApplicationHub({ destination, templates, onNavigate, onCreate, onOpenReport, onOpenTemplate, onCreateVersion, onRename, onDeleteDraft, loadingDocument }: {
+export function ApplicationHub({ destination, templates, onNavigate, onCreate, onOpenReport, onCreateReportDraft, onOpenTemplate, onCreateVersion, onRename, onDeleteDraft, loadingDocument }: {
   destination: Destination; templates: TemplateVersionSummary[];
   onNavigate: (destination: Destination) => void; onCreate: () => void;
   onOpenReport: (id: string, exportPdf?: boolean) => void;
+  onCreateReportDraft: (id: string) => void;
   onOpenTemplate: (record: TemplateVersionSummary) => void;
   onCreateVersion: (record: TemplateVersionSummary) => void;
   onRename: (record: TemplateVersionSummary, label: string) => void;
@@ -39,10 +41,10 @@ export function ApplicationHub({ destination, templates, onNavigate, onCreate, o
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, [destination]);
-  const filtered = useMemo(() => reports.filter(r => `${r.name} ${r.id}`.toLowerCase().includes(search.toLowerCase()) && (!period || r.period === period) && (!status || r.status === status)).sort((a,b) => sort === 'name' ? a.name.localeCompare(b.name) : (b.modifiedAt ?? b.generatedAt).localeCompare(a.modifiedAt ?? a.generatedAt)), [reports,search,period,status,sort]);
+  const filtered = useMemo(() => reports.filter(r => `${r.name} ${canonicalTemplate(r.templateId ?? "")?.shortName ?? ""} ${r.id}`.toLowerCase().includes(search.toLowerCase()) && (!period || r.period === period) && (!status || r.status === status)).sort((a,b) => sort === 'name' ? a.name.localeCompare(b.name) : (b.modifiedAt ?? b.generatedAt).localeCompare(a.modifiedAt ?? a.generatedAt)), [reports,search,period,status,sort]);
   const cards = (records: SavedReportSummary[]) => <div className="report-library-list">{records.map(r => <article className="library-card" key={r.id}>
-    <div><span className={`document-badge status-${r.status}`}>{r.status}</span><h3>{r.name}</h3><p className="report-period">{r.period} <span>· Template v{r.templateVersion}</span></p><small>{r.modifiedAt ? 'File last modified' : 'Created'} {new Date(r.modifiedAt ?? r.generatedAt).toLocaleString()}</small></div>
-    <div className="library-actions"><button className="primary-button" disabled={loadingDocument} onClick={() => onOpenReport(r.id)}>Open report</button><button disabled={loadingDocument} onClick={() => onOpenReport(r.id, true)}>Export PDF</button><a href={`/?marketAssets=1&report=${encodeURIComponent(r.id)}`}>Export Market Assets</a><details><summary>Report details</summary><dl><dt>Saved report</dt><dd>{r.id}</dd><dt>Revision</dt><dd>{r.revision}</dd><dt>Snapshot created</dt><dd>{new Date(r.generatedAt).toLocaleString()}</dd></dl></details></div>
+    <div><span className={`document-badge status-${r.status}`}>{r.status}</span><h3>{r.name}</h3><p className="report-period">{r.period} <span>· {canonicalTemplate(r.templateId ?? "")?.shortName ?? "Template"} v{r.templateVersion}</span></p><small>{r.modifiedAt ? 'File last modified' : 'Created'} {new Date(r.modifiedAt ?? r.generatedAt).toLocaleString()}</small></div>
+    <div className="library-actions"><button className="primary-button" disabled={loadingDocument} onClick={() => onOpenReport(r.id)}>Open report</button>{r.status === "published" && <button disabled={loadingDocument} onClick={() => onCreateReportDraft(r.id)}>Create draft from published report</button>}<button disabled={loadingDocument} onClick={() => onOpenReport(r.id, true)}>Export PDF</button><a href={`/?marketAssets=1&report=${encodeURIComponent(r.id)}`}>Export Market Assets</a><details><summary>Report details</summary><dl><dt>Saved report</dt><dd>{r.id}</dd><dt>Revision</dt><dd>{r.revision}</dd><dt>Snapshot created</dt><dd>{new Date(r.generatedAt).toLocaleString()}</dd></dl></details></div>
   </article>)}</div>;
   return <main className="application-home">
     {destination === "home" && <div className="dashboard-brand"><BrandLogo /><span>Report Studio</span></div> }

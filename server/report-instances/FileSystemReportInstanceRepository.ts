@@ -28,7 +28,7 @@ export interface ReportDocumentPatch {
 
 export interface SavedReportSummary {
   id: string; name: string; period: string; status: "draft" | "approved" | "published";
-  generatedAt: string; modifiedAt: string; templateVersion: string; revision: number;
+  generatedAt: string; modifiedAt: string; templateId?: string; templateVersion: string; revision: number;
 }
 
 export interface RepositoryWriteOptions {
@@ -104,7 +104,7 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
       const raw = JSON.parse(await readFile(file, "utf8"));
       if (raw.id !== name.slice(0,-5) || !raw.dataSnapshot?.report || !["draft", "approved", "published"].includes(raw.status) || typeof raw.generatedAt !== "string")
         throw new Error(`Saved report ${name} has invalid catalog metadata. Its file was preserved.`);
-      const summary: SavedReportSummary = { id: raw.id, name: raw.dataSnapshot.report.title, period: raw.dataSnapshot.report.period, status: raw.status, generatedAt: raw.generatedAt, modifiedAt: metadata.mtime.toISOString(), templateVersion: raw.templateVersion, revision: raw.revision ?? 0 };
+      const summary: SavedReportSummary = { id: raw.id, name: raw.dataSnapshot.report.title, period: raw.dataSnapshot.report.period, status: raw.status, generatedAt: raw.generatedAt, modifiedAt: metadata.mtime.toISOString(), templateId: raw.templateId, templateVersion: raw.templateVersion, revision: raw.revision ?? 0 };
       this.summaryCache.set(name, {stamp, summary}); summaries.push(summary);
     }
     return summaries.sort((a,b)=>b.modifiedAt.localeCompare(a.modifiedAt));
@@ -354,6 +354,22 @@ export class FileSystemReportInstanceRepository implements ReportInstanceReposit
         durationMs: Date.now() - started,
       });
       return structuredClone(next);
+    });
+  }
+
+  async createDraft(id: string) {
+    return this.enqueue(id, "create_draft", async () => {
+      const source = await this.readCurrent(id);
+      if (!source) throw new Error("Report instance not found.");
+      if (source.status !== "published") throw new Error("Choose a published report to create a draft.");
+      const draft = structuredClone(source);
+      draft.id = `report-${randomUUID()}`;
+      draft.status = "draft";
+      draft.revision = 0;
+      delete draft.publishedAt;
+      // A generation handoff belongs to the original report, not its copy.
+      delete draft.externalNarrativeJob;
+      return this.create(draft);
     });
   }
 

@@ -49,6 +49,7 @@ export const reportDataRequestSchema = z
     calculationScope: calculationScopeSchema,
     requestedSections: z.array(datasetSectionSchema).optional(),
     timeContext: timeContextSchema.optional(),
+    presentationFamily: z.enum(["classic", "geographic"]).optional(),
   })
   .transform((request) => ({
     ...request,

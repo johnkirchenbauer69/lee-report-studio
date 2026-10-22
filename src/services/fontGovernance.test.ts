@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { closingPageContent } from '../data/closingPageContent';
 import type { Asset, ReportTemplate } from "../types/report";
 import {
   approvedManagedFontAssets,
@@ -62,6 +63,16 @@ const templateWith = (asset: Asset): ReportTemplate => ({
       ],
     },
   ],
+});
+
+it('captures semantic closing-page faces so frozen exports retain italics and heading weights',()=>{
+  const regular=font('regular','Nunito Sans',{fontGovernanceStatus:'approved'});
+  const italic=font('italic','Nunito Sans',{fontWeight:600,fontStyle:'italic',fontGovernanceStatus:'approved'});
+  const unused=font('unused','Metropolis',{fontGovernanceStatus:'approved'});
+  const template=templateWith(regular);template.assets=[regular,italic,unused];
+  const element=template.pages[0]!.elements[0]!;
+  if(element.type==='text')element.closingContent=structuredClone(closingPageContent[0]);
+  expect(collectManagedFontReferences(template).map(ref=>ref.assetId)).toEqual(['regular','italic']);
 });
 
 describe("managed font governance", () => {

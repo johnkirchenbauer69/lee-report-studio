@@ -23,6 +23,22 @@ test('publishes the saved report, reopens its finalized edition and preserves ov
   await expect(page.getByRole('button', { name: 'Published report', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '← Reports', exact: true }).click();
   await page.getByRole('button', { name: 'Published reports', exact: true }).click();
-  await expect(page.locator('.library-card').filter({ hasText: saved.id })).toBeVisible();
+  const card = page.locator('.library-card').filter({ hasText: saved.id });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'Create draft from published report', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Publish Report', exact: true })).toBeEnabled();
+  const draftId = await page.evaluate(() => localStorage.getItem('lee-report-studio.report-instance.v1'));
+  expect(draftId).not.toBe(saved.id);
+  const draft = await (await request.get(`/api/report-instances/${draftId}`)).json();
+  expect(draft.status).toBe('draft');
+  for (const key of ['pages', 'manualOverrides', 'dataSnapshot', 'narratives', 'presentationAssets', 'fontReferences']) expect(draft[key]).toEqual(reopened[key]);
+  const editedPages = structuredClone(draft.pages);
+  editedPages[0].name = 'Updated highlight';
+  const update = await request.patch(`/api/report-instances/${draftId}/document`, { data: { baseRevision: draft.revision, pages: editedPages, manualOverrides: draft.manualOverrides } });
+  expect(update.ok()).toBeTruthy();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Publish Report', exact: true })).toBeEnabled();
+  expect((await (await request.get(`/api/report-instances/${draftId}`)).json()).pages).toEqual(editedPages);
+  expect(await (await request.get(`/api/report-instances/${saved.id}`)).json()).toEqual(reopened);
 });
 

@@ -1,7 +1,7 @@
 import { getReportDataProvider } from "../../data-providers/providerRegistry";
 import type { ReportDataProviderResult } from "../../data-providers/ReportDataProvider";
 import type { ReportTemplate } from "../../types/report";
-import { buildPresentationModel } from "../bindings/presentationModel";
+import { buildPresentationModel, freezePresentationStatistics } from "../bindings/presentationModel";
 import { calculateOverallMarket } from "../calculations/marketCalculations";
 import { industrialMarketReportSchema } from "../schema/industrialMarketReport";
 import type {
@@ -140,6 +140,10 @@ export async function generateReportInstance(
       : "Validating normalized source records",
   );
   const normalized = normalizeReportData(providerResult);
+  if (template.id === "industrial-market-geographic") {
+    const missing = normalized.submarketDetails.filter(detail => !detail.activityMapAssetUrl || !detail.activityMapChecksum || !detail.featuredAvailability);
+    if (missing.length) throw new Error(`Geographic requires a saved source snapshot with activity maps and featured-listing decisions for every submarket. Select Salesforce with the Geographic basemap library configured. Missing: ${missing.map(detail => detail.name).join(", ")}.`);
+  }
   const consistencyIssues = validateRequestConsistency(normalized, request);
   if (consistencyIssues.length) {
     throw new Error(
@@ -163,7 +167,8 @@ export async function generateReportInstance(
     "reconciling",
     "Applying explicit, auditable source reconciliations",
   );
-  const reconciled = reconcileSources(calculated);
+  const reconciled = ["industrial-market-classic", "industrial-market-geographic"].includes(template.id)
+    ? freezePresentationStatistics(reconcileSources(calculated)) : reconcileSources(calculated);
 
   progress(onProgress, "validating", "Evaluating report readiness");
   const dataReadiness = evaluateReportReadiness(

@@ -914,6 +914,12 @@ export function CanvasElement(props: Props) {
           Image unavailable
         </div>
       );
+    const linkedValue = element.linkBinding
+      ? getByContextPath(data, element.linkBinding.path, element.bindingContext) : element.linkUrl;
+    if (props.readOnly && src && typeof linkedValue === "string" && /^https?:\/\//i.test(linkedValue)) {
+      content = <a href={linkedValue} target="_blank" rel="noopener noreferrer"
+        aria-label={`View listing: ${element.name}`} style={{ display: "block", width: "100%", height: "100%" }}>{content}</a>;
+    }
   } else if (element.type === "table") {
     const rows = getByContextPath(
         data,

@@ -327,3 +327,13 @@ describe("production template preparation", () => {
     ).toBe(false);
   });
 });
+
+it("exports report-specific text overrides without changing source bindings or typography", () => {
+  const template = structuredClone(sampleTemplate);
+  const element: TextElement = { id: "address", type: "text", name: "Address", x: 10, y: 20, width: 200, height: 30, text: "Old address", publishedText: "Old published address", binding: { path: "market.topAvailabilities[2].address" }, style: { fontSize: 12, color: "#003146" } };
+  template.pages[0].elements = [element];
+  const output = prepareTemplateForPublication(template, [{ elementId: "address", bindingPath: element.binding!.path, generatedValue: "Old address", overrideValue: "1500 Kautz Rd, Geneva, IL 60134", createdAt: new Date().toISOString() }]);
+  expect(output.pages[0].elements[0]).toMatchObject({ text: "1500 Kautz Rd, Geneva, IL 60134", x: 10, y: 20, width: 200, height: 30, style: element.style });
+  expect(output.pages[0].elements[0].binding).toBeUndefined();
+  expect(template.pages[0].elements[0]).toEqual(element);
+});

@@ -17,6 +17,29 @@ afterEach(async () => {
 });
 
 describe("FileSystemTemplateRepository", () => {
+  it("installs neither family if any requested family conflicts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-family-conflict-")); roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const before = await repository.listAll();
+    await expect(repository.createFamilies([{ ...sampleTemplate, id: "new-family" }, sampleTemplate])).rejects.toThrow("already exists");
+    expect(await repository.listAll()).toEqual(before);
+  });
+  it("publishes independent families without mutating the original template history", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-families-"));
+    roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize(sampleTemplate);
+    const original = await repository.listAll();
+    for (const id of ["industrial-market-classic", "industrial-market-geographic"]) {
+      const family = await repository.createFamily({ ...structuredClone(sampleTemplate), id });
+      await repository.publish(family.id, family.version);
+    }
+    expect((await repository.getPublished("industrial-market-classic"))?.status).toBe("published");
+    expect((await repository.getPublished("industrial-market-geographic"))?.status).toBe("published");
+    expect(await repository.get(sampleTemplate.id, sampleTemplate.version)).toEqual(original[0]);
+    await expect(repository.createFamily({ ...sampleTemplate, id: "industrial-market-classic" })).rejects.toThrow("already exists");
+  });
   it("creates, saves, reloads, versions, and publishes templates atomically", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lee-templates-"));
     roots.push(root);
