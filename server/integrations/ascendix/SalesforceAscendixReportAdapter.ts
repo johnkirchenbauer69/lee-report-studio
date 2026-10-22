@@ -32,6 +32,7 @@ import {
 import { classifyInventoryReconciliation } from "./inventoryReconciliation.ts";
 import { buildInventoryReconciliationDetails } from "./inventoryReconciliationDetails.ts";
 import { looksLikeSalesforceId } from "../salesforce/salesforceIds.ts";
+import { selectOverallFeaturedAvailability } from "./featuredAvailability.ts";
 import {
   CHICAGO_INDUSTRIAL_REPORT_SUBMARKETS,
   ELIGIBLE_MARKET_UNIVERSE_SCOPE,
@@ -252,10 +253,12 @@ async function enrichFinalists(
   // These relationships carry authoritative client-facing contracts, so every
   // finalist is enriched rather than trusting denormalized contributor labels.
   const leaseRows = finalists.filter((row) =>
-    sections.get(row.Id)?.includes("lease"),
+    sections.get(row.Id)?.includes("lease") ||
+    (row.Contributor_Category__c === "Featured Lee Deal" && Boolean(row.Lease__c)),
   );
   const saleRows = finalists.filter((row) =>
-    sections.get(row.Id)?.includes("sale"),
+    sections.get(row.Id)?.includes("sale") ||
+    (row.Contributor_Category__c === "Featured Lee Deal" && Boolean(row.Sale__c)),
   );
   const jobs: Promise<void>[] = [];
   const run = (
@@ -320,6 +323,13 @@ async function enrichFinalists(
       api(mapping.availability.useSubtype),
       api(mapping.availability.vacancyType),
       api(mapping.availability.brokerCompany),
+      api(mapping.availability.sizeSf),
+      "ascendix__MinDivisibleArea__c",
+      "Min_Divisible_Industrial_SF__c",
+      "ascendix__MaxContiguousArea__c",
+      "ascendix__MaximumContiguous__c",
+      "RecordType.Name",
+      "ascendix__Listing__r.ascendix__Website__c",
       "ascendix__Property__r.ascendix__PrimaryImage__c",
     ],
     availabilityRows,
@@ -335,6 +345,8 @@ async function enrichFinalists(
       api(mapping.lease.subtype),
       api(mapping.lease.isDealConfidential),
       api(mapping.lease.leeDeal),
+      api(mapping.lease.sizeSf),
+      api(mapping.lease.offMarketDate),
     ],
     leaseRows,
     "Lease__c",
@@ -349,6 +361,7 @@ async function enrichFinalists(
       api(mapping.sale.type),
       api(mapping.sale.leeDeal),
       api(mapping.sale.buildingSf),
+      api(mapping.sale.saleDate),
       api(mapping.sale.pricePerUom),
     ],
     saleRows,
@@ -356,6 +369,24 @@ async function enrichFinalists(
     "Sale__r",
   );
   await Promise.all(jobs);
+  // Listing_URL__c is an optional, provider-neutral field for the new
+  // Geographic edition. Query it separately so older orgs without the field
+  // retain their existing report capture behavior until metadata deployment.
+  const officialUrlIds = ids(availabilityRows, "Availability__c");
+  if (officialUrlIds.length) {
+    try {
+      calls.enrichment += 1;
+      const urlRows = await client.query(selectQuery(api(mapping.availability.object), ["Id", "Listing_URL__c"],
+        `Id IN ${soqlLiteralList(officialUrlIds, "source IDs")}`));
+      const byId = new Map(urlRows.map(row => [String(row.Id), row.Listing_URL__c]));
+      for (const row of availabilityRows) {
+        const linked = row.Availability__r as SalesforceRecord | undefined;
+        if (linked && byId.has(String(row.Availability__c))) linked.Listing_URL__c = byId.get(String(row.Availability__c));
+      }
+    } catch {
+      // Existing published editions require no new Salesforce metadata.
+    }
+  }
   // Built-to-Suit/Expansion tenant attribution: Property -> Lease is a
   // one-to-many relationship with no denormalized tenant field on the
   // contributor row, so this is a deterministic, governed lookup rather
@@ -791,6 +822,11 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     const saleCandidates = [scoped, ...detailScopes.map((d) => d.scoped)]
       .flatMap((scope) => scope.rows)
       .filter((row) => contributorSection(row.Contributor_Category__c) === "sales");
+    const dealCandidates = [scoped, ...detailScopes.map((d) => d.scoped)]
+      .flatMap((scope) => scope.rows)
+      .filter((row) => contributorSection(row.Contributor_Category__c) === "leasing" ||
+        row.Contributor_Category__c === "Featured Lee Deal");
+    const overallFeaturedCandidate = selectOverallFeaturedAvailability(scoped.rows, bounds.label);
     const finalists = [
       ...new Map(
         [
@@ -799,6 +835,8 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
             selectContributorFinalists(detail.rows),
           ),
           ...saleCandidates,
+          ...dealCandidates,
+          ...(overallFeaturedCandidate.status === "selected" ? [overallFeaturedCandidate.record] : []),
         ].map((row) => [row.Id, row]),
       ).values(),
     ];
@@ -809,6 +847,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
     const highlights = await mapHistoricalContributors(
       scoped.rows,
       this.resolveImage,
+      { period: bounds.label, submarket: "Overall Market" },
     );
     const detailHighlights = await Promise.all(
       detailScopes.map(({ scoped: detail }, index) =>
@@ -871,6 +910,7 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
           sales: detailHighlights[detailIndex]!.sales,
           availabilities: detailHighlights[detailIndex]!.availabilities,
           featuredAvailability: detailHighlights[detailIndex]!.featuredAvailability,
+          featuredDeal: detailHighlights[detailIndex]!.featuredDeal,
           deliveries: detailHighlights[detailIndex]!.deliveries,
           construction: detailHighlights[detailIndex]!.construction,
           absorptionContributors:
@@ -1417,6 +1457,8 @@ export class SalesforceAscendixReportAdapter implements AscendixReportAdapter {
         preparedBy: "Lee & Associates",
       },
       overallMarket: { ...overallMarket, narrative: "" },
+      overallFeaturedAvailability: highlights.featuredAvailability,
+      overallFeaturedDeal: highlights.featuredDeal,
       submarkets,
       submarketDetails,
       historicalPeriods,

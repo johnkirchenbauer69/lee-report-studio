@@ -13,7 +13,8 @@ import {
 } from "../../shared/salesforceIds";
 import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
-import { activitySections } from "../geographic/activity";
+import { activitySections, overallActivitySections } from "../geographic/activity";
+import { featuredCardV120 } from "../geographic/featuredCardV120";
 import {
   buildMetricSemanticFields,
   METRIC_SEMANTICS,
@@ -374,6 +375,23 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
         brokerage: "Lee & Associates of Illinois",
         listingUrl: detail.featuredAvailability.listingUrl,
       } : { image: "", address: "No featured availability", area: "", details: "", brokerage: "" },
+      featuredCardV120: detail.featuredAvailability?.status === "selected"
+        ? featuredCardV120({
+            image: detail.featuredAvailability.property.image,
+            address: detail.featuredAvailability.property.address,
+            availableSf: detail.featuredAvailability.property.sizeSf,
+            minimumDivisibleSf: detail.featuredAvailability.minimumDivisibleSf,
+            marketedMaximumSf: detail.featuredAvailability.marketedMaximumSf,
+            marketingType: detail.featuredAvailability.marketingType,
+            listingUrl: detail.featuredAvailability.listingUrl,
+          })
+        : detail.featuredDeal?.status === "selected"
+          ? { ...featuredCardV120({ image: detail.featuredDeal.property.image,
+                address: detail.featuredDeal.property.address,
+                availableSf: detail.featuredDeal.property.sizeSf }),
+              details: detail.featuredDeal.property.address.split(",").slice(1, 3).map(part => part.trim()).join(", "),
+              badge: detail.featuredDeal.kind === "lease" ? "LEASED" : "SOLD", listingUrl: undefined }
+          : { image: "", address: "Quarterly market perspective", area: "", details: "No verified Lee property this quarter", badge: "", listingUrl: undefined },
       activityIndex: activitySections(detail).map(section => ({
         emptyMessage: section.entries.length ? "" : "No qualifying activity this quarter",
         entries: section.entries.map(({ code, record }) => ({
@@ -399,6 +417,34 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
       topConstruction: presentProperties(detail.construction, "construction"),
     };
   });
+  const overallListing = report.overallFeaturedAvailability?.status === "selected"
+    ? report.overallFeaturedAvailability : undefined;
+  const overallDeal = report.overallFeaturedDeal?.status === "selected" ? report.overallFeaturedDeal : undefined;
+  const overallGeographic = {
+    featuredCardV120: overallListing ? featuredCardV120({
+      image: overallListing.property.image, address: overallListing.property.address,
+      availableSf: overallListing.property.sizeSf, minimumDivisibleSf: overallListing.minimumDivisibleSf,
+      marketedMaximumSf: overallListing.marketedMaximumSf, marketingType: overallListing.marketingType,
+      listingUrl: overallListing.listingUrl,
+    }) : overallDeal ? {
+      ...featuredCardV120({ image: overallDeal.property.image, address: overallDeal.property.address,
+        availableSf: overallDeal.property.sizeSf }),
+      details: overallDeal.property.address.split(",").slice(1, 3).map(part => part.trim()).join(", "),
+      badge: overallDeal.kind === "lease" ? "LEASED" : "SOLD", listingUrl: undefined,
+    } : { image: "", address: "Quarterly market perspective", area: "", details: "No verified Lee property this quarter", badge: "", listingUrl: undefined },
+    activityMapAssetUrl: report.overallActivityMapAssetUrl ?? "",
+    activityIndex: overallActivitySections(report).map(section => ({
+      emptyMessage: section.entries.length ? "" : "No qualifying activity this quarter",
+      entries: section.entries.map(({ code, record }) => ({
+        code, address: record.address.split(",")[0],
+        metadata: [record.address.split(",")[1]?.trim(), section.key === "sales" && "price" in record
+          ? `$${(record.price / 1_000_000).toFixed(2)}M` : "sizeSf" in record && record.sizeSf !== undefined
+            ? `${record.sizeSf.toLocaleString("en-US")} SF` : ""].filter(Boolean).join(" | "),
+        party: "tenant" in record ? record.tenant : "buyer" in record ? record.buyer :
+          "developer" in record && record.developer ? record.developer : "type" in record ? record.type : "",
+      })),
+    })),
+  };
   const clientFacing = {
     overallMarket: report.overallMarket,
     submarkets: report.submarkets,
@@ -409,6 +455,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
     deliveries: report.deliveries,
     construction: report.construction,
     submarketDetails,
+    overallGeographic,
   };
   assertNoClientFacingSalesforceIds(clientFacing);
   const presentation = {
@@ -428,6 +475,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
     topDeliveries: presentProperties(report.deliveries, "delivery"),
     topConstruction: presentProperties(report.construction, "construction"),
     submarketDetails,
+    overallGeographic,
   };
   const safePresentation = sanitizeSalesforceClientPayload(presentation);
   assertNoClientFacingSalesforceIds(safePresentation);

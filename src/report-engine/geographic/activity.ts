@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { submarketDetailSchema } from "../schema/industrialMarketReport";
+import type { IndustrialMarketReport } from "../schema/industrialMarketReport";
 
 type Detail = z.infer<typeof submarketDetailSchema>;
 export const ACTIVITY_SECTIONS = [
@@ -21,6 +22,18 @@ export function activitySections(detail: Detail) {
         (record.location.propertyAssignedSubmarket && record.location.propertyAssignedSubmarket !== record.location.assignedSubmarket))),
     })),
   }));
+}
+
+/** The overall spread takes the market-wide, already-ranked frozen Top 3 for each category. */
+export function overallActivitySections(report: IndustrialMarketReport) {
+  const sections = ACTIVITY_SECTIONS.map(section => ({ ...section,
+    entries: report[section.key].slice(0, 3).map((record, index) => ({
+      code: `${section.code}${index + 1}`, record,
+      coordinateStatus: !record.location || record.location.latitude === null || record.location.longitude === null
+        ? "missing" as const : "available" as const,
+    })),
+  }));
+  return sections;
 }
 
 export interface MarkerAnchor { code: string; x: number; y: number }

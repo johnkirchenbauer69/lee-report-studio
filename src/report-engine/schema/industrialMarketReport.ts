@@ -327,13 +327,31 @@ export const featuredAvailabilitySchema = z.discriminatedUnion("status", [
     }),
     property: propertyHighlightSchema,
     listingUrl: z.string().url().optional(),
+    /** Values copied from the selected Availability when this snapshot was frozen. */
+    minimumDivisibleSf: nonNegativeNumber.optional(),
+    marketedMaximumSf: nonNegativeNumber.optional(),
+    marketingType: z.enum(["For Lease", "For Sale", "For Sale & Lease"]).optional(),
+    fieldSources: z.object({ marketedSf: z.string(), minimumDivisibleSf: z.string().optional(),
+      marketingType: z.string().optional(), listingUrl: z.string().optional() }).optional(),
   }),
   z.object({ status: z.literal("empty"), reason: z.string() }),
   z.object({ status: z.literal("ambiguous"), reason: z.string() }),
 ]);
 
+export const featuredDealSchema = z.object({
+  status: z.literal("selected"),
+  kind: z.enum(["lease", "sale"]),
+  source: z.object({
+    contributorId: z.string().min(1), transactionId: z.string().min(1), propertyId: z.string().min(1),
+    period: z.string().min(1), submarket: z.string().min(1), rank: z.number().nullable(), runId: z.string(),
+    selectionBasis: z.string().min(1),
+  }),
+  property: z.object({ address: z.string().min(1), sizeSf: nonNegativeNumber, image: z.string() }),
+});
+
 export const submarketDetailSchema = z.object({
   featuredAvailability: featuredAvailabilitySchema.optional(),
+  featuredDeal: featuredDealSchema.optional(),
   activityMapAssetUrl: z.string().optional(),
   activityMapChecksum: z.string().optional(),
   id: z.string().min(1).optional(),
@@ -457,6 +475,10 @@ export const overallMarketMetricsSchema = marketMetricsSchema.extend({
 export const industrialMarketReportSchema = z.object({
   report: reportMetadataSchema,
   overallMarket: overallMarketMetricsSchema.extend({ narrative: z.string() }),
+  overallFeaturedAvailability: featuredAvailabilitySchema.optional(),
+  overallFeaturedDeal: featuredDealSchema.optional(),
+  overallActivityMapAssetUrl: z.string().optional(),
+  overallActivityMapChecksum: z.string().optional(),
   submarkets: z.array(submarketMetricsSchema),
   presentationExtremes: z.record(z.string(), z.object({ minimum: submarketMetricsSchema.optional(), maximum: submarketMetricsSchema.optional() })).optional(),
   submarketDetails: z.array(submarketDetailSchema).default([]),

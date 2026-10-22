@@ -282,7 +282,9 @@ const chartStyleSchema = z
 
 export const reportElementSchema = z.discriminatedUnion("type", [
   z
-    .object({ ...baseElementShape, type: z.literal("text"), text: z.string(), closingContent: closingContentSchema.optional() })
+    .object({ ...baseElementShape, type: z.literal("text"), text: z.string(),
+      linkUrl: z.string().refine(value => !value || /^https?:\/\//i.test(value), "Listing links must use HTTP or HTTPS").optional(),
+      linkBinding: bindingSchema.optional(), closingContent: closingContentSchema.optional() })
     .strict(),
   z
     .object({

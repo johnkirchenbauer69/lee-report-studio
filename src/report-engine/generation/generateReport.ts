@@ -143,6 +143,8 @@ export async function generateReportInstance(
   if (template.id === "industrial-market-geographic") {
     const missing = normalized.submarketDetails.filter(detail => !detail.activityMapAssetUrl || !detail.activityMapChecksum || !detail.featuredAvailability);
     if (missing.length) throw new Error(`Geographic requires a saved source snapshot with activity maps and featured-listing decisions for every submarket. Select Salesforce with the Geographic basemap library configured. Missing: ${missing.map(detail => detail.name).join(", ")}.`);
+    if (template.version === "1.2.0" && (!normalized.overallActivityMapAssetUrl || !normalized.overallActivityMapChecksum))
+      throw new Error("Geographic v1.2 requires a frozen, integrity-checked Overall Market activity map.");
   }
   const consistencyIssues = validateRequestConsistency(normalized, request);
   if (consistencyIssues.length) {

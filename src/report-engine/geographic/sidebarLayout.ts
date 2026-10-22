@@ -4,8 +4,10 @@ import { ACTIVITY_SECTIONS } from "./activity";
 
 /** Reserve the same print area for sparse and maximum-density editions. */
 export function layoutActivitySidebar(page: ReportPage, data: unknown) {
-  if (!page.elements.some(element => element.id === "geographic-activity-map")) return page;
-  const sections = getByContextPath(data, "market.activityIndex", page.bindingContext) as { entries: { party?: string }[] }[];
+  const overall = page.elements.some(element => element.id === "overall-geographic-activity-map");
+  if (!overall && !page.elements.some(element => element.id === "geographic-activity-map")) return page;
+  const prefix = overall ? "overall-" : "";
+  const sections = getByContextPath(data, overall ? "overallGeographic.activityIndex" : "market.activityIndex", page.bindingContext) as { entries: { party?: string }[] }[];
   if (!Array.isArray(sections) || sections.length !== 5) throw new Error("Geographic sidebar data unavailable");
   const counts = sections.map(section => Math.min(section.entries.length, 3));
   const plans = sections.map(section => section.entries.slice(0, 3).map(entry => ({ wrap: (entry.party?.length ?? 0) > 32 })));
@@ -19,11 +21,11 @@ export function layoutActivitySidebar(page: ReportPage, data: unknown) {
   ACTIVITY_SECTIONS.forEach((section, index) => {
     const count = counts[index]!;
     for (const element of result.elements) {
-      if (element.id === `activity-${section.code}-heading`) element.y = top * 4 / 3;
-      if (element.id === `activity-${section.code}-empty`) {
+      if (element.id === `${prefix}activity-${section.code}-heading`) element.y = top * 4 / 3;
+      if (element.id === `${prefix}activity-${section.code}-empty`) {
         element.y = (top + 20) * 4 / 3; element.hidden = count > 0;
       }
-      const match = element.id.match(new RegExp(`^activity-${section.code}([123])-(address|metadata|party|circle|code)$`));
+      const match = element.id.match(new RegExp(`^${prefix}activity-${section.code}([123])-(address|metadata|party|circle|code)$`));
       if (!match) continue;
       const row = Number(match[1]) - 1, role = match[2];
       element.hidden = row >= count;
