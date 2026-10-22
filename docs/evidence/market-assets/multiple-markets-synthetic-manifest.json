@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "exportedAt": "2026-10-09T20:40:45.292Z",
+  "exportedAt": "2026-10-21T20:05:31.375Z",
   "reportName": "Synthetic Market Asset QA",
   "reportId": "report-market-assets-synthetic-qa",
   "reportingPeriod": "Q3 2026",
   "revision": 1,
-  "snapshotHash": "07cbc6b7640ccabffd786581f1aeb9f24d0c957fbb7b10257cbc94263735fd08",
+  "snapshotHash": "2da2cac3bdae986020b103d547cb8d645a0f7cfe5def35738ee15b9cca3b63a0",
   "templateVersion": "1.3.0",
   "templateChecksum": "7cb754855e76bb3edeb940f874544a9c28bf39d9ef923ad99f78ce52f0afad49",
-  "generatedAt": "2026-10-09T20:39:41.726Z",
+  "generatedAt": "2026-10-21T20:04:11.791Z",
   "selectedMarkets": [
     {
       "id": "i55-corridor",
@@ -39,7 +39,7 @@
       "market": "I-55 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -84,8 +84,8 @@
       "market": "I-55 Corridor",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "5c80222883fb600eefdeb29f217e21656727c20ba71636baf951b95915472a66",
-      "bytes": 8802,
+      "checksum": "150c98ae9de7395fc32bb50bbb521bfd14f84e69257a55626fe7152eac12bf74",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -111,8 +111,8 @@
       "market": "I-55 Corridor",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "f4113a0e68e3dc7e687057c2220b9cbae3bfa2f812fa8eefd42767c73de8db5a",
-      "bytes": 10690,
+      "checksum": "a84cf6cdd572a613f0612b7ee1a11bab5ff6b2e6ffa5176ae30644622b1602ac",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -120,8 +120,8 @@
       "market": "I-55 Corridor",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "9b5d4494bb61d535e957663c49ebf56b966d5497ef65bdd43ee197d74d1c45d1",
-      "bytes": 11084,
+      "checksum": "4c3f7ffc5596d338a13f13fb4b15b4805816b6949f18fd71c10942b4ce09569e",
+      "bytes": 11083,
       "warnings": []
     },
     {
@@ -129,7 +129,7 @@
       "market": "I-55 Corridor",
       "category": "narrative",
       "format": "docx",
-      "checksum": "6991a5df0d13179baccba38d68c7534fda6106d08c2b14225d0f84f5427f9815",
+      "checksum": "472d3c6d3485fdaa3aedf4862759396328e3c58f00a6f44a7acc01f6cf8cfed7",
       "bytes": 1843,
       "warnings": []
     },
@@ -174,8 +174,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "60f917dbc190e7d52ff8a9ebfadacf93e942f8c94c1c9570405ba95b9de57304",
-      "bytes": 10215,
+      "checksum": "eb883e78a5953499f9700f015a41b3989a18c1c2ef64d4da5c09a32a36e527e3",
+      "bytes": 10212,
       "warnings": []
     },
     {
@@ -194,7 +194,7 @@
       "market": "O'Hare",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -203,7 +203,7 @@
       "market": "O'Hare",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -239,8 +239,8 @@
       "market": "O'Hare",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "326729a99f3630000154e82794800ce227241660a891f3ac7c5fe9cb647b7fcf",
-      "bytes": 8802,
+      "checksum": "f1d0a005d2a6ec620ce369094ad6863d0250e7c51b255dd2b79ecc56d50f967a",
+      "bytes": 8799,
       "warnings": []
     },
     {
@@ -266,8 +266,8 @@
       "market": "O'Hare",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "8350ab13430b566d9a2b5e6259dda896c2a6f3d92cac4e5a0b9c9f04cb2bda02",
-      "bytes": 10691,
+      "checksum": "847d647997201a5ed51ebcf48df3398b5ad2e684dccaff103b9ff2fc9e5c6280",
+      "bytes": 10689,
       "warnings": []
     },
     {
@@ -275,8 +275,8 @@
       "market": "O'Hare",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "f64949f54f8f457708d45a1b7106b618c4612319696cac471006422491c1be55",
-      "bytes": 11083,
+      "checksum": "79f8d573257add0b464c343db53a9e957a260a2bc8cde625f64865b5ad08763c",
+      "bytes": 11082,
       "warnings": []
     },
     {
@@ -284,7 +284,7 @@
       "market": "O'Hare",
       "category": "narrative",
       "format": "docx",
-      "checksum": "b2c6af21eea64d4ecd8503952e83477310e87c425bd8656cb0c0955eedadd715",
+      "checksum": "d736b6763f15f46145bfffe6aa6a740c35b572c55cc7fa0016e07a26fa25f3e5",
       "bytes": 1843,
       "warnings": []
     },
@@ -329,8 +329,8 @@
       "market": "O'Hare",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "fe87a43a06fded6614310078e85c0e64ef2722b5a3fc9eebf27fc580926b9164",
-      "bytes": 10215,
+      "checksum": "941bf24cf02a9dfe89df9723a0bc7eaf22eda1d35ab0be38a816aec83a473779",
+      "bytes": 10214,
       "warnings": []
     },
     {
@@ -358,7 +358,7 @@
       "market": "I-80/Joliet Area",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -376,8 +376,8 @@
       "market": "I-80/Joliet Area",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -394,8 +394,8 @@
       "market": "I-80/Joliet Area",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "109149e002dbccddfa28d78a181a8b55e0b1bb98f2268b0db63426057d29831d",
-      "bytes": 8803,
+      "checksum": "583351b9d858a11b4d2946e5818d11f29cbcfef860edefbed6c2d8408ec42bdc",
+      "bytes": 8801,
       "warnings": []
     },
     {
@@ -421,8 +421,8 @@
       "market": "I-80/Joliet Area",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "c6559b51c4217345befe7f69b073e9ff9b33a81aed7ef662e20c39706e1318d4",
-      "bytes": 10690,
+      "checksum": "9eb9beb5b050b45fbaa17456504825610556cbc44cbe110be98ccb163dcf5172",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -430,8 +430,8 @@
       "market": "I-80/Joliet Area",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "88b548aa4219a6599138fe378c9a05d0bc930889ccf74fb960e4647c5848167c",
-      "bytes": 11086,
+      "checksum": "f5e223bdf827269007cc6e3b99b0d3ce13b5c4e1cb54833c569f7c14b1bfd3bc",
+      "bytes": 11085,
       "warnings": []
     },
     {
@@ -439,7 +439,7 @@
       "market": "I-80/Joliet Area",
       "category": "narrative",
       "format": "docx",
-      "checksum": "bf8cef7035cd434e6f19585c701c74ce4ba071afe05fa23f455db88e418e6d18",
+      "checksum": "527f0320368754edd462a68cab20a8b09c2fa2befdf5edd9d3aebce1dba231df",
       "bytes": 1844,
       "warnings": []
     },
@@ -484,8 +484,8 @@
       "market": "I-80/Joliet Area",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "8c7d8fc1ac9e4423de7dae6c18e71c7d67c290d3a74cf799e065884b64a9e97d",
-      "bytes": 10215,
+      "checksum": "b8e7e608dfa06664ac901f28b97de1e67a1a0bc106d62d1a0b9d158b9e8e5ab7",
+      "bytes": 10214,
       "warnings": []
     },
     {

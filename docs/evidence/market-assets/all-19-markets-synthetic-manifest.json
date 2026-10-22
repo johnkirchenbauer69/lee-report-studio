@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "exportedAt": "2026-10-09T15:22:49.944Z",
+  "exportedAt": "2026-10-21T20:08:12.261Z",
   "reportName": "Synthetic Market Asset QA",
   "reportId": "report-market-assets-synthetic-qa",
   "reportingPeriod": "Q3 2026",
   "revision": 1,
-  "snapshotHash": "0f37f6a4ede14dd871139f09ee0b0681ae1bce3c185e67f38b136b71b9354b45",
+  "snapshotHash": "2da2cac3bdae986020b103d547cb8d645a0f7cfe5def35738ee15b9cca3b63a0",
   "templateVersion": "1.3.0",
   "templateChecksum": "7cb754855e76bb3edeb940f874544a9c28bf39d9ef923ad99f78ce52f0afad49",
-  "generatedAt": "2026-10-09T15:18:05.743Z",
+  "generatedAt": "2026-10-21T20:04:11.791Z",
   "selectedMarkets": [
     {
       "id": "overall-market",
@@ -103,7 +103,7 @@
       "market": "Overall Market",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -148,8 +148,8 @@
       "market": "Overall Market",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "f6a8915fc22dffcb9544dddfeee9cf156255d6aeb24dd22df01bca4cdf5d97f9",
-      "bytes": 8799,
+      "checksum": "dbd5cc27fc25d959f9c93917ab2b9382c665c93f8f448ef11862851488b041b1",
+      "bytes": 8797,
       "warnings": []
     },
     {
@@ -175,8 +175,8 @@
       "market": "Overall Market",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "3e2ec84d2dc35fcdf3569c77beab30bd0a962ce51a4f3fa88a56ad19224f61da",
-      "bytes": 10692,
+      "checksum": "46cf758f26844684cb1ba9f1e14efefcd16504ab8bb33931fbd6e58f9a6d52d4",
+      "bytes": 10689,
       "warnings": []
     },
     {
@@ -184,8 +184,8 @@
       "market": "Overall Market",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "ab6b1f4b6952f3935c8a910a606c1c945785d94eb615fb562e6efd67168c4e33",
-      "bytes": 11118,
+      "checksum": "950783071eccbe50c0aa3d96897105f4d0243727330f307e4bd4b0b917492269",
+      "bytes": 11117,
       "warnings": []
     },
     {
@@ -193,7 +193,7 @@
       "market": "Overall Market",
       "category": "narrative",
       "format": "docx",
-      "checksum": "960898f5b4a0eda6a262cd3afbd7fee208548655a945a597aa60601c764e83d1",
+      "checksum": "2c2bb9fc558c5928019b18fb14e117f5d58404ebdde179984ce3721c4760e352",
       "bytes": 1838,
       "warnings": []
     },
@@ -238,8 +238,8 @@
       "market": "Overall Market",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "3771916c40332ad569a403d0232d1b463a794d09d72945ba4595f86fdc24ccbc",
-      "bytes": 10215,
+      "checksum": "4cbbbfd9a957c9f63859d2467e77d092fd77f933ab7a8fdffe6bacd3055d0346",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -267,7 +267,7 @@
       "market": "Central DuPage",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -285,8 +285,8 @@
       "market": "Central DuPage",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -303,8 +303,8 @@
       "market": "Central DuPage",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "d474b37c7316dcfdb8cd2919bcee12973308305c54a180472a592c700def7fa1",
-      "bytes": 8802,
+      "checksum": "73d948814c1acb329acd05beaebb7ee6ff921fcccdef6b204bdc3de569bbf9f3",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -330,8 +330,8 @@
       "market": "Central DuPage",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "8857abfc6c829071e1d0d8b13a9703c40f9c0befa5c1643abd47d0e7afba4c08",
-      "bytes": 10689,
+      "checksum": "81bae666a71b351cb4f563e137550dbcc82eccc00457a1353321050f3b9478c1",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -339,8 +339,8 @@
       "market": "Central DuPage",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "19fcc83798c9bbf59f7bcdb1b9ef4cc1fcc1027ba5b26cd2a2f5fe9b5a1e2f7c",
-      "bytes": 11074,
+      "checksum": "2db5619bd1e09ce716353c67ba7f3c374fed3db0a1431c56b3fab43649bb13da",
+      "bytes": 11073,
       "warnings": []
     },
     {
@@ -348,7 +348,7 @@
       "market": "Central DuPage",
       "category": "narrative",
       "format": "docx",
-      "checksum": "deae496af619ef76efb949c4718a6c06d9d3b13da060706f9a8a9efc796778a8",
+      "checksum": "b5c9486ad024b8451a37be2a119248dc7f33ee63a0243662baa086afe580efed",
       "bytes": 1843,
       "warnings": []
     },
@@ -393,8 +393,8 @@
       "market": "Central DuPage",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "9bc4308da4e4af4d0115775087e489621c80246fab609d15c4d51b9f88594244",
-      "bytes": 10216,
+      "checksum": "cc1d0c4385108eab0114eb76396ac5c4d9a6b320a2ee0422dbf0090e8a5604c3",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -458,8 +458,8 @@
       "market": "Chicago South",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "2e4ccb7eabbc1e7f8b0b89894563dbf099732f5db654ce388b93cf29bd7940e9",
-      "bytes": 8801,
+      "checksum": "f84604774b4914251f9cd5e749e0113044dae82bc7a2a1b4e3d433d26b1be40c",
+      "bytes": 8799,
       "warnings": []
     },
     {
@@ -485,8 +485,8 @@
       "market": "Chicago South",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "5fe77061749a1a6645a221300e9a4ad996ca2011fa8eb42117393510626cf0d5",
-      "bytes": 10690,
+      "checksum": "ecca94604b1427b1623086712aa772ef3efbb530f9652834c2a42dd0c6ec503a",
+      "bytes": 10688,
       "warnings": []
     },
     {
@@ -494,8 +494,8 @@
       "market": "Chicago South",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "c6f919e89e515d3108c036511e419b7ad593decc882fdd5bed9cc0a164abb8f0",
-      "bytes": 11086,
+      "checksum": "8302fc502b8d6ee82c9abe68119c669d074127db4e1ed9b3e8922b5b48d19efd",
+      "bytes": 11085,
       "warnings": []
     },
     {
@@ -503,7 +503,7 @@
       "market": "Chicago South",
       "category": "narrative",
       "format": "docx",
-      "checksum": "4de63994907491f5e91e4050a4142af33b6154598455fedca47034806ff02a9c",
+      "checksum": "e6c29503734db9a9c5151e992c571f176e28a21699e944d7a2744c5e44e21655",
       "bytes": 1842,
       "warnings": []
     },
@@ -548,8 +548,8 @@
       "market": "Chicago South",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "cb87e587e8a6d5fd16416e3471d25b57e7265ff21330f548b37dde5325fcf163",
-      "bytes": 10216,
+      "checksum": "17f5b38c0aa35b31958c69db170d4c9c442caecbd6e33b1ab6d9cc9e87a22eb2",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -577,7 +577,7 @@
       "market": "Fox Valley",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -595,8 +595,8 @@
       "market": "Fox Valley",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -613,8 +613,8 @@
       "market": "Fox Valley",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "1c690c91a4e9bf8512d2b64deca9d23f919157103e2e5651129a16f9a1d6f6c3",
-      "bytes": 8800,
+      "checksum": "d18bbfdb7a4b45156b8032433366a5e87870ab38e2a7d033e19de3ee4148b5ec",
+      "bytes": 8797,
       "warnings": []
     },
     {
@@ -640,8 +640,8 @@
       "market": "Fox Valley",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "a966c647bc38ee556031c6b6bbe71e85e126a4b49891a1ba9d6c077c2fba8671",
-      "bytes": 10689,
+      "checksum": "8708fad0d71d343fd1041a513cb12054f6b177250cb7cbe624ccdfe4a8a676d8",
+      "bytes": 10686,
       "warnings": []
     },
     {
@@ -649,8 +649,8 @@
       "market": "Fox Valley",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "42a41d93c0a8825ec700614d904f310c09e2aec74ef81bc48e4ebe52f1da2488",
-      "bytes": 11080,
+      "checksum": "48fac5762d56b620dbcd26f9f7d9bd3417c259eb9fe4fd5775a0836b1a228c11",
+      "bytes": 11079,
       "warnings": []
     },
     {
@@ -658,7 +658,7 @@
       "market": "Fox Valley",
       "category": "narrative",
       "format": "docx",
-      "checksum": "b68567cd2c5802f7dd3e930fc39e27e41aa247663ddc83dd4ad163ee2dd78f38",
+      "checksum": "71bb829cbc46f1749ca0df568ddf81df20e30823402edf5eb38b31eebd158b78",
       "bytes": 1839,
       "warnings": []
     },
@@ -703,8 +703,8 @@
       "market": "Fox Valley",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "ab1d74dcdcb8e1d5c4b9ce7512bb8f2038f28ce3dd76206fbfa457a4da97af6b",
-      "bytes": 10212,
+      "checksum": "c51fd52bca9711fca863bfe437e1b729b69b8b8f00052363d998ae86e317d188",
+      "bytes": 10211,
       "warnings": []
     },
     {
@@ -768,8 +768,8 @@
       "market": "I-55 Corridor",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "a081112a93dbadf93a1d8afb47697996087276bc4fa0b6dee83bd0c654333a57",
-      "bytes": 8802,
+      "checksum": "732f641f52a0c60013bf845e521e8de607e7efc5934fd043909b18cfb279da0a",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -795,8 +795,8 @@
       "market": "I-55 Corridor",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "99216031038de5b3691e8c8470dc7bcf0024fc6b8d25b1bf530bf10e8bc2888b",
-      "bytes": 10690,
+      "checksum": "015b76d79295379f585e6b07dc990931725cd7a4aaaac6915efe40e44879c2ac",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -804,8 +804,8 @@
       "market": "I-55 Corridor",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "ca3c61fa9ad18a22e40b64751bc55d39dd292ca080fa4d2dc73cbbd1d640133d",
-      "bytes": 11084,
+      "checksum": "d1ff7d9e6df4f90ec601d3a26ce4904bc5b04fc1be2cb1917bf372332c89624b",
+      "bytes": 11083,
       "warnings": []
     },
     {
@@ -813,7 +813,7 @@
       "market": "I-55 Corridor",
       "category": "narrative",
       "format": "docx",
-      "checksum": "870e0632525b48eb8a7de30d6b502677539f60a3cbdeb3cc70d3a399a6d7c731",
+      "checksum": "d2a4677debfda85ae720585d7ef9b4f391573217a657c2a1d4c9868664755ca1",
       "bytes": 1843,
       "warnings": []
     },
@@ -858,8 +858,8 @@
       "market": "I-55 Corridor",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "4d2ce19a10e0292ffcf59f84344bfcf8b309b3a047492eb6469d560b1871111f",
-      "bytes": 10215,
+      "checksum": "50c0409739050cc21e99799686e8ec8c5f372b831020d1fa3a68f774df12f276",
+      "bytes": 10212,
       "warnings": []
     },
     {
@@ -878,7 +878,7 @@
       "market": "I-57 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -887,7 +887,7 @@
       "market": "I-57 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -923,8 +923,8 @@
       "market": "I-57 Corridor",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "02f976f16d98be4e434332c2e1a393078611ca617113b9bdec2e0956314befb6",
-      "bytes": 8803,
+      "checksum": "08d1c13311d0ba74ad26bbeb79530b9f4e4d67fcb192943c695eb0b785d66847",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -950,8 +950,8 @@
       "market": "I-57 Corridor",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "ef69e2668abf3bf398eeb3832f453625b0e3e81e404afe584d6db403eabd6796",
-      "bytes": 10690,
+      "checksum": "b9456dc1a1b61b16c1c3e094fb58b4d7ba15aaab0443f6a777dfe890874fe23a",
+      "bytes": 10688,
       "warnings": []
     },
     {
@@ -959,8 +959,8 @@
       "market": "I-57 Corridor",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "e9fd67a4260c7f610f756fe0a30dd5b77953644bce122ce06969ae5d5913a476",
-      "bytes": 11072,
+      "checksum": "4645db68b4273bd2f16178883998df3e33ff1c10e2457dbb04c1d921df2f5d2a",
+      "bytes": 11071,
       "warnings": []
     },
     {
@@ -968,7 +968,7 @@
       "market": "I-57 Corridor",
       "category": "narrative",
       "format": "docx",
-      "checksum": "a71c17e84128913253f6519142158cbb014507ac1dc4f4df88f36cd1e59fb930",
+      "checksum": "5632a91e5cf4e8ccd5cebeb00d5344f6b60b18c28db5dd958d726dd63fe4ae03",
       "bytes": 1843,
       "warnings": []
     },
@@ -1013,8 +1013,8 @@
       "market": "I-57 Corridor",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "1d4e0bfc1278d04173a4d7481b06a0bf924937e97e01e82582ffc9b87409cefa",
-      "bytes": 10215,
+      "checksum": "f31f11d7615331a867f47b82928bbe04728bb81d3796dcc7260c7fad4945a2e7",
+      "bytes": 10212,
       "warnings": []
     },
     {
@@ -1033,7 +1033,7 @@
       "market": "I-80/Joliet Area",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -1060,8 +1060,8 @@
       "market": "I-80/Joliet Area",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -1078,8 +1078,8 @@
       "market": "I-80/Joliet Area",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "b96b13173b0bc936cd540fa6e6bdc13cb51dbd7a4f6b1f4254661862e84db439",
-      "bytes": 8803,
+      "checksum": "9fb45f9463146fdc15d3d694a02527ea6057da9f6a87f0f0fb21f8cab949ccb1",
+      "bytes": 8801,
       "warnings": []
     },
     {
@@ -1105,8 +1105,8 @@
       "market": "I-80/Joliet Area",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "153fc607606f85f87de4bb5e720be204aa547dedaa649d2d8ba669525cb56adf",
-      "bytes": 10690,
+      "checksum": "a42c0ffdce16f126e34800df17f9a7a6bdec44834ace2278fff7aafb22779493",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -1114,8 +1114,8 @@
       "market": "I-80/Joliet Area",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "fd80abdcf9e2a0704851fef1ae926390156670e3361f4a8551d9024f39902ec2",
-      "bytes": 11086,
+      "checksum": "1f9578d99964e96c892e691895c5334729f9a7caff6358a161f86ecbd4f3bcd9",
+      "bytes": 11085,
       "warnings": []
     },
     {
@@ -1123,7 +1123,7 @@
       "market": "I-80/Joliet Area",
       "category": "narrative",
       "format": "docx",
-      "checksum": "1b300e7b7a5b3c2b7eb335df16567310e3824037947d824e2d23003bfc306e01",
+      "checksum": "fe85662df45d343e8127c68e8c89abacecfc903f4e4722975a6166a2507e5a1d",
       "bytes": 1844,
       "warnings": []
     },
@@ -1168,8 +1168,8 @@
       "market": "I-80/Joliet Area",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "d57cb63d4390b1e0ebd60291459a16d89d0832f13380cc378d74231b2e1a0d9b",
-      "bytes": 10215,
+      "checksum": "52ecdecddbf7388850491926dceb78a9d0917f1150e094eed16f64e9a80587ee",
+      "bytes": 10214,
       "warnings": []
     },
     {
@@ -1197,7 +1197,7 @@
       "market": "I-88 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -1215,8 +1215,8 @@
       "market": "I-88 Corridor",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -1233,8 +1233,8 @@
       "market": "I-88 Corridor",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "7a8cf1d3969c03add2df6522080b9a683960d985b45c1b1932fd15937e18840a",
-      "bytes": 8802,
+      "checksum": "0b793407d2b67c263786b48fabd52cca99136dc2447b7d7dfac1ee7115eace5d",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -1260,8 +1260,8 @@
       "market": "I-88 Corridor",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "de5f8ec4933501363979f937dd4f8a57362e3c68aed804ed704bcf9f6bdac9f2",
-      "bytes": 10690,
+      "checksum": "83bbdca0ac49c4288404b392d72976b91f4ef7d9851abe02b4bf676b5832ccc1",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -1269,8 +1269,8 @@
       "market": "I-88 Corridor",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "76650e408621fdad5874d573f82cae658d5cc7cbc25b92a6a7c403a86612627c",
-      "bytes": 11083,
+      "checksum": "de0c6f6a8a62bdece9d654f72c8e003f9fbc5e4b6d9597ebfa02db42d87c3b03",
+      "bytes": 11081,
       "warnings": []
     },
     {
@@ -1278,7 +1278,7 @@
       "market": "I-88 Corridor",
       "category": "narrative",
       "format": "docx",
-      "checksum": "6ace3f1160a16028a2bf7b40fcd11ea89e8adf9ab5cd279f399398fdc748d396",
+      "checksum": "336e579448b5e41d8c79d5c2d48a1c1c943abbfd9952b8b1effa95aacf32d561",
       "bytes": 1842,
       "warnings": []
     },
@@ -1323,8 +1323,8 @@
       "market": "I-88 Corridor",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "a6173579a0a5777ff39bd7184a5791b500d0944f3eb13fc9d7de86d484618e64",
-      "bytes": 10215,
+      "checksum": "6fcd9a5170655e55b0c02b15e2e2e982bcb73c1953972c6a64d6ee4df180dac5",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -1343,7 +1343,7 @@
       "market": "Lake County",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -1388,8 +1388,8 @@
       "market": "Lake County",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "76beccb0ce446d2dd4a0d9eb1ef773bd1a67670af328203eae036672572ba84f",
-      "bytes": 8799,
+      "checksum": "e9a4c43c951512dc3c16273d99bbd3f6eb5ce49296391b3d60c3df913a35f312",
+      "bytes": 8797,
       "warnings": []
     },
     {
@@ -1415,8 +1415,8 @@
       "market": "Lake County",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "09b0a5b700df703be1b2f9252b399dc170bd5e18d258936fb4131f953943b280",
-      "bytes": 10687,
+      "checksum": "13077bb43c78443ad3b35774ee454a89d360cb55acbe4d9d5ec619d360f8caec",
+      "bytes": 10684,
       "warnings": []
     },
     {
@@ -1424,8 +1424,8 @@
       "market": "Lake County",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "88c41ba5a97511a84517d741e65ca01496df836155a562cc41a635ec3d883e42",
-      "bytes": 11063,
+      "checksum": "4fe6fad539a8c04c23ff759be13350b5ecd9cd0591746104af53b3d98dc7ef81",
+      "bytes": 11062,
       "warnings": []
     },
     {
@@ -1433,7 +1433,7 @@
       "market": "Lake County",
       "category": "narrative",
       "format": "docx",
-      "checksum": "ff49f62447b4001328698c0506aa5965a724efcf87aa85b7e1d0af0c92b2fc86",
+      "checksum": "abf0f5b3375de7e5f31aeafe58f7c42413c50e084f5bf976489a377f53536d58",
       "bytes": 1841,
       "warnings": []
     },
@@ -1478,8 +1478,8 @@
       "market": "Lake County",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "cc545e43ec8ce4a1c1d3ceaa8103d8d7bfa64fe31f11bd177c6b2e1b4d759e2e",
-      "bytes": 10211,
+      "checksum": "2062bf903139e57391618ab3727830335951861c7abf4ae41e126914953c3f4f",
+      "bytes": 10208,
       "warnings": []
     },
     {
@@ -1498,7 +1498,7 @@
       "market": "North Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -1507,7 +1507,7 @@
       "market": "North Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -1525,8 +1525,8 @@
       "market": "North Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -1543,8 +1543,8 @@
       "market": "North Cook",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "4008ff6de3e3a46db883f500b394bb044d90eada0e102848f8b0029cc2546405",
-      "bytes": 8800,
+      "checksum": "3cfb3da6c1992c14511463770f479f7c8c157353184d16eefbe7f320a4f5a964",
+      "bytes": 8798,
       "warnings": []
     },
     {
@@ -1570,8 +1570,8 @@
       "market": "North Cook",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "49311b5932709806895cd733ee9fe0852f74a9e7b87a2ddb2e7987a68343ee99",
-      "bytes": 10688,
+      "checksum": "8e82da65c3dab639060ef05bc1e431e0ce34914c70b9228cad0340c87ba5253d",
+      "bytes": 10686,
       "warnings": []
     },
     {
@@ -1579,8 +1579,8 @@
       "market": "North Cook",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "506897b6f7c72d7325ce7fc36fb66b67011d5523ce2cc78ead42e33527b478bc",
-      "bytes": 11061,
+      "checksum": "d25e8b7bf42c9ec0e6fe2342aa31480fa338d5fe46a8109410c3de0688393138",
+      "bytes": 11060,
       "warnings": []
     },
     {
@@ -1588,7 +1588,7 @@
       "market": "North Cook",
       "category": "narrative",
       "format": "docx",
-      "checksum": "6eae35fd631d05a4e44fa3eb8f96cc60267ab0d6fae884775cd02403cb690905",
+      "checksum": "20daaaf7d51d83e4517e6f567cc01462ada16789c5f00e044ead04fd393db2e8",
       "bytes": 1840,
       "warnings": []
     },
@@ -1633,8 +1633,8 @@
       "market": "North Cook",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "cb4f03b9ea6c97cc4d29596f35849e37d7c9e74ebd05b7797bc67d436e13587b",
-      "bytes": 10213,
+      "checksum": "ad845670f31e4149c3101c679cec428035d3e2df37847da38eb713264ec56395",
+      "bytes": 10211,
       "warnings": []
     },
     {
@@ -1680,8 +1680,8 @@
       "market": "North DuPage",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -1698,8 +1698,8 @@
       "market": "North DuPage",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "bd87e1e607e627cc070182368364c1b2c3c5b30234205ba59d15887a8efdcbac",
-      "bytes": 8802,
+      "checksum": "52b030f7749b69a64cf593adb68abc77565f7b5fd3e8af84226cedbaa680c1b8",
+      "bytes": 8799,
       "warnings": []
     },
     {
@@ -1725,8 +1725,8 @@
       "market": "North DuPage",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "08013b7961e9b93ab410771e0e9bc4d00f7a0f1a8aa12f627e3eb0211587d00c",
-      "bytes": 10689,
+      "checksum": "7925256299b35b30949ef41b9748719538d9e23995373d8f34523dbf022ea153",
+      "bytes": 10687,
       "warnings": []
     },
     {
@@ -1734,8 +1734,8 @@
       "market": "North DuPage",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "294c81e0f06533bb40516935d4b63235b3cd09dea990b9cd5b2b1bbde13bf639",
-      "bytes": 11080,
+      "checksum": "390ebd209a31500023f192cf1bb2faa921a430a926e8c1b557e55caec48368be",
+      "bytes": 11078,
       "warnings": []
     },
     {
@@ -1743,7 +1743,7 @@
       "market": "North DuPage",
       "category": "narrative",
       "format": "docx",
-      "checksum": "e1026bd7ac7d786ab696d89d1389d7986714e275729207b9e1752d25aa575c8d",
+      "checksum": "ffe5cf6002d1777ca65d9f0a2e2b0260d2cba4af5eac0c035f11d36093cbb730",
       "bytes": 1842,
       "warnings": []
     },
@@ -1788,8 +1788,8 @@
       "market": "North DuPage",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "3f650f98a11a344f6f1064535edf1336eac79ba159fcb1576498221f4ab20dc6",
-      "bytes": 10215,
+      "checksum": "5f071a49f0b0ae0eaef020931da0a5c841fc26f9841309696f0ad11345b818c0",
+      "bytes": 10212,
       "warnings": []
     },
     {
@@ -1835,8 +1835,8 @@
       "market": "North Kane",
       "category": "charts",
       "format": "png",
-      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
-      "bytes": 167972,
+      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
+      "bytes": 167984,
       "warnings": []
     },
     {
@@ -1853,8 +1853,8 @@
       "market": "North Kane",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "6b479a8e3e4c9faadbefd6e8711b3d6c6b40ee563a05084b9392d3a83892d3fe",
-      "bytes": 8800,
+      "checksum": "9273dc2db5e7960466af916383399750140f30d3004a986bf4d61383ea979903",
+      "bytes": 8797,
       "warnings": []
     },
     {
@@ -1880,8 +1880,8 @@
       "market": "North Kane",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "66973173a6b9684553f863b01996cbe52d80a7b20e255ad1c42d9a8a534264f1",
-      "bytes": 10688,
+      "checksum": "34d1f0fea7e004cd8cda409063dabada8cf512c8d1018b94deb1d5ac5f180218",
+      "bytes": 10686,
       "warnings": []
     },
     {
@@ -1889,8 +1889,8 @@
       "market": "North Kane",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "414ccd3920791d75fdfd3cc5c11023710984aedf5ad0bcebb0cc8c2ced853112",
-      "bytes": 11079,
+      "checksum": "40ca320c2ef9c03c7a019b8cd60db62b879619b8bc2dfc977e1fa2d7e8376d1b",
+      "bytes": 11078,
       "warnings": []
     },
     {
@@ -1898,7 +1898,7 @@
       "market": "North Kane",
       "category": "narrative",
       "format": "docx",
-      "checksum": "914f712de1194705bc4ddafc85c29b37228d0bdefe83f527ecae9e3ded7cda8d",
+      "checksum": "613301e31a0946604cfa10748dcadaf97284cb12b43a860f58fed32f6a3c84ae",
       "bytes": 1839,
       "warnings": []
     },
@@ -1943,8 +1943,8 @@
       "market": "North Kane",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "63ee1fec4e066e9b08d34340916ded5cc455e19617c795bd2274af00f9034ae6",
-      "bytes": 10214,
+      "checksum": "d13029794e949be4b9bbc4035cf7c3179ae0de57afbc8a5f35dcc046674e7c83",
+      "bytes": 10212,
       "warnings": []
     },
     {
@@ -1963,7 +1963,7 @@
       "market": "Northwest Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -1972,7 +1972,7 @@
       "market": "Northwest Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -2008,8 +2008,8 @@
       "market": "Northwest Cook",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "0b0a33625148c7d7757e5589f0243fcce7514fc1a76983de87f9c63f6492c1e8",
-      "bytes": 8803,
+      "checksum": "8fe84518f7f9834dfb28054272e85a8e5cc9bcfaf49bcb23810908559777698e",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -2035,8 +2035,8 @@
       "market": "Northwest Cook",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "efdf15e95c1a1d4248a10cd0f5d68bd28914ac669f17ba0d5d44010edd8a4ab9",
-      "bytes": 10691,
+      "checksum": "f6953fc30b876458bd38f3fa023859834722d627bb11ed54d733dd13fbcd8eca",
+      "bytes": 10688,
       "warnings": []
     },
     {
@@ -2044,8 +2044,8 @@
       "market": "Northwest Cook",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "e9267882366874c713e9b93450fd437fde28ceccb07669129dd1ecbab279f3cd",
-      "bytes": 11066,
+      "checksum": "d0e4d21be27b197e02ec6483ec226b7575d7870d793414e14e78e24b374e9568",
+      "bytes": 11065,
       "warnings": []
     },
     {
@@ -2053,7 +2053,7 @@
       "market": "Northwest Cook",
       "category": "narrative",
       "format": "docx",
-      "checksum": "d68787ad6324a2c5b84dfad9f986b4e8c1a4b1614de50e08856cb256e948cef8",
+      "checksum": "a2eb92c2517489b651f4af8dc371346fbdf15cb8c38574d93c2353f053803c63",
       "bytes": 1843,
       "warnings": []
     },
@@ -2098,8 +2098,8 @@
       "market": "Northwest Cook",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "79690683133d377bfb5740fd781305a34e5504b62acc5129393bc3e3f9c0c203",
-      "bytes": 10215,
+      "checksum": "3c34188540fa7fd3044475d569b99d81d4895f18fc343d2f9695a5dc4ebf71de",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -2118,7 +2118,7 @@
       "market": "Northwest Indiana",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -2127,7 +2127,7 @@
       "market": "Northwest Indiana",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -2163,8 +2163,8 @@
       "market": "Northwest Indiana",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "0e5ae052cb52a66e553e1b66fb63c61e1328657d46ebd952f11c4a03c801420e",
-      "bytes": 8802,
+      "checksum": "ed6cb26883aeaacd671f2bf11a6600791f8edce979be915048c2a1abb6777b46",
+      "bytes": 8799,
       "warnings": []
     },
     {
@@ -2190,8 +2190,8 @@
       "market": "Northwest Indiana",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "552d069461a4f708783c3c7eeec74ce6b6384053168cbf532caa40e0ad38e925",
-      "bytes": 10693,
+      "checksum": "9b07247eb0e47c45332b21dadde11af59c33416bd97e9048b195af7a6c432a71",
+      "bytes": 10690,
       "warnings": []
     },
     {
@@ -2199,8 +2199,8 @@
       "market": "Northwest Indiana",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "6cdba1424d8ace61fbca010e3263f35f20e5bcefaa79fae641df98de39fe0f7b",
-      "bytes": 11076,
+      "checksum": "6037e07c69ef2465668d9c7922e9fa84d944836c7c65cf9bc8c4caa4c538de41",
+      "bytes": 11075,
       "warnings": []
     },
     {
@@ -2208,7 +2208,7 @@
       "market": "Northwest Indiana",
       "category": "narrative",
       "format": "docx",
-      "checksum": "ae628da5fdeb0b2bf04da9a0f35c51f4b9134330ca79abdce28e05ccb317d5ee",
+      "checksum": "a39a9b5ff27974381986f6615700d22ce69b733a1db5d7247a42e7b2bdcae1da",
       "bytes": 1842,
       "warnings": []
     },
@@ -2253,8 +2253,8 @@
       "market": "Northwest Indiana",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "aac305f6354d1dfe638ce5a6d567e3f52337a286856f2e8e58e42dd9fd7bcf3a",
-      "bytes": 10216,
+      "checksum": "a887c4ca9eabe2a13ba1d05ed16c890630395821c11f39a5f3d51d54e2c0dfac",
+      "bytes": 10214,
       "warnings": []
     },
     {
@@ -2273,7 +2273,7 @@
       "market": "O'Hare",
       "category": "charts",
       "format": "png",
-      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
+      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
       "bytes": 230569,
       "warnings": []
     },
@@ -2300,8 +2300,8 @@
       "market": "O'Hare",
       "category": "charts",
       "format": "png",
-      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
-      "bytes": 167972,
+      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
+      "bytes": 167984,
       "warnings": []
     },
     {
@@ -2318,8 +2318,8 @@
       "market": "O'Hare",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "06c90bfa607eeca25a582ba933305b43744ab117fb6151b3492cc7197964c1f5",
-      "bytes": 8802,
+      "checksum": "753c797d0482d4336498e68893e66da7ac9a3b250c1568ea592054d12e6067b0",
+      "bytes": 8799,
       "warnings": []
     },
     {
@@ -2345,8 +2345,8 @@
       "market": "O'Hare",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "3a5d5fa9cb8c9f3a27544ddfd40fbbae62d53a69fb0fb9cd6b7ca75a5a275cf0",
-      "bytes": 10691,
+      "checksum": "d67a2e5c3c21e4201a7b90d6cc27aba94e061ac4c98bed6897ee003b49fbc1d6",
+      "bytes": 10689,
       "warnings": []
     },
     {
@@ -2354,8 +2354,8 @@
       "market": "O'Hare",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "5d5e65bf22488dddb01f2ba02df53df00676135b92d3456088091562d0d0bc3e",
-      "bytes": 11083,
+      "checksum": "4a3fa75e62f5046f6866ce72ef012f4774a6fb39823567364c6aa67e620dd9b6",
+      "bytes": 11082,
       "warnings": []
     },
     {
@@ -2363,7 +2363,7 @@
       "market": "O'Hare",
       "category": "narrative",
       "format": "docx",
-      "checksum": "164d3d74e563d3f2365753112d3708a04b13cc081b9293e50eff6850286d83a4",
+      "checksum": "8e7d3874bab04b24797b473d0603187f283f7ec3e2105666c228505cbeceadd3",
       "bytes": 1843,
       "warnings": []
     },
@@ -2408,8 +2408,8 @@
       "market": "O'Hare",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "25699f93c48743a78b9e7ce5d707d939a9709692fa6941a67c9eb64b86c16135",
-      "bytes": 10215,
+      "checksum": "5da10d9bd6f40b5f47aecab3e12ac182219239109896eba5861a4a28d954ebe8",
+      "bytes": 10214,
       "warnings": []
     },
     {
@@ -2428,7 +2428,7 @@
       "market": "South Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "5eccdfbe2ca44e3ee1ccc722951b330e8a1f563d16933c566fe641f33a746c25",
+      "checksum": "29265f143814e094dce856b321cbb9228d2bf0ffab59600f7ef2abeb2b1db6ae",
       "bytes": 230569,
       "warnings": []
     },
@@ -2473,8 +2473,8 @@
       "market": "South Cook",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "173da5bddfb82a5215c53fcc079ab686e16f686d6572d044ea8500196e02a36f",
-      "bytes": 8800,
+      "checksum": "b2dae55d3be5584f08910176fc0372c5adf05296cbf5fda5c2a9f7ef3c11b8d7",
+      "bytes": 8798,
       "warnings": []
     },
     {
@@ -2500,8 +2500,8 @@
       "market": "South Cook",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "d5ce9c93bb9481404cdc65adfc40d8a4a45648b3a0a4c75db3fbed9ada1df326",
-      "bytes": 10688,
+      "checksum": "98b10bb5c53f476c68af27dde4af47d423eba57e4bf7982ce39459cf253d4265",
+      "bytes": 10686,
       "warnings": []
     },
     {
@@ -2509,8 +2509,8 @@
       "market": "South Cook",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "f85045d71cb7ab245946f2312b9c18609d73baddb77b7ca4419d550a5b16ba86",
-      "bytes": 11075,
+      "checksum": "f99941cd128d41b08e8e3d431e74d747ac233049facbf0d9ff90490ce3af6e51",
+      "bytes": 11074,
       "warnings": []
     },
     {
@@ -2518,7 +2518,7 @@
       "market": "South Cook",
       "category": "narrative",
       "format": "docx",
-      "checksum": "fe16c3763433032a537604a856161fe5beacec0981e36f71b9eef4ce6870f1fa",
+      "checksum": "083a370a81a26bc5c552f0e6c1e752ab8c7742653d8aca7ececdcdd9643c8889",
       "bytes": 1841,
       "warnings": []
     },
@@ -2563,8 +2563,8 @@
       "market": "South Cook",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "76226c510ba1a34a7c8cb22de070f3bdcdfa7dbb7fba99fa9d1bfe8b15badca0",
-      "bytes": 10213,
+      "checksum": "fe339a8388e592a6d04f45eab363d81f22d4de5e43375e99c1c99671c41d77bd",
+      "bytes": 10211,
       "warnings": []
     },
     {
@@ -2628,8 +2628,8 @@
       "market": "Southeast Wisconsin",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "f501c6135c272bbb0bffc83d162857e728d312696f6c239ae31e27f107b45b67",
-      "bytes": 8806,
+      "checksum": "5e6933cb227fe822a6bc3ffc9d6a2b2dfa385a7d35d239865a1c1063a612b0ae",
+      "bytes": 8804,
       "warnings": []
     },
     {
@@ -2655,8 +2655,8 @@
       "market": "Southeast Wisconsin",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "c42503e94d3ba742fe27e495221f79b793786a0d9a34148dd754b2e01df85b5f",
-      "bytes": 10694,
+      "checksum": "59504c055cef20d7e9242ffd02976160db7bee23d47f3ff2523f2300c1f80f60",
+      "bytes": 10691,
       "warnings": []
     },
     {
@@ -2664,8 +2664,8 @@
       "market": "Southeast Wisconsin",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "1a1005772f878e11b9a60729545aec2ddbf39da6dc748b01ab156936b97bcbc4",
-      "bytes": 11073,
+      "checksum": "94b8b77036d1b806644af1ebf1d343e029e06a8d2368ed495756f8d944cc1181",
+      "bytes": 11072,
       "warnings": []
     },
     {
@@ -2673,7 +2673,7 @@
       "market": "Southeast Wisconsin",
       "category": "narrative",
       "format": "docx",
-      "checksum": "f3328afe12184feff557a8c721e8312611fca99648e3c21677ebb781cfe71d72",
+      "checksum": "0f353d4efd90648ef268a4fd41df9683777850a78c1e91206bf3abffedb71346",
       "bytes": 1845,
       "warnings": []
     },
@@ -2718,8 +2718,8 @@
       "market": "Southeast Wisconsin",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "670057860e721b9c2261f5a462d0d36af62c3bde9d9490d14c496968eea1eb12",
-      "bytes": 10217,
+      "checksum": "97453ef39181129be503d45c24bb5259d915896a7c85edde6b4852bfebfb9b9b",
+      "bytes": 10215,
       "warnings": []
     },
     {
@@ -2747,7 +2747,7 @@
       "market": "Southwest Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "98660fe3737add1a6b4eeece68faad6972066e2e08e553f099fa7c62b195eae5",
+      "checksum": "89d74441123591e58c00042393470bfff6db3f23aff45d383dc9aa06eda91515",
       "bytes": 101731,
       "warnings": []
     },
@@ -2765,8 +2765,8 @@
       "market": "Southwest Cook",
       "category": "charts",
       "format": "png",
-      "checksum": "d75523d4ba2ec2c4f6c9683f9488d7688df733af75b992080e6be40ff908a31d",
-      "bytes": 167984,
+      "checksum": "87a7611bea1aca0e0326d1aca8ae9346175107f6f6da2c007c66d614cec8d425",
+      "bytes": 167972,
       "warnings": []
     },
     {
@@ -2783,8 +2783,8 @@
       "market": "Southwest Cook",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "8cee27b20018994bb98712f7187e73557da821eeca8cf5a6918edbddea1a2274",
-      "bytes": 8803,
+      "checksum": "d2849bc818474da7fe1102abf5323021d40fc036be69a99c3d98b3a7194ff4d0",
+      "bytes": 8800,
       "warnings": []
     },
     {
@@ -2810,8 +2810,8 @@
       "market": "Southwest Cook",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "967276abd4b083cf702641de272c588e1885880feaceea93d20a48c872616768",
-      "bytes": 10691,
+      "checksum": "0337ca9922a1b0c9767c52ac0e5180354ace1412d8abda0ba57d966140458828",
+      "bytes": 10688,
       "warnings": []
     },
     {
@@ -2819,8 +2819,8 @@
       "market": "Southwest Cook",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "df41bd715e5bc5a8c9ab189340117280bb6298dea54f014bcb46892d221dd3bb",
-      "bytes": 11063,
+      "checksum": "3baff04763b6b5bcdb77638f9620540c93ff7bea23d11f3aa9e6b019a86f4d53",
+      "bytes": 11062,
       "warnings": []
     },
     {
@@ -2828,7 +2828,7 @@
       "market": "Southwest Cook",
       "category": "narrative",
       "format": "docx",
-      "checksum": "9592a86b5d8467c9be84865f5aa32e1707612578c6bb9030b65d0c57fd6d1ac0",
+      "checksum": "5e5d4b085b01e464a7ba8d02cf8c6729431397a316ae5c46bce9877d5fa6f7f1",
       "bytes": 1843,
       "warnings": []
     },
@@ -2873,8 +2873,8 @@
       "market": "Southwest Cook",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "d904f44d60010d7127ece665a702b96a713675281ba3b23f9060bdc3056e5eab",
-      "bytes": 10215,
+      "checksum": "3ffb9d07ced13eb4d514d0ee01eee01cc44a0165a9190e44030e1495eda53906",
+      "bytes": 10213,
       "warnings": []
     },
     {
@@ -2938,8 +2938,8 @@
       "market": "West Cook",
       "category": "indicators",
       "format": "xlsx",
-      "checksum": "0271ac06e2c34ebc5986761e0f3679d9da4ab3595480dc119d58d7aaa23c19fb",
-      "bytes": 8800,
+      "checksum": "d9543b3760bd11659c3435decc4ad3664bada2c0d8697a5d1b24c7791dad6c0a",
+      "bytes": 8797,
       "warnings": []
     },
     {
@@ -2965,8 +2965,8 @@
       "market": "West Cook",
       "category": "transactions",
       "format": "xlsx",
-      "checksum": "f1c7bcfc07794031dad718b6c08b480274d4f11b6d8813efe91e044b42ee415c",
-      "bytes": 10688,
+      "checksum": "adde7d1dcb4296124e466f1d2ae76a77eecdb1a3f6d51a51443eb393b508d822",
+      "bytes": 10686,
       "warnings": []
     },
     {
@@ -2974,8 +2974,8 @@
       "market": "West Cook",
       "category": "statistics",
       "format": "xlsx",
-      "checksum": "3f98fc9eead4e45846122148b9fa036690127772fb58db81b31408fd0e6c22a3",
-      "bytes": 11076,
+      "checksum": "f4ab27c8d8a8999bf28c5765b397b7df4e7dd6efdecedd2f6c16e1187548bb5b",
+      "bytes": 11075,
       "warnings": []
     },
     {
@@ -2983,7 +2983,7 @@
       "market": "West Cook",
       "category": "narrative",
       "format": "docx",
-      "checksum": "05fcc0992a40a52c43d2702f376a282001c28e8bea9c4496582d19e30ea495ad",
+      "checksum": "153d09b7048ea6787dd2199de81bd484fea61ba87006cb544de1bd74f0672fde",
       "bytes": 1840,
       "warnings": []
     },
@@ -3028,8 +3028,8 @@
       "market": "West Cook",
       "category": "properties",
       "format": "xlsx",
-      "checksum": "10a0b8b2aa6ab365bbc1cdb85e03b1cda874e13c015332fdada65c0a4479b2b5",
-      "bytes": 10211,
+      "checksum": "c50c69986529c0c135e076f0fc0dae507c27e3b756d350aedcf0a557ceefcbcd",
+      "bytes": 10209,
       "warnings": []
     },
     {
