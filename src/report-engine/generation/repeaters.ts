@@ -26,7 +26,8 @@ const resolveBoundImage = (
     // A repeated slot with no source is an explicit data-availability state,
     // not a broken image URL. Non-empty sources remain publication-required
     // and are verified by server preflight.
-    ...(src || element.binding.path === "market.activityMapAssetUrl" ? {} : { publicationRequired: false }),
+    ...(src || ["market.activityMapAssetUrl", "overallGeographic.activityMapAssetUrl"].includes(element.binding.path)
+      ? {} : { publicationRequired: false }),
   };
 };
 
@@ -123,7 +124,8 @@ export function expandTemplatePages(
     if (!page.repeat) {
       result.push({
         ...structuredClone(page),
-        elements: expandRepeatingElements(page.elements, data),
+        elements: expandRepeatingElements(page.elements, data).map(element =>
+          resolveBoundImage(element, data, element.bindingContext ?? { name: "", path: "" })),
       });
       continue;
     }

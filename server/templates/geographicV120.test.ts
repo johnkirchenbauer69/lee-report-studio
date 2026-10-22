@@ -30,7 +30,9 @@ it("derives an independent v1.2 edition while keeping the approved card frame an
 
 it("fills the two existing Overall Market pages with geographic content and retains 44 pages", () => {
   const template = geographicV120Template(geographicFamilyTemplate(sampleTemplate));
-  const pages = expandTemplatePages(template, buildPresentationModel(q2SampleReport));
+  const report = structuredClone(q2SampleReport);
+  report.overallActivityMapAssetUrl = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E";
+  const pages = expandTemplatePages(template, buildPresentationModel(report));
   expect(pages).toHaveLength(44);
   const overview = pages.find(page => page.id === "market-overview")!;
   const activity = pages.find(page => page.id === "market-highlights")!;
@@ -38,6 +40,10 @@ it("fills the two existing Overall Market pages with geographic content and reta
     .toBe("overallGeographic.featuredCardV120.image");
   expect(activity.elements.find(element => element.id === "overall-geographic-activity-map")?.binding?.path)
     .toBe("overallGeographic.activityMapAssetUrl");
+  const overallMap = activity.elements.find(element => element.id === "overall-geographic-activity-map");
+  expect(overallMap?.type).toBe("image");
+  if (overallMap?.type !== "image") throw new Error("Overall map image missing");
+  expect(overallMap.src).toBe(report.overallActivityMapAssetUrl);
   expect(activity.elements.filter(element => element.id.startsWith("overall-activity-") && element.id.endsWith("-heading")))
     .toHaveLength(5);
   expect(activity.elements.filter(element => /^overall-activity-L[123]-circle$/.test(element.id) && !element.hidden))
