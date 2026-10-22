@@ -846,6 +846,15 @@ export function CanvasElement(props: Props) {
         </span>
       </div>
     );
+    const linkedValue = element.linkBinding
+      ? getByContextPath(data, element.linkBinding.path, element.bindingContext) : element.linkUrl;
+    if (props.readOnly && typeof linkedValue === "string" && /^https?:\/\//i.test(linkedValue)) {
+      content = <a href={linkedValue} target="_blank" rel="noopener noreferrer"
+        aria-label={`View listing: ${element.name}`}
+        style={{ display: "block", width: "100%", height: "100%", color: "inherit", textDecoration: "none" }}>
+        {content}
+      </a>;
+    }
   } else if (element.type === "image") {
     const dynamic =
       mode === "data" && element.binding
@@ -909,6 +918,14 @@ export function CanvasElement(props: Props) {
                 }
           }
         />
+      ) : element.id === "featured-photo" || element.id === "overall-featured-photo" ? (
+        <div className="featured-media-fallback" style={{ width: "100%", height: "100%", display: "flex",
+          alignItems: "center", justifyContent: "center", background: "#e8edf0", color: "#003146",
+          fontFamily: "Nunito Sans, Arial, sans-serif", fontSize: 11, fontWeight: 700,
+          letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          {getByContextPath(data, element.binding?.path.replace(/\.image$/, ".area") ?? "",
+            element.bindingContext) ? "Property image unavailable" : "Market research"}
+        </div>
       ) : (
         <div className="property-card-placeholder image-unavailable">
           Image unavailable

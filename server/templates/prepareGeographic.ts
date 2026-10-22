@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import type { IndustrialMarketReport } from "../../src/report-engine/schema/industrialMarketReport.ts";
-import { activitySections } from "../../src/report-engine/geographic/activity.ts";
+import { activitySections, overallActivitySections } from "../../src/report-engine/geographic/activity.ts";
 import { renderVectorMap, type MapFeature } from "../../src/report-engine/geographic/vectorMap.ts";
 import { resolveChicagoSubmarket } from "../../src/report-engine/submarkets.ts";
 import { outlineMapLabels } from "../renderers/outlineMapLabels.ts";
@@ -62,5 +62,62 @@ export async function prepareGeographicReport(report: IndustrialMarketReport, ro
     detail.activityMapAssetUrl = asset.source;
     detail.activityMapChecksum = asset.checksum;
   }
+  // A regional extent and pooled market-wide Top 3 belong to the same frozen
+  // report. We compose verified local basemap layers rather than moving pins or
+  // selecting three records per submarket.
+  const outlines: [number, number][][][] = [];
+  const extent = [Infinity, Infinity, -Infinity, -Infinity];
+  const primary: MapFeature[] = [], secondary: MapFeature[] = [], municipalities: {
+    name: string; longitude: number; latitude: number; area: number;
+  }[] = [];
+  for (const detail of result.submarketDetails) {
+    const market = resolveChicagoSubmarket(detail.id ?? detail.name)!;
+    const directory = path.join(root, market.id);
+    const boundaryBytes = await readFile(path.join(directory, "boundary.json"));
+    const expectedBoundary = manifest.find(item => item.market === market.id && item.layer === "boundary");
+    if (!expectedBoundary || createHash("sha256").update(boundaryBytes).digest("hex") !== expectedBoundary.displaySha256)
+      throw new Error(`Regional boundary integrity failure: ${market.id}`);
+    const { bounds, boundary } = JSON.parse(boundaryBytes.toString("utf8")) as {
+      bounds: [number, number, number, number]; boundary: MapFeature;
+    };
+    if (boundary.geometry.type !== "MultiPolygon") throw new Error(`Regional boundary shape unavailable: ${market.id}`);
+    outlines.push(...boundary.geometry.coordinates);
+    extent[0] = Math.min(extent[0]!, bounds[0]); extent[1] = Math.min(extent[1]!, bounds[1]);
+    extent[2] = Math.max(extent[2]!, bounds[2]); extent[3] = Math.max(extent[3]!, bounds[3]);
+    for (const layer of ["primary", "secondary", "municipalities"] as const) {
+      const bytes = await readFile(path.join(directory, `${layer}.geojson`));
+      const expected = manifest.find(item => item.market === market.id && item.layer === layer);
+      if (!expected || createHash("sha256").update(bytes).digest("hex") !== expected.displaySha256)
+        throw new Error(`Regional basemap integrity failure: ${market.id}/${layer}`);
+      const features = JSON.parse(bytes.toString("utf8")).features as MapFeature[];
+      if (layer === "primary") primary.push(...features);
+      else if (layer === "secondary") secondary.push(...features);
+      else municipalities.push(...features.map(feature => ({ name: String(feature.properties?.BASENAME ?? ""),
+        longitude: Number(feature.properties?.CENTLON), latitude: Number(feature.properties?.CENTLAT),
+        area: Number(feature.properties?.AREALAND) }))
+        .filter(city => city.name && Number.isFinite(city.longitude) && Number.isFinite(city.latitude)));
+    }
+  }
+  if (result.submarketDetails.length !== 18) throw new Error("Regional map requires all 18 assigned submarkets");
+  const markers = overallActivitySections(result).flatMap(section => section.entries.map(entry => {
+    const location = entry.record.location;
+    if (!location || location.latitude === null || location.longitude === null)
+      throw new Error(`Missing regional property coordinate: ${entry.code}`);
+    return { code: entry.code, longitude: location.longitude, latitude: location.latitude, color: section.color };
+  }));
+  const bounds: [number, number, number, number] = [extent[0]! - .12, extent[1]! - .10, extent[2]! + .12, extent[3]! + .10];
+  const regional = renderVectorMap({ width: 380, height: 582, bounds,
+    boundary: { geometry: { type: "MultiPolygon", coordinates: outlines } }, primary, secondary,
+    local: [], water: [], parks: [],
+    municipalities: [...new Map(municipalities.sort((a, b) => b.area - a.area).map(city => [city.name, city])).values()],
+    markers });
+  const portable = outlineMapLabels(regional.svg, fonts[0]!, fonts[1]!);
+  const checksum = createHash("sha256").update(portable).digest("hex");
+  let asset = assets.find(item => item.checksum === checksum && item.mimeType === "image/svg+xml");
+  if (asset && createHash("sha256").update(await readFile(store.resolve(asset))).digest("hex") !== checksum)
+    throw new Error("Regional map asset integrity failure");
+  if (!asset) asset = await store.importBuffer({ buffer: Buffer.from(portable), mimeType: "image/svg+xml", name: "overall-market-activity.svg" });
+  result.overallActivityMapAssetUrl = asset.source;
+  result.overallActivityMapChecksum = asset.checksum;
   return result;
 }

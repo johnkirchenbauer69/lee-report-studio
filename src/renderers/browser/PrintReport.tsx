@@ -126,6 +126,7 @@ export function PrintPages({
                 data={data}
                 manualOverrides={manualOverrides}
                 mode="data"
+                readOnly
                 selected={false}
                 pages={template.pages}
                 zoom={1}

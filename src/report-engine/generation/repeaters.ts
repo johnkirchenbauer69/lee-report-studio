@@ -12,6 +12,18 @@ import {
   assertUniquePageAnchors,
 } from "../navigation/pageNavigation";
 
+const formatPeriod = (value: unknown) => {
+  const text = String(value ?? "");
+  const match = text.match(/^(\d{4})\s+(Q[1-4])$/i);
+  return match ? `${match[2]!.toUpperCase()} ${match[1]}` : text || "—";
+};
+
+const bindIndicatorPeriods = (element: ReportElement, periods: unknown): ReportElement =>
+  element.type === "table" && element.id.includes("indicator-table") && Array.isArray(periods)
+    ? { ...element, columns: element.columns.map((column, index) => index === 0 ? column :
+      { ...column, label: formatPeriod(getByPath(periods[index - 1], "period")) }) }
+    : element;
+
 const resolveBoundImage = (
   element: ReportElement,
   data: unknown,
@@ -26,7 +38,8 @@ const resolveBoundImage = (
     // A repeated slot with no source is an explicit data-availability state,
     // not a broken image URL. Non-empty sources remain publication-required
     // and are verified by server preflight.
-    ...(src || element.binding.path === "market.activityMapAssetUrl" ? {} : { publicationRequired: false }),
+    ...(src || ["market.activityMapAssetUrl", "overallGeographic.activityMapAssetUrl"].includes(element.binding.path)
+      ? {} : { publicationRequired: false }),
   };
 };
 
@@ -123,7 +136,13 @@ export function expandTemplatePages(
     if (!page.repeat) {
       result.push({
         ...structuredClone(page),
-        elements: expandRepeatingElements(page.elements, data),
+        elements: expandRepeatingElements(page.elements, data).map(element => {
+          const bound = resolveBoundImage(element, data,
+            element.bindingContext ?? { name: "", path: "" });
+          return template.id === "industrial-market-geographic" && template.version === "1.2.0"
+            ? bindIndicatorPeriods(bound, getByPath(data, "historicalPeriods"))
+            : bound;
+        }),
       });
       continue;
     }
@@ -163,13 +182,6 @@ export function expandTemplatePages(
             path: `${rule.sourcePath}[${index}]`,
           };
           const periods = getByPath(item, "historicalPeriods");
-          const formatPeriod = (value: unknown) => {
-            const text = String(value ?? "");
-            const match = text.match(/^(\d{4})\s+(Q[1-4])$/i);
-            return match
-              ? `${match[2]!.toUpperCase()} ${match[1]}`
-              : text || "—";
-          };
           result.push({
             ...structuredClone(groupPage),
             id: `${groupPage.id}-repeat-${index}`,
@@ -234,5 +246,33 @@ export function expandTemplatePages(
     }),
   );
   assertUniquePageAnchors(finalized);
-  return finalized.map(page => layoutActivitySidebar(page, data));
+  return finalized.map(page => {
+    const laidOut = layoutActivitySidebar(page, data);
+    return { ...laidOut, elements: laidOut.elements.map(element => {
+      if (element.type === "text" && /^(overall-)?featured-(area|address|details)$/.test(element.id)) {
+        const value = element.binding ? getByContextPath(data, element.binding.path,
+          element.bindingContext ?? laidOut.bindingContext) : undefined;
+        const length = typeof value === "string" ? value.length : 0;
+        const isArea = element.id.endsWith("-area");
+        const isAddress = element.id.endsWith("-address");
+        const longAddress = isAddress && length > 34;
+        const addressValue = getByContextPath(data, element.binding?.path.replace(/\.details$/, ".address") ?? "",
+          element.bindingContext ?? laidOut.bindingContext);
+        const detailsAfterLongAddress = element.id.endsWith("-details") &&
+          typeof addressValue === "string" && addressValue.length > 34;
+        const size = isArea ? (length > 27 ? 12.5 : length > 21 ? 14 : 16) : longAddress ? 8.8 : undefined;
+        return { ...element,
+          ...(longAddress ? { y: 243 * 4 / 3, height: 21 * 4 / 3 } : {}),
+          ...(detailsAfterLongAddress ? { y: 264 * 4 / 3, height: 8 * 4 / 3 } : {}),
+          ...(size ? { style: { ...element.style, fontSize: size * 4 / 3,
+            typography: element.style.typography ? { ...element.style.typography, fontSize: size * 4 / 3 } : undefined } } : {}),
+        };
+      }
+      if (element.id !== "featured-status-badge" && element.id !== "overall-featured-status-badge") return element;
+      const badge = element.binding
+        ? getByContextPath(data, element.binding.path, element.bindingContext ?? laidOut.bindingContext)
+        : undefined;
+      return { ...element, hidden: typeof badge !== "string" || !badge.trim() };
+    }) };
+  });
 }

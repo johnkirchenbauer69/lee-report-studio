@@ -8,7 +8,9 @@ import type {
 } from "../../../src/report-engine/schema/industrialMarketReport.ts";
 import type { SalesforceRecord } from "../salesforce/SalesforceClient.ts";
 import { canonicalChicagoSubmarket } from "./salesforceFieldMap.ts";
-import { selectFeaturedAvailability, type FeaturedAvailabilityScope } from "./featuredAvailability.ts";
+import { selectFeaturedAvailability, selectOverallFeaturedAvailability, type FeaturedAvailabilityScope } from "./featuredAvailability.ts";
+import { selectFeaturedDeal } from "./featuredDeal.ts";
+import { marketingTypeFromRecordType, verifiedListingUrl } from "../../../src/report-engine/geographic/featuredCardV120.ts";
 import { normalizeQuarterBounds } from "./salesforceNormalization.ts";
 import {
   looksLikeSalesforceId,
@@ -927,7 +929,10 @@ export async function mapHistoricalContributors(
   ]
     .flatMap((entry) => [entry.warning, entry.diagnostic])
     .filter((diagnostic): diagnostic is string => Boolean(diagnostic));
-  const selection = featuredScope ? selectFeaturedAvailability(rows, featuredScope) : undefined;
+  const isOverallScope = featuredScope?.submarket === "Overall Market";
+  const selection = featuredScope ? isOverallScope
+    ? selectOverallFeaturedAvailability(rows, featuredScope.period)
+    : selectFeaturedAvailability(rows, featuredScope) : undefined;
   const featured = selection?.status === "selected"
     ? await highlight(selection.record, "availabilities", resolveImage)
     : undefined;
@@ -935,20 +940,76 @@ export async function mapHistoricalContributors(
   if (featured?.diagnostic) imageWarnings.push(featured.diagnostic);
   const featuredAvailability = selection && featuredScope
     ? selection.status === "selected" && featured
-      ? {
+      ? (() => {
+          const row = selection.record;
+          const industrialMinimum = optionalNumericPaths(row, "Availability__r.Min_Divisible_Industrial_SF__c");
+          const genericMinimum = optionalNumericPaths(row, "Availability__r.ascendix__MinDivisibleArea__c");
+          // Conflicting positive minimums are not silently reconciled.
+          const minimumDivisibleSf = industrialMinimum !== undefined && genericMinimum !== undefined &&
+            industrialMinimum > 0 && genericMinimum > 0 && industrialMinimum !== genericMinimum
+            ? undefined : industrialMinimum || genericMinimum || undefined;
+          const marketedMaximumSf = optionalNumericPaths(row, "Available_SF__c");
+          const recordType = (row.Availability__r as SalesforceRecord | undefined)?.RecordType as SalesforceRecord | undefined;
+          const listing = (row.Availability__r as SalesforceRecord | undefined)?.ascendix__Listing__r as SalesforceRecord | undefined;
+          const officialUrl = verifiedListingUrl((row.Availability__r as SalesforceRecord | undefined)?.Listing_URL__c);
+          const relatedUrl = verifiedListingUrl(listing?.ascendix__Website__c);
+          const marketingType = marketingTypeFromRecordType(recordType?.Name);
+          return {
           status: "selected" as const,
           source: { kind: "contributor" as const, contributorId: selection.record.Id,
             availabilityId: String(selection.record.Availability__c), propertyId: String(selection.record.Property__c),
-            period: featuredScope.period, submarket: featuredScope.submarket,
+            period: featuredScope.period, submarket: isOverallScope
+              ? canonicalChicagoSubmarket(String(selection.record.Submarket__c)) ?? ""
+              : featuredScope.submarket,
             rank: Number(selection.record.Rank__c), runId: text(selection.record, "Run_ID__c") },
           property: featured.highlight,
-        }
+          ...(minimumDivisibleSf ? { minimumDivisibleSf } : {}),
+          ...(marketedMaximumSf ? { marketedMaximumSf } : {}),
+          ...(marketingType ? { marketingType } : {}),
+          ...(officialUrl || relatedUrl ? { listingUrl: officialUrl ?? relatedUrl } : {}),
+          fieldSources: { marketedSf: "Market_Data_Contributor__c.Available_SF__c",
+            ...(minimumDivisibleSf ? { minimumDivisibleSf: industrialMinimum
+              ? "ascendix__Availability__c.Min_Divisible_Industrial_SF__c"
+              : "ascendix__Availability__c.ascendix__MinDivisibleArea__c" } : {}),
+            ...(marketingType ? { marketingType: "ascendix__Availability__c.RecordType.Name" } : {}),
+            ...(officialUrl || relatedUrl ? { listingUrl: officialUrl
+              ? "ascendix__Availability__c.Listing_URL__c"
+              : "ascendix__Listing__c.ascendix__Website__c" } : {}) },
+          };
+        })()
       : selection.status === "ambiguous"
         ? { status: "ambiguous" as const, reason: selection.reason }
         : { status: "empty" as const, reason: "No qualifying featured availability." }
     : undefined;
+  const dealSelection = featuredScope ? selectFeaturedDeal(rows, isOverallScope
+    ? { period: featuredScope.period } : featuredScope) : undefined;
+  const dealImage = dealSelection?.status === "selected"
+    ? await image(dealSelection.record, dealSelection.kind === "lease" ? "Lease" : "Sale", resolveImage)
+    : undefined;
+  if (dealImage?.warning) imageWarnings.push(dealImage.warning);
+  if (dealImage?.diagnostic) imageWarnings.push(dealImage.diagnostic);
+  const featuredDeal = dealSelection?.status === "selected" ? {
+    status: "selected" as const,
+    kind: dealSelection.kind,
+    source: {
+      contributorId: String(dealSelection.record.Id),
+      transactionId: String(dealSelection.kind === "lease" ? dealSelection.record.Lease__c : dealSelection.record.Sale__c),
+      propertyId: String(dealSelection.record.Property__c),
+      period: featuredScope!.period,
+      submarket: isOverallScope
+        ? canonicalChicagoSubmarket(String(dealSelection.record.Submarket__c)) ?? ""
+        : featuredScope!.submarket,
+      rank: typeof dealSelection.record.Rank__c === "number" ? dealSelection.record.Rank__c : null,
+      runId: text(dealSelection.record, "Run_ID__c"),
+      selectionBasis: dealSelection.reason,
+    },
+    property: { address: ["ascendix__Street__c", "ascendix__City__c", "State__c"]
+      .map(key => String((dealSelection.record.Property__r as SalesforceRecord)[key]).trim()).join(", "),
+      sizeSf: dealSelection.sizeSf, image: dealImage?.value ?? "" },
+  } : undefined;
   return {
     ...(featuredAvailability ? { featuredAvailability } : {}),
+    ...(featuredDeal ? { featuredDeal } : {}),
     leasing,
     sales,
     availabilities: availabilityHighlights.map((entry) => entry.highlight),

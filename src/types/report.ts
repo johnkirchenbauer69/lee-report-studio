@@ -180,6 +180,8 @@ export interface BaseElement {
 export interface TextElement extends BaseElement {
   type: "text";
   text: string;
+  linkUrl?: string;
+  linkBinding?: Binding;
   /** Structured editorial content, serialized with the template draft. */
   closingContent?: ClosingContent;
 }
