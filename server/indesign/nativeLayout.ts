@@ -2,6 +2,8 @@ import { chromium } from "playwright";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { appendFileSync } from "node:fs";
+import { execFile } from "node:child_process";
 import * as fontkit from "fontkit";
 import { getDocumentProxy } from "unpdf";
 import type { FrozenPresentation } from "../market-assets/snapshot.ts";
@@ -89,15 +91,66 @@ export async function captureNativeLayout(
       fontLicenses.join("\n"),
     { flag: "wx" },
   );
-  const browser = await chromium.launch({ headless: true, timeout: 30000 });
+  // Own the Chromium process explicitly so failures retain process evidence,
+  // independent of the caller's browser/test-runner lifecycle.
+  let stage = "launch", pageNumber = 0;
+  const appendDiagnostic = (file: string, bytes: string | Buffer) => {
+    // Logging must never prevent browser cleanup when the disk itself fails.
+    try { appendFileSync(path.join(directory, file), bytes); }
+    catch (error) { console.warn("Native capture diagnostic write failed", String(error)); }
+  };
+  const diagnostic = (event: string, detail: unknown = {}) => appendDiagnostic(
+    "capture-events.jsonl",
+    JSON.stringify({ at: new Date().toISOString(), event, page: pageNumber, stage, detail }) + "\n",
+  );
+  const server = await chromium.launchServer({ headless: true, timeout: 30000 });
+  const child = server.process();
+  diagnostic("process-start", { pid: child.pid });
+  child.stderr?.on("data", (chunk) => appendDiagnostic("chromium-stderr.log", chunk));
+  child.on("exit", (code, signal) => diagnostic("process-exit", { code, signal }));
+  const browser = await chromium.connect(server.wsEndpoint()).catch(async (error) => {
+    diagnostic("connect-error", String(error));
+    await server.close().catch(() => undefined);
+    throw error;
+  });
+  browser.on("disconnected", () => diagnostic("browser-disconnected"));
+  let sampling = false;
+  const sampleMemory = () => {
+    diagnostic("worker-memory", process.memoryUsage());
+    if (process.platform !== "win32" || sampling || !child.pid) return;
+    sampling = true;
+    // Include only the owned Chromium process tree, never unrelated browsers.
+    execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+      `$all=Get-CimInstance Win32_Process; $ids=[System.Collections.Generic.HashSet[int]]::new(); [void]$ids.Add(${child.pid}); do { $added=$false; foreach($p in $all) { if($ids.Contains([int]$p.ParentProcessId) -and $ids.Add([int]$p.ProcessId)) {$added=$true} } } while($added); @($all | Where-Object {$ids.Contains([int]$_.ProcessId)} | Select-Object ProcessId,ParentProcessId,WorkingSetSize,PrivatePageCount) | ConvertTo-Json -Compress`],
+      { windowsHide: true, timeout: 8000 }, (error, stdout) => {
+        sampling = false;
+        if (error) diagnostic("chromium-memory", { error: error.message });
+        else {
+          try { diagnostic("chromium-memory", JSON.parse(stdout || "[]")); }
+          catch { diagnostic("chromium-memory", { error: "Invalid process sample" }); }
+        }
+      });
+  };
+  sampleMemory();
+  const memory = setInterval(sampleMemory, 10000);
+  let pageDeadline: ReturnType<typeof setTimeout> | undefined;
+  let pageTimedOut = false;
   let timedOut = false;
   const deadline = setTimeout(() => {
     timedOut = true;
-    void browser.close().catch(() => undefined);
+    diagnostic("global-deadline");
+    void server.close().catch(() => undefined);
   }, 600000);
   try {
     const page = await browser.newPage({
       viewport: { width: 816, height: 1056 },
+    });
+    page.on("crash", () => diagnostic("page-crash"));
+    page.on("close", () => diagnostic("page-close"));
+    page.on("framenavigated", (frame) => diagnostic("navigation", { main: frame === page.mainFrame(), url: frame.url() }));
+    page.on("pageerror", (error) => diagnostic("page-error", error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error" || /vite|reload/i.test(message.text())) diagnostic("console", message.text());
     });
     // Keep the layout media stable while reading PDF baselines and DOM frames,
     // matching the production PDF renderer.
@@ -142,6 +195,15 @@ export async function captureNativeLayout(
     for (const [pi, sourcePage] of job.template.pages
       .filter((p) => !p.hidden)
       .entries()) {
+      pageNumber = pi + 1;
+      stage = "page-readiness";
+      diagnostic("page-start", { id: sourcePage.id, name: sourcePage.name });
+      pageDeadline = setTimeout(() => {
+        pageTimedOut = true;
+        diagnostic("page-deadline");
+        void server.close().catch(() => undefined);
+      }, 90000);
+      const firstElement = model.length;
       progress(`Preparing native page ${pi + 1}: ${sourcePage.name}`);
       await page.evaluate((index) => window.dispatchEvent(new CustomEvent("lee:native-page", { detail: index })), pi);
       await page.waitForFunction((index) =>
@@ -154,6 +216,7 @@ export async function captureNativeLayout(
       if (await page.locator('[data-narrative-overflow="true"]').count()) throw Error(`Narrative overflow on native page ${pi + 1}`);
       // Measure each fixed-size page independently. The actual text, table
       // content and artwork continue to come from the frozen report and DOM.
+      stage = "baseline-pdf";
       const geometryPdf = await getDocumentProxy(new Uint8Array(await page.pdf({ printBackground: true, preferCSSPageSize: true })));
       if (geometryPdf.numPages !== 1) throw Error(`Native page ${pi + 1} did not render as one page`);
       const textItems = (
@@ -178,6 +241,8 @@ export async function captureNativeLayout(
       };
       const pageLocator = page.locator("section.print-page").first();
       for (const source of sourcePage.elements.filter((e) => !e.hidden)) {
+        stage = `element:${source.id}`;
+        diagnostic("element-start", { type: source.type });
         const loc = pageLocator.getByTestId(source.id);
         // Read the already-ready frozen DOM directly, without repeating
         // interactive locator visibility/action prechecks after PDF printing.
@@ -458,6 +523,9 @@ export async function captureNativeLayout(
         }
       }
       await geometryPdf.loadingTask.destroy();
+      await writeFile(path.join(directory, `capture-page-${pi + 1}.json`), JSON.stringify({ pageId: sourcePage.id, elements: model.slice(firstElement) }), { flag: "wx" });
+      clearTimeout(pageDeadline);
+      diagnostic("page-complete", { elements: model.length - firstElement });
     }
     await writeFile(
       path.join(directory, "layout.json"),
@@ -471,10 +539,16 @@ export async function captureNativeLayout(
     );
     return model;
   } catch (error) {
+    diagnostic("capture-error", { message: String(error), stack: error instanceof Error ? error.stack : undefined });
+    if (pageTimedOut) throw new Error(`Native page ${pageNumber} exceeded its 90-second deadline at ${stage}. No InDesign execution was started.`, { cause: error });
     if (timedOut) throw new Error("Native artwork preparation exceeded its ten-minute deadline. No InDesign execution was started.", { cause: error });
     throw error;
   } finally {
     clearTimeout(deadline);
+    clearTimeout(pageDeadline);
+    clearInterval(memory);
+    diagnostic("cleanup-requested");
     await browser.close().catch(() => undefined);
+    await server.close().catch(() => undefined);
   }
 }

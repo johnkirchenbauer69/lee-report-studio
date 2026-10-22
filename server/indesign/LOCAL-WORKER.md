@@ -15,3 +15,11 @@ If export fails, retain its directory and journal. A timeout can leave Adobe exe
 `scripts/native-export-smoke.ts` validates a subset or complete saved report with the production capture, input preparation, desktop adapter, and assembly script. The standalone `run-indesign-desktop.ts` command can dispatch reviewed prepared inputs; script completion alone is not package acceptance.
 
 The modular capture, manifest, session, and validation contracts allow a future approved execution provider without changing report-data architecture. No cloud entitlement is implied by Desktop validation.
+
+## Isolating capture failures
+
+Run a single affected page, then a small surrounding sample before a complete capture. Set `LEE_NATIVE_PREPARE_ONLY=1` with `native-export-smoke.ts` to stop after verified input preparation. Once preparation succeeds, use `run-indesign-desktop.ts` with that prepared directory rather than recapturing it. Never run heavy browser exports and Adobe assembly concurrently.
+
+Capture owns its Chromium process and retains `capture-events.jsonl`, `chromium-stderr.log`, and a layout checkpoint for each completed page. Events identify page/element, navigation, page crashes, disconnects, process exit, cleanup, and sampled worker/Chromium memory on Windows. Each page has a 90-second deadline in addition to the ten-minute overall deadline. Deadline failures happen before Adobe dispatch. Partial page checkpoints are diagnostic artifacts, not approved resumable inputs; only the complete hash-verified prepared input may be dispatched independently.
+
+If InDesign fails during session inspection, inspect Windows Application events and try opening Desktop normally. A startup crash is distinct from capture or report assembly. Do not rerun capture, clear journal claims, alter fonts, or reinstall system components to work around an unverified startup problem. Preserve the prepared input until the installed application works again.
