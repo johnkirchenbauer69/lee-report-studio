@@ -2,7 +2,7 @@
 (function () {
   var jobDirectory=app.scriptArgs.getValue('leeReportJobDirectory');
   if(!jobDirectory)throw Error('Native job directory argument is missing');
-  var root = Folder(jobDirectory), d, old = app.scriptPreferences.userInteractionLevel, oldGuides=app.pdfExportPreferences.exportGuidesAndGrids, oldRedraw=app.scriptPreferences.enableRedraw;
+  var root = Folder(jobDirectory), d, old = app.scriptPreferences.userInteractionLevel, oldGuides=app.pdfExportPreferences.exportGuidesAndGrids, oldHyperlinks=app.pdfExportPreferences.includeHyperlinks, oldRedraw=app.scriptPreferences.enableRedraw;
   if (app.documents.length) throw Error('Close InDesign documents before export.');
   function read(name) { var f=File(root+'/'+name); if(!f.open('r'))throw Error('Missing '+name);f.encoding='UTF-8';var s=f.read();f.close();return eval('('+s+')'); }
   function write(name,value) {var f=File(root+'/'+name);f.encoding='UTF-8';if(!f.open('w'))throw Error('Cannot write '+name);f.write(value);f.close();}
@@ -152,7 +152,7 @@
     d.recompose();d.save();var initial=audit(d);if(initial.missingLinks||initial.substitutedFonts||initial.oversetCells)errors.push('Validation: links='+initial.missingLinks+' fonts='+initial.substitutedFonts+' cells='+initial.oversetCells);write('assembly-errors.txt',errors.join('\n'));
     if(errors.length)throw Error('Native assembly requires correction: '+errors.length+' issues; see assembly-errors.txt');
     d.close(SaveOptions.NO);d=app.open(File(root+'/Report.indd'),false);d.recompose();var result=audit(d);result.reopened=true;
-    app.pdfExportPreferences.exportGuidesAndGrids=false;
+    app.pdfExportPreferences.exportGuidesAndGrids=false;app.pdfExportPreferences.includeHyperlinks=true;result.hyperlinks=d.hyperlinks.length;
     write('native-progress.txt','Exporting PDF');d.exportFile(ExportFormat.PDF_TYPE,File(root+'/Report.pdf'));
     // IDML is not included until a separate actual import and export passes.
     result.idmlImportValidated=false;result.relocated=false;
@@ -163,9 +163,9 @@
     if(!File(root+'/Report.indd').copy(relocation+'/Report.indd'))throw Error('INDD relocation copy failed');
     write('native-progress.txt','Validating relocated package');d=app.open(File(relocation+'/Report.indd'),false);
     for(var li=0;li<d.links.length;li++){var target=File(relocation+'/Links/'+d.links[li].name);if(!target.exists)throw Error('Relocated link missing');d.links[li].relink(target);d.links[li].update();}
-    var relocated=audit(d);if(relocated.missingLinks||relocated.substitutedFonts||relocated.oversetFrames||relocated.oversetCells)throw Error('Relocation validation failed');
+    var relocated=audit(d);if(relocated.missingLinks||relocated.substitutedFonts||relocated.oversetFrames||relocated.oversetCells||d.hyperlinks.length!==result.hyperlinks)throw Error('Relocation validation failed');
     d.save();d.exportFile(ExportFormat.PDF_TYPE,File(relocation+'/Report.pdf'));d.close(SaveOptions.NO);d=null;result.relocated=true;
     var fields=[];for(var key in result)if(result.hasOwnProperty(key))fields.push('"'+key+'":'+result[key]);write('native-validation.json','{'+fields.join(',')+'}');
   } catch(failure) {write('native-failure.txt',String(failure)+'; '+failure.message+'; line '+failure.line);throw failure;}
-  finally {if(d&&d.isValid)d.close(SaveOptions.NO);app.scriptPreferences.userInteractionLevel=old;app.pdfExportPreferences.exportGuidesAndGrids=oldGuides;app.scriptPreferences.enableRedraw=oldRedraw;}
+  finally {if(d&&d.isValid)d.close(SaveOptions.NO);app.scriptPreferences.userInteractionLevel=old;app.pdfExportPreferences.exportGuidesAndGrids=oldGuides;app.pdfExportPreferences.includeHyperlinks=oldHyperlinks;app.scriptPreferences.enableRedraw=oldRedraw;}
 })();

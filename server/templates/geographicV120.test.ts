@@ -32,6 +32,7 @@ it("fills the two existing Overall Market pages with geographic content and reta
   const template = geographicV120Template(geographicFamilyTemplate(sampleTemplate));
   const report = structuredClone(q2SampleReport);
   report.overallActivityMapAssetUrl = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E";
+  report.historicalPeriods[0]!.period = "2026 Q3";
   const pages = expandTemplatePages(template, buildPresentationModel(report));
   expect(pages).toHaveLength(44);
   const overview = pages.find(page => page.id === "market-overview")!;
@@ -49,6 +50,10 @@ it("fills the two existing Overall Market pages with geographic content and reta
   expect(activity.elements.filter(element => /^overall-activity-L[123]-circle$/.test(element.id) && !element.hidden))
     .toHaveLength(Math.min(3, q2SampleReport.leasing.length));
   expect(overview.elements.filter(element => element.type === "chart")).toHaveLength(4);
+  const indicatorTable = overview.elements.find(element => element.id === "overall-detail-indicator-table");
+  expect(indicatorTable?.type).toBe("table");
+  if (indicatorTable?.type !== "table") throw new Error("Overall indicator table missing");
+  expect(indicatorTable.columns[1]?.label).toBe("Q3 2026");
   expect(overview.elements.find(element => element.id === "overall-featured-status-badge")?.hidden).toBe(true);
 });
 

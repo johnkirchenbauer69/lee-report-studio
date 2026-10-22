@@ -17,8 +17,14 @@ if (snapshot.report?.report?.period !== "2026 Q3" || snapshot.report?.submarketD
   throw new Error("Frozen Q3 snapshot identity or market coverage differs");
 const data = structuredClone(snapshot.report);
 data.report.templateId = edition.id;
-data.overallActivityMapAssetUrl = "/api/assets/44f72237-dfd1-46c1-8ec8-10251d28b89b/content";
-data.overallActivityMapChecksum = "d0463f142d2c159cc2e255111aecf7b9ec4f5a104dee3836bbc524f73df6a9af";
+if (process.env.LEE_QA_SYNTHETIC_LINK === "1") {
+  if (!outputPath.toLowerCase().includes("synthetic") || data.overallFeaturedAvailability?.status !== "selected")
+    throw new Error("Synthetic link QA requires a separate named output and selected Overall Market listing");
+  data.overallFeaturedAvailability.listingUrl = "https://example.com/lee-qa-listing";
+  data.report.title = "SYNTHETIC LINK QA — NOT FOR PUBLICATION";
+}
+data.overallActivityMapAssetUrl ??= "/api/assets/44f72237-dfd1-46c1-8ec8-10251d28b89b/content";
+data.overallActivityMapChecksum ??= "d0463f142d2c159cc2e255111aecf7b9ec4f5a104dee3836bbc524f73df6a9af";
 const renderData = sanitizeSalesforceClientPayload(data);
 const shell = JSON.parse(await readFile("server/data/report-instances/report-ceb384c3-6622-4452-b7fd-1f60739ff6cd.json", "utf8"));
 const report = { ...shell, id: randomUUID(), status: "draft", templateId: edition.id,

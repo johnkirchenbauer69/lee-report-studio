@@ -12,6 +12,18 @@ import {
   assertUniquePageAnchors,
 } from "../navigation/pageNavigation";
 
+const formatPeriod = (value: unknown) => {
+  const text = String(value ?? "");
+  const match = text.match(/^(\d{4})\s+(Q[1-4])$/i);
+  return match ? `${match[2]!.toUpperCase()} ${match[1]}` : text || "—";
+};
+
+const bindIndicatorPeriods = (element: ReportElement, periods: unknown): ReportElement =>
+  element.type === "table" && element.id.includes("indicator-table") && Array.isArray(periods)
+    ? { ...element, columns: element.columns.map((column, index) => index === 0 ? column :
+      { ...column, label: formatPeriod(getByPath(periods[index - 1], "period")) }) }
+    : element;
+
 const resolveBoundImage = (
   element: ReportElement,
   data: unknown,
@@ -124,8 +136,13 @@ export function expandTemplatePages(
     if (!page.repeat) {
       result.push({
         ...structuredClone(page),
-        elements: expandRepeatingElements(page.elements, data).map(element =>
-          resolveBoundImage(element, data, element.bindingContext ?? { name: "", path: "" })),
+        elements: expandRepeatingElements(page.elements, data).map(element => {
+          const bound = resolveBoundImage(element, data,
+            element.bindingContext ?? { name: "", path: "" });
+          return template.id === "industrial-market-geographic" && template.version === "1.2.0"
+            ? bindIndicatorPeriods(bound, getByPath(data, "historicalPeriods"))
+            : bound;
+        }),
       });
       continue;
     }
@@ -165,13 +182,6 @@ export function expandTemplatePages(
             path: `${rule.sourcePath}[${index}]`,
           };
           const periods = getByPath(item, "historicalPeriods");
-          const formatPeriod = (value: unknown) => {
-            const text = String(value ?? "");
-            const match = text.match(/^(\d{4})\s+(Q[1-4])$/i);
-            return match
-              ? `${match[2]!.toUpperCase()} ${match[1]}`
-              : text || "—";
-          };
           result.push({
             ...structuredClone(groupPage),
             id: `${groupPage.id}-repeat-${index}`,
