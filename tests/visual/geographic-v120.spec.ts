@@ -8,7 +8,7 @@ import { buildPresentationModel } from "../../src/report-engine/bindings/present
 import { expandTemplatePages } from "../../src/report-engine/generation/repeaters";
 
 const map = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="380" height="582"><rect width="380" height="582" fill="#f2f3f0"/><path d="M30 30L340 70L300 500L50 540Z" fill="#e1e8db" stroke="#762c40"/></svg>')}`;
-const fixture = (variant: "listing" | "no-url" | "lease" | "sale" | "empty" = "listing") => {
+const fixture = (variant: "listing" | "no-url" | "lease" | "sale" | "empty" = "listing", baseline = false) => {
   const report = structuredClone(q2SampleReport);
   for (const detail of report.submarketDetails) detail.activityMapAssetUrl = map;
   report.overallActivityMapAssetUrl = map;
@@ -30,13 +30,20 @@ const fixture = (variant: "listing" | "no-url" | "lease" | "sale" | "empty" = "l
   report.overallFeaturedAvailability = structuredClone(detail.featuredAvailability);
   report.overallFeaturedDeal = detail.featuredDeal ? structuredClone(detail.featuredDeal) : undefined;
   const data = buildPresentationModel(report);
-  const template = geographicV120Template(geographicFamilyTemplate(sampleTemplate));
+  const template = baseline ? geographicFamilyTemplate(sampleTemplate) : geographicV120Template(geographicFamilyTemplate(sampleTemplate));
   return { template: { ...template, pages: expandTemplatePages(template, data) }, data, title: "Geographic v1.2 QA" };
 };
 
 test("Geographic v1.2 renders 44 pages, the new hierarchy, real links, and the executive map", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/api/render-jobs/geographic-v110-baseline", route => route.fulfill({ json: fixture("listing", true) }));
+  await page.goto("/?printJob=geographic-v110-baseline");
+  await expect(page.locator('[data-render-ready="true"]')).toBeVisible();
+  await page.locator("section.print-page").filter({ has: page.getByTestId("featured-photo") }).first()
+    .screenshot({ path: testInfo.outputPath("before-listing-card.png") });
+  await page.locator('section.print-page[data-page-id="market-highlights"]')
+    .screenshot({ path: testInfo.outputPath("before-overall-market.png") });
   await page.route("**/api/render-jobs/geographic-v120-qa", route => route.fulfill({ json: fixture() }));
   await page.goto("/?printJob=geographic-v120-qa");
   await expect(page.locator('[data-render-ready="true"]')).toBeVisible();
