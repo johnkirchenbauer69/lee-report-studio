@@ -23,6 +23,7 @@ export interface TemplateRepository {
     id: string,
     sourceVersion: string,
     template?: ReportTemplate,
+    options?: { version: string },
   ): Promise<StoredTemplateVersion>;
   archiveOlderVersions?(id: string, keepVersion: string): Promise<number>;
   publish(id: string, version: string): Promise<StoredTemplateVersion>;

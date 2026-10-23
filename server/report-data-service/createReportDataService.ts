@@ -44,8 +44,8 @@ export function createReportDataService(deps: {
     ascendixAdapter: adapter,
     snapshotStore: new FileSystemReportSnapshotStore(dataRoot),
     ...(existsSync(path.join(basemapRoot, "display-manifest.json")) ? {
-      prepareGeographic: (report: Parameters<typeof prepareGeographicReport>[0]) =>
-        prepareGeographicReport(report, basemapRoot, assetStore),
+      prepareGeographic: (report: Parameters<typeof prepareGeographicReport>[0], version?: string) =>
+        prepareGeographicReport(report, basemapRoot, assetStore, version),
     } : {}),
     mode,
     logger: (entry) => console.info(JSON.stringify(entry)),

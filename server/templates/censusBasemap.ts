@@ -11,9 +11,9 @@ export const CENSUS_BASEMAP_LAYERS = [
 type Layer = typeof CENSUS_BASEMAP_LAYERS[number];
 
 /** Freeze complete contextual geometry at preparation time, never during PDF/INDD export. */
-export async function captureCensusLayer(layer: Layer, bounds: [number, number, number, number], request = fetch) {
+export async function captureCensusLayer(layer: Layer & { where?: string }, bounds: [number, number, number, number], request = fetch) {
   const endpoint = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/${layer.service}/MapServer/${layer.layer}/query`;
-  const base = { where: "1=1", geometry: bounds.join(","), geometryType: "esriGeometryEnvelope",
+  const base = { where: layer.where ?? "1=1", geometry: bounds.join(","), geometryType: "esriGeometryEnvelope",
     inSR: "4326", outSR: "4326", spatialRel: "esriSpatialRelIntersects" };
   async function query(params: Record<string, string>) {
     const response = await request(`${endpoint}?${new URLSearchParams({ ...base, ...params })}`, { signal: AbortSignal.timeout(60000) });
@@ -40,7 +40,7 @@ export async function captureCensusLayer(layer: Layer, bounds: [number, number, 
   const finalCount = await query({ f: "json", returnCountOnly: "true" });
   if (finalCount.count !== count) throw new Error(`Census ${layer.name} population changed during capture`);
   const collection = { type: "FeatureCollection", features };
-  return { collection, manifest: { layer: layer.name, endpoint, bounds, featureCount: count,
+  return { collection, manifest: { layer: layer.name, endpoint, bounds, where: base.where, featureCount: count,
     sha256: createHash("sha256").update(JSON.stringify(collection)).digest("hex"),
     capturedAt: new Date().toISOString(), coverage: "complete" as const,
     attribution: "U.S. Census Bureau TIGERweb; contextual cartography, not research membership." } };

@@ -13,6 +13,22 @@ export interface VectorMapInput {
   water: MapFeature[]; parks: MapFeature[];
   municipalities: { name: string; longitude: number; latitude: number }[];
   markers: { code: string; longitude: number; latitude: number; color: string }[];
+  regional?: boolean;
+  waterLabels?: { name: string; longitude: number; latitude: number }[];
+}
+export function containsMapPoint(feature: MapFeature, point: Position): boolean {
+  const ringContains = (ring: Position[]) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i]!, b = ring[j]!;
+      if ((a[1] > point[1]) !== (b[1] > point[1]) &&
+        point[0] < (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  };
+  const polygons = feature.geometry.type === "MultiPolygon" ? feature.geometry.coordinates
+    : feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : [];
+  return polygons.some(p => p[0] && ringContains(p[0]) && !p.slice(1).some(ringContains));
 }
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]!);
 const mercator = ([lon, lat]: Position): Position => [lon * Math.PI / 180, Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))];
@@ -65,9 +81,18 @@ export function renderVectorMap(input: VectorMapInput) {
   });
   const placements = placeActivityLabels(anchors, { left: 10, top: 10, right: input.width - 10, bottom: input.height - 10 });
   const labelBoxes: { x: number; y: number; width: number }[] = [];
+  const waterLabels = (input.waterLabels ?? []).map(label => {
+    const position: Position = [label.longitude, label.latitude];
+    if (!input.water.some(feature => containsMapPoint(feature, position)))
+      throw new Error(`Water label is outside verified water geometry: ${label.name}`);
+    const p = project(position);
+    if (!inside(p)) throw new Error("Water label outside map frame");
+    labelBoxes.push({ ...p, width: label.name.length * 5 });
+    return `<text x="${p.x}" y="${p.y}" text-anchor="middle" font-size="10" font-style="italic" fill="#66838d">${escapeXml(label.name)}</text>`;
+  }).join("");
   const labels = input.municipalities.flatMap(city => {
     const p = project([city.longitude, city.latitude]), width = city.name.length * 5;
-    if (labelBoxes.length >= 14 || p.x - width / 2 < 6 || p.x + width / 2 > input.width - 6 || p.y < 12 || p.y > input.height - 6 || labelBoxes.some(other => Math.abs(p.y - other.y) < 20 && Math.abs(p.x - other.x) < (width + other.width) / 2 + 8) ||
+    if (labelBoxes.length >= (input.regional ? 13 : 14) || p.x - width / 2 < 6 || p.x + width / 2 > input.width - 6 || p.y < 12 || p.y > input.height - 6 || labelBoxes.some(other => Math.abs(p.y - other.y) < 20 && Math.abs(p.x - other.x) < (width + other.width) / 2 + 8) ||
       placements.some(marker => Math.hypot(p.x - marker.label.x, p.y - marker.label.y) < width / 2 + 15)) return [];
     labelBoxes.push({ ...p, width });
     return [`<text x="${p.x}" y="${p.y}" text-anchor="middle" font-size="9" fill="#47535b" stroke="#f2f3f0" stroke-width="2" paint-order="stroke">${escapeXml(city.name)}</text>`];
@@ -84,7 +109,7 @@ export function renderVectorMap(input: VectorMapInput) {
       batches.push(`<path d="${input[layer].slice(offset, offset + 500).map(feature => geometry(feature.geometry)).join(" ")}"/>`);
     return `<g id="roads-${layer}">${batches.join("")}</g>`;
   }).join("");
-  const road = (layer: string, stroke: string, width: number) => `<use href="#roads-${layer}" fill="none" stroke="${stroke}" stroke-width="${width}"/>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}"><defs>${roadDefinitions}<clipPath id="map-frame"><rect width="${input.width}" height="${input.height}"/></clipPath></defs><g clip-path="url(#map-frame)" font-family="Nunito Sans, sans-serif"><rect width="${input.width}" height="${input.height}" fill="#f2f3f0"/>${paths(input.parks, "#e1e8db", "none", 0)}${paths(input.water, "#c0dce3", "none", 0)}${road("local", "#e2e4e3", .5)}${road("local", "white", .29)}${road("secondary", "white", 1.45)}${road("secondary", "#c7bca0", .48)}${road("primary", "white", 3.1)}${road("primary", "#788aa8", 1.35)}${paths([input.boundary], "#762c40", "none", 0, .045)}${paths([input.boundary], "none", "#762c40", 1)}${labels}${markers}</g></svg>`;
+  const road = (layer: string, stroke: string, width: number) => `<use href="#roads-${layer}" fill="none" stroke="${stroke}" stroke-width="${width * (input.regional ? .65 : 1)}"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}"><defs>${roadDefinitions}<clipPath id="map-frame"><rect width="${input.width}" height="${input.height}"/></clipPath></defs><g clip-path="url(#map-frame)" font-family="Nunito Sans, sans-serif"><rect width="${input.width}" height="${input.height}" fill="#f2f3f0"/>${paths(input.parks, "#e1e8db", "none", 0)}${paths(input.water, "#c0dce3", "none", 0)}${road("local", "#e2e4e3", .5)}${road("local", "white", .29)}${road("secondary", "white", 1.45)}${road("secondary", "#c7bca0", .48)}${road("primary", "white", 3.1)}${road("primary", "#788aa8", 1.35)}${paths([input.boundary], "#762c40", "none", 0, .045)}${paths([input.boundary], "none", "#762c40", 1)}${waterLabels}${labels}${markers}</g></svg>`;
   return { svg, placements };
 }

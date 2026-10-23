@@ -25,7 +25,7 @@ export class AscendixDataProvider implements ReportDataProvider {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         reportType: "industrial-market-report",
-        ...(request.templateId === "industrial-market-geographic" ? { presentationFamily: "geographic" } : {}),
+        ...(request.templateId === "industrial-market-geographic" ? { presentationFamily: "geographic", presentationVersion: request.templateVersion } : {}),
         market: request.market,
         period: request.period,
         calculationScope: request.calculationScope,

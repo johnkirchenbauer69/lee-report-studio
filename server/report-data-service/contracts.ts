@@ -50,6 +50,7 @@ export const reportDataRequestSchema = z
     requestedSections: z.array(datasetSectionSchema).optional(),
     timeContext: timeContextSchema.optional(),
     presentationFamily: z.enum(["classic", "geographic"]).optional(),
+    presentationVersion: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
   })
   .transform((request) => ({
     ...request,

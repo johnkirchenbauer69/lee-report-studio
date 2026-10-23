@@ -7,11 +7,12 @@ import { renderVectorMap, type MapFeature } from "../../src/report-engine/geogra
 import { resolveChicagoSubmarket } from "../../src/report-engine/submarkets.ts";
 import { outlineMapLabels } from "../renderers/outlineMapLabels.ts";
 import type { FileSystemAssetStore } from "../assets/assetStore.ts";
+import { prepareRegionalV121 } from "./prepareRegionalV121.ts";
 
 const regularHash = "b014d2b0113929273927dfa34d613c240b34e1bdacd953274b82c564f338bd7b";
 const boldHash = "4f7fe7bdbc69aa5e94d79d62d04542f05052623c1ebdb738a4d344c9361aa9b9";
 
-export async function prepareGeographicReport(report: IndustrialMarketReport, root: string, store: FileSystemAssetStore) {
+export async function prepareGeographicReport(report: IndustrialMarketReport, root: string, store: FileSystemAssetStore, version?: string) {
   const assets = await store.list();
   const fonts = await Promise.all([regularHash, boldHash].map(async checksum => {
     const asset = assets.find(item => item.type === "font" && item.checksum === checksum);
@@ -62,6 +63,7 @@ export async function prepareGeographicReport(report: IndustrialMarketReport, ro
     detail.activityMapAssetUrl = asset.source;
     detail.activityMapChecksum = asset.checksum;
   }
+  if (version === "1.2.1") return prepareRegionalV121(result, path.join(root, "..", "regional-v121"), store, fonts);
   // A regional extent and pooled market-wide Top 3 belong to the same frozen
   // report. We compose verified local basemap layers rather than moving pins or
   // selecting three records per submarket.
