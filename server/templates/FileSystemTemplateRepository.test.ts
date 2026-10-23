@@ -17,6 +17,17 @@ afterEach(async () => {
 });
 
 describe("FileSystemTemplateRepository", () => {
+  it("creates an explicit patch edition without replacing an existing version", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lee-patch-edition-")); roots.push(root);
+    const repository = new FileSystemTemplateRepository(root);
+    await repository.initialize({ ...sampleTemplate, version: "1.2.0" });
+    const before = await repository.get(sampleTemplate.id, "1.2.0");
+    expect(await repository.createVersion(sampleTemplate.id, "1.2.0", undefined, { version: "1.2.1" }))
+      .toMatchObject({ version: "1.2.1", parentVersion: "1.2.0", status: "draft" });
+    expect(await repository.get(sampleTemplate.id, "1.2.0")).toEqual(before);
+    await expect(repository.createVersion(sampleTemplate.id, "1.2.0", undefined, { version: "1.2.1" })).rejects.toThrow("unique version");
+    await expect(repository.createVersion(sampleTemplate.id, "1.2.0", undefined, { version: "1.1.9" })).rejects.toThrow("unique version");
+  });
   it("installs neither family if any requested family conflicts", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lee-family-conflict-")); roots.push(root);
     const repository = new FileSystemTemplateRepository(root);

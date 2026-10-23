@@ -1,11 +1,25 @@
 import { expect, it } from "vitest";
-import { frameBounds, renderVectorMap, type VectorMapInput } from "./vectorMap";
+import { containsMapPoint, frameBounds, renderVectorMap, type VectorMapInput, type MapFeature } from "./vectorMap";
 const input: VectorMapInput = {
   width: 380, height: 582, bounds: [-88.3, 41.7, -87.9, 42],
   boundary: { geometry: { type: "Polygon", coordinates: [[[-88.2, 41.8], [-88, 41.8], [-88, 41.9], [-88.2, 41.8]]] } },
   primary: [], secondary: [], local: [], water: [], parks: [], municipalities: [],
   markers: [{ code: "L1", longitude: -88.1, latitude: 41.85, color: "#762c40" }],
 };
+it("requires water labels inside verified polygons and outside islands", () => {
+  const water: MapFeature = { geometry: { type: "Polygon", coordinates: [
+    [[-88.3,41.7],[-87.9,41.7],[-87.9,42],[-88.3,42],[-88.3,41.7]],
+    [[-88.05,41.8],[-88,41.8],[-88,41.9],[-88.05,41.9],[-88.05,41.8]],
+  ] } };
+  expect(containsMapPoint(water, [-88.02,41.85])).toBe(false);
+  const label = { name: "Lake Michigan", longitude: -88.2, latitude: 41.85 };
+  const result = renderVectorMap({ ...input, water: [water], regional: true, waterLabels: [label] });
+  for (const color of ["#c0dce3", "#f2f3f0", "#762c40", "#788aa8", "#c7bca0", "#66838d"])
+    expect(result.svg).toContain(color);
+  expect(result.svg).toContain("Lake Michigan");
+  expect(result.placements).toEqual(renderVectorMap(input).placements);
+  expect(() => renderVectorMap({ ...input, waterLabels: [label] })).toThrow("verified water geometry");
+});
 it("produces vector-only content without changing source geometry or coordinates", () => {
   const before = structuredClone(input);
   const result = renderVectorMap(input);
