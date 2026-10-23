@@ -31,3 +31,14 @@ it("preserves the published edition and all geometry outside card text", () => {
   expect(card.elements.find(e => e.id === "featured-status-badge-background")?.style.fill).toEqual({ type: "solid", color: "#762c40" });
   expect(card.elements.find(e => e.id === "featured-listing-cta")).toMatchObject({ linkBinding: { path: "market.featuredCardV121.listingUrl" } });
 });
+
+it("keeps short status chips compact and their native backgrounds aligned", () => {
+  const template = geographicV121Template(geographicV120Template(geographicFamilyTemplate(sampleTemplate)));
+  const data = buildPresentationModel(q2SampleReport);
+  data.submarketDetails[0]!.featuredCardV121.status = "SOLD";
+  const page = expandTemplatePages(template, data).find(p => p.id.startsWith("submarket-overview-repeat"))!;
+  const chip = page.elements.find(e => e.id === "featured-status-badge")!;
+  const background = page.elements.find(e => e.id === "featured-status-badge-background")!;
+  expect(chip.width).toBeLessThanOrEqual(40 * 4 / 3);
+  expect(background.width).toBe(chip.width);
+});

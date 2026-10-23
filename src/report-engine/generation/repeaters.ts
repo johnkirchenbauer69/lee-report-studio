@@ -272,7 +272,10 @@ export function expandTemplatePages(
       const badge = element.binding
         ? getByContextPath(data, element.binding.path, element.bindingContext ?? laidOut.bindingContext)
         : undefined;
-      return { ...element, hidden: typeof badge !== "string" || !badge.trim() };
+      const compactStatus = template.id === "industrial-market-geographic" && template.version === "1.2.1" &&
+        /featured-status-badge(-background)?$/.test(element.id) && typeof badge === "string";
+      return { ...element, hidden: typeof badge !== "string" || !badge.trim(),
+        ...(compactStatus ? { width: Math.min(159, Math.max(32, badge.length * 4.8 + 8)) * 4 / 3 } : {}) };
     }) };
   });
 }
