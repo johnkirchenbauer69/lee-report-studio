@@ -56,6 +56,14 @@ const workbookBytes = async (
 
 describe("report data providers", () => {
   afterEach(() => vi.unstubAllGlobals());
+  it("pins Geographic cartography to the requested presentation edition", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ report: q2SampleReport,
+      sourceMetadata: { generatedAt: "2026-10-23T12:00:00Z", reportDefinitionVersion: "industrial-market-report-data-v1" }, completeness: [], snapshot: { id: "qa", hash: "qa" } }),
+      { status: 200, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetcher);
+    await new AscendixDataProvider().loadReportData({ ...request("ascendix"), templateId: "industrial-market-geographic", templateVersion: "1.2.1" });
+    expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toMatchObject({ presentationFamily: "geographic", presentationVersion: "1.2.1" });
+  });
 
   it("loads only the explicitly supplied normalized JSON payload", async () => {
     const result = await new JsonDataProvider().loadReportData(

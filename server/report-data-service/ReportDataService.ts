@@ -50,7 +50,7 @@ export class ReportDataService {
     now?: () => Date;
     periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
-    prepareGeographic?: (report: IndustrialMarketReport) => Promise<IndustrialMarketReport>;
+    prepareGeographic?: (report: IndustrialMarketReport, version?: string) => Promise<IndustrialMarketReport>;
   };
 
   constructor(dependencies: {
@@ -60,7 +60,7 @@ export class ReportDataService {
     now?: () => Date;
     periodCacheTtlMs?: number;
     logger?: (entry: Record<string, unknown>) => void;
-    prepareGeographic?: (report: IndustrialMarketReport) => Promise<IndustrialMarketReport>;
+    prepareGeographic?: (report: IndustrialMarketReport, version?: string) => Promise<IndustrialMarketReport>;
   }) {
     this.dependencies = dependencies;
   }
@@ -281,7 +281,7 @@ export class ReportDataService {
       let validated = industrialMarketReportSchema.parse(report);
       if (request.presentationFamily === "geographic") {
         if (!this.dependencies.prepareGeographic) throw new Error("Geographic map assets are not configured on this installation.");
-        validated = industrialMarketReportSchema.parse(await this.dependencies.prepareGeographic(validated));
+        validated = industrialMarketReportSchema.parse(await this.dependencies.prepareGeographic(validated, request.presentationVersion));
       }
       const generatedAt = (
         this.dependencies.now?.() ?? new Date()

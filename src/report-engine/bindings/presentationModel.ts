@@ -15,6 +15,7 @@ import { resolveChicagoSubmarket } from "../submarkets";
 import { resolveMarketMapAsset } from "../assets/marketMapAssets";
 import { activitySections, overallActivitySections } from "../geographic/activity";
 import { featuredCardV120 } from "../geographic/featuredCardV120";
+import { featuredCardV121 } from "../geographic/featuredCardV121";
 import {
   buildMetricSemanticFields,
   METRIC_SEMANTICS,
@@ -375,6 +376,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
         brokerage: "Lee & Associates of Illinois",
         listingUrl: detail.featuredAvailability.listingUrl,
       } : { image: "", address: "No featured availability", area: "", details: "", brokerage: "" },
+      featuredCardV121: featuredCardV121(detail.featuredAvailability, detail.featuredDeal),
       featuredCardV120: detail.featuredAvailability?.status === "selected"
         ? featuredCardV120({
             image: detail.featuredAvailability.property.image,
@@ -421,6 +423,7 @@ export function buildPresentationModel(report: IndustrialMarketReport, options?:
     ? report.overallFeaturedAvailability : undefined;
   const overallDeal = report.overallFeaturedDeal?.status === "selected" ? report.overallFeaturedDeal : undefined;
   const overallGeographic = {
+    featuredCardV121: featuredCardV121(report.overallFeaturedAvailability, report.overallFeaturedDeal),
     featuredCardV120: overallListing ? featuredCardV120({
       image: overallListing.property.image, address: overallListing.property.address,
       availableSf: overallListing.property.sizeSf, minimumDivisibleSf: overallListing.minimumDivisibleSf,

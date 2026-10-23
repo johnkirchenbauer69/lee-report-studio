@@ -272,6 +272,7 @@ export class FileSystemTemplateRepository implements TemplateRepository {
     id: string,
     sourceVersion: string,
     template?: ReportTemplate,
+    options?: { version: string },
   ) {
     return this.enqueue(async () => {
       const records = await this.read();
@@ -279,11 +280,13 @@ export class FileSystemTemplateRepository implements TemplateRepository {
         (record) => record.id === id && record.version === sourceVersion,
       );
       if (!source) throw new Error("Source template version not found.");
-      const version = nextVersion(
+      const version = options?.version ?? nextVersion(
         records
           .filter((record) => record.id === id)
           .map((record) => record.version),
       );
+      if (!/^\d+\.\d+\.\d+$/.test(version) || records.some(record => record.id === id && compareVersions(record.version, version) >= 0))
+        throw new Error("A new edition must have a unique version newer than every existing edition.");
       const next = this.record(
         {
           ...(template ? clone(template) : clone(source.template)),

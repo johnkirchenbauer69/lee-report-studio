@@ -139,7 +139,7 @@ export function expandTemplatePages(
         elements: expandRepeatingElements(page.elements, data).map(element => {
           const bound = resolveBoundImage(element, data,
             element.bindingContext ?? { name: "", path: "" });
-          return template.id === "industrial-market-geographic" && template.version === "1.2.0"
+          return template.id === "industrial-market-geographic" && ["1.2.0", "1.2.1"].includes(template.version)
             ? bindIndicatorPeriods(bound, getByPath(data, "historicalPeriods"))
             : bound;
         }),
@@ -268,11 +268,14 @@ export function expandTemplatePages(
             typography: element.style.typography ? { ...element.style.typography, fontSize: size * 4 / 3 } : undefined } } : {}),
         };
       }
-      if (element.id !== "featured-status-badge" && element.id !== "overall-featured-status-badge") return element;
+      if (!/^(overall-)?featured-(status-badge|listing-cta|listing-arrow)(-background)?$/.test(element.id)) return element;
       const badge = element.binding
         ? getByContextPath(data, element.binding.path, element.bindingContext ?? laidOut.bindingContext)
         : undefined;
-      return { ...element, hidden: typeof badge !== "string" || !badge.trim() };
+      const compactStatus = template.id === "industrial-market-geographic" && template.version === "1.2.1" &&
+        /featured-status-badge(-background)?$/.test(element.id) && typeof badge === "string";
+      return { ...element, hidden: typeof badge !== "string" || !badge.trim(),
+        ...(compactStatus ? { width: Math.min(159, Math.max(32, badge.length * 4.8 + 8)) * 4 / 3 } : {}) };
     }) };
   });
 }
