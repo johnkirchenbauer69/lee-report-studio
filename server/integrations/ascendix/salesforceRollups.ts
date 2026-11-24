@@ -29,6 +29,13 @@ const completeSum = (
     ? sum(rows, field)
     : undefined;
 
+export function hasBlankVolumeAndZeroSales(row: SalesforceRecord): boolean {
+  const { salesVolume, salesTransactions } = mapping.marketData;
+  const volume = row[salesVolume.apiName];
+  const count = row[salesTransactions.apiName];
+  return (volume == null || volume === "") && (count === 0 || count === "0");
+}
+
 export const AVAILABILITY_SIZE_BUCKETS = [
   { bucket: "20-75k SF", minimum: 20_000, maximum: 75_000 },
   { bucket: "75-150k SF", minimum: 75_000, maximum: 150_000 },
@@ -250,7 +257,12 @@ export function aggregateQuarterlyMarketPeriod(
       inventory > 0 ? sum(rows, md.totalAvailableSf) / inventory : 0,
     underConstructionSf: sum(rows, md.underConstructionSf),
     deliveredSf: completeSum(rows, md.deliveredSf),
-    salesVolume: completeSum(rows, md.salesVolume),
+    salesVolume: completeSum(
+      rows.map((row) => hasBlankVolumeAndZeroSales(row)
+        ? { ...row, [md.salesVolume.apiName]: 0 }
+        : row),
+      md.salesVolume,
+    ),
     // Same rows as salesVolume, so the count describes exactly the Sale
     // population behind the bar. Undefined unless every row publishes it.
     salesTransactions: completeSum(rows, md.salesTransactions),
