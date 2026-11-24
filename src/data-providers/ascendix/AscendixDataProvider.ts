@@ -33,8 +33,12 @@ export class AscendixDataProvider implements ReportDataProvider {
       }),
     });
     if (!response.ok) {
-      throw new ReportImportError("Ascendix import is unavailable.", [
-        "Configure the authenticated server-side Ascendix/Salesforce adapter. No credentials are accepted in the browser.",
+      const failure: unknown = await response.json().catch(() => null);
+      const detail = (failure as { error?: unknown } | null)?.error;
+      throw new ReportImportError("Ascendix could not load the report.", [
+        typeof detail === "string" && detail.trim()
+          ? detail
+          : `The report data service returned HTTP ${response.status}. Try again.`,
       ]);
     }
     const payload: unknown = await response.json();
