@@ -11,7 +11,11 @@ export const INDICATOR_STYLE = Object.freeze({
   unavailable: "#6B7280",
 });
 
-export function indicatorColor(direction: string) {
+export function indicatorColor(direction: string, metricKey?: unknown) {
+  if (metricKey === "vacancyRate" || metricKey === "availabilityRate") {
+    if (direction === "down") return INDICATOR_STYLE.up;
+    if (direction === "up") return INDICATOR_STYLE.down;
+  }
   return direction === "up"
     ? INDICATOR_STYLE.up
     : direction === "down"

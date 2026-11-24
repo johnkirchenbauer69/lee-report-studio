@@ -1,5 +1,5 @@
 import type { ManualOverride } from "../../report-engine/schema/generation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CanvasElement } from "../../components/CanvasElement";
 import type { EditorSettings, ReportTemplate } from "../../types/report";
 import { sampleTemplate } from "../../data/sampleTemplate";
@@ -65,6 +65,26 @@ export function PrintPages({
   const [nativePage, setNativePage] = useState<number | undefined>(() =>
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("nativeCapture") === "1" ? 0 : undefined,
   );
+  const documentRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (!fontsReady || template.id !== "industrial-market-geographic") return;
+    const frames = documentRef.current?.querySelectorAll<HTMLElement>(
+      '[data-testid$="featured-area"] .text-content, [data-testid*="activity-"][data-testid$="-address"] .text-content',
+    );
+    for (const frame of frames ?? []) {
+      frame.style.fontSize = "";
+      const original = parseFloat(getComputedStyle(frame).fontSize);
+      // These slots hold one line. Fit the actual frozen text using the loaded
+      // publication font, including on previously saved report revisions.
+      frame.style.whiteSpace = "nowrap";
+      const overflows = () => frame.scrollWidth > frame.clientWidth + 1 ||
+        frame.scrollHeight > frame.clientHeight + 1;
+      for (let size = original - 0.25; size >= 9.25 && overflows(); size -= 0.25) {
+        frame.style.fontSize = `${size}px`;
+      }
+      frame.dataset.geographicTextOverflow = String(overflows());
+    }
+  }, [fontsReady, template, data, manualOverrides, nativePage]);
   const visiblePages = template.pages.filter((page) => !page.hidden);
   useEffect(() => {
     if (nativePage === undefined) return;
@@ -98,6 +118,7 @@ export function PrintPages({
     );
   return (
     <main
+      ref={documentRef}
       className="print-document"
       data-render-ready={fontsReady ? "true" : "false"}
       data-native-page={nativePage}

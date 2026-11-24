@@ -123,7 +123,7 @@ export class ChromiumPdfRenderer implements ServerReportRenderer<{
       onLayout?.({ narrativeOverflow });
       progress("layout-validation");
       const geographicOverflow = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>(
-        '[data-testid^="activity-"] .text-content, [data-testid^="featured-"] .text-content'))
+        '[data-testid*="activity-"] .text-content, [data-testid*="featured-"] .text-content'))
         .filter(node => node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1)
         .map(node => node.closest("[data-testid]")?.getAttribute("data-testid") ?? "Geographic text"));
       if (geographicOverflow.length) throw new Error(`Geographic text exceeds its frame: ${geographicOverflow.join(", ")}`);

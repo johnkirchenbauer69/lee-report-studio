@@ -924,7 +924,7 @@ export function CanvasElement(props: Props) {
           fontFamily: "Nunito Sans, Arial, sans-serif", fontSize: 11, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "uppercase" }}>
           {getByContextPath(data, element.binding?.path.replace(/\.image$/, ".area") ?? "",
-            element.bindingContext) ? "Property image unavailable" : "Market research"}
+            element.bindingContext) ? "Property image unavailable" : "No featured Lee property"}
         </div>
       ) : (
         <div className="property-card-placeholder image-unavailable">
@@ -970,7 +970,7 @@ export function CanvasElement(props: Props) {
               data-indicator-kind={indicatorKind}
               data-semantic-status={semanticStatus}
               style={{
-                color: indicatorColor(direction),
+                color: indicatorColor(direction, getByPath(row, "metricKey")),
               }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" focusable="false" data-testid="metric-indicator-svg">
