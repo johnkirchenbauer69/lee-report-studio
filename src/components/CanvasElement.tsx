@@ -923,8 +923,8 @@ export function CanvasElement(props: Props) {
           alignItems: "center", justifyContent: "center", background: "#e8edf0", color: "#003146",
           fontFamily: "Nunito Sans, Arial, sans-serif", fontSize: 11, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          {getByContextPath(data, element.binding?.path.replace(/\.image$/, ".area") ?? "",
-            element.bindingContext) ? "Property image unavailable" : "No featured Lee property"}
+          {getByContextPath(data, element.binding?.path.replace(/\.image$/, ".status") ?? "",
+            element.bindingContext) === "MARKET SNAPSHOT" ? "Market snapshot" : "Property image unavailable"}
         </div>
       ) : (
         <div className="property-card-placeholder image-unavailable">
