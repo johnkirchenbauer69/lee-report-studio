@@ -23,3 +23,17 @@ it.each(["lease", "sale"] as const)("labels completed %s without availability te
     property: { address: "100 Main St, Chicago, IL", sizeSf: 25000, image: "" } };
   expect(featuredCardV121(undefined, deal)).toMatchObject({ status: kind === "lease" ? "LEASED" : "SOLD", details: "Chicago, IL", cta: "", listingUrl: undefined });
 });
+
+it("uses a photographed delivery before construction, then shows a market snapshot", () => {
+  const delivery = { ...q2SampleReport.availabilities[0]!, address: "5258 University Pky, University Park, IL 60449",
+    sizeSf: 970123, image: "/api/assets/clarius/content", developer: "Clarius Partners" };
+  const project = { ...delivery, sizeSf: 1000000 };
+  expect(featuredCardV121(undefined, undefined, [delivery], [project])).toMatchObject({
+    status: "DELIVERED", area: "970,123 SF", address: "5258 University Pky",
+    details: "University Park, IL \u00b7 Clarius Partners", image: delivery.image, cta: "",
+  });
+  expect(featuredCardV121(undefined, undefined, [{ ...delivery, image: "" }], [project]).status)
+    .toBe("UNDER CONSTRUCTION");
+  expect(featuredCardV121(undefined, undefined, [], [], { vacancyRate: 0.05, availabilityRate: 0.08 }))
+    .toMatchObject({ status: "MARKET SNAPSHOT", area: "5.00% vacancy", details: "8.00% availability", image: "" });
+});

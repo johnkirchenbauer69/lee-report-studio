@@ -3,7 +3,22 @@ import type { IndustrialMarketReport } from "../schema/industrialMarketReport";
 
 type Listing = IndustrialMarketReport["overallFeaturedAvailability"];
 type Deal = IndustrialMarketReport["overallFeaturedDeal"];
-export function featuredCardV121(listing: Listing, deal: Deal) {
+type Projects = IndustrialMarketReport["deliveries"];
+type Metrics = IndustrialMarketReport["overallMarket"];
+
+function featuredProject(projects: Projects) {
+  return projects
+    .filter(project => project.image?.trim() && project.address.trim() && project.sizeSf > 0)
+    .sort((a, b) => b.sizeSf - a.sizeSf || a.address.localeCompare(b.address))[0];
+}
+
+export function featuredCardV121(
+  listing: Listing,
+  deal: Deal,
+  deliveries: Projects = [],
+  construction: Projects = [],
+  metrics?: Pick<Metrics, "vacancyRate" | "availabilityRate">,
+) {
   if (listing?.status === "selected") {
     const card = featuredCardV120({ ...listing, image: listing.property.image,
       address: listing.property.address, availableSf: listing.property.sizeSf });
@@ -19,6 +34,16 @@ export function featuredCardV121(listing: Listing, deal: Deal) {
     return { ...card, details: card.details.replace(/(?: · )?Available$/, ""),
       status: deal.kind === "lease" ? "LEASED" : "SOLD", cta: "", ctaText: "", listingUrl: undefined };
   }
-  return { image: "", area: "", address: "Quarterly market perspective",
-    details: "No verified Lee property this quarter", status: "", cta: "", ctaText: "", listingUrl: undefined };
+  const delivery = featuredProject(deliveries);
+  const project = delivery ?? featuredProject(construction);
+  if (project) {
+    const card = featuredCardV120({ image: project.image, address: project.address, availableSf: project.sizeSf });
+    const place = card.details.replace(/(?: · )?Available$/, "");
+    return { ...card, details: [place, project.developer || project.sponsor].filter(Boolean).join(" · "),
+      status: delivery ? "DELIVERED" : "UNDER CONSTRUCTION", cta: "", ctaText: "", listingUrl: undefined };
+  }
+  const rate = (value: number) => (value * 100).toFixed(2) + "%";
+  return { image: "", area: metrics ? `${rate(metrics.vacancyRate)} vacancy` : "", address: "Quarterly market snapshot",
+    details: metrics ? `${rate(metrics.availabilityRate)} availability` : "No qualifying featured activity",
+    status: "MARKET SNAPSHOT", cta: "", ctaText: "", listingUrl: undefined };
 }
