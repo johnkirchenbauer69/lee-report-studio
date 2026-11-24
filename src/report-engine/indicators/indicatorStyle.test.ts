@@ -6,9 +6,9 @@ import {
 } from "./metricSemantics";
 import { indicatorColor } from "./indicatorStyle";
 
-describe("publication movement convention", () => {
+describe("publication indicator colors", () => {
   it.each(METRIC_SEMANTICS)(
-    "colors $metricKey by direction independently of preference",
+    "colors $metricKey with lower-is-better colors for vacancy and availability",
     (definition) => {
       for (const [current, prior, direction, color] of [
         [2, 1, "up", "#8A941E"],
@@ -25,7 +25,11 @@ describe("publication movement convention", () => {
           definition,
         );
         expect(fields.direction).toBe(direction);
-        expect(fields.indicatorColor).toBe(color);
+        const lowerIsBetter = definition.metricKey === "vacancyRate" || definition.metricKey === "availabilityRate";
+        expect(fields.indicatorColor).toBe(
+          lowerIsBetter && direction === "up" ? "#CD1442" :
+          lowerIsBetter && direction === "down" ? "#8A941E" : color,
+        );
       }
     },
   );

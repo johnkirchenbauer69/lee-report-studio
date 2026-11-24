@@ -40,6 +40,18 @@
     if(e.firstBaseline!==undefined&&!e.rotation){frame.textFramePreferences.firstBaselineOffset=FirstBaseline.FIXED_HEIGHT;frame.textFramePreferences.minimumFirstBaselineOffset=e.firstBaseline;}
     if(e.rotation&&e.style&&e.style.typography&&e.style.typography.verticalAlign==='middle')frame.textFramePreferences.verticalJustification=VerticalJustification.CENTER_ALIGN;
     frame.parentStory.texts[0].applyParagraphStyle(paragraph(s),true);
+    // Browser and InDesign compose slightly different glyph widths.
+    // Reduce only these fixed one-line slots, keeping the overset gate active.
+    if(/(?:^|-)(?:featured-area|activity-[A-Z]+[123]-address)$/.test(e.id)&&frame.overflows){
+      var fittedSize=s.fontSizePt;
+      while(frame.overflows&&fittedSize>7){
+        fittedSize=Math.max(7,fittedSize-0.15);
+        frame.parentStory.texts[0].pointSize=fittedSize;
+        frame.parentStory.texts[0].leading=Math.min(s.leadingPt,fittedSize*1.2);
+        frame.parentStory.recompose();
+      }
+    }
+    if(/featured-photo-label$/.test(e.id))frame.textFramePreferences.verticalJustification=VerticalJustification.CENTER_ALIGN;
     frame.label=e.id;counts.text++;
     if(e.rotation) {frame.rotationAngle=-e.rotation;var gb=frame.geometricBounds;frame.move(undefined,[(r.x+r.width/2)*.75-(gb[1]+gb[3])/2,(r.y+r.height/2)*.75-(gb[0]+gb[2])/2]);}
     effects(frame,e);hyperlink(frame,e.dom.url);return frame;

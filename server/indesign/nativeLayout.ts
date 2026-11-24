@@ -214,6 +214,8 @@ export async function captureNativeLayout(
       await page.evaluate(() => window.dispatchEvent(new Event("lee:refit-narratives")));
       await page.waitForFunction(() => !document.querySelector('[data-narrative-fit="pending"]'));
       if (await page.locator('[data-narrative-overflow="true"]').count()) throw Error(`Narrative overflow on native page ${pi + 1}`);
+      if (await page.locator('[data-geographic-text-overflow="true"]').count())
+        throw Error(`Geographic text overflow on native page ${pi + 1}`);
       // Measure each fixed-size page independently. The actual text, table
       // content and artwork continue to come from the frozen report and DOM.
       stage = "baseline-pdf";
@@ -285,6 +287,7 @@ export async function captureNativeLayout(
             node.querySelector(".text-content") ||
             node;
           const im = node.querySelector("img");
+          const featuredFallback = node.querySelector(".featured-media-fallback");
           const closing = node.querySelector(".closing-content");
           const closingItems: any[] = [];
           if (closing) {
@@ -385,6 +388,11 @@ export async function captureNativeLayout(
             style: style(text),
             closingItems,
             hasClosing: !!closing,
+            featuredFallback: featuredFallback ? {
+              text: featuredFallback.textContent?.toUpperCase() ?? "",
+              style: style(featuredFallback),
+              rect: rect(featuredFallback),
+            } : null,
             image: im
               ? {
                   src: im.src,
@@ -423,7 +431,14 @@ export async function captureNativeLayout(
               dom: item,
               style: { background: item.background },
             }))
-          : [{ ...source, id: `p${pi + 1}-${source.id}`, page: pi, dom }];
+          : dom.featuredFallback
+            ? [
+                { id: `p${pi + 1}-${source.id}-panel`, page: pi, type: "shape",
+                  dom: { rect: dom.featuredFallback.rect }, style: { background: "#e8edf0" } },
+                { id: `p${pi + 1}-${source.id}-label`, page: pi, type: "text",
+                  dom: { ...dom.featuredFallback, style: { ...dom.featuredFallback.style, textAlign: "center" } } },
+              ]
+            : [{ ...source, id: `p${pi + 1}-${source.id}`, page: pi, dom }];
         for (const e of entries) {
           const convert = (s: any) => {
             const id = s.fontFamily?.match(/LEE Managed ([a-f0-9-]+)/)?.[1];

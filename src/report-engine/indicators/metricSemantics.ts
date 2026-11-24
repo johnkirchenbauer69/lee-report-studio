@@ -135,7 +135,7 @@ export function buildMetricSemanticFields(
     direction,
     definition.directionPreference,
   );
-  // Color encodes movement, independently of the retained analytical judgement.
+  // Arrow direction describes movement. Rate colors reflect lower-is-better.
   const indicatorKind: MetricIndicatorKind =
     direction === "unavailable" ? "unavailable" : direction === "equal" ? "bar" : "arrow";
   return {
@@ -146,6 +146,6 @@ export function buildMetricSemanticFields(
     indicatorKind,
     indicatorGlyph:
       indicatorKind === "arrow" ? metricDirectionGlyph(direction) : "",
-    indicatorColor: indicatorColor(direction),
+    indicatorColor: indicatorColor(direction, definition.metricKey),
   };
 }
