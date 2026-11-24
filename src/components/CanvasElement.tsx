@@ -1,3 +1,4 @@
+import { matchGeographicChartTitle } from "../report-engine/geographic/chartTitles";
 import { ClosingContent } from "./ClosingContent";
 import { INDICATOR_STYLE, indicatorColor } from "../report-engine/indicators/indicatorStyle";
 import React, { useEffect, useRef, useState } from "react";
@@ -186,8 +187,8 @@ const strokeStyle = (element: ReportElement): React.CSSProperties => {
 };
 
 export function CanvasElement(props: Props) {
+  const element = matchGeographicChartTitle(props.element, props.elements ?? []);
   const {
-    element,
     elements,
     pageSize,
     settings,

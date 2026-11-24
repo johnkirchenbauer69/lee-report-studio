@@ -1,3 +1,4 @@
+import { matchGeographicChartTitle } from "../../src/report-engine/geographic/chartTitles";
 import type { ReportElement, ReportTemplate, TextElement } from "../../src/types/report";
 import { CANONICAL_TEMPLATES } from "../../src/report-engine/canonicalTemplates";
 import { ACTIVITY_SECTIONS } from "../../src/report-engine/geographic/activity";
@@ -48,6 +49,7 @@ export function geographicFamilyTemplate(classic: ReportTemplate): ReportTemplat
     text("featured-details", "", 336, 247, 240, 11, 8, "#d2dce1", "market.featuredCard.details"),
     text("featured-brokerage", "", 336, 258, 240, 11, 7.8, "#d2dce1", "market.featuredCard.brokerage"),
   );
+  overview.elements = overview.elements.map(element => matchGeographicChartTitle(element, overview.elements));
   const chrome = new Set(["detail-header-4", "detail-period-4", "detail-market-4", "detail-footer-4", "detail-page-4", "text-94b8d453", "text-8911ecd2", "image-f68bff67"]);
   activity.elements = activity.elements.filter(item => chrome.has(item.id));
   activity.name = "{item} Geographic Market Activity";
