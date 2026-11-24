@@ -58,7 +58,7 @@ export function CreateReportWizard({
     [period, setPeriod] = useState(""),
     [provider, setProvider] = useState<ReportProviderId>("sample");
   const market = "Chicago";
-  const [periods, setPeriods] = useState<ReportPeriodOption[]>([]),
+  const [reportablePeriods, setReportablePeriods] = useState<ReportPeriodOption[]>([]),
     [periodsLoading, setPeriodsLoading] = useState(true),
     [periodsError, setPeriodsError] = useState<string>();
   const [calculationMode, setCalculationMode] = useState<
@@ -84,24 +84,18 @@ export function CreateReportWizard({
     loadReportPeriods()
       .then((result) => {
         if (!active) return;
-        setPeriods(result.periods);
-        const preferredPeriod =
-          result.mode === "mock"
-            ? q2SampleReport.report.period
-            : result.periods[0]?.label;
+        const available = result.periods.filter((item) => item.periodEnd >= "2026-09-30");
+        setReportablePeriods(available);
         setPeriod((current) =>
-          result.periods.some((item) => item.label === current)
+          available.some((item) => item.label === current) || current === "2026 Q4"
             ? current
-            : (result.periods.find((item) => item.label === preferredPeriod)
-                ?.label ??
-              result.periods[0]?.label ??
-              ""),
+            : available[0]?.label ?? "2026 Q4",
         );
         setPeriodsError(undefined);
       })
       .catch((reason: unknown) => {
         if (!active) return;
-        setPeriods([]);
+        setReportablePeriods([]);
         setPeriod("");
         setPeriodsError(
           reason instanceof Error
@@ -116,8 +110,13 @@ export function CreateReportWizard({
       active = false;
     };
   }, []);
+  const hasMarketData = reportablePeriods.some((item) => item.label === period);
+  const periods = reportablePeriods.some((item) => item.label === "2026 Q4")
+    ? reportablePeriods
+    : [{ label: "2026 Q4" }, ...reportablePeriods];
   const canContinue =
-    provider === "sample" || provider === "ascendix" || !!file;
+    provider === "sample" ? period === q2SampleReport.report.period :
+    provider === "ascendix" ? hasMarketData : Boolean(file);
   const selectedLabel = useMemo(
     () =>
       detailedSelected.length === 0
@@ -244,7 +243,7 @@ export function CreateReportWizard({
                   aria-label="Report period"
                   value={period}
                   disabled={
-                    periodsLoading || Boolean(periodsError) || !periods.length
+                    periodsLoading || Boolean(periodsError)
                   }
                   onChange={(event) => setPeriod(event.target.value)}
                 >
@@ -252,12 +251,9 @@ export function CreateReportWizard({
                   {!periodsLoading && periodsError && (
                     <option value="">Periods unavailable</option>
                   )}
-                  {!periodsLoading && !periodsError && !periods.length && (
-                    <option value="">No reportable periods found</option>
-                  )}
-                  {periods.map((item) => (
+                  {!periodsLoading && !periodsError && periods.map((item) => (
                     <option
-                      key={`${item.periodEnd}-${item.label}`}
+                      key={item.label}
                       value={item.label}
                     >
                       {item.label}
@@ -272,9 +268,9 @@ export function CreateReportWizard({
                 {!periodsLoading && periodsError && (
                   <small role="alert">{periodsError}</small>
                 )}
-                {!periodsLoading && !periodsError && !periods.length && (
+                {!periodsLoading && !periodsError && period && !hasMarketData && (
                   <small role="status">
-                    No reportable Market_Data periods were found.
+                    Salesforce data is unavailable for {period}. You can continue with a data import.
                   </small>
                 )}
               </label>
@@ -364,6 +360,12 @@ export function CreateReportWizard({
                         : "Select Submarket Stats - Data Table.xlsx")}
                   </span>
                 </div>
+              )}
+              {provider === "sample" && period !== q2SampleReport.report.period && (
+                <p role="status">Sample data is only available for {q2SampleReport.report.period}. Choose another source.</p>
+              )}
+              {provider === "ascendix" && !hasMarketData && (
+                <p role="status">Salesforce data is unavailable for {period}. Choose a data import.</p>
               )}
               {provider === "ascendix" && (
                 <div className="wizard-note warning">
