@@ -11,6 +11,8 @@ import {
   normalizeSalesforcePercent,
 } from "./salesforceNormalization.ts";
 
+import { hasBlankVolumeAndZeroSales } from "./salesforceRollups.ts";
+
 const api = (entry: { apiName: string }) => entry.apiName;
 const md = mapping.marketData;
 
@@ -46,6 +48,7 @@ export function reportPeriodDiscoveryQuery() {
       md.submarket,
       md.submarketCode,
       ...reportPeriodMetricFields,
+      md.salesTransactions,
     ].map(api),
     `${api(md.periodEnd)} != NULL AND ${api(md.period)} != NULL AND ${api(md.submarket)} IN ${accepted}`,
     ` ORDER BY ${api(md.periodEnd)} DESC LIMIT 360`,
@@ -57,6 +60,7 @@ const recordText = (record: SalesforceRecord, field: { apiName: string }) =>
 
 function hasRequiredMetrics(record: SalesforceRecord) {
   return requiredReportPeriodMetricFields.every((field) => {
+    if (field === md.salesVolume && hasBlankVolumeAndZeroSales(record)) return true;
     const raw = record[field.apiName];
     if (raw === null || raw === undefined || raw === "") return false;
     const numeric = Number(raw);

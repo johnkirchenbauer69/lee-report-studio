@@ -52,6 +52,7 @@ import {
   OVERALL_MARKET_PERIOD_METRICS,
   rollupPropertyData,
   verifiedSpeculativeShare,
+  hasBlankVolumeAndZeroSales,
 } from "./salesforceRollups.ts";
 import {
   reportablePeriodsFromMarketData,
@@ -184,7 +185,9 @@ function metrics(record: SalesforceRecord): MarketMetrics {
       md.askingNetRentPsf,
       "asking rent",
     ),
-    salesVolume: number(record, md.salesVolume, "sales volume"),
+    salesVolume: hasBlankVolumeAndZeroSales(record)
+      ? 0
+      : number(record, md.salesVolume, "sales volume"),
   };
 }
 

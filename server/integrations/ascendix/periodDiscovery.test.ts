@@ -70,6 +70,16 @@ describe("Market_Data report period discovery", () => {
     );
   });
 
+  it.each([[0, 1], [1, 0], [null, 0]])(
+    "handles blank sales volume with a transaction count of %s",
+    (count, expectedPeriods) => {
+      const rows = rowsFor("2026 Q4", "2026-12-31");
+      rows[0]![md.salesVolume.apiName] = null;
+      rows[0]![md.salesTransactions.apiName] = count;
+      expect(reportablePeriodsFromMarketData(rows)).toHaveLength(expectedPeriods);
+    },
+  );
+
   it("excludes a 17-submarket or metric-incomplete snapshot", () => {
     const incompleteMetrics = rowsFor("2026 Q2", "2026-06-30");
     incompleteMetrics[0]![md.inventorySf.apiName] = null;
