@@ -367,15 +367,6 @@ export function CreateReportWizard({
               {provider === "ascendix" && !hasMarketData && (
                 <p role="status">Salesforce data is unavailable for {period}. Choose a data import.</p>
               )}
-              {provider === "ascendix" && (
-                <div className="wizard-note warning">
-                  <strong>Server configuration required</strong>
-                  <span>
-                    Credentials remain on the application server and are never
-                    entered into the browser.
-                  </span>
-                </div>
-              )}
             </div>
           )}
           {step === 3 && (
